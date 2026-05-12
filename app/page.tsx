@@ -57,10 +57,6 @@ export default function LandingPage() {
         <p style={{ fontSize: 11, fontWeight: 600, color: '#B0ADA6', letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'center', marginBottom: 10 }}>
           Staff Meal
         </p>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1C1B19', textAlign: 'center', marginBottom: 28 }}>
-          스토리 메이커
-        </h1>
-
         <input
           ref={inputRef}
           type="password"
@@ -103,7 +99,7 @@ export default function LandingPage() {
             letterSpacing: '0.01em',
           }}
         >
-          {loading ? '확인 중...' : '시작하기'}
+          {loading ? '확인 중...' : '로그인'}
         </button>
       </form>
     </div>
