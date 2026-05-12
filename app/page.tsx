@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+const SHADOW = '0 2px 8px rgba(0,0,0,0.06), 0 12px 40px rgba(0,0,0,0.10)';
+
 export default function LandingPage() {
   const router = useRouter();
   const [password, setPassword] = useState('');
@@ -36,7 +38,7 @@ export default function LandingPage() {
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#EDEAE3',
+        backgroundColor: '#FFFFFF',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -47,16 +49,16 @@ export default function LandingPage() {
         onSubmit={handleLogin}
         style={{
           width: 340,
-          backgroundColor: '#FAFAF8',
-          border: '1px solid #E2DDD6',
+          backgroundColor: '#FFFFFF',
           borderRadius: 20,
           padding: '40px 36px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.10), 0 4px 16px rgba(0,0,0,0.06)',
+          boxShadow: SHADOW,
         }}
       >
-        <p style={{ fontSize: 11, fontWeight: 600, color: '#B0ADA6', letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'center', marginBottom: 10 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, color: '#B0ADA6', letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'center', marginBottom: 28 }}>
           Staff Meal
         </p>
+
         <input
           ref={inputRef}
           type="password"
@@ -65,8 +67,8 @@ export default function LandingPage() {
           placeholder="비밀번호"
           style={{
             width: '100%',
-            backgroundColor: '#F5F3EF',
-            border: `1px solid ${error ? '#C0392B' : '#DDD9D1'}`,
+            backgroundColor: '#F8F8F8',
+            border: `1px solid ${error ? '#C0392B' : '#EBEBEB'}`,
             borderRadius: 10,
             padding: '12px 14px',
             fontSize: 14,
@@ -87,7 +89,7 @@ export default function LandingPage() {
           disabled={loading}
           style={{
             width: '100%',
-            backgroundColor: loading ? '#7C7970' : '#1C1B19',
+            backgroundColor: loading ? '#AAAAAA' : '#1C1B19',
             color: '#FFFFFF',
             fontWeight: 600,
             fontSize: 14,

@@ -2,18 +2,6 @@
 
 import type { StoryData } from '@/lib/types';
 
-const C = {
-  textPrimary: '#1C1B19',
-  textSecondary: '#7C7970',
-  textMuted: '#B0ADA6',
-  border: '#DDD9D1',
-  inputBg: '#F5F3EF',
-  activeBg: '#1C1B19',
-  activeText: '#FFFFFF',
-  inactiveBg: '#F0EDE6',
-  inactiveText: '#7C7970',
-};
-
 interface Props {
   story: StoryData;
   onChange: React.Dispatch<React.SetStateAction<StoryData>>;
@@ -53,7 +41,7 @@ export default function MenuEditor({ story, onChange }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, fontFamily: "'Pretendard Variable','Pretendard',sans-serif" }}>
 
       {/* 모드 탭 */}
-      <div style={{ display: 'flex', gap: 6, backgroundColor: '#EEEBE4', borderRadius: 10, padding: 4 }}>
+      <div style={{ display: 'flex', gap: 6, backgroundColor: '#F3F3F3', borderRadius: 10, padding: 4 }}>
         {(['fixed', 'manual'] as const).map((mode) => (
           <button
             key={mode}
@@ -68,8 +56,9 @@ export default function MenuEditor({ story, onChange }: Props) {
               cursor: 'pointer',
               fontFamily: 'inherit',
               transition: 'all 0.15s',
-              backgroundColor: story.inputMode === mode ? C.activeBg : 'transparent',
-              color: story.inputMode === mode ? C.activeText : C.textSecondary,
+              backgroundColor: story.inputMode === mode ? '#FFFFFF' : 'transparent',
+              color: story.inputMode === mode ? '#1C1B19' : '#AAAAAA',
+              boxShadow: story.inputMode === mode ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
             }}
           >
             {mode === 'fixed' ? '카테고리 고정' : '직접 입력'}
@@ -81,7 +70,7 @@ export default function MenuEditor({ story, onChange }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {story.categories.map((cat, ci) => (
             <div key={ci}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#AAAAAA', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
                 {cat.name}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -93,12 +82,12 @@ export default function MenuEditor({ story, onChange }: Props) {
                       placeholder={`메뉴 ${ii + 1}`}
                       style={{
                         flex: 1,
-                        backgroundColor: C.inputBg,
-                        border: `1px solid ${C.border}`,
+                        backgroundColor: '#F8F8F8',
+                        border: '1px solid #EBEBEB',
                         borderRadius: 8,
                         padding: '9px 12px',
                         fontSize: 13,
-                        color: C.textPrimary,
+                        color: '#1C1B19',
                         outline: 'none',
                         fontFamily: 'inherit',
                       }}
@@ -106,7 +95,7 @@ export default function MenuEditor({ story, onChange }: Props) {
                     {cat.items.length > 1 && (
                       <button
                         onClick={() => removeItem(ci, ii)}
-                        style={{ color: C.textMuted, background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 4px', fontFamily: 'inherit' }}
+                        style={{ color: '#CCCCCC', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 4px', fontFamily: 'inherit' }}
                       >
                         ×
                       </button>
@@ -116,7 +105,7 @@ export default function MenuEditor({ story, onChange }: Props) {
               </div>
               <button
                 onClick={() => addItem(ci)}
-                style={{ marginTop: 8, fontSize: 12, color: C.textSecondary, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+                style={{ marginTop: 8, fontSize: 12, color: '#AAAAAA', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
               >
                 + 항목 추가
               </button>
@@ -125,7 +114,7 @@ export default function MenuEditor({ story, onChange }: Props) {
         </div>
       ) : (
         <div>
-          <p style={{ fontSize: 12, color: C.textMuted, marginBottom: 8 }}>
+          <p style={{ fontSize: 12, color: '#AAAAAA', marginBottom: 8 }}>
             카테고리는 [대괄호]로 구분하세요. 빈 줄로 섹션을 나눌 수 있습니다.
           </p>
           <textarea
@@ -135,12 +124,12 @@ export default function MenuEditor({ story, onChange }: Props) {
             rows={14}
             style={{
               width: '100%',
-              backgroundColor: C.inputBg,
-              border: `1px solid ${C.border}`,
+              backgroundColor: '#F8F8F8',
+              border: '1px solid #EBEBEB',
               borderRadius: 10,
               padding: '12px 14px',
               fontSize: 13,
-              color: C.textPrimary,
+              color: '#1C1B19',
               outline: 'none',
               fontFamily: 'inherit',
               resize: 'none',

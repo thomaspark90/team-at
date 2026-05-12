@@ -41,17 +41,18 @@ export default function DownloadButton({ previewRef, date }: Props) {
       disabled={loading}
       style={{
         width: '100%',
-        backgroundColor: loading ? '#7C7970' : '#1C1B19',
+        backgroundColor: loading ? '#AAAAAA' : '#1C1B19',
         color: '#FFFFFF',
         fontWeight: 600,
         fontSize: 14,
-        padding: '14px',
+        padding: '15px',
         borderRadius: 12,
         border: 'none',
         cursor: loading ? 'not-allowed' : 'pointer',
         fontFamily: "'Pretendard Variable','Pretendard',sans-serif",
         letterSpacing: '0.01em',
-        transition: 'background-color 0.15s',
+        boxShadow: loading ? 'none' : '0 2px 8px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.10)',
+        transition: 'all 0.15s',
       }}
     >
       {loading ? '이미지 생성 중...' : 'PNG 다운로드  ↓  1080 × 1920'}
