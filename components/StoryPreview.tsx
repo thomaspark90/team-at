@@ -7,16 +7,15 @@ interface Props {
   story: StoryData;
 }
 
-// 미리보기 크기: 360 × 640 (다운로드 1080 × 1920의 1/3)
+// 미리보기 360×640 → 다운로드 1080×1920 (3배)
 const W = 360;
 const H = 640;
 
-const StoryPreview = forwardRef<HTMLDivElement, Props>(({ story }, ref) => {
-  const fixedItems = story.categories.flatMap((cat) => [
-    { type: 'category' as const, text: `[${cat.name}]` },
-    ...cat.items.filter(Boolean).map((item) => ({ type: 'item' as const, text: item })),
-  ]);
+// 배경 이미지의 하단 고정 영역 높이 (미리보기 기준)
+// 원본 이미지에서 하단 고정 영역이 전체의 약 22%
+const BOTTOM_FIXED_H = Math.round(H * 0.22); // ≈ 141px
 
+const StoryPreview = forwardRef<HTMLDivElement, Props>(({ story }, ref) => {
   return (
     <div
       ref={ref}
@@ -27,27 +26,23 @@ const StoryPreview = forwardRef<HTMLDivElement, Props>(({ story }, ref) => {
         overflow: 'hidden',
         flexShrink: 0,
         fontFamily: "'Pretendard Variable', 'Pretendard', sans-serif",
-        backgroundColor: '#fdf8ee',
       }}
     >
-      {/* 배경 이미지 */}
-      {story.backgroundUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={story.backgroundUrl}
-          src={story.backgroundUrl}
-          alt=""
-          crossOrigin="anonymous"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-          }}
-        />
-      )}
+      {/* 고정 배경 이미지 */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/background.png"
+        alt=""
+        crossOrigin="anonymous"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+        }}
+      />
 
       {/* 날짜 배지 */}
       <div
@@ -74,21 +69,20 @@ const StoryPreview = forwardRef<HTMLDivElement, Props>(({ story }, ref) => {
         </span>
       </div>
 
-      {/* 메뉴 본문 */}
+      {/* 메뉴 본문 — 배경 하단 고정 영역 위까지만 사용 */}
       <div
         style={{
           position: 'absolute',
-          top: 110,
+          top: 108,
           left: 0,
           right: 0,
-          bottom: 130,
+          bottom: BOTTOM_FIXED_H,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           paddingLeft: 24,
           paddingRight: 24,
-          gap: 0,
         }}
       >
         {story.inputMode === 'fixed' ? (
@@ -140,23 +134,6 @@ const StoryPreview = forwardRef<HTMLDivElement, Props>(({ story }, ref) => {
           </div>
         )}
       </div>
-
-      {/* 배경 없을 때 안내 */}
-      {!story.backgroundUrl && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 12,
-            left: 0,
-            right: 0,
-            textAlign: 'center',
-            fontSize: 10,
-            color: '#bbb',
-          }}
-        >
-          배경 이미지를 선택하세요
-        </div>
-      )}
     </div>
   );
 });

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { StoryData } from '@/lib/types';
-import BackgroundPanel from '@/components/BackgroundPanel';
 import MenuEditor from '@/components/MenuEditor';
 import StoryPreview from '@/components/StoryPreview';
 import DownloadButton from '@/components/DownloadButton';
@@ -28,7 +27,6 @@ export default function StudioPage() {
   const previewRef = useRef<HTMLDivElement>(null);
   const [story, setStory] = useState<StoryData>(DEFAULT_STORY);
 
-  // 인증 확인
   useEffect(() => {
     if (sessionStorage.getItem('auth') !== 'ok') router.replace('/');
   }, [router]);
@@ -40,13 +38,9 @@ export default function StudioPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* 상단 헤더 */}
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-800">Staff Meal · 스토리 메이커</h1>
-        <button
-          onClick={handleLogout}
-          className="text-xs text-gray-400 hover:text-gray-600"
-        >
+        <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-gray-600">
           로그아웃
         </button>
       </header>
@@ -57,21 +51,10 @@ export default function StudioPage() {
           {/* 왼쪽: 입력 패널 */}
           <div className="space-y-4">
 
-            {/* Step 1: 배경 */}
+            {/* Step 1: 날짜 */}
             <section className="bg-white rounded-2xl p-5 shadow-sm">
               <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">
-                ① 배경 선택
-              </h2>
-              <BackgroundPanel
-                selected={story.backgroundUrl}
-                onSelect={(url) => setStory((s) => ({ ...s, backgroundUrl: url }))}
-              />
-            </section>
-
-            {/* Step 2: 날짜 */}
-            <section className="bg-white rounded-2xl p-5 shadow-sm">
-              <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">
-                ② 날짜
+                ① 날짜
               </h2>
               <input
                 type="text"
@@ -83,10 +66,10 @@ export default function StudioPage() {
               <p className="text-xs text-gray-400 mt-1">배지에 표시될 날짜를 입력하세요</p>
             </section>
 
-            {/* Step 3: 메뉴 */}
+            {/* Step 2: 메뉴 */}
             <section className="bg-white rounded-2xl p-5 shadow-sm">
               <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">
-                ③ 메뉴 입력
+                ② 메뉴 입력
               </h2>
               <MenuEditor story={story} onChange={setStory} />
             </section>
@@ -96,7 +79,7 @@ export default function StudioPage() {
           <div className="space-y-4 lg:sticky lg:top-6">
             <section className="bg-white rounded-2xl p-5 shadow-sm">
               <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3">
-                ④ 미리보기
+                ③ 미리보기
               </h2>
               <div className="flex justify-center overflow-x-auto">
                 <StoryPreview ref={previewRef} story={story} />
