@@ -14,27 +14,34 @@ export default function BackgroundPanel({ selected, onSelect }: Props) {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const loadBackgrounds = async () => {
+  // onSelect를 포함하지 않는 순수 목록 갱신 함수
+  const refresh = async (): Promise<BlobItem[]> => {
     const res = await fetch('/api/backgrounds');
+    if (!res.ok) return [];
     const data: BlobItem[] = await res.json();
     setBackgrounds(data);
-    if (data.length > 0 && !selected) onSelect(data[0].url);
+    return data;
   };
 
-  useEffect(() => { loadBackgrounds(); }, []);
+  // 최초 로드 시에만 선택 없으면 첫 번째 배경 자동 선택
+  useEffect(() => {
+    refresh().then((data) => {
+      if (data.length > 0 && !selected) onSelect(data[0].url);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
     try {
-      // 클라이언트에서 Blob 저장소로 직접 업로드 (서버 바디 한도 우회)
       const blob = await upload(`backgrounds/${Date.now()}-${file.name}`, file, {
         access: 'public',
         handleUploadUrl: '/api/upload',
       });
-      onSelect(blob.url);
-      await loadBackgrounds();
+      onSelect(blob.url);   // 미리보기 즉시 반영
+      await refresh();       // 썸네일 목록만 갱신 (onSelect 재호출 없음)
     } catch (err) {
       console.error('Upload error:', err);
       alert('업로드에 실패했습니다. 다시 시도해주세요.');
@@ -51,8 +58,8 @@ export default function BackgroundPanel({ selected, onSelect }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
     });
-    await loadBackgrounds();
-    if (selected === url) onSelect('');
+    const data = await refresh();
+    if (selected === url) onSelect(data.length > 0 ? data[0].url : '');
   };
 
   return (
@@ -70,7 +77,7 @@ export default function BackgroundPanel({ selected, onSelect }: Props) {
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={bg.url} alt="" className="w-full h-full object-cover" />
+              <img src={bg.url} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
             </button>
             <button
               onClick={(e) => handleDelete(bg.url, e)}
