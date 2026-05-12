@@ -55,6 +55,10 @@ const StoryPreview = forwardRef<HTMLDivElement, Props>(({ story }, ref) => {
           borderRadius: 8,
           padding: '9px 22px',
           whiteSpace: 'nowrap',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          lineHeight: 1,
         }}
       >
         <span
@@ -63,6 +67,7 @@ const StoryPreview = forwardRef<HTMLDivElement, Props>(({ story }, ref) => {
             fontSize: 15,
             color: '#1a1a1a',
             letterSpacing: '0.07em',
+            lineHeight: 1,
           }}
         >
           {story.date} TODAY&apos;S MENU
