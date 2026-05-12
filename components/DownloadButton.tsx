@@ -7,7 +7,6 @@ interface Props {
   date: string;
 }
 
-// 미리보기 360×640 → 다운로드 1080×1920 (3배 스케일)
 const DOWNLOAD_SCALE = 3;
 
 export default function DownloadButton({ previewRef, date }: Props) {
@@ -17,7 +16,6 @@ export default function DownloadButton({ previewRef, date }: Props) {
     if (!previewRef.current) return;
     setLoading(true);
 
-    // 폰트가 완전히 로드된 뒤 캡처
     await document.fonts.ready;
 
     const html2canvas = (await import('html2canvas')).default;
@@ -41,9 +39,22 @@ export default function DownloadButton({ previewRef, date }: Props) {
     <button
       onClick={handleDownload}
       disabled={loading}
-      className="w-full bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-gray-900 font-bold py-3 rounded-2xl transition shadow-sm text-sm"
+      style={{
+        width: '100%',
+        backgroundColor: loading ? '#7C7970' : '#1C1B19',
+        color: '#FFFFFF',
+        fontWeight: 600,
+        fontSize: 14,
+        padding: '14px',
+        borderRadius: 12,
+        border: 'none',
+        cursor: loading ? 'not-allowed' : 'pointer',
+        fontFamily: "'Pretendard Variable','Pretendard',sans-serif",
+        letterSpacing: '0.01em',
+        transition: 'background-color 0.15s',
+      }}
     >
-      {loading ? '이미지 생성 중...' : '⬇ PNG 다운로드 (1080 × 1920)'}
+      {loading ? '이미지 생성 중...' : 'PNG 다운로드  ↓  1080 × 1920'}
     </button>
   );
 }

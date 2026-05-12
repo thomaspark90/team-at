@@ -21,6 +21,19 @@ const FEATURES = [
   },
 ];
 
+const C = {
+  bg: '#EDEAE3',
+  surface: '#FAFAF8',
+  border: '#E2DDD6',
+  textPrimary: '#1C1B19',
+  textSecondary: '#7C7970',
+  textMuted: '#B0ADA6',
+  btnBg: '#1C1B19',
+  btnText: '#FFFFFF',
+  inputBg: '#F5F3EF',
+  inputBorder: '#DDD9D1',
+};
+
 export default function LandingPage() {
   const router = useRouter();
   const [password, setPassword] = useState('');
@@ -30,7 +43,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (sessionStorage.getItem('auth') === 'ok') router.replace('/studio');
-    else inputRef.current?.focus();
+    else setTimeout(() => inputRef.current?.focus(), 100);
   }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -51,133 +64,108 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#FFFDF7', fontFamily: "'Pretendard Variable','Pretendard',sans-serif" }}>
+    <div style={{ minHeight: '100vh', backgroundColor: C.bg, fontFamily: "'Pretendard Variable','Pretendard',sans-serif", color: C.textPrimary }}>
 
-      {/* ── 헤더 ── */}
-      <header style={{ borderBottom: '1px solid #EDE9DC' }}>
-        <div className="flex items-center mx-auto px-6" style={{ maxWidth: 1100, height: 60 }}>
-          <div className="flex items-center gap-2">
-            <div
-              className="flex items-center justify-center text-xs font-black"
-              style={{ width: 30, height: 30, backgroundColor: '#F5C518', borderRadius: 8, color: '#1a1a1a' }}
-            >
-              SM
-            </div>
-            <span className="font-bold text-sm" style={{ color: '#1a1a1a' }}>Staff Meal</span>
-          </div>
+      {/* 헤더 */}
+      <header style={{ borderBottom: `1px solid ${C.border}`, backgroundColor: C.bg }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', height: 58, display: 'flex', alignItems: 'center' }}>
+          <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: '0.02em', color: C.textPrimary }}>Staff Meal</span>
         </div>
       </header>
 
-      {/* ── 히어로 + 암호 입력 ── */}
-      <section className="mx-auto px-6 py-20 flex flex-col lg:flex-row items-center gap-16" style={{ maxWidth: 1100 }}>
+      {/* 히어로 + 로그인 */}
+      <section style={{ maxWidth: 1100, margin: '0 auto', padding: '80px 24px 60px', display: 'flex', alignItems: 'center', gap: 64, flexWrap: 'wrap' }}>
 
-        {/* 왼쪽: 텍스트 */}
-        <div className="flex-1">
-          <div
-            className="inline-block text-xs font-semibold mb-5"
-            style={{ backgroundColor: '#FFF3C4', color: '#A07800', padding: '4px 14px', borderRadius: 20 }}
-          >
-            인스타그램 스토리 자동 생성
-          </div>
-          <h1 className="font-black leading-tight mb-5" style={{ fontSize: 46, color: '#1a1a1a', lineHeight: 1.15 }}>
-            매일 메뉴 스토리,<br />
-            <span style={{ color: '#D4A800' }}>30초</span>면 완성
+        {/* 텍스트 */}
+        <div style={{ flex: 1, minWidth: 280 }}>
+          <p style={{ fontSize: 12, fontWeight: 500, color: C.textMuted, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 20 }}>
+            Instagram Story Generator
+          </p>
+          <h1 style={{ fontSize: 44, fontWeight: 800, lineHeight: 1.15, marginBottom: 20, color: C.textPrimary }}>
+            매일 메뉴 스토리,<br />30초면 완성
           </h1>
-          <p className="leading-relaxed" style={{ fontSize: 17, color: '#6b7280' }}>
-            메뉴를 입력하고 배경을 고르면<br />
-            인스타그램 스토리용 이미지가 자동으로 만들어집니다.
+          <p style={{ fontSize: 16, color: C.textSecondary, lineHeight: 1.75 }}>
+            메뉴를 입력하면 인스타그램 스토리용<br />이미지가 자동으로 만들어집니다.
           </p>
         </div>
 
-        {/* 오른쪽: 암호 입력 폼 */}
-        <div className="flex-shrink-0 w-full lg:w-80">
+        {/* 로그인 카드 */}
+        <div style={{ width: 320, flexShrink: 0 }}>
           <form
             onSubmit={handleLogin}
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: 22,
-              padding: 36,
-              boxShadow: '0 8px 40px rgba(0,0,0,0.08)',
-              border: '1px solid #EDE9DC',
-            }}
+            style={{ backgroundColor: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, padding: '36px 32px' }}
           >
-            <div
-              className="flex items-center justify-center font-black text-sm mx-auto mb-4"
-              style={{ width: 44, height: 44, backgroundColor: '#F5C518', borderRadius: 12, color: '#1a1a1a' }}
-            >
-              SM
-            </div>
-            <h2 className="text-center font-black mb-1" style={{ fontSize: 20, color: '#1a1a1a' }}>Staff Meal</h2>
-            <p className="text-center mb-6" style={{ fontSize: 13, color: '#9ca3af' }}>팀 전용 스토리 제작 도구</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 24, textAlign: 'center' }}>
+              Team Access
+            </p>
 
             <input
               ref={inputRef}
               type="password"
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError(false); }}
-              placeholder="비밀번호를 입력하세요"
+              placeholder="비밀번호"
               style={{
                 width: '100%',
-                border: `1.5px solid ${error ? '#ef4444' : '#e5e7eb'}`,
+                backgroundColor: C.inputBg,
+                border: `1px solid ${error ? '#C0392B' : C.inputBorder}`,
                 borderRadius: 10,
-                padding: '11px 14px',
+                padding: '12px 14px',
                 fontSize: 14,
+                color: C.textPrimary,
                 outline: 'none',
                 boxSizing: 'border-box',
-                marginBottom: 8,
                 fontFamily: 'inherit',
-                backgroundColor: '#FAFAF8',
+                marginBottom: 8,
               }}
             />
             {error && (
-              <p className="text-center mb-2" style={{ fontSize: 12, color: '#ef4444' }}>
-                비밀번호가 틀렸습니다
-              </p>
+              <p style={{ fontSize: 12, color: '#C0392B', marginBottom: 8 }}>비밀번호가 틀렸습니다</p>
             )}
-            <div style={{ height: error ? 4 : 12 }} />
+            <div style={{ height: error ? 8 : 16 }} />
 
             <button
               type="submit"
               disabled={loading}
               style={{
                 width: '100%',
-                backgroundColor: '#F5C518',
-                color: '#1a1a1a',
-                fontWeight: 700,
-                fontSize: 15,
-                padding: 13,
+                backgroundColor: loading ? C.textSecondary : C.btnBg,
+                color: C.btnText,
+                fontWeight: 600,
+                fontSize: 14,
+                padding: '13px',
                 borderRadius: 10,
                 border: 'none',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.6 : 1,
                 fontFamily: 'inherit',
+                letterSpacing: '0.01em',
               }}
             >
-              {loading ? '확인 중...' : '스토리 만들러 가기 →'}
+              {loading ? '확인 중...' : '시작하기'}
             </button>
           </form>
         </div>
       </section>
 
-      {/* ── 기능 소개 ── */}
-      <section className="mx-auto px-6 pb-24" style={{ maxWidth: 1100 }}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {/* 기능 소개 */}
+      <section style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px 80px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
           {FEATURES.map((f, i) => (
             <div
               key={i}
-              style={{ backgroundColor: '#fff', border: '1px solid #EDE9DC', borderRadius: 18, padding: 28 }}
+              style={{ backgroundColor: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: '24px 26px' }}
             >
-              <div className="text-3xl mb-4">{f.icon}</div>
-              <h3 className="font-bold mb-2" style={{ fontSize: 16, color: '#1a1a1a' }}>{f.title}</h3>
-              <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.65 }}>{f.desc}</p>
+              <div style={{ fontSize: 24, marginBottom: 14 }}>{f.icon}</div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: C.textPrimary, marginBottom: 8 }}>{f.title}</p>
+              <p style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.65 }}>{f.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── 푸터 ── */}
-      <footer style={{ borderTop: '1px solid #EDE9DC', padding: '24px', textAlign: 'center' }}>
-        <p style={{ fontSize: 12, color: '#9ca3af' }}>© 2026 Staff Meal · 팀 내부 전용 도구</p>
+      {/* 푸터 */}
+      <footer style={{ borderTop: `1px solid ${C.border}`, padding: '22px 24px', textAlign: 'center' }}>
+        <p style={{ fontSize: 12, color: C.textMuted }}>© 2026 Staff Meal · 팀 내부 전용 도구</p>
       </footer>
     </div>
   );
