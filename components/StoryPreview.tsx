@@ -44,21 +44,14 @@ const StoryPreview = forwardRef<HTMLDivElement, Props>(({ story }, ref) => {
         }}
       />
 
-      {/* 날짜 배지 */}
+      {/* 날짜 텍스트 */}
       <div
         style={{
           position: 'absolute',
           top: 52,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          backgroundColor: '#F5C518',
-          borderRadius: 8,
-          padding: '9px 22px',
-          whiteSpace: 'nowrap',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          lineHeight: 1,
+          left: 0,
+          right: 0,
+          textAlign: 'center',
         }}
       >
         <span
