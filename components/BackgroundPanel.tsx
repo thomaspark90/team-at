@@ -26,14 +26,22 @@ export default function BackgroundPanel({ selected, onSelect }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
-    const data = await res.json();
-    await loadBackgrounds();
-    onSelect(data.url);
-    setUploading(false);
-    e.target.value = '';
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+      const data = await res.json();
+      if (!data.url) throw new Error('URL not returned');
+      onSelect(data.url);
+      await loadBackgrounds();
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('업로드에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   const handleDelete = async (url: string, e: React.MouseEvent) => {
