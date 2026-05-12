@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { upload } from '@vercel/blob/client';
 import type { BlobItem } from '@/lib/types';
 
 interface Props {
@@ -27,13 +28,12 @@ export default function BackgroundPanel({ selected, onSelect }: Props) {
     if (!file) return;
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-      const data = await res.json();
-      if (!data.url) throw new Error('URL not returned');
-      onSelect(data.url);
+      // 클라이언트에서 Blob 저장소로 직접 업로드 (서버 바디 한도 우회)
+      const blob = await upload(`backgrounds/${Date.now()}-${file.name}`, file, {
+        access: 'public',
+        handleUploadUrl: '/api/upload',
+      });
+      onSelect(blob.url);
       await loadBackgrounds();
     } catch (err) {
       console.error('Upload error:', err);
