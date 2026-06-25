@@ -202,7 +202,7 @@ export default function GardenService() {
               </div>
               </div>
               <p style={{ fontSize: 11, color: '#C9C9C9' }}>
-                노란 칸 = 권장 구간(배수 {settings.minMult}~{settings.maxMult}) · 배수를 클릭해 책정 판매가를 고르세요
+                파란 칸 = 권장 구간(배수 {settings.minMult}~{settings.maxMult}) · 배수를 클릭해 책정 판매가를 고르세요
               </p>
 
               <button
