@@ -227,7 +227,7 @@ export default function GardenService() {
         {/* 발주 기록 — 같은 원두 재발주 시 원가·판매가 비교 */}
         {purchases.length > 0 && (
           <div style={card}>
-            <p style={LABEL}>이전 판매 기록</p>
+            <p style={LABEL}>이전 판매 리스트</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               {purchaseGroups.map((group) => (
                 <div key={group[0].id}>
@@ -238,16 +238,12 @@ export default function GardenService() {
                     {group.map((rec, i) => {
                       const older = group[i + 1];
                       const delta = older ? rec.costPerCup - older.costPerCup : 0;
-                      // 판매가 대비 재료비 비중 (판매가가 범위라 비중도 범위)
-                      const ratioHi = rec.rangeLow ? Math.round((rec.costPerCup / rec.rangeLow) * 100) : 0;
-                      const ratioLo = rec.rangeHigh ? Math.round((rec.costPerCup / rec.rangeHigh) * 100) : 0;
                       return (
                         <div key={rec.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, flexWrap: 'wrap' }}>
                           <span style={{ color: '#AAAAAA', width: 64, flexShrink: 0 }}>{fmtDate(rec.createdAt)}</span>
                           <span style={{ color: '#888888', flexShrink: 0 }}>원가 {won(rec.purchasePrice)}</span>
                           <span style={{ color: '#1C1B19', flexShrink: 0 }}>
                             재료비 {won(rec.costPerCup)}
-                            <span style={{ color: '#AAAAAA' }}> ({ratioLo}~{ratioHi}%)</span>
                             {older && delta !== 0 && (
                               <span style={{ color: delta > 0 ? '#C0392B' : '#1E7E34', fontWeight: 600, marginLeft: 4 }}>
                                 {delta > 0 ? '▲' : '▼'}{won(Math.abs(delta))}
