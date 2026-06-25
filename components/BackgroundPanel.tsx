@@ -73,7 +73,7 @@ export default function BackgroundPanel({ selected, onSelect }: Props) {
             <button
               onClick={() => onSelect(bg.url)}
               className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition ${
-                selected === bg.url ? 'border-yellow-400' : 'border-gray-200 hover:border-gray-400'
+                selected === bg.url ? 'border-accent' : 'border-gray-200 hover:border-gray-400'
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -91,7 +91,7 @@ export default function BackgroundPanel({ selected, onSelect }: Props) {
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-yellow-400 hover:text-yellow-500 transition text-2xl"
+          className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-accent hover:text-accent transition text-2xl"
         >
           {uploading ? <span className="text-xs">...</span> : '+'}
         </button>

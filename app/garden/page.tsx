@@ -17,8 +17,8 @@ export default function GardenPage() {
       style={{
         minHeight: '100vh',
         backgroundColor: '#FFFFFF',
-        fontFamily: "'Pretendard Variable','Pretendard',sans-serif",
-        color: '#1C1B19',
+        fontFamily: "Inter,'Pretendard Variable','Pretendard',sans-serif",
+        color: '#000000',
       }}
     >
       <TabNav />

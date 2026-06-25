@@ -8,7 +8,7 @@ import StoryPreview from '@/components/StoryPreview';
 import DownloadButton from '@/components/DownloadButton';
 import TabNav from '@/components/TabNav';
 
-const SHADOW = '0 2px 8px rgba(0,0,0,0.06), 0 12px 40px rgba(0,0,0,0.10)';
+const SHADOW = '0 1px 3px rgba(0,0,0,0.05)';
 
 const DEFAULT_STORY: StoryData = {
   date: (() => {
@@ -48,7 +48,7 @@ export default function StudioPage() {
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#FFFFFF', fontFamily: "'Pretendard Variable','Pretendard',sans-serif", color: '#1C1B19' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#FFFFFF', fontFamily: "Inter,'Pretendard Variable','Pretendard',sans-serif", color: '#000000' }}>
 
       <TabNav />
 
@@ -59,8 +59,8 @@ export default function StudioPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
 
             {/* 날짜 */}
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: '24px 28px', boxShadow: SHADOW }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#AAAAAA', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
+            <div style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: '24px 28px', border: '1px solid #E5E5E5', boxShadow: SHADOW }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#999999', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
                 Date
               </p>
               <input
@@ -68,25 +68,25 @@ export default function StudioPage() {
                 value={story.date}
                 onChange={(e) => setStory((s) => ({ ...s, date: e.target.value }))}
                 style={{
-                  border: '1px solid #EBEBEB',
+                  border: '1px solid #E5E5E5',
                   borderRadius: 10,
                   padding: '10px 14px',
                   fontSize: 14,
                   width: 140,
-                  backgroundColor: '#F8F8F8',
-                  color: '#1C1B19',
+                  backgroundColor: '#F5F5F5',
+                  color: '#000000',
                   outline: 'none',
                   fontFamily: 'inherit',
                   boxSizing: 'border-box',
                 }}
                 placeholder="예: 5/12"
               />
-              <p style={{ fontSize: 12, color: '#AAAAAA', marginTop: 8 }}>배지에 표시될 날짜</p>
+              <p style={{ fontSize: 12, color: '#999999', marginTop: 8 }}>배지에 표시될 날짜</p>
             </div>
 
             {/* 메뉴 */}
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: '24px 28px', boxShadow: SHADOW }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#AAAAAA', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
+            <div style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: '24px 28px', border: '1px solid #E5E5E5', boxShadow: SHADOW }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#999999', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
                 Menu
               </p>
               <MenuEditor story={story} onChange={setStory} />
@@ -95,8 +95,8 @@ export default function StudioPage() {
 
           {/* 오른쪽: 미리보기 + 다운로드 */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, position: 'sticky', top: 24, minWidth: 0 }}>
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: '24px 28px', boxShadow: SHADOW, minWidth: 0, boxSizing: 'border-box' }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#AAAAAA', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
+            <div style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: '24px 28px', border: '1px solid #E5E5E5', boxShadow: SHADOW, minWidth: 0, boxSizing: 'border-box' }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#999999', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
                 Preview
               </p>
               <div ref={previewBoxRef} style={{ width: '100%' }}>
@@ -110,7 +110,7 @@ export default function StudioPage() {
 
             <DownloadButton previewRef={previewRef} date={story.date} />
 
-            <p style={{ fontSize: 12, color: '#AAAAAA', textAlign: 'center' }}>
+            <p style={{ fontSize: 12, color: '#999999', textAlign: 'center' }}>
               다운로드 후 인스타그램 앱에서 스토리로 업로드하세요
             </p>
           </div>

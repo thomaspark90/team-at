@@ -18,19 +18,23 @@ export default function TabNav() {
   };
 
   return (
-    <header style={{ backgroundColor: '#FFFFFF', boxShadow: '0 1px 0 #EBEBEB' }}>
+    <header style={{ backgroundColor: '#FFFFFF', borderBottom: '1px solid #E5E5E5' }}>
       <div
         style={{
           maxWidth: 1100,
           margin: '0 auto',
           padding: '0 24px',
-          height: 58,
+          height: 64,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: 24,
         }}
       >
-        <nav style={{ display: 'flex', gap: 4 }}>
+        <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.5px', color: '#000000', flexShrink: 0 }}>
+          team-at
+        </span>
+        <nav style={{ display: 'flex', gap: 4, flex: 1 }}>
           {TABS.map((tab) => {
             const active = pathname === tab.href;
             return (
@@ -38,14 +42,14 @@ export default function TabNav() {
                 key={tab.href}
                 href={tab.href}
                 style={{
-                  fontWeight: active ? 700 : 500,
+                  fontWeight: active ? 600 : 500,
                   fontSize: 14,
-                  letterSpacing: '0.02em',
-                  color: active ? '#1C1B19' : '#AAAAAA',
+                  letterSpacing: '-0.2px',
+                  color: active ? '#FFFFFF' : '#999999',
                   textDecoration: 'none',
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  backgroundColor: active ? '#F3F3F3' : 'transparent',
+                  padding: '8px 16px',
+                  borderRadius: 50,
+                  backgroundColor: active ? '#000000' : 'transparent',
                   transition: 'all 0.15s',
                 }}
               >
@@ -58,7 +62,7 @@ export default function TabNav() {
           onClick={handleLogout}
           style={{
             fontSize: 12,
-            color: '#AAAAAA',
+            color: '#999999',
             background: 'none',
             border: 'none',
             cursor: 'pointer',
