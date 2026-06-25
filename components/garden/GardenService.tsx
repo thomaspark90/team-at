@@ -22,6 +22,8 @@ const card: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 const input: React.CSSProperties = {
+  width: '100%',
+  minWidth: 0,
   backgroundColor: '#F8F8F8',
   border: '1px solid #EBEBEB',
   borderRadius: 8,
@@ -377,7 +379,7 @@ function Field({
   step?: string;
 }) {
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
       <span style={{ fontSize: 11, color: '#AAAAAA' }}>{label}</span>
       <input
         type="number"
