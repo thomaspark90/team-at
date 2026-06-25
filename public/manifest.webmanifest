@@ -1,0 +1,14 @@
+{
+  "name": "team-at",
+  "short_name": "team-at",
+  "description": "카페 운영 도구 — 스탭밀 이미지 · 드립 판매가 산출",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1C1B19",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

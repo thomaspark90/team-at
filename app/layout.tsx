@@ -1,9 +1,21 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Story Maker',
-  description: '인스타그램 스토리 메뉴판 생성기',
+  title: 'team-at',
+  description: '카페 운영 도구 — 스탭밀 이미지 · 드립 판매가 산출',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'team-at' },
+  icons: {
+    icon: [{ url: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
+    apple: '/apple-touch-icon.png',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#1C1B19',
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
