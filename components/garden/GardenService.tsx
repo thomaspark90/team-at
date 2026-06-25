@@ -18,6 +18,8 @@ const card: React.CSSProperties = {
   borderRadius: 16,
   padding: '24px 28px',
   boxShadow: SHADOW,
+  minWidth: 0, // flex 자식 가로 넘침 방지
+  boxSizing: 'border-box',
 };
 const input: React.CSSProperties = {
   backgroundColor: '#F8F8F8',
@@ -118,7 +120,7 @@ export default function GardenService() {
   }, [purchases]);
 
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
         <div style={card}>
           <p style={LABEL}>Settings</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -151,7 +153,7 @@ export default function GardenService() {
           </div>
 
           {result && (
-            <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <span style={{ fontSize: 12, color: '#AAAAAA' }}>잔당 재료비 (VAT 포함)</span>
@@ -166,7 +168,7 @@ export default function GardenService() {
               </div>
 
               {/* 배수 스프레드 표 (가로 스와이프) */}
-              <div style={{ border: '1px solid #EBEBEB', borderRadius: 10, overflowX: 'auto', fontSize: 12, WebkitOverflowScrolling: 'touch' }}>
+              <div style={{ border: '1px solid #EBEBEB', borderRadius: 10, overflowX: 'auto', fontSize: 12, WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
               <div
                 style={{
                   display: 'grid',
