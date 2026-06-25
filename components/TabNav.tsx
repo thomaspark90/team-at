@@ -34,23 +34,18 @@ export default function TabNav() {
         <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.5px', color: '#000000', flexShrink: 0 }}>
           team-at
         </span>
-        <nav style={{ display: 'flex', gap: 4, flex: 1 }}>
+        <nav style={{ display: 'flex', gap: 4, flex: 1, justifyContent: 'center' }}>
           {TABS.map((tab) => {
             const active = pathname === tab.href;
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
+                className="nav-tab"
                 style={{
                   fontWeight: active ? 600 : 500,
-                  fontSize: 14,
-                  letterSpacing: '-0.2px',
                   color: active ? '#FFFFFF' : '#999999',
-                  textDecoration: 'none',
-                  padding: '8px 16px',
-                  borderRadius: 50,
                   backgroundColor: active ? '#000000' : 'transparent',
-                  transition: 'all 0.15s',
                 }}
               >
                 {tab.label}

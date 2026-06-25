@@ -52,6 +52,25 @@ body {
   color: var(--gray-400);
 }
 
+/* 헤더 탭 — 한 줄 유지 + 가운데 정렬, 모바일 축소 */
+.nav-tab {
+  font-size: 14px;
+  letter-spacing: -0.2px;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 50px;
+  white-space: nowrap;
+  text-align: center;
+  transition: all 0.15s;
+}
+@media (max-width: 480px) {
+  .nav-tab {
+    font-size: 9.5px;
+    letter-spacing: -0.1px;
+    padding: 7px 12px;
+  }
+}
+
 /* 가든 — 이전 판매 리스트 한 줄(반응형) */
 .gs-row {
   display: flex;
