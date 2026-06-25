@@ -28,11 +28,24 @@ const DEFAULT_STORY: StoryData = {
 export default function StudioPage() {
   const router = useRouter();
   const previewRef = useRef<HTMLDivElement>(null);
+  const previewBoxRef = useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = useState(1);
   const [story, setStory] = useState<StoryData>(DEFAULT_STORY);
 
   useEffect(() => {
     if (sessionStorage.getItem('auth') !== 'ok') router.replace('/');
   }, [router]);
+
+  // 미리보기(360px 고정)를 컬럼 폭에 맞춰 축소 — ref 요소는 그대로라 다운로드는 1080×1920 유지
+  useEffect(() => {
+    const el = previewBoxRef.current;
+    if (!el) return;
+    const update = () => setPreviewScale(Math.min(1, el.clientWidth / 360));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#FFFFFF', fontFamily: "'Pretendard Variable','Pretendard',sans-serif", color: '#1C1B19' }}>
@@ -40,10 +53,10 @@ export default function StudioPage() {
       <TabNav />
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: 24, alignItems: 'start' }}>
 
           {/* 왼쪽: 입력 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
 
             {/* 날짜 */}
             <div style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: '24px 28px', boxShadow: SHADOW }}>
@@ -81,13 +94,17 @@ export default function StudioPage() {
           </div>
 
           {/* 오른쪽: 미리보기 + 다운로드 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, position: 'sticky', top: 24 }}>
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: '24px 28px', boxShadow: SHADOW }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, position: 'sticky', top: 24, minWidth: 0 }}>
+            <div style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: '24px 28px', boxShadow: SHADOW, minWidth: 0, boxSizing: 'border-box' }}>
               <p style={{ fontSize: 11, fontWeight: 600, color: '#AAAAAA', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
                 Preview
               </p>
-              <div style={{ display: 'flex', justifyContent: 'center', overflowX: 'auto' }}>
-                <StoryPreview ref={previewRef} story={story} />
+              <div ref={previewBoxRef} style={{ width: '100%' }}>
+                <div style={{ width: 360 * previewScale, height: 640 * previewScale, margin: '0 auto', overflow: 'hidden' }}>
+                  <div style={{ width: 360, height: 640, transform: `scale(${previewScale})`, transformOrigin: 'top left' }}>
+                    <StoryPreview ref={previewRef} story={story} />
+                  </div>
+                </div>
               </div>
             </div>
 
