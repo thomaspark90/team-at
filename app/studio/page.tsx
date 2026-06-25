@@ -6,6 +6,7 @@ import type { StoryData } from '@/lib/types';
 import MenuEditor from '@/components/MenuEditor';
 import StoryPreview from '@/components/StoryPreview';
 import DownloadButton from '@/components/DownloadButton';
+import TabNav from '@/components/TabNav';
 
 const SHADOW = '0 2px 8px rgba(0,0,0,0.06), 0 12px 40px rgba(0,0,0,0.10)';
 
@@ -33,26 +34,10 @@ export default function StudioPage() {
     if (sessionStorage.getItem('auth') !== 'ok') router.replace('/');
   }, [router]);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('auth');
-    router.push('/');
-  };
-
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#FFFFFF', fontFamily: "'Pretendard Variable','Pretendard',sans-serif", color: '#1C1B19' }}>
 
-      {/* 헤더 */}
-      <header style={{ backgroundColor: '#FFFFFF', boxShadow: '0 1px 0 #EBEBEB' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: '0.02em' }}>Staff Meal</span>
-          <button
-            onClick={handleLogout}
-            style={{ fontSize: 12, color: '#AAAAAA', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            로그아웃
-          </button>
-        </div>
-      </header>
+      <TabNav />
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
