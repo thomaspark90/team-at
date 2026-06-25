@@ -122,11 +122,11 @@ export default function GardenService() {
   return (
     <div style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
         <div style={card}>
-          <p style={LABEL}>Settings</p>
+          <p style={LABEL}>판매가 산식 기준</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="구매 용량(g)" value={settings.capacityG} onChange={(v) => setNum('capacityG', v)} />
             <Field label="로스율 제외(%)" value={Math.round(settings.yieldRate * 100)} onChange={(v) => setNum('yieldRate', v / 100)} />
-            <Field label="투입량(g)" value={settings.doseG} onChange={(v) => setNum('doseG', v)} />
+            <Field label="추출 투입량(g)" value={settings.doseG} onChange={(v) => setNum('doseG', v)} />
           </div>
         </div>
 
@@ -253,7 +253,7 @@ export default function GardenService() {
                           <span style={{ flex: 1, textAlign: 'right' }}>
                             {rec.chosenPrice != null ? (
                               <span style={{ color: '#1C1B19', fontWeight: 600 }}>
-                                책정 {won(rec.chosenPrice)}
+                                책정 판매가 {won(rec.chosenPrice)}
                                 <span style={{ color: '#AAAAAA', fontWeight: 400 }}> ({Math.round((rec.costPerCup / rec.chosenPrice) * 100)}%)</span>
                               </span>
                             ) : (
