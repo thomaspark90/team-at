@@ -55,8 +55,8 @@ export default function LandingPage() {
           boxShadow: SHADOW,
         }}
       >
-        <p style={{ fontSize: 11, fontWeight: 600, color: '#B0ADA6', letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'center', marginBottom: 28 }}>
-          Staff Meal
+        <p style={{ fontSize: 11, fontWeight: 600, color: '#B0ADA6', letterSpacing: '0.1em', textAlign: 'center', marginBottom: 28 }}>
+          team-at
         </p>
 
         <input
