@@ -46,24 +46,6 @@ export default function LandingPage() {
     >
       <div style={{ width: '100%', maxWidth: 440, display: 'flex', flexDirection: 'column' }}>
 
-        {/* 캡션 */}
-        <p
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            fontSize: 12,
-            fontWeight: 600,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            color: '#999999',
-            marginBottom: 20,
-          }}
-        >
-          <span style={{ width: 7, height: 7, borderRadius: 999, backgroundColor: '#0099FF' }} />
-          OUR HOUR · Café Tool
-        </p>
-
         {/* 히어로 헤드라인 */}
         <h1
           style={{
@@ -72,27 +54,11 @@ export default function LandingPage() {
             lineHeight: 0.95,
             letterSpacing: '-2px',
             color: '#000000',
-            margin: 0,
+            margin: '0 0 40px',
           }}
         >
           team-at
         </h1>
-
-        {/* 서브 카피 */}
-        <p
-          style={{
-            fontSize: 17,
-            fontWeight: 500,
-            lineHeight: 1.5,
-            letterSpacing: '-0.01em',
-            color: '#999999',
-            margin: '20px 0 40px',
-          }}
-        >
-          스탭밀 스토리 이미지부터 드립 판매가 산출까지,
-          <br />
-          매장 운영을 한 곳에서.
-        </p>
 
         {/* 로그인 폼 */}
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
