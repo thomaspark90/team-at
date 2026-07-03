@@ -33,6 +33,9 @@ export default async function FinancePage() {
               <Link href="/finance/classify" style={{ fontSize: 13, color: '#0099FF', fontWeight: 600 }}>
                 거래 분류 →
               </Link>
+              <Link href="/finance/cashflow" style={{ fontSize: 13, color: '#0099FF', fontWeight: 600 }}>
+                통장 현황 →
+              </Link>
               <Link href="/finance/dashboard" style={{ fontSize: 13, color: '#0099FF', fontWeight: 600 }}>
                 대시보드 →
               </Link>
