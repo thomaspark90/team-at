@@ -18,7 +18,7 @@ export default async function ClassifyPage() {
   const { data: txns } = await supabase
     .schema('finance')
     .from('transactions')
-    .select('id,memo,normalized_key,amount_in,amount_out,category_id,tx_at')
+    .select('id,memo,normalized_key,amount_in,amount_out,category_id,tx_at,bank')
     .order('tx_at', { ascending: false });
 
   const { data: cats } = await supabase
