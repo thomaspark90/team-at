@@ -20,7 +20,11 @@ const TYPE_LABEL: Record<string, string> = {
   non_operating: '영업외',
   excluded: '손익 제외',
 };
-const TYPE_ORDER = ['revenue', 'cogs', 'sga', 'non_operating', 'excluded'];
+// 5개 계정 타입을 입금/출금 2그룹으로 묶어 보여줌
+const GROUPS = [
+  { title: '📥 입금 (들어오는 돈)', hint: '매출과 영업외수익', types: ['revenue', 'non_operating'] },
+  { title: '📤 출금 (나가는 돈)', hint: '재료비·판매관리비·자본적지출 등', types: ['cogs', 'sga', 'excluded'] },
+];
 const ACCENT = '#0099FF';
 
 export default function CategoryManager({ initial }: { initial: ManagedCat[] }) {
@@ -78,86 +82,94 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       <p style={{ fontSize: 13, color: '#888', margin: 0 }}>
-        <b>항목 이름을 클릭</b>하면 ⭐즐겨찾기로 지정돼 <b>맨 앞으로 이동</b>하고 분류 드롭다운 맨 위 "자주 쓰는"에도 떠요(다시 클릭하면 해제). <b>활성</b>을 끄면 목록에서 숨겨져요(삭제 아님).
+        <b>항목 이름을 클릭</b>하면 ⭐즐겨찾기로 지정돼 <b>맨 앞으로 이동</b>하고 분류 드롭다운 맨 위 &ldquo;자주 쓰는&rdquo;에도 떠요(다시 클릭하면 해제). <b>활성</b>을 끄면 목록에서 숨겨져요(삭제 아님).
       </p>
       {error && <div style={{ color: '#b23b3b', fontSize: 13 }}>⚠️ {error}</div>}
 
-      {TYPE_ORDER.map((type) => {
-        const list = cats
-          .filter((c) => c.type === type)
-          .sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.sort - b.sort);
-        return (
-          <div key={type}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 10px', color: '#444' }}>{TYPE_LABEL[type]}</h2>
-            <div style={{ background: '#fff', border: '1px solid #E5E5E5', borderRadius: 12, overflow: 'hidden' }}>
-              {list.map((c) => (
-                <div
-                  key={c.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '10px 16px',
-                    borderTop: '1px solid #F0F0F0',
-                    background: c.pinned ? '#FFFBEB' : c.active ? '#fff' : '#FAFAFA',
-                    opacity: c.active ? 1 : 0.55,
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <span
-                    onClick={() => busy !== c.id && patch(c.id, { pinned: !c.pinned })}
-                    title="클릭하면 즐겨찾기(상위노출) 토글 — 맨 앞으로 이동"
-                    style={{
-                      flex: '1 1 200px',
-                      fontSize: 14,
-                      fontWeight: c.parent_id ? 400 : 600,
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                    }}
-                  >
-                    {c.pinned && <span style={{ color: '#B08900' }}>⭐ </span>}
-                    {c.parent_id && <span style={{ color: '#bbb' }}>└ </span>}
-                    {label(c)}
-                  </span>
-                  <button
-                    onClick={() => patch(c.id, { active: !c.active })}
-                    disabled={busy === c.id}
-                    style={pill(c.active ? ACCENT : '#999', c.active ? '#EAF5FF' : '#F2F2F2')}
-                  >
-                    {c.active ? '활성' : '비활성'}
-                  </button>
-                  <button
-                    onClick={() => remove(c.id)}
-                    disabled={busy === c.id}
-                    style={{ ...pill('#b23b3b', '#fff'), border: 'none' }}
-                  >
-                    삭제
-                  </button>
-                </div>
-              ))}
-              {/* 추가 행 */}
-              <div style={{ display: 'flex', gap: 8, padding: '10px 16px', borderTop: '1px solid #F0F0F0', background: '#FAFBFC' }}>
-                <input
-                  value={newName[type] || ''}
-                  onChange={(e) => setNewName((m) => ({ ...m, [type]: e.target.value }))}
-                  onKeyDown={(e) => e.key === 'Enter' && add(type)}
-                  placeholder={`${TYPE_LABEL[type]} 항목 추가…`}
-                  style={{ flex: 1, fontSize: 13, padding: '7px 12px', border: '1px solid #DDD', borderRadius: 8, fontFamily: 'inherit' }}
-                />
-                <button
-                  onClick={() => add(type)}
-                  disabled={adding === type || !(newName[type] || '').trim()}
-                  style={{ ...pill('#fff', (newName[type] || '').trim() ? '#000' : '#CCC'), border: 'none', fontWeight: 700 }}
-                >
-                  {adding === type ? '추가 중…' : '+ 추가'}
-                </button>
-              </div>
-            </div>
+      {GROUPS.map((group) => (
+        <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <h2 style={{ fontSize: 17, fontWeight: 800, margin: 0, letterSpacing: '-0.3px' }}>{group.title}</h2>
+            <p style={{ fontSize: 12, color: '#999', margin: '2px 0 0' }}>{group.hint}</p>
           </div>
-        );
-      })}
+
+          {group.types.map((type) => {
+            const list = cats
+              .filter((c) => c.type === type)
+              .sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.sort - b.sort);
+            return (
+              <div key={type}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px', color: '#666' }}>{TYPE_LABEL[type]}</h3>
+                <div style={{ background: '#fff', border: '1px solid #E5E5E5', borderRadius: 12, overflow: 'hidden' }}>
+                  {list.map((c) => (
+                    <div
+                      key={c.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '10px 16px',
+                        borderTop: '1px solid #F0F0F0',
+                        background: c.pinned ? '#FFFBEB' : c.active ? '#fff' : '#FAFAFA',
+                        opacity: c.active ? 1 : 0.55,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span
+                        onClick={() => busy !== c.id && patch(c.id, { pinned: !c.pinned })}
+                        title="클릭하면 즐겨찾기(상위노출) 토글 — 맨 앞으로 이동"
+                        style={{
+                          flex: '1 1 200px',
+                          fontSize: 14,
+                          fontWeight: c.parent_id ? 400 : 600,
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        {c.pinned && <span style={{ color: '#B08900' }}>⭐ </span>}
+                        {c.parent_id && <span style={{ color: '#bbb' }}>└ </span>}
+                        {label(c)}
+                      </span>
+                      <button
+                        onClick={() => patch(c.id, { active: !c.active })}
+                        disabled={busy === c.id}
+                        style={pill(c.active ? ACCENT : '#999', c.active ? '#EAF5FF' : '#F2F2F2')}
+                      >
+                        {c.active ? '활성' : '비활성'}
+                      </button>
+                      <button
+                        onClick={() => remove(c.id)}
+                        disabled={busy === c.id}
+                        style={{ ...pill('#b23b3b', '#fff'), border: 'none' }}
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', gap: 8, padding: '10px 16px', borderTop: '1px solid #F0F0F0', background: '#FAFBFC' }}>
+                    <input
+                      value={newName[type] || ''}
+                      onChange={(e) => setNewName((m) => ({ ...m, [type]: e.target.value }))}
+                      onKeyDown={(e) => e.key === 'Enter' && add(type)}
+                      placeholder={`${TYPE_LABEL[type]} 항목 추가…`}
+                      style={{ flex: 1, fontSize: 13, padding: '7px 12px', border: '1px solid #DDD', borderRadius: 8, fontFamily: 'inherit' }}
+                    />
+                    <button
+                      onClick={() => add(type)}
+                      disabled={adding === type || !(newName[type] || '').trim()}
+                      style={{ ...pill('#fff', (newName[type] || '').trim() ? '#000' : '#CCC'), border: 'none', fontWeight: 700 }}
+                    >
+                      {adding === type ? '추가 중…' : '+ 추가'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }
