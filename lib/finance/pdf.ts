@@ -3,7 +3,7 @@
 // 서버(node) 전용 — 이 함수를 쓰는 route handler 는 `export const runtime = 'nodejs'`.
 // 신한/우리 실측 PDF로 검증: 각각 100 / 138 건 재현(파이썬 pdftotext 기준값과 일치).
 
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { getDocumentProxy } from 'unpdf';
 
 const median = (a: number[]): number => {
   if (!a.length) return 0;
@@ -18,7 +18,7 @@ interface Item {
 }
 
 export async function pdfToLayoutText(data: Uint8Array, password?: string): Promise<string> {
-  const doc = await getDocument({ data, password, verbosity: 0 }).promise;
+  const doc = await getDocumentProxy(data, { password, verbosity: 0 });
   const out: string[] = [];
 
   for (let p = 1; p <= doc.numPages; p++) {
