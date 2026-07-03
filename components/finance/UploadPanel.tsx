@@ -177,6 +177,7 @@ export default function UploadPanel() {
             <Stat label="출금 합계" value={won(preview.sumOut)} accent={EXP} />
           </div>
 
+          {preview.fresh > 0 && (
           <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13, minWidth: 720 }}>
@@ -206,18 +207,29 @@ export default function UploadPanel() {
               </div>
             )}
           </div>
+          )}
 
-          <button
-            onClick={save}
-            disabled={saving || preview.fresh === 0}
-            style={{
-              alignSelf: 'flex-start', padding: '11px 26px', borderRadius: 8, border: 'none',
-              background: saving || preview.fresh === 0 ? '#CCC' : ACCENT, color: '#fff',
-              fontWeight: 700, fontSize: 14, cursor: saving || preview.fresh === 0 ? 'default' : 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            {saving ? '저장 중…' : `${won(preview.fresh)}건 저장하기`}
-          </button>
+          {preview.fresh > 0 ? (
+            <button
+              onClick={save}
+              disabled={saving}
+              style={{
+                alignSelf: 'flex-start', padding: '11px 26px', borderRadius: 8, border: 'none',
+                background: saving ? '#CCC' : ACCENT, color: '#fff',
+                fontWeight: 700, fontSize: 14, cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              {saving ? '저장 중…' : `${won(preview.fresh)}건 저장하기`}
+            </button>
+          ) : (
+            <div style={{ ...card, background: '#F0F9F5', borderColor: REV }}>
+              <div style={{ fontWeight: 700, color: REV, marginBottom: 4 }}>✓ 이미 모두 저장된 거래예요</div>
+              <div style={{ fontSize: 14, color: '#333' }}>
+                이 파일의 {won(preview.totalRows)}건은 전부 중복(이미 저장됨)이라 새로 저장할 게 없어요. 분류는{' '}
+                <a href="/finance/classify" style={{ color: ACCENT, fontWeight: 700 }}>거래 분류 →</a> 에서 하세요.
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
