@@ -80,12 +80,14 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <p style={{ fontSize: 13, color: '#888', margin: 0 }}>
-        ⭐ <b>상위노출</b>을 켜면 분류 드롭다운 맨 위 "자주 쓰는" 그룹에 떠요. <b>활성</b>을 끄면 목록에서 숨겨져요(삭제 아님).
+        <b>항목 이름을 클릭</b>하면 ⭐즐겨찾기로 지정돼 <b>맨 앞으로 이동</b>하고 분류 드롭다운 맨 위 "자주 쓰는"에도 떠요(다시 클릭하면 해제). <b>활성</b>을 끄면 목록에서 숨겨져요(삭제 아님).
       </p>
       {error && <div style={{ color: '#b23b3b', fontSize: 13 }}>⚠️ {error}</div>}
 
       {TYPE_ORDER.map((type) => {
-        const list = cats.filter((c) => c.type === type).sort((a, b) => a.sort - b.sort);
+        const list = cats
+          .filter((c) => c.type === type)
+          .sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.sort - b.sort);
         return (
           <div key={type}>
             <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 10px', color: '#444' }}>{TYPE_LABEL[type]}</h2>
@@ -99,23 +101,26 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                     gap: 12,
                     padding: '10px 16px',
                     borderTop: '1px solid #F0F0F0',
-                    background: c.active ? '#fff' : '#FAFAFA',
+                    background: c.pinned ? '#FFFBEB' : c.active ? '#fff' : '#FAFAFA',
                     opacity: c.active ? 1 : 0.55,
                     flexWrap: 'wrap',
                   }}
                 >
-                  <span style={{ flex: '1 1 200px', fontSize: 14, fontWeight: c.parent_id ? 400 : 600 }}>
+                  <span
+                    onClick={() => busy !== c.id && patch(c.id, { pinned: !c.pinned })}
+                    title="클릭하면 즐겨찾기(상위노출) 토글 — 맨 앞으로 이동"
+                    style={{
+                      flex: '1 1 200px',
+                      fontSize: 14,
+                      fontWeight: c.parent_id ? 400 : 600,
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
+                  >
+                    {c.pinned && <span style={{ color: '#B08900' }}>⭐ </span>}
                     {c.parent_id && <span style={{ color: '#bbb' }}>└ </span>}
                     {label(c)}
                   </span>
-                  <button
-                    onClick={() => patch(c.id, { pinned: !c.pinned })}
-                    disabled={busy === c.id}
-                    title="상위노출"
-                    style={pill(c.pinned ? '#B08900' : '#DDD', c.pinned ? '#FFFBEB' : '#fff')}
-                  >
-                    {c.pinned ? '⭐ 상위노출' : '☆ 상위노출'}
-                  </button>
                   <button
                     onClick={() => patch(c.id, { active: !c.active })}
                     disabled={busy === c.id}
