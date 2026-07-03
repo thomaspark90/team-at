@@ -17,6 +17,7 @@ export interface Cat {
   type: string;
   name: string;
   parent_id: number | null;
+  pinned?: boolean;
 }
 interface Suggestion {
   categoryId: number;
@@ -252,6 +253,18 @@ export default function ClassifyPanel({ txns, cats, userId }: { txns: TxRow[]; c
                           }}
                         >
                           <option value="">미분류 — 선택…</option>
+                          {(() => {
+                            const pins = cats.filter((c) => c.pinned && allowed.includes(c.type));
+                            return pins.length ? (
+                              <optgroup label="⭐ 자주 쓰는">
+                                {pins.map((c) => (
+                                  <option key={`p${c.id}`} value={c.id}>
+                                    {catLabel(c)}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ) : null;
+                          })()}
                           {TYPE_ORDER.filter((t) => allowed.includes(t)).map((type) => {
                             const list = cats.filter((c) => c.type === type);
                             if (!list.length) return null;

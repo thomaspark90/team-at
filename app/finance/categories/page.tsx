@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import TabNav from '@/components/TabNav';
-import ClassifyPanel, { type TxRow, type Cat } from '@/components/finance/ClassifyPanel';
+import CategoryManager, { type ManagedCat } from '@/components/finance/CategoryManager';
 
-export default async function ClassifyPage() {
+export default async function CategoriesPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -13,19 +13,12 @@ export default async function ClassifyPage() {
   if (!user) redirect('/');
 
   const role = await resolveRole(supabase, user);
-  if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
+  if (role !== 'admin') redirect('/finance');
 
-  const { data: txns } = await supabase
-    .schema('finance')
-    .from('transactions')
-    .select('id,memo,normalized_key,amount_in,amount_out,category_id,tx_at')
-    .order('tx_at', { ascending: false });
-
-  const { data: cats } = await supabase
+  const { data } = await supabase
     .schema('finance')
     .from('categories')
-    .select('id,type,name,parent_id,pinned')
-    .eq('active', true)
+    .select('id,type,name,parent_id,active,pinned,sort')
     .order('sort', { ascending: true });
 
   return (
@@ -38,14 +31,14 @@ export default async function ClassifyPage() {
       }}
     >
       <TabNav />
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '32px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>거래 분류</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>계정과목 관리</h1>
           <Link href="/finance" style={{ fontSize: 13, color: '#0099FF' }}>
-            ← 업로드로
+            ← 재무로
           </Link>
         </div>
-        <ClassifyPanel txns={(txns as TxRow[]) ?? []} cats={(cats as Cat[]) ?? []} userId={user.id} />
+        <CategoryManager initial={(data as ManagedCat[]) ?? []} />
       </div>
     </div>
   );

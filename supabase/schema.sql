@@ -44,6 +44,7 @@ create table finance.categories (
   sort      int not null default 0,
   in_pnl    boolean not null default true,  -- 손익 포함 여부(excluded=false)
   active    boolean not null default true,
+  pinned    boolean not null default false,  -- 상위노출(분류 드롭다운 '자주 쓰는')
   unique (type, name)
 );
 
@@ -113,6 +114,10 @@ alter table finance.monthly_close enable row level security;
 
 create policy "own membership" on finance.members for select using (id = auth.uid());
 create policy "cats read" on finance.categories for select using (finance.my_role() is not null);
+create policy "cats insert" on finance.categories for insert with check (finance.my_role() = 'admin');
+create policy "cats update" on finance.categories for update
+  using (finance.my_role() = 'admin') with check (finance.my_role() = 'admin');
+create policy "cats delete" on finance.categories for delete using (finance.my_role() = 'admin');
 create policy "tx read"  on finance.transactions for select using (finance.my_role() in ('admin','classifier'));
 create policy "tx write" on finance.transactions for all
   using (finance.my_role() in ('admin','classifier')) with check (finance.my_role() in ('admin','classifier'));

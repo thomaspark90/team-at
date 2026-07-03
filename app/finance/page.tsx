@@ -38,6 +38,11 @@ export default async function FinancePage() {
               </Link>
               <span style={{ flex: 1 }} />
               {role === 'admin' && (
+                <Link href="/finance/categories" style={{ fontSize: 13, color: '#0099FF' }}>
+                  계정과목 →
+                </Link>
+              )}
+              {role === 'admin' && (
                 <Link href="/finance/members" style={{ fontSize: 13, color: '#0099FF' }}>
                   멤버 관리 →
                 </Link>
