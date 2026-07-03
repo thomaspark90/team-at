@@ -2,18 +2,21 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
 
 const TABS = [
   { href: '/studio', label: 'Staff Meal' },
   { href: '/garden', label: 'Garden Service' },
+  { href: '/finance', label: '재무' },
 ];
 
 export default function TabNav() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('auth');
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
     router.push('/');
   };
 

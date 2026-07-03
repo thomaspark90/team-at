@@ -1,17 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import TabNav from '@/components/TabNav';
 import GardenService from '@/components/garden/GardenService';
 
 export default function GardenPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    if (sessionStorage.getItem('auth') !== 'ok') router.replace('/');
-  }, [router]);
-
   return (
     <div
       style={{

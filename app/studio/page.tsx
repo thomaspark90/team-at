@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import type { StoryData } from '@/lib/types';
 import MenuEditor from '@/components/MenuEditor';
 import StoryPreview from '@/components/StoryPreview';
@@ -26,15 +25,10 @@ const DEFAULT_STORY: StoryData = {
 };
 
 export default function StudioPage() {
-  const router = useRouter();
   const previewRef = useRef<HTMLDivElement>(null);
   const previewBoxRef = useRef<HTMLDivElement>(null);
   const [previewScale, setPreviewScale] = useState(1);
   const [story, setStory] = useState<StoryData>(DEFAULT_STORY);
-
-  useEffect(() => {
-    if (sessionStorage.getItem('auth') !== 'ok') router.replace('/');
-  }, [router]);
 
   // 미리보기(360px 고정)를 컬럼 폭에 맞춰 축소 — ref 요소는 그대로라 다운로드는 1080×1920 유지
   useEffect(() => {
