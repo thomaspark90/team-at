@@ -41,9 +41,16 @@ export default async function ClassifyPage() {
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>거래 분류</h1>
-          <Link href="/finance" style={{ fontSize: 13, color: '#0099FF' }}>
-            ← 업로드로
-          </Link>
+          <div style={{ display: 'flex', gap: 16 }}>
+            {role === 'admin' && (
+              <Link href="/finance/categories" style={{ fontSize: 13, color: '#0099FF', fontWeight: 600 }}>
+                계정과목 관리 →
+              </Link>
+            )}
+            <Link href="/finance" style={{ fontSize: 13, color: '#0099FF' }}>
+              ← 업로드로
+            </Link>
+          </div>
         </div>
         <ClassifyPanel txns={(txns as TxRow[]) ?? []} cats={(cats as Cat[]) ?? []} userId={user.id} />
       </div>
