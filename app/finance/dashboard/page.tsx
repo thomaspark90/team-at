@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
-import { aggregate, type AggTx, type AggCat } from '@/lib/finance/aggregate';
+import type { AggTx, AggCat } from '@/lib/finance/aggregate';
 import TabNav from '@/components/TabNav';
 import Dashboard from '@/components/finance/Dashboard';
 
@@ -19,10 +19,8 @@ export default async function DashboardPage() {
   const { data: txns } = await supabase
     .schema('finance')
     .from('transactions')
-    .select('ym,amount_in,amount_out,category_id');
+    .select('tx_at,amount_in,amount_out,category_id');
   const { data: cats } = await supabase.schema('finance').from('categories').select('id,type,name,parent_id');
-
-  const { months, expenseKeys } = aggregate((txns as AggTx[]) ?? [], (cats as AggCat[]) ?? []);
 
   return (
     <div
@@ -41,7 +39,7 @@ export default async function DashboardPage() {
             ← 업로드로
           </Link>
         </div>
-        <Dashboard months={months} expenseKeys={expenseKeys} />
+        <Dashboard txns={(txns as AggTx[]) ?? []} cats={(cats as AggCat[]) ?? []} />
       </div>
     </div>
   );
