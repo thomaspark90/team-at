@@ -25,6 +25,7 @@
     --accent-foreground: 240 5.9% 10%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
+    --number-colored: 140 100% 31%; /* #009e35 — 초록 숫자(양수/수입 강조용) */
     --border: 45 5% 85%;
     --input: 240 5.9% 90%;
     --ring: 240 5.9% 10%;
@@ -63,6 +64,7 @@
     --accent-foreground: 0 0% 98%;
     --destructive: 359 100% 61%;
     --destructive-foreground: 0 0% 100%;
+    --number-colored: 140 100% 31%; /* #009e35 */
     --border: 0 0% 11%;
     --input: 0 0% 11%;
     --ring: 240 4.9% 83.9%;

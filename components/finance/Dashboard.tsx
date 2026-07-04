@@ -194,7 +194,7 @@ function Stat({ label, value, delta }: { label: string; value: string; delta: st
     <div className="ta-card min-w-[150px] flex-[1_1_auto] p-[14px_18px]">
       <div className="mb-[5px] text-[11px] text-muted-foreground">{label}</div>
       <div className="tabular text-[20px] text-foreground">{value}</div>
-      {delta && <div className="mt-[3px] text-[11px] text-muted-foreground">전기 {delta}</div>}
+      {delta && <div className={`mt-[3px] text-[11px] ${delta.startsWith('▲') ? 'text-positive' : 'text-muted-foreground'}`}>전기 {delta}</div>}
     </div>
   );
 }

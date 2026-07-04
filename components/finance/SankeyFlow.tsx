@@ -198,9 +198,9 @@ export default function SankeyFlow({
     <div className="flex flex-col gap-4">
       {/* 요약 카드 */}
       <div className="flex flex-wrap items-center gap-3">
-        <Card label="총 매출" value={won(d.totalRevenue)} color={REVENUE_COLOR} />
-        <Card label="총 지출" value={won(d.totalExpense)} color="#b23b3b" />
-        <Card label="영업이익(EBIT 근사)" value={won(ebit)} color={ebit >= 0 ? REVENUE_COLOR : '#b23b3b'} />
+        <Card label="총 매출" value={won(d.totalRevenue)} color="hsl(var(--number-colored))" />
+        <Card label="총 지출" value={won(d.totalExpense)} color="hsl(var(--foreground))" />
+        <Card label="영업이익(EBIT 근사)" value={won(ebit)} color={ebit >= 0 ? 'hsl(var(--number-colored))' : 'hsl(var(--destructive))'} />
         <div className="flex-1" />
         <select
           value={key}

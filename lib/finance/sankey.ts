@@ -33,7 +33,7 @@ export interface SankeyData {
   totalExpense: number;
 }
 
-export const REVENUE_COLOR = '#2E9E6B';
+export const REVENUE_COLOR = '#009e35'; // number-colored 초록과 통일 (매출=초록)
 
 // 지출 그룹(대분류=type) 정의·색·순서. 검증된 categorical 팔레트.
 export const EXPENSE_GROUPS: { key: string; label: string; color: string }[] = [

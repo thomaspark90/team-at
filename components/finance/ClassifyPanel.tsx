@@ -282,7 +282,9 @@ export default function ClassifyPanel({
                     <Td mono>{date}</Td>
                     <Td mono>{time ?? ''}</Td>
                     <Td right mono>
-                      {tx.amount_in > 0 ? `+${won(tx.amount_in)}` : `-${won(tx.amount_out)}`}
+                      {tx.amount_in > 0
+                        ? <span className="text-positive">+{won(tx.amount_in)}</span>
+                        : `-${won(tx.amount_out)}`}
                     </Td>
                     <Td>{tx.memo || <span className="text-muted-foreground">(빈 내용)</span>}</Td>
                     <Td>

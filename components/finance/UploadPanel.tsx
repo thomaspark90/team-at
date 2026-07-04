@@ -179,7 +179,7 @@ export default function UploadPanel() {
                       <Td>{t.channel}</Td>
                       <Td>{t.memo}</Td>
                       <Td right mono muted={!t.amountOut}>{t.amountOut ? won(t.amountOut) : '—'}</Td>
-                      <Td right mono muted={!t.amountIn}>{t.amountIn ? won(t.amountIn) : '—'}</Td>
+                      <Td right mono pos muted={!t.amountIn}>{t.amountIn ? won(t.amountIn) : '—'}</Td>
                       <Td mono muted>{t.normalizedKey}</Td>
                     </tr>
                   ))}
@@ -228,8 +228,8 @@ function Stat({ label, value }: { label: string; value: string }) {
 function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
   return <th className={`whitespace-nowrap px-3 py-2 font-normal ${right ? 'text-right' : 'text-left'}`}>{children}</th>;
 }
-function Td({ children, right, mono, muted }: { children: React.ReactNode; right?: boolean; mono?: boolean; muted?: boolean }) {
+function Td({ children, right, mono, muted, pos }: { children: React.ReactNode; right?: boolean; mono?: boolean; muted?: boolean; pos?: boolean }) {
   return (
-    <td className={`whitespace-nowrap px-3 py-2 text-[13px] ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''} ${muted ? 'text-muted-foreground' : 'text-foreground'}`}>{children}</td>
+    <td className={`whitespace-nowrap px-3 py-2 text-[13px] ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''} ${muted ? 'text-muted-foreground' : pos ? 'text-positive' : 'text-foreground'}`}>{children}</td>
   );
 }
