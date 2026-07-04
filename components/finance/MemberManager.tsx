@@ -36,8 +36,8 @@ export default function MemberManager({ initial }: { initial: Member[] }) {
   const active = members.filter((m) => m.role);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {error && <div style={{ color: '#b23b3b', fontSize: 13 }}>⚠️ {error}</div>}
+    <div className="flex flex-col gap-6">
+      {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
       <Section title={`승인 대기 (${pending.length})`} empty="대기 중인 요청이 없어요.">
         {pending.map((m) => (
@@ -67,10 +67,10 @@ function Section({
   const isEmpty = arr.filter(Boolean).length === 0;
   return (
     <div>
-      <h2 style={{ fontSize: 14, fontWeight: 700, margin: '0 0 10px', color: '#444' }}>{title}</h2>
-      <div style={{ background: '#fff', border: '1px solid #E5E5E5', borderRadius: 12, overflow: 'hidden' }}>
+      <h2 className="mb-[10px] text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{title}</h2>
+      <div className="overflow-hidden rounded-md border border-border bg-card">
         {isEmpty ? (
-          <div style={{ padding: '18px 20px', fontSize: 13, color: '#999' }}>{empty}</div>
+          <div className="px-5 py-[18px] text-[13px] text-muted-foreground">{empty}</div>
         ) : (
           children
         )}
@@ -92,32 +92,17 @@ function Row({
 }) {
   return (
     <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
-        padding: '12px 20px',
-        borderTop: '1px solid #F0F0F0',
-        background: highlight ? '#FFFBEB' : '#fff',
-        flexWrap: 'wrap',
-      }}
+      className={`flex flex-wrap items-center gap-4 border-t border-border px-5 py-3 first:border-t-0 hover:bg-accent ${highlight ? 'bg-muted' : ''}`}
     >
-      <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, wordBreak: 'break-all' }}>{m.email}</div>
+      <div className="min-w-0 flex-[1_1_200px]">
+        <div className="break-all text-[14px] text-foreground">{m.email}</div>
       </div>
 
       <select
         value={m.role ?? ''}
         disabled={saving}
         onChange={(e) => onPatch(m.id, { role: e.target.value || null })}
-        style={{
-          fontSize: 13,
-          padding: '7px 10px',
-          borderRadius: 8,
-          border: '1px solid #DDD',
-          fontFamily: 'inherit',
-          background: '#fff',
-        }}
+        className="ta-input text-[13px]"
       >
         {ROLES.map((r) => (
           <option key={r.value} value={r.value}>
@@ -126,7 +111,7 @@ function Row({
         ))}
       </select>
 
-      <label style={{ fontSize: 13, color: '#555', display: 'flex', alignItems: 'center', gap: 6 }}>
+      <label className="flex items-center gap-[6px] text-[13px] text-muted-foreground">
         <input
           type="checkbox"
           checked={m.can_confirm}
@@ -136,7 +121,7 @@ function Row({
         월 확정 권한
       </label>
 
-      {saving && <span style={{ fontSize: 12, color: '#999' }}>저장 중…</span>}
+      {saving && <span className="text-[12px] text-muted-foreground">저장 중…</span>}
     </div>
   );
 }

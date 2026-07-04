@@ -20,25 +20,7 @@ export default function LoginButton() {
     <button
       onClick={signIn}
       disabled={loading}
-      style={{
-        width: '100%',
-        backgroundColor: loading ? '#999' : '#000',
-        color: '#fff',
-        fontWeight: 600,
-        fontSize: 15,
-        padding: '16px',
-        borderRadius: 50,
-        border: 'none',
-        cursor: loading ? 'not-allowed' : 'pointer',
-        fontFamily: 'inherit',
-        transition: 'background-color 0.2s ease',
-      }}
-      onMouseEnter={(e) => {
-        if (!loading) e.currentTarget.style.backgroundColor = '#0099FF';
-      }}
-      onMouseLeave={(e) => {
-        if (!loading) e.currentTarget.style.backgroundColor = '#000';
-      }}
+      className="w-full rounded-md bg-primary px-4 py-3 text-[14px] text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {loading ? '이동 중…' : 'Google 계정으로 계속하기'}
     </button>

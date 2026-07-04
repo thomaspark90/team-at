@@ -23,19 +23,12 @@ export default async function DashboardPage() {
   const { data: cats } = await supabase.schema('finance').from('categories').select('id,type,name,parent_id');
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundColor: '#FAFBFC',
-        fontFamily: "Inter,'Pretendard Variable','Pretendard',sans-serif",
-        color: '#000000',
-      }}
-    >
+    <div className="min-h-screen bg-background text-foreground">
       <TabNav />
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '32px 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>재무 대시보드</h1>
-          <Link href="/finance" style={{ fontSize: 13, color: '#0099FF' }}>
+      <div className="mx-auto max-w-[1000px] px-6 py-8">
+        <div className="mb-5 flex items-baseline justify-between">
+          <h1 className="m-0 text-[22px] tracking-[-0.5px]">재무 대시보드</h1>
+          <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
             ← 업로드로
           </Link>
         </div>

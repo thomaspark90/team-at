@@ -31,23 +31,16 @@ export default async function CashflowPage() {
   const months = cashflow((txns as CashTx[]) ?? []);
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundColor: '#FAFBFC',
-        fontFamily: "Inter,'Pretendard Variable','Pretendard',sans-serif",
-        color: '#000000',
-      }}
-    >
+    <div className="min-h-screen bg-background text-foreground">
       <TabNav />
-      <div style={{ maxWidth: 820, margin: '0 auto', padding: '32px 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>통장 현황</h1>
-          <Link href="/finance" style={{ fontSize: 13, color: '#0099FF' }}>
+      <div className="mx-auto max-w-[820px] px-6 py-8">
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <h1 className="m-0 text-[22px] tracking-[-0.5px]">통장 현황</h1>
+          <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
             ← 업로드로
           </Link>
         </div>
-        <p style={{ fontSize: 14, color: '#888', margin: '0 0 24px' }}>
+        <p className="mb-6 mt-0 text-[14px] text-muted-foreground">
           월별로 은행별 입금·출금과 두 통장 합계를 집계해요. (분류와 무관하게 통장 자체의 인/아웃)
         </p>
         <Cashflow months={months} />

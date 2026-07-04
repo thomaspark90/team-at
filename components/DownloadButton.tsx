@@ -39,21 +39,7 @@ export default function DownloadButton({ previewRef, date }: Props) {
     <button
       onClick={handleDownload}
       disabled={loading}
-      style={{
-        width: '100%',
-        backgroundColor: loading ? '#999999' : '#000000',
-        color: '#FFFFFF',
-        fontWeight: 600,
-        fontSize: 15,
-        padding: '16px',
-        borderRadius: 50,
-        border: 'none',
-        cursor: loading ? 'not-allowed' : 'pointer',
-        fontFamily: "Inter,'Pretendard Variable','Pretendard',sans-serif",
-        letterSpacing: '0.01em',
-        boxShadow: loading ? 'none' : '0 2px 8px rgba(0,0,0,0.10)',
-        transition: 'background-color 0.2s ease',
-      }}
+      className="ta-btn-primary tabular h-12 w-full text-[14px]"
     >
       {loading ? '이미지 생성 중...' : 'PNG 다운로드  ↓  1080 × 1920'}
     </button>

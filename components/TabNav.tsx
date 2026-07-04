@@ -21,51 +21,32 @@ export default function TabNav() {
   };
 
   return (
-    <header style={{ backgroundColor: '#FFFFFF', borderBottom: '1px solid #E5E5E5' }}>
-      <div
-        style={{
-          maxWidth: 1100,
-          margin: '0 auto',
-          padding: '0 24px',
-          height: 64,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 24,
-        }}
-      >
-        <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.5px', color: '#000000', flexShrink: 0 }}>
-          team-at
-        </span>
-        <nav style={{ display: 'flex', gap: 4, flex: 1, justifyContent: 'center' }}>
+    <header className="border-b border-border bg-background">
+      <div className="mx-auto flex h-12 max-w-[1100px] items-center justify-between gap-6 px-6">
+        <span className="font-serif text-[15px] tracking-tight text-foreground">team-at</span>
+
+        <nav className="flex flex-1 items-center gap-1">
           {TABS.map((tab) => {
             const active = pathname === tab.href;
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
-                className="nav-tab"
-                style={{
-                  fontWeight: active ? 600 : 500,
-                  color: active ? '#FFFFFF' : '#999999',
-                  backgroundColor: active ? '#000000' : 'transparent',
-                }}
+                className={`px-3 py-1.5 text-[13px] transition-colors ${
+                  active
+                    ? 'text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
               >
                 {tab.label}
               </Link>
             );
           })}
         </nav>
+
         <button
           onClick={handleLogout}
-          style={{
-            fontSize: 12,
-            color: '#999999',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
+          className="text-[12px] text-muted-foreground transition-colors hover:text-foreground"
         >
           로그아웃
         </button>

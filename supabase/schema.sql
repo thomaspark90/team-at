@@ -29,10 +29,24 @@ create table finance.members (
   created_at  timestamptz not null default now()
 );
 
--- 현재 사용자의 역할 (RLS 헬퍼)
+-- 현재 사용자의 역할 (RLS 헬퍼). OWNER(대표)는 members 행이 없어도 admin.
 create or replace function finance.my_role() returns finance.member_role
   language sql stable security definer set search_path = finance, public as $$
-  select role from finance.members where id = auth.uid()
+  select case
+    when (select email from auth.users where id = auth.uid()) = 'thomas.in.park@gmail.com'
+      then 'admin'::finance.member_role
+    else (select role from finance.members where id = auth.uid())
+  end
+$$;
+
+-- 월 확정 권한 (RLS 헬퍼). OWNER 는 항상 true, 그 외엔 members.can_confirm.
+create or replace function finance.can_confirm() returns boolean
+  language sql stable security definer set search_path = finance, public as $$
+  select case
+    when (select email from auth.users where id = auth.uid()) = 'thomas.in.park@gmail.com'
+      then true
+    else coalesce((select can_confirm from finance.members where id = auth.uid()), false)
+  end
 $$;
 
 -- ---------- 계정과목 ----------
@@ -127,8 +141,7 @@ create policy "uploads rw" on finance.uploads for all
   using (finance.my_role() in ('admin','classifier')) with check (finance.my_role() in ('admin','classifier'));
 create policy "close read" on finance.monthly_close for select using (finance.my_role() is not null);
 create policy "close write" on finance.monthly_close for all
-  using ((select can_confirm from finance.members where id = auth.uid()))
-  with check ((select can_confirm from finance.members where id = auth.uid()));
+  using (finance.can_confirm()) with check (finance.can_confirm());
 
 -- viewer용 집계 뷰 (raw 노출 없이 확정된 달의 카테고리별 합계만)
 create view finance.monthly_category_totals

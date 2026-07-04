@@ -22,19 +22,12 @@ export default async function CategoriesPage() {
     .order('sort', { ascending: true });
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundColor: '#FAFBFC',
-        fontFamily: "Inter,'Pretendard Variable','Pretendard',sans-serif",
-        color: '#000000',
-      }}
-    >
+    <div className="min-h-screen bg-background text-foreground">
       <TabNav />
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '32px 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>계정과목 관리</h1>
-          <Link href="/finance" style={{ fontSize: 13, color: '#0099FF' }}>
+      <div className="mx-auto max-w-[760px] px-6 py-8">
+        <div className="mb-4 flex items-baseline justify-between">
+          <h1 className="m-0 text-[22px] tracking-[-0.5px]">계정과목 관리</h1>
+          <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
             ← 재무로
           </Link>
         </div>

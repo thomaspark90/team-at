@@ -6,36 +6,34 @@ const fmtYm = (ym: string) => {
   const [y, mo] = ym.split('-');
   return `${y}년 ${Number(mo)}월`;
 };
-const REV = '#12805c';
-const EXP = '#b23b3b';
 
 export default function Cashflow({ months }: { months: MonthCash[] }) {
   if (months.length === 0) {
     return (
-      <div style={{ margin: '60px auto', maxWidth: 460, textAlign: 'center', color: '#777' }}>
-        <div style={{ fontSize: 32, marginBottom: 12 }}>🏦</div>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111', margin: '0 0 8px' }}>집계할 거래가 없어요</h2>
-        <p style={{ fontSize: 14, margin: 0 }}>은행 내역을 업로드·저장하면 월별 통장 입출금이 여기 집계돼요.</p>
+      <div className="mx-auto my-[60px] max-w-[460px] text-center text-muted-foreground">
+        <div className="mb-3 text-[32px]">🏦</div>
+        <h2 className="mb-2 text-[18px] text-foreground">집계할 거래가 없어요</h2>
+        <p className="text-[14px]">은행 내역을 업로드·저장하면 월별 통장 입출금이 여기 집계돼요.</p>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="flex flex-col gap-5">
       {months.map((m) => {
         const net = m.totalIn - m.totalOut;
         return (
-          <div key={m.ym} style={{ background: '#fff', border: '1px solid #E5E5E5', borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid #EEE', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>{fmtYm(m.ym)}</h3>
-              <span style={{ fontSize: 13, color: '#888' }}>
-                순증감 <b style={{ color: net >= 0 ? REV : EXP, fontVariantNumeric: 'tabular-nums' }}>{net >= 0 ? '+' : ''}{won(net)}</b>
+          <div key={m.ym} className="overflow-hidden rounded-md border border-border bg-card">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border p-[14px_18px]">
+              <h3 className="m-0 text-[16px] text-foreground">{fmtYm(m.ym)}</h3>
+              <span className="text-[13px] text-muted-foreground">
+                순증감 <b className="tabular text-foreground">{net >= 0 ? '+' : ''}{won(net)}</b>
               </span>
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13, minWidth: 520 }}>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px] border-collapse text-[13px]">
                 <thead>
-                  <tr style={{ background: '#F7F9FB', color: '#888' }}>
+                  <tr className="bg-muted text-muted-foreground">
                     <Th>구분</Th>
                     <Th right>입금</Th>
                     <Th right>출금</Th>
@@ -46,19 +44,19 @@ export default function Cashflow({ months }: { months: MonthCash[] }) {
                   {m.banks.map((b) => {
                     const bn = b.inflow - b.outflow;
                     return (
-                      <tr key={b.bank} style={{ borderTop: '1px solid #EEE' }}>
+                      <tr key={b.bank} className="border-t border-border hover:bg-accent">
                         <Td>{BANK[b.bank] ?? b.bank}</Td>
-                        <Td right mono color={REV}>{won(b.inflow)}</Td>
-                        <Td right mono color={EXP}>{won(b.outflow)}</Td>
-                        <Td right mono color={bn >= 0 ? REV : EXP}>{bn >= 0 ? '+' : ''}{won(bn)}</Td>
+                        <Td right mono>{won(b.inflow)}</Td>
+                        <Td right mono>{won(b.outflow)}</Td>
+                        <Td right mono>{bn >= 0 ? '+' : ''}{won(bn)}</Td>
                       </tr>
                     );
                   })}
-                  <tr style={{ borderTop: '2px solid #DDD', background: '#FAFBFC' }}>
+                  <tr className="border-t-2 border-border bg-accent">
                     <Td bold>합계 (두 통장)</Td>
-                    <Td right mono bold color={REV}>{won(m.totalIn)}</Td>
-                    <Td right mono bold color={EXP}>{won(m.totalOut)}</Td>
-                    <Td right mono bold color={net >= 0 ? REV : EXP}>{net >= 0 ? '+' : ''}{won(net)}</Td>
+                    <Td right mono bold>{won(m.totalIn)}</Td>
+                    <Td right mono bold>{won(m.totalOut)}</Td>
+                    <Td right mono bold>{net >= 0 ? '+' : ''}{won(net)}</Td>
                   </tr>
                 </tbody>
               </table>
@@ -71,20 +69,18 @@ export default function Cashflow({ months }: { months: MonthCash[] }) {
 }
 
 function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
-  return <th style={{ textAlign: right ? 'right' : 'left', padding: '10px 16px', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>{children}</th>;
+  return (
+    <th
+      className={`whitespace-nowrap p-[10px_16px] text-[11px] uppercase tracking-[0.04em] ${right ? 'text-right' : 'text-left'}`}
+    >
+      {children}
+    </th>
+  );
 }
-function Td({ children, right, mono, bold, color }: { children: React.ReactNode; right?: boolean; mono?: boolean; bold?: boolean; color?: string }) {
+function Td({ children, right, mono, bold }: { children: React.ReactNode; right?: boolean; mono?: boolean; bold?: boolean }) {
   return (
     <td
-      style={{
-        textAlign: right ? 'right' : 'left',
-        padding: '11px 16px',
-        color: color ?? '#333',
-        fontWeight: bold ? 700 : 400,
-        fontFamily: mono ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : 'inherit',
-        fontVariantNumeric: mono ? 'tabular-nums' : 'normal',
-        whiteSpace: 'nowrap',
-      }}
+      className={`whitespace-nowrap p-[11px_16px] text-foreground ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular font-mono' : ''} ${bold ? 'font-medium' : ''}`}
     >
       {children}
     </td>

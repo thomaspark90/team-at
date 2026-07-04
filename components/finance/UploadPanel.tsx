@@ -23,9 +23,6 @@ const BANKS: { value: BankSource; label: string }[] = [
   { value: 'shinhan', label: '신한은행' },
   { value: 'woori', label: '우리은행' },
 ];
-const ACCENT = '#0099FF';
-const REV = '#12805c';
-const EXP = '#b23b3b';
 
 export default function UploadPanel() {
   const [bank, setBank] = useState<BankSource>('shinhan');
@@ -80,47 +77,39 @@ export default function UploadPanel() {
     }
   }
 
-  const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: '#666', marginBottom: 6, display: 'block' };
-  const card: React.CSSProperties = { background: '#fff', border: '1px solid #E5E5E5', borderRadius: 12, padding: 20 };
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="flex flex-col gap-5">
       <div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.5px' }}>
+        <h1 className="mb-1 text-[22px] tracking-[-0.5px] text-foreground">
           재무 · 거래내역 업로드
         </h1>
-        <p style={{ fontSize: 14, color: '#888', margin: 0 }}>
+        <p className="text-[14px] text-muted-foreground">
           은행 거래내역 PDF를 올려 파싱·미리보기 후 저장해요. 같은 거래는 자동으로 중복 제거돼요.
         </p>
       </div>
 
       {/* 저장 완료 배너 */}
       {saved && (
-        <div style={{ ...card, borderColor: REV, background: '#F0F9F5' }}>
-          <div style={{ fontWeight: 700, color: REV, marginBottom: 4 }}>✓ 저장 완료</div>
-          <div style={{ fontSize: 14, color: '#333' }}>
+        <div className="rounded-md border border-border bg-muted p-4">
+          <div className="mb-1 text-foreground">✓ 저장 완료</div>
+          <div className="text-[14px] text-muted-foreground">
             {won(saved.saved)}건 저장 (자동 분류 {won(saved.autoClassified)}건) · 중복 {won(saved.duplicates)}건 건너뜀
           </div>
         </div>
       )}
 
       {/* 입력 카드 */}
-      <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="ta-card flex flex-col gap-4">
         <div>
-          <label style={labelStyle}>은행</label>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <label className="ta-label">은행</label>
+          <div className="inline-flex gap-1 rounded-md border border-border p-1">
             {BANKS.map((b) => {
               const on = bank === b.value;
               return (
                 <button
                   key={b.value}
                   onClick={() => setBank(b.value)}
-                  style={{
-                    padding: '8px 16px', borderRadius: 8,
-                    border: `1px solid ${on ? ACCENT : '#DDD'}`,
-                    background: on ? ACCENT : '#fff', color: on ? '#fff' : '#555',
-                    fontWeight: on ? 600 : 500, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
-                  }}
+                  className={`rounded-sm px-4 py-1.5 text-[14px] ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   {b.label}
                 </button>
@@ -130,79 +119,75 @@ export default function UploadPanel() {
         </div>
 
         <div>
-          <label style={labelStyle}>거래내역 PDF</label>
+          <label className="ta-label">거래내역 PDF</label>
           <input
             type="file"
             accept="application/pdf"
             onChange={(e) => { setFile(e.target.files?.[0] ?? null); setSaved(null); }}
-            style={{ fontSize: 14, fontFamily: 'inherit' }}
+            className="text-[14px] text-foreground"
           />
         </div>
 
         <div>
-          <label style={labelStyle}>
+          <label className="ta-label">
             PDF 비밀번호 {bank === 'shinhan' ? '(신한은 보통 필요)' : '(없으면 비워두세요)'}
           </label>
           <input
             type="password" value={password} onChange={(e) => setPassword(e.target.value)}
             placeholder="예: 940502"
-            style={{ fontSize: 14, padding: '8px 12px', border: '1px solid #DDD', borderRadius: 8, width: 200, fontFamily: 'inherit' }}
+            className="ta-input w-[200px]"
           />
         </div>
 
         <div>
           <button
             onClick={analyze} disabled={!file || loading}
-            style={{
-              padding: '10px 22px', borderRadius: 8, border: 'none',
-              background: !file || loading ? '#CCC' : '#000', color: '#fff',
-              fontWeight: 600, fontSize: 14, cursor: !file || loading ? 'default' : 'pointer', fontFamily: 'inherit',
-            }}
+            className="ta-btn-primary"
           >
             {loading ? '분석 중…' : '분석하기'}
           </button>
         </div>
 
-        {error && <div style={{ color: EXP, fontSize: 13, fontWeight: 500 }}>⚠️ {error}</div>}
+        {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
       </div>
 
       {/* 결과 */}
       {preview && (
         <>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <div className="flex flex-wrap gap-3">
             <Stat label="총 거래" value={`${won(preview.totalRows)}건`} />
-            <Stat label="신규(저장 대상)" value={`${won(preview.fresh)}건`} accent={ACCENT} />
+            <Stat label="신규(저장 대상)" value={`${won(preview.fresh)}건`} />
             <Stat label="이미 저장됨(중복)" value={`${won(preview.duplicates)}건`} />
-            <Stat label="입금 합계" value={won(preview.sumIn)} accent={REV} />
-            <Stat label="출금 합계" value={won(preview.sumOut)} accent={EXP} />
+            <Stat label="입금 합계" value={won(preview.sumIn)} />
+            <Stat label="출금 합계" value={won(preview.sumOut)} />
           </div>
 
           {preview.fresh > 0 && (
-          <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13, minWidth: 720 }}>
+          <div className="overflow-hidden rounded-md border border-border bg-card">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] border-collapse text-[13px]">
                 <thead>
-                  <tr style={{ background: '#F7F9FB', color: '#888' }}>
+                  <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
                     <Th>거래일시</Th><Th>채널</Th><Th>내용</Th>
                     <Th right>출금</Th><Th right>입금</Th><Th>정규화 키(학습용)</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {preview.sample.map((t) => (
-                    <tr key={t.dedupHash} style={{ borderTop: '1px solid #EEE' }}>
+                    <tr key={t.dedupHash} className="border-t border-border hover:bg-accent">
                       <Td mono>{t.txAt.replace('T', ' ')}</Td>
                       <Td>{t.channel}</Td>
                       <Td>{t.memo}</Td>
-                      <Td right mono color={t.amountOut ? EXP : '#CCC'}>{t.amountOut ? won(t.amountOut) : '—'}</Td>
-                      <Td right mono color={t.amountIn ? REV : '#CCC'}>{t.amountIn ? won(t.amountIn) : '—'}</Td>
-                      <Td mono color="#888">{t.normalizedKey}</Td>
+                      <Td right mono muted={!t.amountOut}>{t.amountOut ? won(t.amountOut) : '—'}</Td>
+                      <Td right mono muted={!t.amountIn}>{t.amountIn ? won(t.amountIn) : '—'}</Td>
+                      <Td mono muted>{t.normalizedKey}</Td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             {preview.fresh > preview.sample.length && (
-              <div style={{ padding: '10px 16px', fontSize: 12, color: '#999' }}>
+              <div className="border-t border-border px-4 py-[10px] text-[12px] text-muted-foreground">
                 … 외 {won(preview.fresh - preview.sample.length)}건 (미리보기는 최대 200건, 저장은 전체)
               </div>
             )}
@@ -213,20 +198,16 @@ export default function UploadPanel() {
             <button
               onClick={save}
               disabled={saving}
-              style={{
-                alignSelf: 'flex-start', padding: '11px 26px', borderRadius: 8, border: 'none',
-                background: saving ? '#CCC' : ACCENT, color: '#fff',
-                fontWeight: 700, fontSize: 14, cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
-              }}
+              className="ta-btn-primary self-start"
             >
               {saving ? '저장 중…' : `${won(preview.fresh)}건 저장하기`}
             </button>
           ) : (
-            <div style={{ ...card, background: '#F0F9F5', borderColor: REV }}>
-              <div style={{ fontWeight: 700, color: REV, marginBottom: 4 }}>✓ 이미 모두 저장된 거래예요</div>
-              <div style={{ fontSize: 14, color: '#333' }}>
+            <div className="rounded-md border border-border bg-muted p-4">
+              <div className="mb-1 text-foreground">✓ 이미 모두 저장된 거래예요</div>
+              <div className="text-[14px] text-muted-foreground">
                 이 파일의 {won(preview.totalRows)}건은 전부 중복(이미 저장됨)이라 새로 저장할 게 없어요. 분류는{' '}
-                <a href="/finance/classify" style={{ color: ACCENT, fontWeight: 700 }}>거래 분류 →</a> 에서 하세요.
+                <a href="/finance/classify" className="text-foreground underline">거래 분류 →</a> 에서 하세요.
               </div>
             </div>
           )}
@@ -236,23 +217,19 @@ export default function UploadPanel() {
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ background: '#fff', border: '1px solid #E5E5E5', borderRadius: 10, padding: '12px 16px', minWidth: 110, flex: '1 1 auto' }}>
-      <div style={{ fontSize: 11, color: '#999', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: accent ?? '#111', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+    <div className="min-w-[110px] flex-[1_1_auto] rounded-md border border-border bg-card px-4 py-3">
+      <div className="mb-1 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{label}</div>
+      <div className="tabular text-[18px] text-foreground">{value}</div>
     </div>
   );
 }
 function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
-  return <th style={{ textAlign: right ? 'right' : 'left', padding: '10px 14px', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>{children}</th>;
+  return <th className={`whitespace-nowrap px-3 py-2 font-normal ${right ? 'text-right' : 'text-left'}`}>{children}</th>;
 }
-function Td({ children, right, mono, color }: { children: React.ReactNode; right?: boolean; mono?: boolean; color?: string }) {
+function Td({ children, right, mono, muted }: { children: React.ReactNode; right?: boolean; mono?: boolean; muted?: boolean }) {
   return (
-    <td style={{
-      textAlign: right ? 'right' : 'left', padding: '9px 14px', color: color ?? '#333',
-      fontFamily: mono ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : 'inherit',
-      fontVariantNumeric: mono ? 'tabular-nums' : 'normal', whiteSpace: 'nowrap',
-    }}>{children}</td>
+    <td className={`whitespace-nowrap px-3 py-2 text-[13px] ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''} ${muted ? 'text-muted-foreground' : 'text-foreground'}`}>{children}</td>
   );
 }

@@ -4,37 +4,17 @@ import { useEffect, useMemo, useState } from 'react';
 import type { PricingSettings, PurchaseRecord } from '@/lib/types';
 import { DEFAULT_SETTINGS, computePricing, normalize, priceAtMult } from '@/lib/pricing';
 
-const SHADOW = '0 1px 3px rgba(0,0,0,0.05)';
-const LABEL: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 600,
-  color: '#999999',
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase',
-  marginBottom: 16,
+// 인라인 스타일에서 참조할 midday 토큰 (HSL 변수)
+const C = {
+  border: 'hsl(var(--border))',
+  card: 'hsl(var(--card))',
+  muted: 'hsl(var(--muted))',
+  accent: 'hsl(var(--accent))',
+  fg: 'hsl(var(--foreground))',
+  mutedFg: 'hsl(var(--muted-foreground))',
+  primary: 'hsl(var(--primary))',
 };
-const card: React.CSSProperties = {
-  backgroundColor: '#FFFFFF',
-  borderRadius: 16,
-  padding: '24px 28px',
-  border: '1px solid #E5E5E5',
-  boxShadow: SHADOW,
-  minWidth: 0, // flex 자식 가로 넘침 방지
-  boxSizing: 'border-box',
-};
-const input: React.CSSProperties = {
-  width: '100%',
-  minWidth: 0,
-  backgroundColor: '#F5F5F5',
-  border: '1px solid #E5E5E5',
-  borderRadius: 10,
-  padding: '10px 13px',
-  fontSize: 13,
-  color: '#000000',
-  outline: 'none',
-  fontFamily: 'inherit',
-  boxSizing: 'border-box',
-};
+
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
@@ -44,7 +24,7 @@ const fmtDate = (iso: string) => {
 
 // 스프레드로 보여줄 배수 (3.0 ~ 7.0, 0.5 단위 — 가로 스와이프)
 const SPREAD = [3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7];
-const HIGHLIGHT = '#E6F4FF'; // 권장 구간(배수 minMult~maxMult) 강조색
+const HIGHLIGHT = C.accent; // 권장 구간(배수 minMult~maxMult) 강조색 (무채색)
 
 export default function GardenService() {
   const [settings, setSettings] = useState<PricingSettings>(DEFAULT_SETTINGS);
@@ -124,8 +104,8 @@ export default function GardenService() {
 
   return (
     <div style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
-        <div style={card}>
-          <p style={LABEL}>판매가 산식 기준</p>
+        <div className="ta-card min-w-0">
+          <p className="ta-label">판매가 산식 기준</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="구매 용량(g)" value={settings.capacityG} onChange={(v) => setNum('capacityG', v)} />
             <Field label="로스율 제외(%)" value={Math.round(settings.yieldRate * 100)} onChange={(v) => setNum('yieldRate', v / 100)} />
@@ -133,14 +113,14 @@ export default function GardenService() {
           </div>
         </div>
 
-        <div style={card}>
-          <p style={LABEL}>원두 정보 입력</p>
+        <div className="ta-card min-w-0">
+          <p className="ta-label">원두 정보 입력</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <input
               value={bean}
               onChange={(e) => setBean(e.target.value)}
               placeholder="원두명 (예: 에티오피아 게뎁)"
-              style={input}
+              className="ta-input w-full"
             />
             <input
               type="text"
@@ -151,7 +131,7 @@ export default function GardenService() {
                 setSelectedMult(null);
               }}
               placeholder={`공급가 000,000 (${settings.capacityG}g·부가세 별도)`}
-              style={input}
+              className="ta-input w-full tabular"
             />
           </div>
 
@@ -159,10 +139,10 @@ export default function GardenService() {
             <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span style={{ fontSize: 12, color: '#999999' }}>잔당 재료비 (VAT 포함)</span>
-                  <span style={{ fontSize: 22, fontWeight: 700, color: '#000000' }}>{won(result.costPerCup)}</span>
+                  <span className="text-[12px] text-muted-foreground">잔당 재료비 (VAT 포함)</span>
+                  <span className="text-[22px] text-foreground tabular">{won(result.costPerCup)}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#888888' }}>
+                <div className="text-[11px] text-muted-foreground" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span>권장</span>
                   <Stepper value={settings.minMult} onDec={() => adjMin(-0.5)} onInc={() => adjMin(0.5)} />
                   <span>~</span>
@@ -171,7 +151,7 @@ export default function GardenService() {
               </div>
 
               {/* 배수 스프레드 표 (가로 스와이프) */}
-              <div style={{ border: '1px solid #E5E5E5', borderRadius: 10, overflowX: 'auto', fontSize: 12, WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
+              <div className="rounded-md border border-border" style={{ overflowX: 'auto', fontSize: 12, WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
               <div
                 style={{
                   display: 'grid',
@@ -201,26 +181,14 @@ export default function GardenService() {
                 ))}
               </div>
               </div>
-              <p style={{ fontSize: 11, color: '#C9C9C9' }}>
-                파란 칸 = 권장 구간(배수 {settings.minMult}~{settings.maxMult}) · 배수를 클릭해 책정 판매가를 고르세요
+              <p className="text-[11px] text-muted-foreground">
+                강조 칸 = 권장 구간(배수 {settings.minMult}~{settings.maxMult}) · 배수를 클릭해 책정 판매가를 고르세요
               </p>
 
               <button
                 onClick={savePurchase}
                 disabled={saving}
-                style={{
-                  marginTop: 4,
-                  backgroundColor: saving ? '#999999' : '#000000',
-                  color: '#FFFFFF',
-                  fontWeight: 600,
-                  fontSize: 13,
-                  padding: '12px',
-                  borderRadius: 50,
-                  border: 'none',
-                  cursor: saving ? 'not-allowed' : 'pointer',
-                  fontFamily: 'inherit',
-                  transition: 'background-color 0.2s ease',
-                }}
+                className="ta-btn-primary w-full mt-1"
               >
                 {saving ? '저장 중…' : `${bean.trim() ? bean.trim() + ' ' : ''}원두 저장하기`}
               </button>
@@ -230,12 +198,12 @@ export default function GardenService() {
 
         {/* 발주 기록 — 같은 원두 재발주 시 원가·판매가 비교 */}
         {purchases.length > 0 && (
-          <div style={card}>
-            <p style={LABEL}>이전 판매 리스트</p>
+          <div className="ta-card min-w-0">
+            <p className="ta-label">이전 판매 리스트</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               {purchaseGroups.map((group) => (
                 <div key={group[0].id}>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: '#000000', marginBottom: 6 }}>
+                  <p className="text-[13px] text-foreground mb-1.5">
                     {group[0].bean}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -245,12 +213,12 @@ export default function GardenService() {
                       return (
                         <div key={rec.id} className="gs-row">
                           <span className="gs-meta">
-                            <span style={{ color: '#999999', width: 64, flexShrink: 0 }}>{fmtDate(rec.createdAt)}</span>
-                            <span style={{ color: '#888888', flexShrink: 0 }}>원가 {won(rec.purchasePrice)}</span>
-                            <span style={{ color: '#000000', flexShrink: 0 }}>
+                            <span className="tabular text-muted-foreground" style={{ width: 64, flexShrink: 0 }}>{fmtDate(rec.createdAt)}</span>
+                            <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>원가 {won(rec.purchasePrice)}</span>
+                            <span className="tabular text-foreground" style={{ flexShrink: 0 }}>
                               재료비 {won(rec.costPerCup)}
                               {older && delta !== 0 && (
-                                <span style={{ color: delta > 0 ? '#C0392B' : '#1E7E34', fontWeight: 600, marginLeft: 4 }}>
+                                <span className="tabular text-foreground" style={{ marginLeft: 4 }}>
                                   {delta > 0 ? '▲' : '▼'}{won(Math.abs(delta))}
                                 </span>
                               )}
@@ -258,18 +226,18 @@ export default function GardenService() {
                           </span>
                           <span className="gs-price">
                             {rec.chosenPrice != null ? (
-                              <span style={{ color: '#000000', fontWeight: 600 }}>
+                              <span className="tabular text-foreground">
                                 책정 판매가 {won(rec.chosenPrice)}
-                                <span style={{ color: '#999999', fontWeight: 400 }}> ({Math.round((rec.costPerCup / rec.chosenPrice) * 100)}%)</span>
+                                <span className="text-muted-foreground"> ({Math.round((rec.costPerCup / rec.chosenPrice) * 100)}%)</span>
                               </span>
                             ) : (
-                              <span style={{ color: '#888888' }}>판매 {won(rec.rangeLow)}~{won(rec.rangeHigh)}</span>
+                              <span className="tabular text-muted-foreground">판매 {won(rec.rangeLow)}~{won(rec.rangeHigh)}</span>
                             )}
                           </span>
                           <button
                             onClick={() => deletePurchase(rec.id)}
-                            className="gs-del"
-                            style={{ color: '#C9C9C9', background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }}
+                            className="gs-del text-muted-foreground hover:text-foreground"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }}
                           >
                             ×
                           </button>
@@ -286,7 +254,6 @@ export default function GardenService() {
   );
 }
 
-const SELECT_BLUE = '#0099FF';
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
 // 권장 구간 하한/상한 조절 화살표 토글
@@ -295,16 +262,16 @@ function Stepper({ value, onDec, onInc }: { value: number; onDec: () => void; on
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    color: '#888888',
+    color: C.mutedFg,
     fontSize: 14,
     lineHeight: 1,
     padding: '2px 6px',
     fontFamily: 'inherit',
   };
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid #E5E5E5', borderRadius: 6 }}>
+    <span className="rounded-md border border-border" style={{ display: 'inline-flex', alignItems: 'center' }}>
       <button onClick={onDec} style={btn}>‹</button>
-      <span style={{ minWidth: 28, textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#000000' }}>{value.toFixed(1)}</span>
+      <span className="tabular text-foreground" style={{ minWidth: 28, textAlign: 'center', fontSize: 12 }}>{value.toFixed(1)}</span>
       <button onClick={onInc} style={btn}>›</button>
     </span>
   );
@@ -334,11 +301,10 @@ function Cell({
   const style: React.CSSProperties = {
     padding: '7px 3px',
     textAlign: label ? 'left' : 'center',
-    borderTop: '1px solid #EFEFEF',
-    borderLeft: label ? 'none' : '1px solid #EFEFEF',
-    backgroundColor: label ? '#FAFAFA' : hi ? HIGHLIGHT : '#FFFFFF',
-    fontWeight: head || bold ? 700 : 400,
-    color: muted ? '#888888' : label ? '#999999' : '#000000',
+    borderTop: `1px solid ${C.border}`,
+    borderLeft: label ? 'none' : `1px solid ${C.border}`,
+    backgroundColor: label ? C.muted : hi ? HIGHLIGHT : C.card,
+    color: muted ? C.mutedFg : label ? C.mutedFg : C.fg,
     fontSize: label || muted ? 11 : 12,
     whiteSpace: 'nowrap',
     cursor: onClick ? 'pointer' : 'default',
@@ -350,8 +316,8 @@ function Cell({
     style.zIndex = 2;
   }
   if (selected) {
-    // 세 칸의 바깥 테두리만 파란색 2px → 한 박스처럼, 모서리 라운드
-    const B = `2px solid ${SELECT_BLUE}`;
+    // 세 칸의 바깥 테두리만 강조(다크) 2px → 한 박스처럼, 모서리 라운드
+    const B = `2px solid ${C.primary}`;
     style.borderLeft = B;
     style.borderRight = B;
     if (pos === 'top') {
@@ -366,7 +332,7 @@ function Cell({
     }
   }
   return (
-    <div onClick={onClick} style={style}>
+    <div onClick={onClick} className="tabular" style={style}>
       {children}
     </div>
   );
@@ -385,13 +351,13 @@ function Field({
 }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
-      <span style={{ fontSize: 11, color: '#999999' }}>{label}</span>
+      <span className="text-[11px] text-muted-foreground">{label}</span>
       <input
         type="number"
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        style={input}
+        className="ta-input w-full tabular"
       />
     </label>
   );

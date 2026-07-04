@@ -22,23 +22,16 @@ export default async function MembersPage() {
     .order('created_at', { ascending: true });
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundColor: '#FAFBFC',
-        fontFamily: "Inter,'Pretendard Variable','Pretendard',sans-serif",
-        color: '#000000',
-      }}
-    >
+    <div className="min-h-screen bg-background text-foreground">
       <TabNav />
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '32px 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>멤버 관리</h1>
-          <Link href="/finance" style={{ fontSize: 13, color: '#0099FF' }}>
+      <div className="mx-auto max-w-[760px] px-6 py-8">
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <h1 className="m-0 text-[22px] tracking-[-0.5px]">멤버 관리</h1>
+          <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
             ← 재무로
           </Link>
         </div>
-        <p style={{ fontSize: 14, color: '#888', margin: '0 0 24px' }}>
+        <p className="mb-6 mt-0 text-[14px] text-muted-foreground">
           접근 요청을 승인하고 역할을 부여해요. 역할을 &lsquo;대기&rsquo;로 되돌리면 접근이 막혀요.
         </p>
         <MemberManager initial={(data as Member[]) ?? []} />

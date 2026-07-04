@@ -24,7 +24,6 @@ const GROUPS = [
   { title: '📥 입금 (들어오는 돈)', hint: '매출과 영업외수익', types: ['revenue', 'non_operating'] },
   { title: '📤 출금 (나가는 돈)', hint: '재료비·판매관리비·자본적지출 등', types: ['cogs', 'sga', 'excluded'] },
 ];
-const ACCENT = '#0099FF';
 
 export default function CategoryManager({ initial }: { initial: ManagedCat[] }) {
   const [cats, setCats] = useState<ManagedCat[]>(initial);
@@ -112,25 +111,25 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-      <p style={{ fontSize: 13, color: '#888', margin: 0 }}>
+    <div className="flex flex-col gap-7">
+      <p className="text-[13px] text-muted-foreground">
         왼쪽 <b>손잡이(⠿)를 드래그</b>해 순서를 바꿔요. <b>이름을 클릭</b>하면 ⭐즐겨찾기로 지정돼 분류 드롭다운 맨 위 &ldquo;자주 쓰는&rdquo;에 떠요. <b>활성</b>을 끄면 숨겨져요.
       </p>
-      {error && <div style={{ color: '#b23b3b', fontSize: 13 }}>⚠️ {error}</div>}
+      {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
       {GROUPS.map((group) => (
-        <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div key={group.title} className="flex flex-col gap-4">
           <div>
-            <h2 style={{ fontSize: 17, fontWeight: 800, margin: 0, letterSpacing: '-0.3px' }}>{group.title}</h2>
-            <p style={{ fontSize: 12, color: '#999', margin: '2px 0 0' }}>{group.hint}</p>
+            <h2 className="text-[17px] tracking-[-0.3px] text-foreground">{group.title}</h2>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">{group.hint}</p>
           </div>
 
           {group.types.map((type) => {
             const list = cats.filter((c) => c.type === type).sort((a, b) => a.sort - b.sort);
             return (
               <div key={type}>
-                <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px', color: '#666' }}>{TYPE_LABEL[type]}</h3>
-                <div style={{ background: '#fff', border: '1px solid #E5E5E5', borderRadius: 12, overflow: 'hidden' }}>
+                <h3 className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{TYPE_LABEL[type]}</h3>
+                <div className="overflow-hidden rounded-md border border-border bg-card">
                   {list.map((c) => (
                     <div
                       key={c.id}
@@ -139,16 +138,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                         if (overId !== c.id) setOverId(c.id);
                       }}
                       onDrop={() => reorder(type, c.id)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        padding: '10px 14px',
-                        borderTop: overId === c.id ? '2px solid #0099FF' : '1px solid #F0F0F0',
-                        background: c.pinned ? '#FFFBEB' : c.active ? '#fff' : '#FAFAFA',
-                        opacity: c.active ? (dragId === c.id ? 0.4 : 1) : 0.55,
-                        flexWrap: 'wrap',
-                      }}
+                      className={`flex flex-wrap items-center gap-[10px] px-[14px] py-[10px] ${overId === c.id ? 'border-t-2 border-foreground' : 'border-t border-border'} ${c.pinned ? 'bg-muted' : 'bg-card'} ${!c.active ? 'opacity-55' : dragId === c.id ? 'opacity-40' : ''}`}
                     >
                       <span
                         draggable
@@ -158,49 +148,47 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                           setOverId(null);
                         }}
                         title="드래그해서 순서 변경"
-                        style={{ cursor: 'grab', color: '#bbb', fontSize: 16, userSelect: 'none', lineHeight: 1 }}
+                        className="cursor-grab select-none text-[16px] leading-none text-muted-foreground"
                       >
                         ⠿
                       </span>
                       <span
                         onClick={() => busy !== c.id && patch(c.id, { pinned: !c.pinned })}
                         title="클릭하면 즐겨찾기(상위노출) 토글"
-                        style={{
-                          flex: '1 1 200px',
-                          fontSize: 14,
-                          fontWeight: c.parent_id ? 400 : 600,
-                          cursor: 'pointer',
-                          userSelect: 'none',
-                        }}
+                        className="flex-[1_1_200px] cursor-pointer select-none text-[14px] text-foreground"
                       >
-                        {c.pinned && <span style={{ color: '#B08900' }}>⭐ </span>}
-                        {c.parent_id && <span style={{ color: '#bbb' }}>└ </span>}
+                        {c.pinned && <span>⭐ </span>}
+                        {c.parent_id && <span className="text-muted-foreground">└ </span>}
                         {label(c)}
                       </span>
                       <button
                         onClick={() => patch(c.id, { active: !c.active })}
                         disabled={busy === c.id}
-                        style={pill(c.active ? ACCENT : '#999', c.active ? '#EAF5FF' : '#F2F2F2')}
+                        className={`whitespace-nowrap rounded-md border px-3 py-1 text-[12px] ${c.active ? 'border-transparent bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}
                       >
                         {c.active ? '활성' : '비활성'}
                       </button>
-                      <button onClick={() => remove(c.id)} disabled={busy === c.id} style={{ ...pill('#b23b3b', '#fff'), border: 'none' }}>
+                      <button
+                        onClick={() => remove(c.id)}
+                        disabled={busy === c.id}
+                        className="whitespace-nowrap rounded-md border border-border px-3 py-1 text-[12px] text-muted-foreground hover:text-destructive"
+                      >
                         삭제
                       </button>
                     </div>
                   ))}
-                  <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderTop: '1px solid #F0F0F0', background: '#FAFBFC' }}>
+                  <div className="flex gap-2 border-t border-border bg-muted px-[14px] py-[10px]">
                     <input
                       value={newName[type] || ''}
                       onChange={(e) => setNewName((m) => ({ ...m, [type]: e.target.value }))}
                       onKeyDown={(e) => e.key === 'Enter' && add(type)}
                       placeholder={`${TYPE_LABEL[type]} 항목 추가…`}
-                      style={{ flex: 1, fontSize: 13, padding: '7px 12px', border: '1px solid #DDD', borderRadius: 8, fontFamily: 'inherit' }}
+                      className="ta-input flex-1 text-[13px]"
                     />
                     <button
                       onClick={() => add(type)}
                       disabled={adding === type || !(newName[type] || '').trim()}
-                      style={{ ...pill('#fff', (newName[type] || '').trim() ? '#000' : '#CCC'), border: 'none', fontWeight: 700 }}
+                      className="ta-btn-primary text-[13px]"
                     >
                       {adding === type ? '추가 중…' : '+ 추가'}
                     </button>
@@ -213,19 +201,4 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
       ))}
     </div>
   );
-}
-
-function pill(color: string, bg: string): React.CSSProperties {
-  return {
-    fontSize: 12,
-    fontWeight: 600,
-    padding: '5px 12px',
-    borderRadius: 20,
-    border: `1px solid ${color === '#fff' ? bg : color}`,
-    background: bg,
-    color: color === '#fff' ? '#fff' : color,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    whiteSpace: 'nowrap',
-  };
 }

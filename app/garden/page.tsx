@@ -5,16 +5,9 @@ import GardenService from '@/components/garden/GardenService';
 
 export default function GardenPage() {
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundColor: '#FFFFFF',
-        fontFamily: "Inter,'Pretendard Variable','Pretendard',sans-serif",
-        color: '#000000',
-      }}
-    >
+    <div className="min-h-screen bg-background text-foreground">
       <TabNav />
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
+      <div className="mx-auto max-w-[1100px] px-6 py-8">
         <GardenService />
       </div>
     </div>

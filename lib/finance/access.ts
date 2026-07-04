@@ -23,3 +23,19 @@ export async function resolveRole(
     .maybeSingle();
   return ((data?.role as Role | undefined) ?? null) || null;
 }
+
+// 월 확정 권한. OWNER 는 항상 true, 그 외엔 finance.members.can_confirm.
+// ⚠️ RLS 정책 finance.can_confirm() 의 판정과 동일하게 유지할 것.
+export async function canConfirm(
+  supabase: SupabaseClient,
+  user: { id: string; email?: string | null }
+): Promise<boolean> {
+  if (isOwner(user.email)) return true;
+  const { data } = await supabase
+    .schema('finance')
+    .from('members')
+    .select('can_confirm')
+    .eq('id', user.id)
+    .maybeSingle();
+  return !!(data?.can_confirm as boolean | undefined);
+}

@@ -7,8 +7,6 @@ import StoryPreview from '@/components/StoryPreview';
 import DownloadButton from '@/components/DownloadButton';
 import TabNav from '@/components/TabNav';
 
-const SHADOW = '0 1px 3px rgba(0,0,0,0.05)';
-
 const DEFAULT_STORY: StoryData = {
   date: (() => {
     const d = new Date();
@@ -42,59 +40,43 @@ export default function StudioPage() {
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#FFFFFF', fontFamily: "Inter,'Pretendard Variable','Pretendard',sans-serif", color: '#000000' }}>
-
+    <div className="min-h-screen bg-background text-foreground">
       <TabNav />
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: 24, alignItems: 'start' }}>
-
+      <div className="mx-auto max-w-[1100px] px-6 py-8">
+        <div
+          className="grid items-start gap-6"
+          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))' }}
+        >
           {/* 왼쪽: 입력 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
-
-            {/* 날짜 */}
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: '24px 28px', border: '1px solid #E5E5E5', boxShadow: SHADOW }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#999999', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
-                Date
-              </p>
+          <div className="flex min-w-0 flex-col gap-5">
+            <div className="ta-card">
+              <p className="ta-label">Date</p>
               <input
                 type="text"
                 value={story.date}
                 onChange={(e) => setStory((s) => ({ ...s, date: e.target.value }))}
-                style={{
-                  border: '1px solid #E5E5E5',
-                  borderRadius: 10,
-                  padding: '10px 14px',
-                  fontSize: 14,
-                  width: 140,
-                  backgroundColor: '#F5F5F5',
-                  color: '#000000',
-                  outline: 'none',
-                  fontFamily: 'inherit',
-                  boxSizing: 'border-box',
-                }}
+                className="ta-input w-[140px]"
                 placeholder="예: 5/12"
               />
-              <p style={{ fontSize: 12, color: '#999999', marginTop: 8 }}>배지에 표시될 날짜</p>
+              <p className="mt-2 text-[12px] text-muted-foreground">배지에 표시될 날짜</p>
             </div>
 
-            {/* 메뉴 */}
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: '24px 28px', border: '1px solid #E5E5E5', boxShadow: SHADOW }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#999999', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
-                Menu
-              </p>
+            <div className="ta-card">
+              <p className="ta-label">Menu</p>
               <MenuEditor story={story} onChange={setStory} />
             </div>
           </div>
 
           {/* 오른쪽: 미리보기 + 다운로드 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, position: 'sticky', top: 24, minWidth: 0 }}>
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: '24px 28px', border: '1px solid #E5E5E5', boxShadow: SHADOW, minWidth: 0, boxSizing: 'border-box' }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#999999', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
-                Preview
-              </p>
-              <div ref={previewBoxRef} style={{ width: '100%' }}>
-                <div style={{ width: 360 * previewScale, height: 640 * previewScale, margin: '0 auto', overflow: 'hidden' }}>
+          <div className="sticky top-6 flex min-w-0 flex-col gap-5">
+            <div className="ta-card min-w-0">
+              <p className="ta-label">Preview</p>
+              <div ref={previewBoxRef} className="w-full">
+                <div
+                  className="mx-auto overflow-hidden"
+                  style={{ width: 360 * previewScale, height: 640 * previewScale }}
+                >
                   <div style={{ width: 360, height: 640, transform: `scale(${previewScale})`, transformOrigin: 'top left' }}>
                     <StoryPreview ref={previewRef} story={story} />
                   </div>
@@ -104,11 +86,10 @@ export default function StudioPage() {
 
             <DownloadButton previewRef={previewRef} date={story.date} />
 
-            <p style={{ fontSize: 12, color: '#999999', textAlign: 'center' }}>
+            <p className="text-center text-[12px] text-muted-foreground">
               다운로드 후 인스타그램 앱에서 스토리로 업로드하세요
             </p>
           </div>
-
         </div>
       </div>
     </div>
