@@ -48,7 +48,7 @@ export default function TabNav() {
 
         <button
           onClick={handleLogout}
-          className="shrink-0 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+          className="shrink-0 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
         >
           로그아웃
         </button>

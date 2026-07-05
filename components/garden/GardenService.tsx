@@ -139,7 +139,7 @@ export default function GardenService() {
             <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span className="text-[12px] text-muted-foreground">잔당 재료비 (VAT 포함)</span>
+                  <span className="text-[11px] text-muted-foreground">잔당 재료비 (VAT 포함)</span>
                   <span className="text-[22px] text-foreground tabular">{won(result.costPerCup)}</span>
                 </div>
                 <div className="text-[11px] text-muted-foreground" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>

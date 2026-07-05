@@ -33,7 +33,7 @@ export default async function MembersPage() {
             ← 재무로
           </Link>
         </div>
-        <p className="mb-6 mt-0 text-[14px] text-muted-foreground">
+        <p className="mb-6 mt-0 text-[13px] text-muted-foreground">
           접근 요청을 승인하고 역할을 부여해요. 역할을 &lsquo;대기&rsquo;로 되돌리면 접근이 막혀요.
         </p>
         <MemberManager initial={(data as Member[]) ?? []} />

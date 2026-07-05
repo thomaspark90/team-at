@@ -12,8 +12,8 @@ export default function Cashflow({ months }: { months: MonthCash[] }) {
     return (
       <div className="mx-auto my-[60px] max-w-[460px] text-center text-muted-foreground">
         <div className="mb-3 text-[32px]">🏦</div>
-        <h2 className="mb-2 text-[18px] text-foreground">집계할 거래가 없어요</h2>
-        <p className="text-[14px]">은행 내역을 업로드·저장하면 월별 통장 입출금이 여기 집계돼요.</p>
+        <h2 className="mb-2 text-[15px] text-foreground">집계할 거래가 없어요</h2>
+        <p className="text-[13px]">은행 내역을 업로드·저장하면 월별 통장 입출금이 여기 집계돼요.</p>
       </div>
     );
   }
@@ -25,7 +25,7 @@ export default function Cashflow({ months }: { months: MonthCash[] }) {
         return (
           <div key={m.ym} className="overflow-hidden rounded-md border border-border bg-background">
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border p-[14px_18px]">
-              <h3 className="m-0 text-[16px] text-foreground">{fmtYm(m.ym)}</h3>
+              <h3 className="m-0 text-[15px] text-foreground">{fmtYm(m.ym)}</h3>
               <span className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
                 <span>
                   월말 잔액 <b className="tabular text-foreground">{won(m.totalBalance)}</b>

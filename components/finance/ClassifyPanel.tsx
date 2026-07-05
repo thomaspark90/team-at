@@ -303,8 +303,8 @@ export default function ClassifyPanel({
     return (
       <div className="mx-auto my-[60px] max-w-[460px] text-center text-muted-foreground">
         <div className="mb-3 text-[32px]">📭</div>
-        <h2 className="mb-2 text-[18px] text-foreground">저장된 거래가 없어요</h2>
-        <p className="text-[14px]">먼저 업로드 화면에서 거래내역을 저장해주세요.</p>
+        <h2 className="mb-2 text-[15px] text-foreground">저장된 거래가 없어요</h2>
+        <p className="text-[13px]">먼저 업로드 화면에서 거래내역을 저장해주세요.</p>
       </div>
     );
   }
@@ -377,7 +377,7 @@ export default function ClassifyPanel({
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex-1">
-          <p className="text-[14px] text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground">
             <b className="text-foreground">{won(filtered.length)}건</b> · 미분류 <b className="text-foreground">{won(unclassified)}건</b> · 분류 {progress}%
           </p>
           <div className="mt-1.5 h-1.5 w-full max-w-[280px] overflow-hidden rounded-full bg-muted">
@@ -403,7 +403,7 @@ export default function ClassifyPanel({
           onClick={resetAll}
           disabled={aiApplying}
           title="분류·학습 규칙을 모두 초기화(되돌릴 수 없음)"
-          className="text-[12px] text-muted-foreground underline underline-offset-2 transition-colors hover:text-destructive disabled:opacity-50"
+          className="text-[11px] text-muted-foreground underline underline-offset-2 transition-colors hover:text-destructive disabled:opacity-50"
         >
           전체 초기화
         </button>
@@ -493,11 +493,11 @@ export default function ClassifyPanel({
                     </Td>
                     <td className="px-3 py-2 align-middle">
                       <div className="flex max-w-[380px] items-center gap-1.5">
-                        {tx.source === 'card' && <span title="신한카드 이용내역" className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">💳</span>}
+                        {tx.source === 'card' && <span title="신한카드 이용내역" className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">💳</span>}
                         <span className="line-clamp-2 min-w-0 break-all" title={tx.memo}>
                           {tx.memo || <span className="text-muted-foreground">(빈 내용)</span>}
                         </span>
-                        {tx.is_installment && <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">할부</span>}
+                        {tx.is_installment && <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[11px] font-bold text-muted-foreground">할부</span>}
                       </div>
                     </td>
                     <Td>

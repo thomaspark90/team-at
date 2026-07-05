@@ -127,8 +127,8 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
         {toggle}
         <div className="mx-auto my-10 max-w-[460px] text-center text-muted-foreground">
           <div className="mb-3 text-[32px]">📊</div>
-          <h2 className="mb-2 text-[18px] text-foreground">표시할 데이터가 없어요</h2>
-          <p className="text-[14px]">거래를 분류하면 매출·지출·손익 그래프가 여기 그려져요.</p>
+          <h2 className="mb-2 text-[15px] text-foreground">표시할 데이터가 없어요</h2>
+          <p className="text-[13px]">거래를 분류하면 매출·지출·손익 그래프가 여기 그려져요.</p>
         </div>
       </div>
     );
@@ -185,7 +185,7 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
         {toggle}
       </div>
       {last.unclassifiedIn > 0 && (
-        <div className="-mt-2 text-[12px] text-muted-foreground">
+        <div className="-mt-2 text-[11px] text-muted-foreground">
           + 미분류 입금 {won(last.unclassifiedIn)} 은 매출에서 제외했어요(대출·자본유입 등 비매출 가능). 매출이면 <a href="/finance/classify?unclassified=1" className="underline">거래 분류</a>에서 지정하면 반영돼요.
         </div>
       )}
@@ -261,7 +261,7 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
           <div className="w-full shrink-0 md:w-[230px]">
             <ul className="flex flex-col gap-1.5">
               {breakdown.map((b) => (
-                <li key={b.name} className="flex items-center gap-2 text-[12px]">
+                <li key={b.name} className="flex items-center gap-2 text-[11px]">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{ background: b.color }} aria-hidden />
                   <span className="min-w-0 flex-1 truncate text-foreground" title={b.name}>{b.name}</span>
                   <span className="tabular shrink-0 text-[11px] text-muted-foreground">{won(b.value)}</span>
@@ -288,7 +288,7 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
         </ResponsiveContainer>
       </ChartCard>
 
-      <p className="m-0 text-[12px] text-muted-foreground">
+      <p className="m-0 text-[11px] text-muted-foreground">
         {netVat
           ? '* 부가세 순액(공급가액) 기준 — 매출과 과세 매입(재료비·과세 판관비)을 총액÷1.1로 순액 처리. 인건비·이자·수도·세금 등 면세 항목은 그대로. 과세 여부는 계정과목 관리에서 조정.'
           : '* 매출·비용 모두 통장 금액(부가세 포함) 그대로.'}{' '}
@@ -309,7 +309,7 @@ function Stat({ label, value, delta }: { label: string; value: string; delta: st
   return (
     <div className="ta-card min-w-[150px] flex-[1_1_auto] p-[14px_18px]">
       <div className="mb-[5px] text-[11px] text-muted-foreground">{label}</div>
-      <div className="tabular text-[20px] text-foreground">{value}</div>
+      <div className="tabular text-[22px] text-foreground">{value}</div>
       {delta && <div className={`mt-[3px] text-[11px] ${delta.startsWith('▲') ? 'text-positive' : 'text-muted-foreground'}`}>전기 {delta}</div>}
     </div>
   );
@@ -320,7 +320,7 @@ function ChartCard({ title, subtitle, children }: { title: string; subtitle?: st
     <div className="ta-card p-[18px_16px_12px]">
       <div className="px-1.5 pb-3">
         <h3 className="m-0 text-[15px] text-foreground">{title}</h3>
-        {subtitle && <p className="mt-0.5 text-[12px] text-muted-foreground">{subtitle}</p>}
+        {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}
       </div>
       {children}
     </div>

@@ -25,7 +25,7 @@ export default function RequestAccessButton() {
 
   if (state === 'done') {
     return (
-      <p className="mt-[18px] text-[14px] text-foreground">
+      <p className="mt-[18px] text-[13px] text-foreground">
         ✓ 요청 완료 — 관리자 승인을 기다려주세요
       </p>
     );

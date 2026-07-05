@@ -52,7 +52,7 @@ export default async function PnlPage({ searchParams }: { searchParams: { ym?: s
         {yms.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-10 text-center">
             <div className="text-[32px]">🧾</div>
-            <p className="m-0 text-[14px] text-muted-foreground">먼저 토스 POS 매출리포트를 올려주세요.</p>
+            <p className="m-0 text-[13px] text-muted-foreground">먼저 토스 POS 매출리포트를 올려주세요.</p>
             <PnlUpload />
           </div>
         ) : (
@@ -140,7 +140,7 @@ async function PnlBody({
         {/* 손익계산서 */}
         <div className="ta-card">
           <h2 className="mb-4 text-[15px] font-semibold text-foreground">손익계산서 · {fmtYm(selectedYm)}</h2>
-          <table className="w-full border-collapse text-[14px]">
+          <table className="w-full border-collapse text-[13px]">
             <tbody>
               <Row label="총매출 (VAT 포함)" amount={p.sales.gross} muted />
               <Row label="(−) 부가세" amount={-p.sales.vat} muted />
@@ -159,7 +159,7 @@ async function PnlBody({
               <Row label="영업이익 (EBIT 근사)" amount={p.operatingProfit} bold big sub="채널수수료·감가상각 전" />
             </tbody>
           </table>
-          <p className="mt-4 text-[12px] text-muted-foreground">
+          <p className="mt-4 text-[11px] text-muted-foreground">
             채널수수료(카드·배달)는 아직 미반영이에요(후속). 영업외·자본적지출 등 손익제외 계정은 빠져 있어요.
           </p>
         </div>
@@ -248,10 +248,10 @@ function Row({
     <tr className={bold ? 'border-t-2 border-border' : 'border-t border-border'}>
       <td className={`py-2 ${big ? 'text-[15px]' : ''} ${bold ? 'font-semibold text-foreground' : muted ? 'text-muted-foreground' : 'text-foreground'}`}>
         {label}
-        {sub && <span className="ml-2 text-[12px] font-normal text-muted-foreground">{sub}</span>}
+        {sub && <span className="ml-2 text-[11px] font-normal text-muted-foreground">{sub}</span>}
       </td>
-      <td className="py-2 text-right text-[12px] tabular text-muted-foreground">{rate != null ? pct(rate) : ''}</td>
-      <td className={`py-2 text-right tabular ${big ? 'text-[17px]' : ''} ${bold ? 'font-semibold text-foreground' : warn ? 'text-amber-600 dark:text-amber-500' : 'text-foreground'}`}>
+      <td className="py-2 text-right text-[11px] tabular text-muted-foreground">{rate != null ? pct(rate) : ''}</td>
+      <td className={`py-2 text-right tabular ${big ? 'text-[15px]' : ''} ${bold ? 'font-semibold text-foreground' : warn ? 'text-amber-600 dark:text-amber-500' : 'text-foreground'}`}>
         {won(amount)}
       </td>
     </tr>

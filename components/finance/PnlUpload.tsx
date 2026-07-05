@@ -92,7 +92,7 @@ export default function PnlUpload() {
     <div className="ta-card flex flex-col gap-4">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-[16px] font-semibold text-foreground">POS 매출 올리기</h2>
+          <h2 className="text-[15px] font-semibold text-foreground">POS 매출 올리기</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
             토스 매출리포트 엑셀(<b>상품 주문 상세내역</b>)을 올리면 <b>공급가액 매출</b>이 월별로 반영돼요. 같은 달을 다시 올리면 교체돼요. (상품권은 매출에서 제외)
           </p>
@@ -105,7 +105,7 @@ export default function PnlUpload() {
           type="file"
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           onChange={(e) => { setFile(e.target.files?.[0] ?? null); reset(); }}
-          className="text-[14px] text-foreground"
+          className="text-[13px] text-foreground"
         />
         <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
           비번
@@ -125,7 +125,7 @@ export default function PnlUpload() {
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
       {done && (
-        <div className="rounded-md border border-border bg-muted p-4 text-[14px]">
+        <div className="rounded-md border border-border bg-muted p-4 text-[13px]">
           <div className="mb-1 text-foreground">✓ 저장 완료 — {done.yms.map(fmtYm).join(', ')}</div>
           <div className="text-muted-foreground">
             공급가액 매출 <b className="text-foreground">{won(done.supply)}</b> · {done.inserted}개 집계행{done.excludedRows ? ` · 상품권 ${done.excludedRows}건 제외` : ''}

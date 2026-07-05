@@ -69,7 +69,7 @@ export default function InventoryInput({ ym, initial, prevMonth }: Props) {
             <div key={kind}>
               <div className="mb-1.5 flex items-center gap-2 text-[13px] text-foreground">
                 {kind}
-                {saved === kind && saving == null && <span className="text-[12px] text-positive">✓ 저장됨</span>}
+                {saved === kind && saving == null && <span className="text-[11px] text-positive">✓ 저장됨</span>}
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
@@ -95,7 +95,7 @@ export default function InventoryInput({ ym, initial, prevMonth }: Props) {
                 <button
                   onClick={() => copyPrev(kind)}
                   disabled={saving === kind}
-                  className="mt-1.5 text-[12px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                  className="mt-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
                 >
                   ↩ 지난달과 비슷해요 <span className="tabular">({won(prev)})</span>
                 </button>

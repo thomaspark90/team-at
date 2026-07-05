@@ -59,8 +59,8 @@ export default function MonthlyCloseManager({
     return (
       <div className="mx-auto my-[60px] max-w-[460px] text-center text-muted-foreground">
         <div className="mb-3 text-[32px]">📭</div>
-        <h2 className="mb-2 text-[18px] text-foreground">확정할 달이 없어요</h2>
-        <p className="text-[14px]">먼저 거래내역을 업로드·분류해주세요.</p>
+        <h2 className="mb-2 text-[15px] text-foreground">확정할 달이 없어요</h2>
+        <p className="text-[13px]">먼저 거래내역을 업로드·분류해주세요.</p>
       </div>
     );
   }
@@ -108,14 +108,14 @@ export default function MonthlyCloseManager({
                     </Td>
                     <Td right>
                       {busy === r.ym ? (
-                        <span className="text-[12px] text-muted-foreground">처리 중…</span>
+                        <span className="text-[11px] text-muted-foreground">처리 중…</span>
                       ) : confirmed ? (
                         canConfirm ? (
                           <button onClick={() => act(r.ym, 'reopen')} className="ta-btn text-[13px]">
                             재오픈
                           </button>
                         ) : (
-                          <span className="text-[12px] text-muted-foreground">—</span>
+                          <span className="text-[11px] text-muted-foreground">—</span>
                         )
                       ) : !ready ? (
                         <Link href={`/finance/classify?ym=${r.ym}&unclassified=1`} className="ta-btn text-[13px]">
@@ -126,7 +126,7 @@ export default function MonthlyCloseManager({
                           확정
                         </button>
                       ) : (
-                        <span className="text-[12px] text-muted-foreground">—</span>
+                        <span className="text-[11px] text-muted-foreground">—</span>
                       )}
                     </Td>
                   </tr>

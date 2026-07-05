@@ -61,8 +61,8 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
     return (
       <div className="mx-auto my-[60px] max-w-[460px] text-center text-muted-foreground">
         <div className="mb-3 text-[32px]">🗂️</div>
-        <h2 className="mb-2 text-[18px] text-foreground">아직 올린 자료가 없어요</h2>
-        <p className="text-[14px]">거래 분류의 자료 보충에서 신한카드·쿠팡 자료를 올려보세요.</p>
+        <h2 className="mb-2 text-[15px] text-foreground">아직 올린 자료가 없어요</h2>
+        <p className="text-[13px]">거래 분류의 자료 보충에서 신한카드·쿠팡 자료를 올려보세요.</p>
       </div>
     );
   }
@@ -103,7 +103,7 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
                     <button
                       onClick={() => del(u)}
                       disabled={busy === u.id}
-                      className="ta-btn h-7 px-3 text-[12px] text-destructive"
+                      className="ta-btn h-7 px-3 text-[11px] text-destructive"
                     >
                       {busy === u.id ? '삭제 중…' : '삭제'}
                     </button>

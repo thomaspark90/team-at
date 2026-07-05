@@ -46,7 +46,7 @@ export default async function CashflowPage() {
             ← 업로드로
           </Link>
         </div>
-        <p className="mb-6 mt-0 text-[14px] text-muted-foreground">
+        <p className="mb-6 mt-0 text-[13px] text-muted-foreground">
           월별로 은행별 입금·출금과 월말 잔액, 두 통장 합계를 집계해요. (분류와 무관하게 통장 자체의 인/아웃)
         </p>
         <Cashflow months={months} />

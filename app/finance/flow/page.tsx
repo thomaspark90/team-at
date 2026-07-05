@@ -59,7 +59,7 @@ export default async function FlowPage() {
         {yms.length === 0 ? (
           <div className="mx-auto my-[60px] text-center text-muted-foreground">
             <div className="mb-2.5 text-[32px]">📭</div>
-            <p className="m-0 text-[14px]">먼저 거래를 업로드·분류해주세요.</p>
+            <p className="m-0 text-[13px]">먼저 거래를 업로드·분류해주세요.</p>
           </div>
         ) : (
           <SankeyFlow periods={periods} data={data} initialKey={initialKey} />

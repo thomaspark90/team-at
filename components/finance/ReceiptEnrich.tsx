@@ -83,7 +83,7 @@ export default function ReceiptEnrich() {
   return (
     <div className="ta-card flex flex-col gap-4">
       <div>
-        <h2 className="text-[16px] font-semibold text-foreground">🧾 쿠팡 영수증으로 지출 자료 세분화</h2>
+        <h2 className="text-[15px] font-semibold text-foreground">🧾 쿠팡 영수증으로 지출 자료 세분화</h2>
         <p className="mt-1 text-[13px] text-muted-foreground">
           쿠팡 <b>신용카드 매출전표(PDF)</b>를 올리면, 카드의 <b>쿠팡 결제</b>가 승인번호로 매칭돼 <b>산 물건(품목)별로 나뉘어</b>요. (마이쿠팡 &gt; 마이쇼핑 &gt; 영수증 조회/출력 &gt; 신용카드 매출전표)
         </p>
@@ -94,7 +94,7 @@ export default function ReceiptEnrich() {
           type="file"
           accept="application/pdf"
           onChange={(e) => { setFile(e.target.files?.[0] ?? null); setDone(null); setPreview(null); }}
-          className="text-[14px] text-foreground"
+          className="text-[13px] text-foreground"
         />
         <button onClick={analyze} disabled={!file || loading} className="ta-btn-primary">
           {loading ? '업로드 중…' : '업로드'}
@@ -104,7 +104,7 @@ export default function ReceiptEnrich() {
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
       {done && (
-        <div className="rounded-md border border-border bg-muted p-4 text-[14px]">
+        <div className="rounded-md border border-border bg-muted p-4 text-[13px]">
           <div className="mb-1 text-foreground">✓ 품목으로 나눔 완료</div>
           <div className="text-muted-foreground">
             카드 {done.matchedGroups}건을 품목으로 나눔 · 품목 {done.inserted}건 추가{done.duplicates ? ` · 중복 ${done.duplicates}건 건너뜀` : ''}

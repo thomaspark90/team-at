@@ -39,7 +39,7 @@ export default function DownloadButton({ previewRef, date }: Props) {
     <button
       onClick={handleDownload}
       disabled={loading}
-      className="ta-btn-primary tabular h-12 w-full text-[14px]"
+      className="ta-btn-primary tabular h-12 w-full text-[13px]"
     >
       {loading ? '이미지 생성 중...' : 'PNG 다운로드  ↓  1080 × 1920'}
     </button>

@@ -59,7 +59,7 @@ export default function StudioPage() {
                 className="ta-input w-[140px]"
                 placeholder="예: 5/12"
               />
-              <p className="mt-2 text-[12px] text-muted-foreground">배지에 표시될 날짜</p>
+              <p className="mt-2 text-[11px] text-muted-foreground">배지에 표시될 날짜</p>
             </div>
 
             <div className="ta-card">
@@ -86,7 +86,7 @@ export default function StudioPage() {
 
             <DownloadButton previewRef={previewRef} date={story.date} />
 
-            <p className="text-center text-[12px] text-muted-foreground">
+            <p className="text-center text-[11px] text-muted-foreground">
               다운로드 후 인스타그램 앱에서 스토리로 업로드하세요
             </p>
           </div>

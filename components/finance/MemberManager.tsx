@@ -95,7 +95,7 @@ function Row({
       className={`flex flex-wrap items-center gap-4 border-t border-border px-5 py-3 first:border-t-0 hover:bg-accent ${highlight ? 'bg-muted' : ''}`}
     >
       <div className="min-w-0 flex-[1_1_200px]">
-        <div className="break-all text-[14px] text-foreground">{m.email}</div>
+        <div className="break-all text-[13px] text-foreground">{m.email}</div>
       </div>
 
       <select
@@ -121,7 +121,7 @@ function Row({
         월 확정 권한
       </label>
 
-      {saving && <span className="text-[12px] text-muted-foreground">저장 중…</span>}
+      {saving && <span className="text-[11px] text-muted-foreground">저장 중…</span>}
     </div>
   );
 }

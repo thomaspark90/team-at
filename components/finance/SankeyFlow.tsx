@@ -275,7 +275,7 @@ export default function SankeyFlow({
       {!hasData ? (
         <div className="mx-auto my-[60px] text-center text-muted-foreground">
           <div className="mb-2.5 text-[32px]">📭</div>
-          <p className="m-0 text-[14px]">이 기간에는 분류된 거래가 없어요.</p>
+          <p className="m-0 text-[13px]">이 기간에는 분류된 거래가 없어요.</p>
         </div>
       ) : (
         <div className="overflow-x-auto py-1">
@@ -359,7 +359,7 @@ export default function SankeyFlow({
           </svg>
         </div>
       )}
-      <p className="m-0 text-[12px] leading-[1.6] text-muted-foreground">
+      <p className="m-0 text-[11px] leading-[1.6] text-muted-foreground">
         {balanced
           ? '통장의 모든 입금·출금을 반영해요(미분류 포함) — 총 유입 = 지출 그룹들 + 영업이익(초록), 오른쪽 전체가 총 유입의 100%. 영업이익은 통장 현황의 순증감과 일치해요. 아직 분류 안 된 건 회색 ‘미분류’로 보여요.'
           : '이 기간은 순유출이 더 커요(적자). 오른쪽은 총 유출 대비 비율이고, 미분류도 포함돼요. 영업이익(순증감)은 카드로 표시.'}
@@ -372,7 +372,7 @@ function Card({ label, value, color }: { label: string; value: string; color: st
   return (
     <div className="ta-card min-w-[150px] p-[14px_18px]">
       <div className="mb-1.5 text-[11px] tracking-[0.02em] text-muted-foreground">{label}</div>
-      <div className="tabular text-[20px] font-extrabold" style={{ color }}>
+      <div className="tabular text-[22px] font-extrabold" style={{ color }}>
         {value}
       </div>
     </div>

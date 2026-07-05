@@ -20,7 +20,7 @@ export default function LoginButton() {
     <button
       onClick={signIn}
       disabled={loading}
-      className="w-full rounded-md bg-primary px-4 py-3 text-[14px] text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+      className="w-full rounded-md bg-primary px-4 py-3 text-[13px] text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {loading ? '이동 중…' : 'Google 계정으로 계속하기'}
     </button>

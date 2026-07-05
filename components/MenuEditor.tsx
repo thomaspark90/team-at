@@ -73,7 +73,7 @@ export default function MenuEditor({ story, onChange }: Props) {
                     {cat.items.length > 1 && (
                       <button
                         onClick={() => removeItem(ci, ii)}
-                        className="px-1 text-[16px] leading-none text-muted-foreground transition-colors hover:text-foreground"
+                        className="px-1 text-[15px] leading-none text-muted-foreground transition-colors hover:text-foreground"
                       >
                         ×
                       </button>
@@ -83,7 +83,7 @@ export default function MenuEditor({ story, onChange }: Props) {
               </div>
               <button
                 onClick={() => addItem(ci)}
-                className="mt-2 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+                className="mt-2 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
               >
                 + 항목 추가
               </button>
@@ -92,7 +92,7 @@ export default function MenuEditor({ story, onChange }: Props) {
         </div>
       ) : (
         <div>
-          <p className="mb-2 text-[12px] text-muted-foreground">
+          <p className="mb-2 text-[11px] text-muted-foreground">
             카테고리는 [대괄호]로 구분하세요. 빈 줄로 섹션을 나눌 수 있습니다.
           </p>
           <textarea

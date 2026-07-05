@@ -124,8 +124,8 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
       {GROUPS.map((group) => (
         <div key={group.title} className="flex flex-col gap-4">
           <div>
-            <h2 className="text-[17px] tracking-[-0.3px] text-foreground">{group.title}</h2>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">{group.hint}</p>
+            <h2 className="text-[15px] tracking-[-0.3px] text-foreground">{group.title}</h2>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{group.hint}</p>
           </div>
 
           {group.types.map((type) => {
@@ -152,14 +152,14 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                           setOverId(null);
                         }}
                         title="드래그해서 순서 변경"
-                        className="cursor-grab select-none text-[16px] leading-none text-muted-foreground"
+                        className="cursor-grab select-none text-[15px] leading-none text-muted-foreground"
                       >
                         ⠿
                       </span>
                       <span
                         onClick={() => busy !== c.id && patch(c.id, { pinned: !c.pinned })}
                         title="클릭하면 즐겨찾기(상위노출) 토글"
-                        className="flex-[1_1_200px] cursor-pointer select-none text-[14px] text-foreground"
+                        className="flex-[1_1_200px] cursor-pointer select-none text-[13px] text-foreground"
                       >
                         {c.pinned && <span>⭐ </span>}
                         {c.parent_id && <span className="text-muted-foreground">└ </span>}
@@ -178,7 +178,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                           onClick={() => patch(c.id, { vat_taxable: !c.vat_taxable })}
                           disabled={busy === c.id}
                           title="부가세 과세 여부 — 과세면 손익에서 공급가액(총액÷1.1)으로 순액 처리, 면세는 그대로"
-                          className={`whitespace-nowrap rounded-md border px-3 py-1 text-[12px] ${c.vat_taxable ? 'border-border text-foreground' : 'border-transparent bg-muted text-muted-foreground'}`}
+                          className={`whitespace-nowrap rounded-md border px-3 py-1 text-[11px] ${c.vat_taxable ? 'border-border text-foreground' : 'border-transparent bg-muted text-muted-foreground'}`}
                         >
                           {c.vat_taxable ? '과세' : '면세'}
                         </button>
@@ -186,7 +186,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                       <button
                         onClick={() => patch(c.id, { active: !c.active })}
                         disabled={busy === c.id}
-                        className={`whitespace-nowrap rounded-md border px-3 py-1 text-[12px] ${c.active ? 'border-transparent bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}
+                        className={`whitespace-nowrap rounded-md border px-3 py-1 text-[11px] ${c.active ? 'border-transparent bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}
                       >
                         {c.active ? '활성' : '비활성'}
                       </button>
@@ -194,7 +194,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                         onClick={() => remove(c.id)}
                         disabled={busy === c.id || c.name === '카드대금정산' || c.name === '영수증분해'}
                         title={c.name === '카드대금정산' || c.name === '영수증분해' ? '시스템 계정은 삭제할 수 없어요' : undefined}
-                        className="whitespace-nowrap rounded-md border border-border px-3 py-1 text-[12px] text-muted-foreground hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-muted-foreground"
+                        className="whitespace-nowrap rounded-md border border-border px-3 py-1 text-[11px] text-muted-foreground hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-muted-foreground"
                       >
                         삭제
                       </button>

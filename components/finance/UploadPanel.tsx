@@ -83,7 +83,7 @@ export default function UploadPanel() {
         <h1 className="mb-1 text-[22px] tracking-[-0.5px] text-foreground">
           재무 · 거래내역 업로드
         </h1>
-        <p className="text-[14px] text-muted-foreground">
+        <p className="text-[13px] text-muted-foreground">
           은행 거래내역 PDF를 올려 파싱·미리보기 후 저장해요. 같은 거래는 자동으로 중복 제거돼요.
         </p>
       </div>
@@ -92,7 +92,7 @@ export default function UploadPanel() {
       {saved && (
         <div className="rounded-md border border-border bg-muted p-4">
           <div className="mb-1 text-foreground">✓ 저장 완료</div>
-          <div className="text-[14px] text-muted-foreground">
+          <div className="text-[13px] text-muted-foreground">
             {won(saved.saved)}건 저장 (자동 분류 {won(saved.autoClassified)}건) · 중복 {won(saved.duplicates)}건 건너뜀
           </div>
         </div>
@@ -109,7 +109,7 @@ export default function UploadPanel() {
                 <button
                   key={b.value}
                   onClick={() => setBank(b.value)}
-                  className={`rounded-sm px-4 py-1.5 text-[14px] ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`rounded-sm px-4 py-1.5 text-[13px] ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   {b.label}
                 </button>
@@ -124,7 +124,7 @@ export default function UploadPanel() {
             type="file"
             accept="application/pdf"
             onChange={(e) => { setFile(e.target.files?.[0] ?? null); setSaved(null); }}
-            className="text-[14px] text-foreground"
+            className="text-[13px] text-foreground"
           />
         </div>
 
@@ -187,7 +187,7 @@ export default function UploadPanel() {
               </table>
             </div>
             {preview.fresh > preview.sample.length && (
-              <div className="border-t border-border px-4 py-[10px] text-[12px] text-muted-foreground">
+              <div className="border-t border-border px-4 py-[10px] text-[11px] text-muted-foreground">
                 … 외 {won(preview.fresh - preview.sample.length)}건 (미리보기는 최대 200건, 저장은 전체)
               </div>
             )}
@@ -205,7 +205,7 @@ export default function UploadPanel() {
           ) : (
             <div className="rounded-md border border-border bg-muted p-4">
               <div className="mb-1 text-foreground">✓ 이미 모두 저장된 거래예요</div>
-              <div className="text-[14px] text-muted-foreground">
+              <div className="text-[13px] text-muted-foreground">
                 이 파일의 {won(preview.totalRows)}건은 전부 중복(이미 저장됨)이라 새로 저장할 게 없어요. 분류는{' '}
                 <a href="/finance/classify" className="text-foreground underline">거래 분류 →</a> 에서 하세요.
               </div>
@@ -221,7 +221,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-[110px] flex-[1_1_auto] rounded-md border border-border bg-card px-4 py-3">
       <div className="mb-1 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{label}</div>
-      <div className="tabular text-[18px] text-foreground">{value}</div>
+      <div className="tabular text-[15px] text-foreground">{value}</div>
     </div>
   );
 }
