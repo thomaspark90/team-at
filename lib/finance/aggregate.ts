@@ -54,7 +54,7 @@ export function aggregate(
   const catMap = new Map(cats.map((c) => [c.id, c]));
   const nameOf = (c: AggCat): string => {
     if (c.parent_id != null) {
-      const p = cats.find((x) => x.id === c.parent_id);
+      const p = catMap.get(c.parent_id);
       return p ? p.name : c.name;
     }
     return c.name;

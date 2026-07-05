@@ -2,14 +2,11 @@
 // 입력은 pdftotext -layout 동등의 "열 정렬이 보존된 텍스트".
 // 신한/우리 두 은행 실측 PDF로 검증된 정규식(파이썬 프로토타입과 동일).
 
-import { createHash } from 'crypto';
 import type { BankSource, ParsedTransaction, ParseResult } from './types';
 import { normalizeKey } from './normalize';
+import { hash } from './dedup';
 
 const toNum = (s: string): number => Number(s.replace(/[,원\s]/g, '')) || 0;
-
-const hash = (...parts: (string | number)[]): string =>
-  createHash('sha256').update(parts.join('|')).digest('hex').slice(0, 32);
 
 // 신한: 거래일자(8) 거래시간 적요 출금 입금 내용 잔액 거래점
 const SHINHAN_RE =

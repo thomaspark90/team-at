@@ -2,13 +2,10 @@
 // 실측 파일 컬럼: 거래일 · 카드구분 · 이용카드 · 가맹점명 · 업종 · 승인번호 · 금액 ·
 //   매입구분 · 이용구분 · 거래통화 · 최초결제일자 · 해외이용금액 · 취소상태
 // 규칙: 마지막 '총 N건' 합계행(거래일 빈칸)은 스킵. 음수 금액(부분취소)은 카드 크레딧(입금).
-import { createHash } from 'crypto';
 import * as XLSX from 'xlsx';
 import type { ParsedTransaction, ParseResult } from './types';
 import { normalizeKey } from './normalize';
-
-const hash = (...parts: (string | number)[]): string =>
-  createHash('sha256').update(parts.join('|')).digest('hex').slice(0, 32);
+import { hash } from './dedup';
 
 // "2026.06.30 21:08" (또는 Date) → { iso, ym }. 합계행 등 파싱 실패 시 null.
 function parseCardDate(v: unknown): { iso: string; ym: string } | null {

@@ -1,15 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createHash } from 'crypto';
 import { parseReceiptPdf, groupByApproval } from '@/lib/finance/receipt';
 import { normalizeKey } from '@/lib/finance/normalize';
+import { hash } from '@/lib/finance/dedup';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
-
-const hash = (...parts: (string | number)[]): string =>
-  createHash('sha256').update(parts.join('|')).digest('hex').slice(0, 32);
 
 // 매칭된 쿠팡 카드 건을 '영수증분해(제외)'로 잠그고, 품목 행들을 거래에 삽입.
 export async function POST(req: Request) {
