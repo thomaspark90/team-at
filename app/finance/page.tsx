@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import TabNav from '@/components/TabNav';
+import FinanceNav from '@/components/finance/FinanceNav';
 import UploadPanel from '@/components/finance/UploadPanel';
 import RequestAccessButton from '@/components/finance/RequestAccessButton';
 
@@ -19,39 +19,10 @@ export default async function FinancePage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
+      <FinanceNav role={role} />
       <div className="mx-auto max-w-[1100px] px-6 py-8">
         {['admin', 'classifier'].includes(role ?? '') ? (
-          <>
-            <div className="mb-3 flex items-center gap-4">
-              <Link href="/finance/classify" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-                거래 분류 →
-              </Link>
-              <Link href="/finance/cashflow" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-                통장 현황 →
-              </Link>
-              <Link href="/finance/dashboard" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-                대시보드 →
-              </Link>
-              <Link href="/finance/flow" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-                자금 흐름 →
-              </Link>
-              <Link href="/finance/close" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-                월 확정 →
-              </Link>
-              <span className="flex-1" />
-              {role === 'admin' && (
-                <Link href="/finance/categories" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-                  계정과목 →
-                </Link>
-              )}
-              {role === 'admin' && (
-                <Link href="/finance/members" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-                  멤버 관리 →
-                </Link>
-              )}
-            </div>
-            <UploadPanel />
-          </>
+          <UploadPanel />
         ) : role === 'viewer' ? (
           <ViewerNote />
         ) : (

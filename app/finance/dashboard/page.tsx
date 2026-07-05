@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import type { AggTx, AggCat } from '@/lib/finance/aggregate';
 import TabNav from '@/components/TabNav';
+import FinanceNav from '@/components/finance/FinanceNav';
 import Dashboard from '@/components/finance/Dashboard';
 
 export default async function DashboardPage() {
@@ -25,6 +26,7 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
+      <FinanceNav role={role} />
       <div className="mx-auto max-w-[1000px] px-6 py-8">
         <div className="mb-5 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">재무 대시보드</h1>

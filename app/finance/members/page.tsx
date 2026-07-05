@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import TabNav from '@/components/TabNav';
+import FinanceNav from '@/components/finance/FinanceNav';
 import MemberManager, { type Member } from '@/components/finance/MemberManager';
 
 export default async function MembersPage() {
@@ -24,6 +25,7 @@ export default async function MembersPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
+      <FinanceNav role={role} />
       <div className="mx-auto max-w-[760px] px-6 py-8">
         <div className="mb-1.5 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">멤버 관리</h1>

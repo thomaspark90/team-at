@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import { buildSankey, type SankTx, type SankCat, type SankeyData } from '@/lib/finance/sankey';
 import TabNav from '@/components/TabNav';
+import FinanceNav from '@/components/finance/FinanceNav';
 import SankeyFlow, { type Period } from '@/components/finance/SankeyFlow';
 
 const fmtYm = (ym: string) => {
@@ -44,6 +45,7 @@ export default async function FlowPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
+      <FinanceNav role={role} />
       <div className="mx-auto max-w-[1680px] px-6 py-8">
         <div className="mb-5 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">자금 흐름</h1>

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import { cashflow } from '@/lib/finance/cashflow';
 import TabNav from '@/components/TabNav';
+import FinanceNav from '@/components/finance/FinanceNav';
 import Cashflow from '@/components/finance/Cashflow';
 
 interface CashTx {
@@ -33,6 +34,7 @@ export default async function CashflowPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
+      <FinanceNav role={role} />
       <div className="mx-auto max-w-[820px] px-6 py-8">
         <div className="mb-1.5 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">통장 현황</h1>
