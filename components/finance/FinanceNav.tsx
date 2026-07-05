@@ -32,7 +32,7 @@ export default function FinanceNav({ role }: { role: string | null }) {
           active ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'
         }`}
       >
-        {label} →
+        {label}
       </Link>
     );
   };
