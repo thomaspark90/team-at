@@ -90,13 +90,6 @@ export default function CardReconcile() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="text-[16px] font-bold text-foreground">신한카드 이용내역으로 지출 자료 세분화</h2>
-        <p className="mt-1 text-[14px] text-muted-foreground">
-          신한 사업자카드 <b>이용내역 엑셀</b>을 올려, 통장의 <b>‘신한카드’ 결제 건</b>과 연결하세요. 그 결제 한 줄이 아래 사용내역으로 나뉘어 거래 분류에 들어가요.
-        </p>
-      </div>
-
       {saved && (
         <div className="rounded-md border border-border bg-muted p-4">
           <div className="mb-1 text-foreground">✓ 저장 완료{saved.linked ? ' · 정산 연결됨' : ' · 미연결(결제 대기)'}</div>
@@ -109,6 +102,12 @@ export default function CardReconcile() {
 
       {/* 업로드 카드 */}
       <div className="ta-card flex flex-col gap-4">
+        <div>
+          <h2 className="text-[16px] font-bold text-foreground">신한카드 이용내역으로 지출 자료 세분화</h2>
+          <p className="mt-1 text-[14px] text-muted-foreground">
+            신한 사업자카드 <b>이용내역 엑셀</b>을 올려, 통장의 <b>‘신한카드’ 결제 건</b>과 연결하세요. 그 결제 한 줄이 아래 사용내역으로 나뉘어 거래 분류에 들어가요.
+          </p>
+        </div>
         <div>
           <label className="ta-label">신한카드 이용내역 (엑셀)</label>
           <input
