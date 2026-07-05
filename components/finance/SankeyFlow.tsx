@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { REVENUE_COLOR, type SankeyData } from '@/lib/finance/sankey';
 
 export interface Period {
@@ -36,6 +37,8 @@ interface Rect {
   isIncome?: boolean;
   isProfit?: boolean;
   showLabel?: boolean;
+  linkType?: string; // 클릭 시 거래분류로 필터: 'revenue'|'cogs'|'sga'|'non_operating'|'excluded'|'unclassified'
+  linkCat?: string; // 특정 세부 계정(대분류명)으로 좁힘
 }
 interface Ribbon {
   key: string;
@@ -46,6 +49,8 @@ interface Ribbon {
   y1t: number;
   y1b: number;
   color: string;
+  linkType?: string;
+  linkCat?: string;
 }
 
 function ribbonPath(r: Ribbon): string {
@@ -73,9 +78,15 @@ function layout(d: SankeyData) {
   const revRects: (Rect & { amount: number })[] = [];
   for (const r of revenue) {
     const h = Math.max(1.5, r.amount * revScale);
+    const link =
+      r.name === '미분류 수입'
+        ? { linkType: 'unclassified' }
+        : r.name === '기타 수입'
+        ? {}
+        : { linkType: 'revenue', linkCat: r.name };
     const rect: Rect = {
       x: X_REV, y: ry, h, color: REVENUE_COLOR, name: r.name, amount: r.amount, total: totalRevenue,
-      labelSide: 'left', labelX: X_REV - 11, col: X_REV,
+      labelSide: 'left', labelX: X_REV - 11, col: X_REV, ...link,
     };
     rects.push(rect);
     revRects.push({ ...rect });
@@ -93,7 +104,7 @@ function layout(d: SankeyData) {
   revRects.forEach((rr, i) => {
     const bandH = totalRevenue > 0 ? (rr.amount / totalRevenue) * incomeH : 0;
     ribbons.push({
-      key: `rev-${i}`, color: REVENUE_COLOR,
+      key: `rev-${i}`, color: REVENUE_COLOR, linkType: rr.linkType, linkCat: rr.linkCat,
       x0: X_REV + BAR_W, y0t: rr.y, y0b: rr.y + rr.h,
       x1: X_INC, y1t: incLeftY, y1b: incLeftY + bandH,
     });
@@ -117,10 +128,12 @@ function layout(d: SankeyData) {
 
   rightEntries.forEach((g, gi) => {
     const gH = Math.max(1.5, g.amount * grpScale);
+    // 클릭 링크: 영업이익은 링크 없음, 미분류는 'unclassified', 나머지는 type(key)
+    const gLink = g.isProfit ? undefined : g.key;
     // 총매출 → 그룹(또는 영업이익)
     const incBandH = rightTotal > 0 ? (g.amount / rightTotal) * incomeH : 0;
     ribbons.push({
-      key: `grp-${gi}`, color: g.color,
+      key: `grp-${gi}`, color: g.color, linkType: gLink,
       x0: X_INC + BAR_W, y0t: incRightY, y0b: incRightY + incBandH,
       x1: X_GRP, y1t: gy, y1b: gy + gH,
     });
@@ -129,6 +142,7 @@ function layout(d: SankeyData) {
     rects.push({
       x: X_GRP, y: gy, h: gH, color: g.color, name: g.label, amount: g.amount,
       total: rightTotal, labelSide: 'left', labelX: X_GRP - 11, col: X_GRP, isProfit: g.isProfit,
+      linkType: gLink,
     });
 
     // 그룹 → 세부: 그룹 오른쪽 모서리를 세부 비중대로 분할(영업이익은 세부 없음)
@@ -138,6 +152,7 @@ function layout(d: SankeyData) {
       const gBandH = g.amount > 0 ? (lf.amount / g.amount) * gH : 0;
       ribbons.push({
         key: `leaf-${gi}-${li}`, color: g.color,
+        linkType: gLink, linkCat: lf.name === '기타' || lf.name === '미분류' ? undefined : lf.name,
         x0: X_GRP + BAR_W, y0t: gBandY, y0b: gBandY + gBandH,
         x1: X_LEAF, y1t: ly, y1b: ly + lH,
       });
@@ -146,6 +161,7 @@ function layout(d: SankeyData) {
       rects.push({
         x: X_LEAF, y: ly, h: lH, color: g.color, name: lf.name, amount: lf.amount,
         total: rightTotal, labelSide: 'right', labelX: X_LEAF + BAR_W + 11, col: X_LEAF,
+        linkType: gLink, linkCat: lf.name === '기타' || lf.name === '미분류' ? undefined : lf.name,
       });
       ly += lH + GAP;
     });
@@ -185,6 +201,7 @@ export default function SankeyFlow({
   data: Record<string, SankeyData>;
   initialKey: string;
 }) {
+  const router = useRouter();
   const [key, setKey] = useState(initialKey);
   const [hover, setHover] = useState<string | null>(null);
   const d = data[key];
@@ -193,6 +210,19 @@ export default function SankeyFlow({
   const hasData = d.totalRevenue > 0 || d.totalExpense > 0;
 
   const ebit = d.totalRevenue - d.totalExpense;
+
+  // 노드 클릭 → 거래 분류 화면을 해당 거래만 필터링해 연다
+  const hrefFor = (n: Rect): string | null => {
+    if (!n.linkType) return null;
+    const p = new URLSearchParams();
+    if (key !== 'all') p.set('ym', key);
+    if (n.linkType === 'unclassified') p.set('unclassified', '1');
+    else {
+      p.set('type', n.linkType);
+      if (n.linkCat) p.set('cat', n.linkCat);
+    }
+    return `/finance/classify?${p.toString()}`;
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -226,6 +256,18 @@ export default function SankeyFlow({
             {/* 리본 */}
             {ribbons.map((r) => {
               const dim = hover !== null && hover !== r.key && !hover.startsWith('node');
+              const rhref = r.linkType
+                ? (() => {
+                    const p = new URLSearchParams();
+                    if (key !== 'all') p.set('ym', key);
+                    if (r.linkType === 'unclassified') p.set('unclassified', '1');
+                    else {
+                      p.set('type', r.linkType);
+                      if (r.linkCat) p.set('cat', r.linkCat);
+                    }
+                    return `/finance/classify?${p.toString()}`;
+                  })()
+                : null;
               return (
                 <path
                   key={r.key}
@@ -234,7 +276,8 @@ export default function SankeyFlow({
                   fillOpacity={hover === r.key ? 0.6 : dim ? 0.14 : 0.4}
                   onMouseEnter={() => setHover(r.key)}
                   onMouseLeave={() => setHover(null)}
-                  style={{ transition: 'fill-opacity .12s' }}
+                  onClick={rhref ? () => router.push(rhref) : undefined}
+                  style={{ transition: 'fill-opacity .12s', cursor: rhref ? 'pointer' : 'default' }}
                 />
               );
             })}
@@ -243,8 +286,13 @@ export default function SankeyFlow({
               // 총 매출 라벨은 노드 상단에(리본 위 중앙 겹침 방지)
               const ly = n.isIncome ? PAD_Y + 6 : n.y + n.h / 2;
               const baseline = n.isIncome ? 'hanging' : 'middle';
+              const href = hrefFor(n);
               return (
-                <g key={i}>
+                <g
+                  key={i}
+                  onClick={href ? () => router.push(href) : undefined}
+                  style={{ cursor: href ? 'pointer' : 'default' }}
+                >
                   <rect x={n.x} y={n.y} width={BAR_W} height={n.h} rx={3} fill={n.color} />
                   {n.showLabel && (
                     <text
@@ -252,6 +300,7 @@ export default function SankeyFlow({
                       y={ly}
                       textAnchor={n.labelSide === 'left' ? 'end' : 'start'}
                       dominantBaseline={baseline}
+                      style={{ cursor: href ? 'pointer' : 'default' }}
                     >
                       <tspan x={n.labelX} dy={n.isIncome ? '0' : '-0.35em'} fontSize={12.5} fill="hsl(var(--foreground))">
                         {n.name}
@@ -261,7 +310,7 @@ export default function SankeyFlow({
                       </tspan>
                     </text>
                   )}
-                  <title>{`${n.name} · ${won(n.amount)} (${pct(n.amount, n.total)})`}</title>
+                  <title>{`${n.name} · ${won(n.amount)} (${pct(n.amount, n.total)})${href ? ' · 클릭해서 거래 분류로' : ''}`}</title>
                 </g>
               );
             })}

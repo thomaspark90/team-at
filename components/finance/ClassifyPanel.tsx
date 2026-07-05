@@ -49,11 +49,13 @@ export default function ClassifyPanel({
   cats,
   userId,
   confirmedYms = [],
+  initialFilter,
 }: {
   txns: TxRow[];
   cats: Cat[];
   userId: string;
   confirmedYms?: string[];
+  initialFilter?: { ym?: string; type?: string; cat?: string; unclassified?: boolean };
 }) {
   const confirmedSet = new Set(confirmedYms);
   const isLocked = (tx: TxRow) => confirmedSet.has(tx.tx_at.slice(0, 7));
@@ -70,8 +72,23 @@ export default function ClassifyPanel({
   const [suggestions, setSuggestions] = useState<Record<string, Suggestion>>({});
   const [aiLoading, setAiLoading] = useState(false);
   const [aiApplying, setAiApplying] = useState(false);
-  const [filterYm, setFilterYm] = useState('all');
+  const [filterYm, setFilterYm] = useState(initialFilter?.ym ?? 'all');
   const [filterBank, setFilterBank] = useState('all');
+  // 자금 흐름에서 넘어온 계정 필터(type/세부계정) 또는 미분류만 보기
+  const [catFilter, setCatFilter] = useState<{ type?: string; cat?: string; unclassified: boolean }>({
+    type: initialFilter?.type,
+    cat: initialFilter?.cat,
+    unclassified: !!initialFilter?.unclassified,
+  });
+
+  const catById = new Map(cats.map((c) => [c.id, c]));
+  const leafNameOf = (c: Cat) => {
+    if (c.parent_id != null) {
+      const p = catById.get(c.parent_id);
+      if (p) return p.name;
+    }
+    return c.name;
+  };
 
   const catLabel = (c: Cat) => {
     const p = cats.find((x) => x.id === c.parent_id);
@@ -86,8 +103,28 @@ export default function ClassifyPanel({
   const yms = Array.from(new Set(rows.map((r) => r.tx_at.slice(0, 7)))).sort((a, b) => b.localeCompare(a));
   const banks = Array.from(new Set(rows.map((r) => r.bank)));
 
+  const matchesCat = (r: TxRow): boolean => {
+    if (catFilter.unclassified) return r.category_id == null;
+    if (catFilter.type) {
+      const c = r.category_id != null ? catById.get(r.category_id) : undefined;
+      if (!c || c.type !== catFilter.type) return false;
+      if (catFilter.cat) return leafNameOf(c) === catFilter.cat;
+      return true;
+    }
+    return true;
+  };
+  const catFilterActive = catFilter.unclassified || !!catFilter.type;
+  const catFilterLabel = catFilter.unclassified
+    ? '미분류'
+    : catFilter.cat
+    ? catFilter.cat
+    : TYPE_LABEL[catFilter.type ?? ''] ?? catFilter.type ?? '';
+
   const filtered = rows.filter(
-    (r) => (filterYm === 'all' || r.tx_at.slice(0, 7) === filterYm) && (filterBank === 'all' || r.bank === filterBank)
+    (r) =>
+      (filterYm === 'all' || r.tx_at.slice(0, 7) === filterYm) &&
+      (filterBank === 'all' || r.bank === filterBank) &&
+      matchesCat(r)
   );
 
   async function classify(tx: TxRow, categoryId: number) {
@@ -229,6 +266,16 @@ export default function ClassifyPanel({
             );
           })}
         </div>
+        {catFilterActive && (
+          <button
+            onClick={() => setCatFilter({ unclassified: false })}
+            title="필터 해제"
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3 py-1 text-[13px] font-semibold text-primary"
+          >
+            {catFilterLabel}만 보기
+            <span className="text-[15px] leading-none">×</span>
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

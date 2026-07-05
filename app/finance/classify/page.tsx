@@ -5,7 +5,11 @@ import { resolveRole } from '@/lib/finance/access';
 import TabNav from '@/components/TabNav';
 import ClassifyPanel, { type TxRow, type Cat } from '@/components/finance/ClassifyPanel';
 
-export default async function ClassifyPage() {
+export default async function ClassifyPage({
+  searchParams,
+}: {
+  searchParams: { ym?: string; type?: string; cat?: string; unclassified?: string };
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -53,7 +57,18 @@ export default async function ClassifyPage() {
             </Link>
           </div>
         </div>
-        <ClassifyPanel txns={(txns as TxRow[]) ?? []} cats={(cats as Cat[]) ?? []} userId={user.id} confirmedYms={confirmedYms} />
+        <ClassifyPanel
+          txns={(txns as TxRow[]) ?? []}
+          cats={(cats as Cat[]) ?? []}
+          userId={user.id}
+          confirmedYms={confirmedYms}
+          initialFilter={{
+            ym: searchParams.ym,
+            type: searchParams.type,
+            cat: searchParams.cat,
+            unclassified: searchParams.unclassified === '1',
+          }}
+        />
       </div>
     </div>
   );
