@@ -153,3 +153,11 @@ create view finance.monthly_category_totals
   join finance.monthly_close m on m.ym = t.ym
   where m.status = 'confirmed'
   group by t.ym, c.type, c.name;
+
+-- viewer(팀원) 대시보드용: 이름(memo) 없는 안전 컬럼만, 멤버 전용, 모든 달.
+-- security_invoker 미지정(소유자 권한)으로 tx RLS 우회 + my_role()로 멤버 게이트.
+create or replace view finance.dashboard_tx as
+  select t.tx_at, t.ym, t.amount_in, t.amount_out, t.category_id
+  from finance.transactions t
+  where finance.my_role() is not null;
+grant select on finance.dashboard_tx to authenticated;

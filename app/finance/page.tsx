@@ -33,6 +33,7 @@ export default async function FinancePage() {
   if (!user) redirect('/');
 
   const role = await resolveRole(supabase, user);
+  if (role === 'viewer') redirect('/finance/dashboard'); // 팀원은 대시보드가 홈
   const isStaff = ['admin', 'classifier'].includes(role ?? '');
 
   // 현황 계산(스태프만)
@@ -78,8 +79,6 @@ export default async function FinancePage() {
               <UploadPanel />
             </section>
           </div>
-        ) : role === 'viewer' ? (
-          <ViewerNote />
         ) : (
           <NoAccess email={user.email ?? ''} />
         )}
@@ -174,18 +173,6 @@ function TodoRow({ done, text, href, cta }: { done: boolean; text: string; href:
       <Link href={href} className="ta-btn h-8 px-3 text-[13px]">
         {cta} →
       </Link>
-    </div>
-  );
-}
-
-function ViewerNote() {
-  return (
-    <div className="ta-card mx-auto mt-[60px] max-w-[480px] text-center">
-      <div className="mb-3 text-[32px]">📊</div>
-      <h2 className="mb-2 mt-0 text-[18px]">집계 대시보드는 준비 중이에요</h2>
-      <p className="m-0 text-[14px] leading-[1.6] text-muted-foreground">
-        조회 권한으로 로그인했어요. 확정된 달의 매출·지출 그래프가 곧 여기 열려요.
-      </p>
     </div>
   );
 }

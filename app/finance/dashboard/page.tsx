@@ -15,11 +15,12 @@ export default async function DashboardPage() {
   if (!user) redirect('/');
 
   const role = await resolveRole(supabase, user);
-  if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
+  if (!role) redirect('/finance'); // 멤버(admin/classifier/viewer)만 — viewer는 이름 없는 안전 뷰로
 
+  // dashboard_tx = memo(이름) 없는 멤버 전용 뷰. viewer도 읽을 수 있어 대시보드가 열림.
   const { data: txns } = await supabase
     .schema('finance')
-    .from('transactions')
+    .from('dashboard_tx')
     .select('tx_at,amount_in,amount_out,category_id');
   const { data: cats } = await supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable');
 

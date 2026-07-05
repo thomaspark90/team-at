@@ -19,8 +19,11 @@ const ADMIN = [
 
 export default function FinanceNav({ role }: { role: string | null }) {
   const pathname = usePathname();
-  if (!role || !['admin', 'classifier'].includes(role)) return null;
+  if (!role) return null;
+  const isStaff = ['admin', 'classifier'].includes(role);
   const isAdmin = role === 'admin';
+  // viewer(팀원)는 대시보드만 노출 (원본·분류·업로드 등은 접근 불가)
+  const leftItems = isStaff ? LEFT : [{ href: '/finance/dashboard', label: '대시보드' }];
 
   const item = ({ href, label }: { href: string; label: string }) => {
     const active = pathname === href;
@@ -43,7 +46,7 @@ export default function FinanceNav({ role }: { role: string | null }) {
       <div className="mx-auto flex max-w-[1680px] items-center gap-4 px-6 py-3">
         <span className="flex-1" />
         <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-          {LEFT.map(item)}
+          {leftItems.map(item)}
         </div>
         <div className="flex flex-1 flex-wrap items-center justify-end gap-x-5 gap-y-2">
           {isAdmin && ADMIN.map(item)}
