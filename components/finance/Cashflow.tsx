@@ -26,18 +26,24 @@ export default function Cashflow({ months }: { months: MonthCash[] }) {
           <div key={m.ym} className="overflow-hidden rounded-md border border-border bg-background">
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border p-[14px_18px]">
               <h3 className="m-0 text-[16px] text-foreground">{fmtYm(m.ym)}</h3>
-              <span className="text-[13px] text-muted-foreground">
-                순증감 <b className={`tabular ${net >= 0 ? 'text-positive' : 'text-foreground'}`}>{net >= 0 ? '+' : ''}{won(net)}</b>
+              <span className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
+                <span>
+                  월말 잔액 <b className="tabular text-foreground">{won(m.totalBalance)}</b>
+                </span>
+                <span>
+                  순증감 <b className={`tabular ${net >= 0 ? 'text-positive' : 'text-foreground'}`}>{net >= 0 ? '+' : ''}{won(net)}</b>
+                </span>
               </span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] border-collapse text-[13px]">
+              <table className="w-full min-w-[640px] border-collapse text-[13px]">
                 <thead>
                   <tr className="bg-muted text-muted-foreground">
                     <Th>구분</Th>
                     <Th right>입금</Th>
                     <Th right>출금</Th>
                     <Th right>순증감</Th>
+                    <Th right>월말 잔액</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -49,6 +55,7 @@ export default function Cashflow({ months }: { months: MonthCash[] }) {
                         <Td right mono pos>{won(b.inflow)}</Td>
                         <Td right mono>{won(b.outflow)}</Td>
                         <Td right mono><span className={bn >= 0 ? 'text-positive' : ''}>{bn >= 0 ? '+' : ''}{won(bn)}</span></Td>
+                        <Td right mono bold>{won(b.balance)}</Td>
                       </tr>
                     );
                   })}
@@ -57,6 +64,7 @@ export default function Cashflow({ months }: { months: MonthCash[] }) {
                     <Td right mono bold pos>{won(m.totalIn)}</Td>
                     <Td right mono bold>{won(m.totalOut)}</Td>
                     <Td right mono bold><span className={net >= 0 ? 'text-positive' : ''}>{net >= 0 ? '+' : ''}{won(net)}</span></Td>
+                    <Td right mono bold>{won(m.totalBalance)}</Td>
                   </tr>
                 </tbody>
               </table>

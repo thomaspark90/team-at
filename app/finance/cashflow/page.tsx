@@ -10,8 +10,10 @@ import Cashflow from '@/components/finance/Cashflow';
 interface CashTx {
   ym: string;
   bank: string;
+  tx_at: string;
   amount_in: number;
   amount_out: number;
+  balance: number;
 }
 
 export default async function CashflowPage() {
@@ -28,7 +30,7 @@ export default async function CashflowPage() {
   const { data: txns } = await supabase
     .schema('finance')
     .from('transactions')
-    .select('ym,bank,amount_in,amount_out')
+    .select('ym,bank,tx_at,amount_in,amount_out,balance')
     .eq('source', 'bank');
 
   const months = cashflow((txns as CashTx[]) ?? []);
@@ -39,13 +41,13 @@ export default async function CashflowPage() {
       <FinanceNav role={role} />
       <div className="mx-auto max-w-[1120px] px-6 py-8">
         <div className="mb-1.5 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">통장 현황</h1>
+          <h1 className="m-0 text-[22px] tracking-[-0.5px]">월별 요약</h1>
           <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
             ← 업로드로
           </Link>
         </div>
         <p className="mb-6 mt-0 text-[14px] text-muted-foreground">
-          월별로 은행별 입금·출금과 두 통장 합계를 집계해요. (분류와 무관하게 통장 자체의 인/아웃)
+          월별로 은행별 입금·출금과 월말 잔액, 두 통장 합계를 집계해요. (분류와 무관하게 통장 자체의 인/아웃)
         </p>
         <Cashflow months={months} />
       </div>
