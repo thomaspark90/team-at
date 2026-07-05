@@ -13,6 +13,8 @@ const TABS = [
 export default function TabNav() {
   const pathname = usePathname();
   const router = useRouter();
+  // 재무 화면에서는 하위 내비(FinanceNav, max-w-1680)와 좌우 끝을 맞춘다
+  const wide = pathname?.startsWith('/finance');
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -22,7 +24,7 @@ export default function TabNav() {
 
   return (
     <header className="border-b border-border bg-background">
-      <div className="mx-auto flex h-12 max-w-[1100px] items-center justify-between gap-2 px-4 sm:gap-6 sm:px-6">
+      <div className={`mx-auto flex h-12 items-center justify-between gap-2 px-4 sm:gap-6 sm:px-6 ${wide ? 'max-w-[1680px]' : 'max-w-[1100px]'}`}>
         <span className="shrink-0 font-serif text-[15px] tracking-tight text-foreground">team-at</span>
 
         <nav className="scrollbar-hide flex flex-1 items-center justify-center gap-1 overflow-x-auto">
