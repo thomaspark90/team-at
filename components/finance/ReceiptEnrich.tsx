@@ -82,7 +82,7 @@ export default function ReceiptEnrich() {
       <div>
         <h2 className="text-[16px] font-semibold text-foreground">🧾 쿠팡 영수증으로 지출 자료 세분화</h2>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          쿠팡 <b>신용카드 매출전표(PDF)</b>를 올리면, 카드의 <b>쿠팡 결제</b>가 승인번호로 매칭돼 <b>품목별로 분해</b>돼요. (마이쿠팡 &gt; 마이쇼핑 &gt; 영수증 조회/출력 &gt; 신용카드 매출전표)
+          쿠팡 <b>신용카드 매출전표(PDF)</b>를 올리면, 카드의 <b>쿠팡 결제</b>가 승인번호로 매칭돼 <b>산 물건(품목)별로 나뉘어</b>요. (마이쿠팡 &gt; 마이쇼핑 &gt; 영수증 조회/출력 &gt; 신용카드 매출전표)
         </p>
       </div>
 
@@ -102,9 +102,9 @@ export default function ReceiptEnrich() {
 
       {done && (
         <div className="rounded-md border border-border bg-muted p-4 text-[14px]">
-          <div className="mb-1 text-foreground">✓ 품목 보강 완료</div>
+          <div className="mb-1 text-foreground">✓ 품목으로 나눔 완료</div>
           <div className="text-muted-foreground">
-            카드 {done.matchedGroups}건 분해 · 품목 {done.inserted}건 추가{done.duplicates ? ` · 중복 ${done.duplicates}건 건너뜀` : ''}
+            카드 {done.matchedGroups}건을 품목으로 나눔 · 품목 {done.inserted}건 추가{done.duplicates ? ` · 중복 ${done.duplicates}건 건너뜀` : ''}
             {done.note && ` · ${done.note}`} ·{' '}
             <a href="/finance/classify?source=card" className="text-foreground underline">거래 분류에서 지정 →</a>
           </div>
@@ -160,7 +160,7 @@ export default function ReceiptEnrich() {
 
           {preview.matched > 0 && (
             <button onClick={apply} disabled={applying} className="ta-btn-primary self-start">
-              {applying ? '적용 중…' : `${preview.matched}건 분해 적용`}
+              {applying ? '나누는 중…' : `${preview.matched}건 품목으로 나누기`}
             </button>
           )}
         </>
