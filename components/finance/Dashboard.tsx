@@ -254,10 +254,6 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
             </ResponsiveContainer>
           </div>
           <div className="w-full shrink-0 md:w-[230px]">
-            <div className="mb-2.5 flex items-baseline justify-between gap-2 border-b border-border pb-2">
-              <h4 className="m-0 text-[13px] font-medium text-foreground">{breakdownLabel} 지출 구성비</h4>
-              <span className="tabular shrink-0 text-[12px] text-muted-foreground">{won(lastExpenseTotal)}</span>
-            </div>
             <ul className="flex flex-col gap-1.5">
               {breakdown.map((b) => (
                 <li key={b.name} className="flex items-center gap-2 text-[12px]">
