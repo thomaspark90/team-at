@@ -13,6 +13,7 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
+  LabelList,
 } from 'recharts';
 import { aggregate, type AggTx, type AggCat, type Unit } from '@/lib/finance/aggregate';
 
@@ -28,6 +29,10 @@ const BAR = 'var(--chart-bar-fill)';
 const BAR2 = 'var(--chart-bar-fill-secondary)';
 
 const axisTick = { fontSize: 11, fill: AXIS };
+// x축 각 지점마다 상시 노출하는 값 라벨 스타일
+const pointLabel = { fontSize: 10, fill: AXIS };
+const wonLabel = (v: any) => (v == null ? '' : manwon(Number(v)));
+const pctLabel = (v: any) => (v == null ? '' : `${v}%`);
 
 function ChartTooltip({ active, payload, label, fmt }: any) {
   if (!active || !payload?.length) return null;
@@ -109,7 +114,7 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
   const lineData = months.map((m) => ({ p: fmtP(m.ym), 매출: m.revenue, EBIT: m.ebit, 순이익: m.net }));
   const ratioData = months.map((m) => ({ p: fmtP(m.ym), 손익률: m.profitRatio != null ? +(m.profitRatio * 100).toFixed(1) : null }));
   const costData = months.map((m) => ({ p: fmtP(m.ym), 재료비율: m.costRatio != null ? +(m.costRatio * 100).toFixed(1) : null }));
-  const barData = months.map((m) => ({ p: fmtP(m.ym), ...m.expense }));
+  const barData = months.map((m) => ({ p: fmtP(m.ym), 총지출: m.cogs + m.sga, ...m.expense }));
 
   const lastExpense = last.cogs + last.sga;
   const prevExpense = prev ? prev.cogs + prev.sga : null;
@@ -135,7 +140,9 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
             <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
             <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
             <ReferenceLine y={avgRev} stroke={REF} strokeDasharray="4 4" />
-            <Line type="monotone" dataKey="매출" stroke={LINE} strokeWidth={1.5} dot={false} />
+            <Line type="monotone" dataKey="매출" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
+              <LabelList dataKey="매출" position="top" offset={8} formatter={wonLabel} style={pointLabel} />
+            </Line>
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>
@@ -149,8 +156,12 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
             <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
             <Legend wrapperStyle={{ fontSize: 12, color: AXIS }} />
             <ReferenceLine y={0} stroke={REF} />
-            <Line type="monotone" dataKey="EBIT" stroke={LINE} strokeWidth={1.5} dot={false} />
-            <Line type="monotone" dataKey="순이익" stroke={LINE2} strokeWidth={1.5} dot={false} />
+            <Line type="monotone" dataKey="EBIT" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
+              <LabelList dataKey="EBIT" position="top" offset={8} formatter={wonLabel} style={pointLabel} />
+            </Line>
+            <Line type="monotone" dataKey="순이익" stroke={LINE2} strokeWidth={1.5} dot={{ r: 2, fill: LINE2 }}>
+              <LabelList dataKey="순이익" position="bottom" offset={8} formatter={wonLabel} style={pointLabel} />
+            </Line>
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>
@@ -163,7 +174,9 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
             <YAxis tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={AXIS} width={44} />
             <Tooltip content={<ChartTooltip fmt={(v: number) => `${v}%`} />} />
             <ReferenceLine y={0} stroke={REF} />
-            <Line type="monotone" dataKey="손익률" stroke={LINE} strokeWidth={1.5} dot={false} connectNulls />
+            <Line type="monotone" dataKey="손익률" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }} connectNulls>
+              <LabelList dataKey="손익률" position="top" offset={8} formatter={pctLabel} style={pointLabel} />
+            </Line>
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>
@@ -177,7 +190,11 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
             <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
             <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} />
             {expenseKeys.map((k, i) => (
-              <Bar key={k} dataKey={k} stackId="a" fill={i % 2 === 0 ? BAR : BAR2} />
+              <Bar key={k} dataKey={k} stackId="a" fill={i % 2 === 0 ? BAR : BAR2}>
+                {i === expenseKeys.length - 1 && (
+                  <LabelList dataKey="총지출" position="top" offset={6} formatter={wonLabel} style={pointLabel} />
+                )}
+              </Bar>
             ))}
           </BarChart>
         </ResponsiveContainer>
@@ -191,7 +208,9 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
             <YAxis tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={AXIS} width={44} />
             <Tooltip content={<ChartTooltip fmt={(v: number) => `${v}%`} />} />
             <ReferenceLine y={37} stroke={REF} strokeDasharray="4 4" />
-            <Line type="monotone" dataKey="재료비율" stroke={LINE} strokeWidth={1.5} dot={false} connectNulls />
+            <Line type="monotone" dataKey="재료비율" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }} connectNulls>
+              <LabelList dataKey="재료비율" position="top" offset={8} formatter={pctLabel} style={pointLabel} />
+            </Line>
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>
