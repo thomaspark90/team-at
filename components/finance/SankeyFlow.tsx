@@ -38,6 +38,8 @@ interface Rect {
   isIncome?: boolean;
   isProfit?: boolean;
   showLabel?: boolean;
+  labelY?: number; // 겹침 회피로 아래로 밀린 라벨 y (리더선으로 노드와 연결)
+  leader?: boolean; // 라벨이 노드 중심에서 벗어나 리더선이 필요한지
   linkType?: string; // 클릭 시 거래분류로 필터: 'revenue'|'cogs'|'sga'|'non_operating'|'excluded'|'unclassified'
   linkCat?: string; // 특정 세부 계정(대분류명)으로 좁힘
 }
@@ -65,7 +67,7 @@ function layout(d: SankeyData) {
   const balanced = surplus > 0; // 흑자면 총매출 기준으로 영업이익 가지를 흐름에 표시
   const rightTotal = balanced ? totalRevenue : totalExpense;
   const midCount = groups.reduce((s, g) => s + g.leaves.length, 0);
-  const plotH = Math.max(560, midCount * 40);
+  const plotH = Math.max(720, midCount * 54);
 
   const rects: Rect[] = [];
   const ribbons: Ribbon[] = [];
@@ -195,26 +197,23 @@ function layout(d: SankeyData) {
     gy += gH + GAP;
   });
 
-  // 라벨 겹침 억제: (열, 라벨방향)별로 위→아래 훑으며 최소 간격 못 채우면 생략
+  // 라벨 겹침 회피: (열, 라벨방향)별로 위→아래 훑으며 겹치면 아래로 밀고 리더선으로 연결.
+  // 작은 노드도 숨기지 않고 옆으로 빼서 전부 식별 가능하게.
   const labelGroups: [number, 'left' | 'right'][] = [
     [X_REV, 'left'], [X_GRP, 'left'], [X_MID, 'left'], [X_MID, 'right'], [X_DETAIL, 'right'],
   ];
+  const LABEL_H = 30; // 2줄 라벨 최소 세로 간격
   for (const [colX, side] of labelGroups) {
     let lastBottom = -Infinity;
     for (const n of rects.filter((r) => r.col === colX && r.labelSide === side).sort((a, b) => a.y - b.y)) {
       const cy = n.y + n.h / 2;
-      if (cy - MIN_SEP / 2 >= lastBottom) {
-        n.showLabel = true;
-        lastBottom = cy + MIN_SEP / 2;
-      } else {
-        n.showLabel = false;
-      }
+      const ly = Math.max(cy, lastBottom + LABEL_H);
+      n.labelY = ly;
+      n.showLabel = true;
+      n.leader = ly - cy > 3;
+      lastBottom = ly;
     }
   }
-
-  rects.forEach((n) => {
-    if (n.isProfit) n.showLabel = true; // 영업이익 라벨은 항상 표시
-  });
 
   const height = plotH + PAD_Y * 2;
   return { rects, ribbons, height, balanced };
@@ -312,15 +311,30 @@ export default function SankeyFlow({
             {/* 노드 바 + 라벨 */}
             {rects.map((n, i) => {
               // 총 매출 라벨은 노드 상단에(리본 위 중앙 겹침 방지)
-              const ly = n.isIncome ? PAD_Y + 6 : n.y + n.h / 2;
+              const ly = n.isIncome ? PAD_Y + 6 : n.labelY ?? n.y + n.h / 2;
               const baseline = n.isIncome ? 'hanging' : 'middle';
               const href = hrefFor(n);
+              const cy = n.y + n.h / 2;
               return (
                 <g
                   key={i}
                   onClick={href ? () => router.push(href) : undefined}
                   style={{ cursor: href ? 'pointer' : 'default' }}
                 >
+                  {/* 리더선: 작은 노드의 라벨을 아래로 빼서 연결 */}
+                  {n.leader && !n.isIncome && (
+                    <polyline
+                      points={
+                        n.labelSide === 'left'
+                          ? `${n.x},${cy} ${n.x - 6},${cy} ${n.labelX + 3},${ly}`
+                          : `${n.x + BAR_W},${cy} ${n.x + BAR_W + 6},${cy} ${n.labelX - 3},${ly}`
+                      }
+                      fill="none"
+                      stroke="hsl(var(--muted-foreground))"
+                      strokeOpacity={0.45}
+                      strokeWidth={1}
+                    />
+                  )}
                   <rect x={n.x} y={n.y} width={BAR_W} height={n.h} rx={3} fill={n.color} />
                   {n.showLabel && (
                     <text
