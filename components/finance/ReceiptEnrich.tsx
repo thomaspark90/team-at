@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Item {
   product: string;
@@ -31,6 +32,7 @@ interface ApplyResult {
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 
 export default function ReceiptEnrich() {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -70,6 +72,7 @@ export default function ReceiptEnrich() {
       if (!res.ok) throw new Error(j.error || '적용에 실패했어요.');
       setDone(j as ApplyResult);
       setPreview(null);
+      router.refresh(); // 거래 분류 목록에 나뉜 품목 반영
     } catch (e) {
       setError((e as Error).message);
     } finally {

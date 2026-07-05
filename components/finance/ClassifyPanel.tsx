@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 export interface TxRow {
@@ -64,14 +64,19 @@ export default function ClassifyPanel({
   const ruleMap = new Map(rules.map((r) => [r.normalized_key, r.category_id]));
   const confirmedSet = new Set(confirmedYms);
   const isLocked = (tx: TxRow) => confirmedSet.has(tx.tx_at.slice(0, 7));
-  const [rows, setRows] = useState<TxRow[]>(() =>
-    [...txns].sort((a, b) => {
+  const sortTxns = (arr: TxRow[]) =>
+    [...arr].sort((a, b) => {
       const au = a.category_id == null ? 0 : 1;
       const bu = b.category_id == null ? 0 : 1;
       if (au !== bu) return au - bu;
       return b.tx_at.localeCompare(a.tx_at);
-    })
-  );
+    });
+  const [rows, setRows] = useState<TxRow[]>(() => sortTxns(txns));
+  // 사이드바에서 자료 업로드 후 router.refresh() 되면 새 거래를 반영
+  useEffect(() => {
+    setRows(sortTxns(txns));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [txns]);
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<Record<string, Suggestion>>({});

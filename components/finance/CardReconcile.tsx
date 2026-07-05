@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { ParsedTransaction } from '@/lib/finance/types';
 
 interface Candidate {
@@ -33,6 +34,7 @@ const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 const fmtYm = (ym: string | null) => (ym ? `${ym.split('-')[0]}년 ${Number(ym.split('-')[1])}월` : '');
 
 export default function CardReconcile() {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -78,6 +80,7 @@ export default function CardReconcile() {
       if (!res.ok) throw new Error(j.error || '저장에 실패했어요.');
       setSaved(j as SaveResult);
       setPreview(null);
+      router.refresh(); // 거래 분류 목록에 새 카드 건 반영
     } catch (e) {
       setError((e as Error).message);
     } finally {

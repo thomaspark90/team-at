@@ -5,6 +5,8 @@ import { resolveRole } from '@/lib/finance/access';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import ClassifyPanel, { type TxRow, type Cat } from '@/components/finance/ClassifyPanel';
+import CardReconcile from '@/components/finance/CardReconcile';
+import ReceiptEnrich from '@/components/finance/ReceiptEnrich';
 
 export default async function ClassifyPage({
   searchParams,
@@ -52,34 +54,39 @@ export default async function ClassifyPage({
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <FinanceNav role={role} />
-      <div className="mx-auto max-w-[1120px] px-6 py-8">
+      <div className="mx-auto max-w-[1600px] px-6 py-8">
         <div className="mb-4 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">거래 분류</h1>
-          <div className="flex gap-4">
-            {role === 'admin' && (
-              <Link href="/finance/categories" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-                계정과목 관리 →
-              </Link>
-            )}
-            <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-              ← 업로드로
+          {role === 'admin' && (
+            <Link href="/finance/categories" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+              계정과목 관리 →
             </Link>
-          </div>
+          )}
         </div>
-        <ClassifyPanel
-          txns={(txns as TxRow[]) ?? []}
-          cats={(cats as Cat[]) ?? []}
-          userId={user.id}
-          confirmedYms={confirmedYms}
-          rules={rules}
-          initialFilter={{
-            ym: searchParams.ym,
-            type: searchParams.type,
-            cat: searchParams.cat,
-            unclassified: searchParams.unclassified === '1',
-            source: searchParams.source,
-          }}
-        />
+        <div className="flex flex-col gap-6 lg:flex-row">
+          <div className="min-w-0 flex-1">
+            <ClassifyPanel
+              txns={(txns as TxRow[]) ?? []}
+              cats={(cats as Cat[]) ?? []}
+              userId={user.id}
+              confirmedYms={confirmedYms}
+              rules={rules}
+              initialFilter={{
+                ym: searchParams.ym,
+                type: searchParams.type,
+                cat: searchParams.cat,
+                unclassified: searchParams.unclassified === '1',
+                source: searchParams.source,
+              }}
+            />
+          </div>
+          {/* 우측 사이드바: 자료 보충(신한카드·쿠팡) */}
+          <aside className="flex shrink-0 flex-col gap-5 lg:w-[400px]">
+            <div className="text-[11px] uppercase tracking-[0.06em] text-muted-foreground">자료 보충</div>
+            <CardReconcile />
+            <ReceiptEnrich />
+          </aside>
+        </div>
       </div>
     </div>
   );
