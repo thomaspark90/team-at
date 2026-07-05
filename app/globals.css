@@ -45,6 +45,17 @@
     --chart-gradient-start: #707070;
     --chart-gradient-end: #000000;
     --chart-line-secondary: #666666;
+    /* 지출 구분 등 카테고리 색 — dataviz 검증 팔레트(고정 순서, 라이트) */
+    --chart-cat-1: #2a78d6; /* blue */
+    --chart-cat-2: #1baf7a; /* aqua */
+    --chart-cat-3: #eda100; /* yellow */
+    --chart-cat-4: #008300; /* green */
+    --chart-cat-5: #4a3aa7; /* violet */
+    --chart-cat-6: #e34948; /* red */
+    --chart-cat-7: #e87ba4; /* magenta */
+    --chart-cat-8: #eb6834; /* orange */
+    --chart-cat-other: #9a9891; /* 기타(Other) 중립 회색 */
+    --chart-surface: #ffffff; /* 스택 세그먼트 사이 2px 간격선 색 */
   }
 
   .dark {
@@ -79,6 +90,17 @@
     --chart-gradient-start: #666666;
     --chart-gradient-end: #ffffff;
     --chart-line-secondary: #999999;
+    /* 카테고리 색 — 같은 8색을 다크 표면에 맞춰 스텝(검증됨), 라이트의 자동반전 아님 */
+    --chart-cat-1: #3987e5;
+    --chart-cat-2: #199e70;
+    --chart-cat-3: #c98500;
+    --chart-cat-4: #008300;
+    --chart-cat-5: #9085e9;
+    --chart-cat-6: #e66767;
+    --chart-cat-7: #d55181;
+    --chart-cat-8: #d95926;
+    --chart-cat-other: #6f6e6a;
+    --chart-surface: #121212;
   }
 }
 

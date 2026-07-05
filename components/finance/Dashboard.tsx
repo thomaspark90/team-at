@@ -25,8 +25,20 @@ const AXIS = 'var(--chart-axis-text)';
 const REF = 'var(--chart-reference-line-stroke)';
 const LINE = 'var(--chart-actual-line)';
 const LINE2 = 'var(--chart-line-secondary)';
-const BAR = 'var(--chart-bar-fill)';
-const BAR2 = 'var(--chart-bar-fill-secondary)';
+// 지출 구분(카테고리) 색 — dataviz 검증 팔레트, 고정 순서로만 쓰고 순환 금지
+const CAT = [
+  'var(--chart-cat-1)',
+  'var(--chart-cat-2)',
+  'var(--chart-cat-3)',
+  'var(--chart-cat-4)',
+  'var(--chart-cat-5)',
+  'var(--chart-cat-6)',
+  'var(--chart-cat-7)',
+  'var(--chart-cat-8)',
+];
+const CAT_OTHER = 'var(--chart-cat-other)';
+const CAT_SURFACE = 'var(--chart-surface)';
+const CAT_MAX = 8; // 8색까지, 초과 카테고리는 '기타'로 접음
 
 const axisTick = { fontSize: 11, fill: AXIS };
 // x축 각 지점마다 상시 노출하는 값 라벨 스타일
@@ -114,7 +126,21 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
   const lineData = months.map((m) => ({ p: fmtP(m.ym), 매출: m.revenue, EBIT: m.ebit, 순이익: m.net }));
   const ratioData = months.map((m) => ({ p: fmtP(m.ym), 손익률: m.profitRatio != null ? +(m.profitRatio * 100).toFixed(1) : null }));
   const costData = months.map((m) => ({ p: fmtP(m.ym), 재료비율: m.costRatio != null ? +(m.costRatio * 100).toFixed(1) : null }));
-  const barData = months.map((m) => ({ p: fmtP(m.ym), 총지출: m.cogs + m.sga, ...m.expense }));
+  // 지출 카테고리를 총액 큰 순으로 세우고, 8색을 넘기면 나머지는 '기타'로 접음(색 순환·중복 방지)
+  const totalByKey: Record<string, number> = {};
+  for (const m of months) for (const k of expenseKeys) totalByKey[k] = (totalByKey[k] || 0) + (m.expense[k] || 0);
+  const ranked = [...expenseKeys].filter((k) => (totalByKey[k] || 0) > 0).sort((a, b) => (totalByKey[b] || 0) - (totalByKey[a] || 0));
+  const hasOther = ranked.length > CAT_MAX;
+  const topKeys = hasOther ? ranked.slice(0, CAT_MAX - 1) : ranked;
+  const otherKeys = hasOther ? ranked.slice(CAT_MAX - 1) : [];
+  const barKeys = hasOther ? [...topKeys, '기타'] : topKeys;
+  const colorOf = (k: string, i: number) => (k === '기타' ? CAT_OTHER : CAT[i]);
+  const barData = months.map((m) => {
+    const row: Record<string, number | string> = { p: fmtP(m.ym), 총지출: m.cogs + m.sga };
+    for (const k of topKeys) row[k] = m.expense[k] || 0;
+    if (hasOther) row['기타'] = otherKeys.reduce((s, k) => s + (m.expense[k] || 0), 0);
+    return row;
+  });
 
   const lastExpense = last.cogs + last.sga;
   const prevExpense = prev ? prev.cogs + prev.sga : null;
@@ -189,9 +215,9 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
             <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
             <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
             <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} />
-            {expenseKeys.map((k, i) => (
-              <Bar key={k} dataKey={k} stackId="a" fill={i % 2 === 0 ? BAR : BAR2}>
-                {i === expenseKeys.length - 1 && (
+            {barKeys.map((k, i) => (
+              <Bar key={k} dataKey={k} stackId="a" fill={colorOf(k, i)} stroke={CAT_SURFACE} strokeWidth={1}>
+                {i === barKeys.length - 1 && (
                   <LabelList dataKey="총지출" position="top" offset={6} formatter={wonLabel} style={pointLabel} />
                 )}
               </Bar>
