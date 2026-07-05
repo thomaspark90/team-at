@@ -79,13 +79,16 @@ export default function ClassifyPanel({
   const [aiApplying, setAiApplying] = useState(false);
   const [filterYm, setFilterYm] = useState(initialFilter?.ym ?? 'all');
   const [filterBank, setFilterBank] = useState('all');
-  // 자금 흐름에서 넘어온 계정 필터(type/세부계정) 또는 미분류만 보기
-  const [catFilter, setCatFilter] = useState<{ type?: string; cat?: string; unclassified: boolean }>({
+  // 자금 흐름에서 넘어온 계정 필터(type/세부계정)
+  const [catFilter, setCatFilter] = useState<{ type?: string; cat?: string }>({
     type: initialFilter?.type,
     cat: initialFilter?.cat,
-    unclassified: !!initialFilter?.unclassified,
   });
   const [srcFilter, setSrcFilter] = useState<string>(initialFilter?.source ?? 'all'); // all | bank | card
+  const [unclOnly, setUnclOnly] = useState(!!initialFilter?.unclassified); // 미분류만 보기
+  const [search, setSearch] = useState(''); // 가맹점/내용 검색
+  const [selected, setSelected] = useState<Set<number>>(new Set()); // 다중 선택
+  const [bulkCat, setBulkCat] = useState<number | ''>(''); // 일괄 분류 카테고리
 
   const catById = new Map(cats.map((c) => [c.id, c]));
   const leafNameOf = (c: Cat) => {
@@ -110,7 +113,6 @@ export default function ClassifyPanel({
   const banks = Array.from(new Set(rows.map((r) => r.bank)));
 
   const matchesCat = (r: TxRow): boolean => {
-    if (catFilter.unclassified) return r.category_id == null;
     if (catFilter.type) {
       const c = r.category_id != null ? catById.get(r.category_id) : undefined;
       if (!c || c.type !== catFilter.type) return false;
@@ -120,20 +122,58 @@ export default function ClassifyPanel({
     }
     return true;
   };
-  const catFilterActive = catFilter.unclassified || !!catFilter.type;
-  const catFilterLabel = catFilter.unclassified
-    ? '미분류'
-    : catFilter.cat
-    ? catFilter.cat
-    : TYPE_LABEL[catFilter.type ?? ''] ?? catFilter.type ?? '';
+  const catFilterActive = !!catFilter.type;
+  const catFilterLabel = catFilter.cat ? catFilter.cat : TYPE_LABEL[catFilter.type ?? ''] ?? catFilter.type ?? '';
 
+  const q = search.trim().toLowerCase();
   const filtered = rows.filter(
     (r) =>
       (filterYm === 'all' || r.tx_at.slice(0, 7) === filterYm) &&
       (filterBank === 'all' || r.bank === filterBank) &&
       (srcFilter === 'all' || (r.source ?? 'bank') === srcFilter) &&
+      (!unclOnly || r.category_id == null) &&
+      (!q || r.memo.toLowerCase().includes(q) || r.normalized_key.toLowerCase().includes(q)) &&
       matchesCat(r)
   );
+  const classifiedCount = filtered.filter((r) => r.category_id != null).length;
+  const progress = filtered.length ? Math.round((classifiedCount / filtered.length) * 100) : 0;
+
+  // 다중 선택(현재 필터·미확정 대상)
+  const selectableIds = filtered.filter((r) => !isLocked(r)).map((r) => r.id);
+  const selCount = selectableIds.filter((id) => selected.has(id)).length;
+  const allSelected = selectableIds.length > 0 && selCount === selectableIds.length;
+  const toggleSel = (id: number) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(selectableIds));
+
+  async function bulkClassify(catId: number) {
+    const targets = rows.filter((r) => selected.has(r.id) && !isLocked(r));
+    if (!targets.length) return;
+    setAiApplying(true);
+    setError(null);
+    const supabase = createClient();
+    const now = new Date().toISOString();
+    const ids = targets.map((r) => r.id);
+    const { error: e1 } = await supabase
+      .schema('finance')
+      .from('transactions')
+      .update({ category_id: catId, classified_by: userId, classified_at: now })
+      .in('id', ids);
+    if (e1) {
+      setError(e1.message);
+      setAiApplying(false);
+      return;
+    }
+    // 선택 일괄분류는 규칙 학습 안 함(여러 가맹점 섞일 수 있음). 규칙은 개별 드롭다운에서.
+    setRows((list) => list.map((r) => (selected.has(r.id) && !isLocked(r) ? { ...r, category_id: catId } : r)));
+    setSelected(new Set());
+    setBulkCat('');
+    setAiApplying(false);
+  }
 
   async function classify(tx: TxRow, categoryId: number) {
     setBusy(tx.id);
@@ -292,9 +332,23 @@ export default function ClassifyPanel({
             );
           })}
         </div>
+        <button
+          onClick={() => setUnclOnly((v) => !v)}
+          className={`rounded-md border px-3 py-[7px] text-[13px] font-semibold ${
+            unclOnly ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          미분류만
+        </button>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="가맹점·내용 검색"
+          className="ta-input min-w-[160px] flex-1 text-[13px]"
+        />
         {catFilterActive && (
           <button
-            onClick={() => setCatFilter({ unclassified: false })}
+            onClick={() => setCatFilter({})}
             title="필터 해제"
             className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3 py-1 text-[13px] font-semibold text-primary"
           >
@@ -315,10 +369,14 @@ export default function ClassifyPanel({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <p className="flex-1 text-[14px] text-muted-foreground">
-          {filterYm === 'all' && filterBank === 'all' ? '전체' : '선택 범위'} <b className="text-foreground">{won(filtered.length)}건</b> · 미분류{' '}
-          <b className="text-foreground">{won(unclassified)}건</b>
-        </p>
+        <div className="flex-1">
+          <p className="text-[14px] text-muted-foreground">
+            <b className="text-foreground">{won(filtered.length)}건</b> · 미분류 <b className="text-foreground">{won(unclassified)}건</b> · 분류 {progress}%
+          </p>
+          <div className="mt-1.5 h-1.5 w-full max-w-[280px] overflow-hidden rounded-full bg-muted">
+            <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
         {AI_ENABLED && (
           <button onClick={fetchAI} disabled={aiLoading || unclassified === 0} className="ta-btn-primary text-[13px]">
             {aiLoading ? 'AI 분석 중…' : 'AI 추천 분류'}
@@ -340,11 +398,51 @@ export default function ClassifyPanel({
       </div>
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
+      {/* 다중 선택 일괄 분류 바 */}
+      {selCount > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-primary bg-primary/5 px-4 py-3">
+          <span className="text-[13px] font-semibold text-foreground">{selCount}건 선택됨</span>
+          <select
+            value={bulkCat}
+            onChange={(e) => setBulkCat(e.target.value === '' ? '' : Number(e.target.value))}
+            className="ta-input min-w-[190px] text-[13px]"
+          >
+            <option value="">카테고리 선택…</option>
+            {TYPE_ORDER.map((type) => {
+              const list = cats.filter((c) => c.type === type);
+              if (!list.length) return null;
+              return (
+                <optgroup key={type} label={TYPE_LABEL[type]}>
+                  {list.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {catLabel(c)}
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            })}
+          </select>
+          <button
+            onClick={() => bulkCat !== '' && bulkClassify(bulkCat)}
+            disabled={bulkCat === '' || aiApplying}
+            className="ta-btn-primary text-[13px]"
+          >
+            {aiApplying ? '적용 중…' : `${selCount}건 일괄 분류`}
+          </button>
+          <button onClick={() => setSelected(new Set())} className="ta-btn text-[13px]">
+            선택 해제
+          </button>
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-md border border-border bg-background">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] border-collapse text-[13px]">
+          <table className="w-full min-w-[940px] border-collapse text-[13px]">
             <thead>
               <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+                <th className="w-[36px] px-3 py-2 text-left">
+                  <input type="checkbox" checked={allSelected} onChange={toggleAll} title="전체 선택" aria-label="전체 선택" />
+                </th>
                 <Th>은행</Th>
                 <Th>거래일자</Th>
                 <Th>거래시간</Th>
@@ -367,7 +465,12 @@ export default function ClassifyPanel({
                 const [date, time] = tx.tx_at.split('T');
                 const selVal = tx.category_id ?? sug?.categoryId ?? ruleSug ?? '';
                 return (
-                  <tr key={tx.id} className={`border-t border-border hover:bg-accent ${locked ? 'bg-muted' : ''}`}>
+                  <tr key={tx.id} className={`border-t border-border hover:bg-accent ${selected.has(tx.id) ? 'bg-primary/5' : locked ? 'bg-muted' : ''}`}>
+                    <td className="px-3 py-2 align-middle">
+                      {!locked && (
+                        <input type="checkbox" checked={selected.has(tx.id)} onChange={() => toggleSel(tx.id)} aria-label="선택" />
+                      )}
+                    </td>
                     <Td>{BANK_LABEL[tx.bank] ?? tx.bank}</Td>
                     <Td mono>{date}</Td>
                     <Td mono>{time ?? ''}</Td>
@@ -448,7 +551,7 @@ export default function ClassifyPanel({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-[13px] text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-6 text-center text-[13px] text-muted-foreground">
                     선택한 월·은행에 거래가 없어요.
                   </td>
                 </tr>
