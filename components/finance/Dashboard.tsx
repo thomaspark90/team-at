@@ -46,17 +46,32 @@ const pointLabel = { fontSize: 10, fill: AXIS };
 const wonLabel = (v: any) => (v == null ? '' : manwon(Number(v)));
 const pctLabel = (v: any) => (v == null ? '' : `${v}%`);
 
-function ChartTooltip({ active, payload, label, fmt }: any) {
+function ChartTooltip({ active, payload, label, fmt, share }: any) {
   if (!active || !payload?.length) return null;
+  const total = share ? payload.reduce((s: number, p: any) => s + (Number(p.value) || 0), 0) : 0;
   return (
     <div className="rounded-md border border-border bg-background px-2.5 py-1.5 text-[11px] shadow-none">
       <div className="mb-1 text-muted-foreground">{label}</div>
       {payload.map((p: any) => (
-        <div key={p.dataKey} className="flex justify-between gap-3 tabular text-foreground">
-          <span className="text-muted-foreground">{p.name}</span>
-          <span>{fmt ? fmt(p.value) : p.value}</span>
+        <div key={p.dataKey} className="flex items-center justify-between gap-3 tabular text-foreground">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            {share && <span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: p.color || p.fill }} aria-hidden />}
+            {p.name}
+          </span>
+          <span className="flex items-baseline gap-2">
+            <span>{fmt ? fmt(p.value) : p.value}</span>
+            {share && total > 0 && (
+              <span className="w-[42px] text-right text-muted-foreground">{((Number(p.value) / total) * 100).toFixed(1)}%</span>
+            )}
+          </span>
         </div>
       ))}
+      {share && total > 0 && (
+        <div className="mt-1 flex justify-between gap-3 border-t border-border pt-1 tabular font-medium text-foreground">
+          <span className="text-muted-foreground">합계</span>
+          <span>{fmt ? fmt(total) : total}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -141,13 +156,18 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
     if (hasOther) row['기타'] = otherKeys.reduce((s, k) => s + (m.expense[k] || 0), 0);
     return row;
   });
-  // 항목별 비중(전체 기간 지출 대비 %) — 지출 구분 차트 옆 리스트
-  const valueOf = (k: string) => (k === '기타' ? otherKeys.reduce((s, kk) => s + (totalByKey[kk] || 0), 0) : totalByKey[k] || 0);
-  const grandExpense = barKeys.reduce((s, k) => s + valueOf(k), 0);
-  const breakdown = barKeys.map((k, i) => {
-    const value = valueOf(k);
-    return { name: k, value, pct: grandExpense > 0 ? (value / grandExpense) * 100 : 0, color: colorOf(k, i) };
-  });
+  // 항목별 비중 — 최근(가장 최신) 달 기준 구성비. 색은 전체기간 순위로 고정(엔티티→색), 리스트는 그 달 값으로 정렬.
+  const lastValueOf = (k: string) =>
+    k === '기타' ? otherKeys.reduce((s, kk) => s + (last.expense[kk] || 0), 0) : last.expense[k] || 0;
+  const lastExpenseTotal = last.cogs + last.sga;
+  const breakdown = barKeys
+    .map((k, i) => {
+      const value = lastValueOf(k);
+      return { name: k, value, pct: lastExpenseTotal > 0 ? (value / lastExpenseTotal) * 100 : 0, color: colorOf(k, i) };
+    })
+    .filter((b) => b.value > 0)
+    .sort((a, b) => b.value - a.value);
+  const breakdownLabel = unit === 'month' ? `${+last.ym.slice(5, 7)}월` : `${+last.ym.slice(5, 7)}/${+last.ym.slice(8, 10)} 주`;
 
   const lastExpense = last.cogs + last.sga;
   const prevExpense = prev ? prev.cogs + prev.sga : null;
@@ -214,7 +234,7 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
         </ResponsiveContainer>
       </ChartCard>
 
-      <ChartCard title="지출 구분" subtitle="카테고리별 지출(누적) · 옆은 전체 기간 비중">
+      <ChartCard title="지출 구분" subtitle={`월별 카테고리 지출(누적) · 오른쪽은 ${breakdownLabel} 구성비`}>
         <div className="flex flex-col gap-4 md:flex-row md:items-center">
           <div className="min-w-0 flex-1">
             <ResponsiveContainer width="100%" height={300}>
@@ -222,7 +242,7 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
                 <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
                 <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
                 <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
-                <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
+                <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} share />} />
                 {barKeys.map((k, i) => (
                   <Bar key={k} dataKey={k} stackId="a" fill={colorOf(k, i)} stroke={CAT_SURFACE} strokeWidth={1}>
                     {i === barKeys.length - 1 && (
@@ -233,16 +253,22 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <ul className="flex w-full shrink-0 flex-col gap-1.5 md:w-[230px]">
-            {breakdown.map((b) => (
-              <li key={b.name} className="flex items-center gap-2 text-[12px]">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{ background: b.color }} aria-hidden />
-                <span className="min-w-0 flex-1 truncate text-foreground" title={b.name}>{b.name}</span>
-                <span className="tabular shrink-0 text-[11px] text-muted-foreground">{won(b.value)}</span>
-                <span className="tabular w-[46px] shrink-0 text-right font-medium text-foreground">{b.pct.toFixed(1)}%</span>
-              </li>
-            ))}
-          </ul>
+          <div className="w-full shrink-0 md:w-[230px]">
+            <div className="mb-2 flex items-baseline justify-between text-[12px] text-muted-foreground">
+              <span>{breakdownLabel} 지출 구성</span>
+              <span className="tabular">{won(lastExpenseTotal)}</span>
+            </div>
+            <ul className="flex flex-col gap-1.5">
+              {breakdown.map((b) => (
+                <li key={b.name} className="flex items-center gap-2 text-[12px]">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{ background: b.color }} aria-hidden />
+                  <span className="min-w-0 flex-1 truncate text-foreground" title={b.name}>{b.name}</span>
+                  <span className="tabular shrink-0 text-[11px] text-muted-foreground">{won(b.value)}</span>
+                  <span className="tabular w-[46px] shrink-0 text-right font-medium text-foreground">{b.pct.toFixed(1)}%</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </ChartCard>
 
