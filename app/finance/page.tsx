@@ -1,10 +1,29 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { buildSankey, type SankTx, type SankCat } from '@/lib/finance/sankey';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import UploadPanel from '@/components/finance/UploadPanel';
 import RequestAccessButton from '@/components/finance/RequestAccessButton';
+
+interface OverviewData {
+  latest: string;
+  totalRevenue: number;
+  totalExpense: number;
+  surplus: number;
+  unclassifiedTotal: number;
+  unclassifiedLatest: number;
+  latestConfirmed: boolean;
+}
+
+const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
+const GREEN = 'hsl(var(--number-colored))';
+const fmtYm = (ym: string) => {
+  const [y, mo] = ym.split('-');
+  return `${y}년 ${Number(mo)}월`;
+};
 
 export default async function FinancePage() {
   const supabase = await createClient();
@@ -13,22 +32,148 @@ export default async function FinancePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/');
 
-  // OWNER는 자동 admin, 그 외는 finance.members 역할
   const role = await resolveRole(supabase, user);
+  const isStaff = ['admin', 'classifier'].includes(role ?? '');
+
+  // 현황 계산(스태프만)
+  let overview: OverviewData | null = null;
+  if (isStaff) {
+    const { data: txnsRaw } = await supabase.schema('finance').from('transactions').select('ym,category_id,amount_in,amount_out');
+    const { data: catsRaw } = await supabase.schema('finance').from('categories').select('id,type,name,parent_id');
+    const { data: closesRaw } = await supabase.schema('finance').from('monthly_close').select('ym,status');
+    const txns = (txnsRaw as SankTx[] | null) ?? [];
+    const cats = (catsRaw as SankCat[] | null) ?? [];
+    const closes = (closesRaw as { ym: string; status: string }[] | null) ?? [];
+    const yms = Array.from(new Set(txns.map((t) => t.ym))).sort((a, b) => b.localeCompare(a));
+    const latest = yms[0] ?? '';
+    const s = buildSankey(
+      txns.filter((t) => t.ym === latest),
+      cats
+    );
+    overview = {
+      latest,
+      totalRevenue: s.totalRevenue,
+      totalExpense: s.totalExpense,
+      surplus: s.totalRevenue - s.totalExpense,
+      unclassifiedTotal: txns.filter((t) => t.category_id == null).length,
+      unclassifiedLatest: txns.filter((t) => t.ym === latest && t.category_id == null).length,
+      latestConfirmed: closes.some((c) => c.ym === latest && c.status === 'confirmed'),
+    };
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <FinanceNav role={role} />
       <div className="mx-auto max-w-[1120px] px-6 py-8">
-        {['admin', 'classifier'].includes(role ?? '') ? (
-          <UploadPanel />
+        {isStaff && overview ? (
+          <div className="flex flex-col gap-8">
+            <Overview o={overview} />
+            <section className="flex flex-col gap-3">
+              <h2 className="m-0 text-[16px] font-semibold text-foreground">자료 입력</h2>
+              <p className="m-0 text-[13px] text-muted-foreground">
+                은행 거래내역(PDF)은 여기서, <b>신한카드·쿠팡</b> 자료는{' '}
+                <Link href="/finance/classify" className="underline">거래 분류</Link> 우측 사이드바에서 올려요.
+              </p>
+              <UploadPanel />
+            </section>
+          </div>
         ) : role === 'viewer' ? (
           <ViewerNote />
         ) : (
           <NoAccess email={user.email ?? ''} />
         )}
       </div>
+    </div>
+  );
+}
+
+function Overview({ o }: { o: OverviewData }) {
+  const hasData = o.latest !== '';
+  return (
+    <section className="flex flex-col gap-4">
+      <div className="flex items-baseline justify-between">
+        <h1 className="m-0 text-[22px] tracking-[-0.5px]">재무 현황</h1>
+        {hasData && <span className="text-[13px] text-muted-foreground">{fmtYm(o.latest)} 기준</span>}
+      </div>
+
+      {hasData ? (
+        <>
+          {/* 요약 카드 */}
+          <div className="flex flex-wrap gap-3">
+            <SummaryCard label="총 유입" value={won(o.totalRevenue)} color={GREEN} />
+            <SummaryCard label="총 유출" value={won(o.totalExpense)} color="hsl(var(--foreground))" />
+            <SummaryCard label="영업이익(순증감)" value={won(o.surplus)} color={o.surplus >= 0 ? GREEN : 'hsl(var(--destructive))'} />
+          </div>
+
+          {/* 해야 할 일 */}
+          <div className="ta-card flex flex-col gap-3">
+            <div className="text-[11px] uppercase tracking-[0.06em] text-muted-foreground">해야 할 일</div>
+            <TodoRow
+              done={o.unclassifiedTotal === 0}
+              text={o.unclassifiedTotal === 0 ? '미분류 없음 — 모두 분류됐어요' : `미분류 ${o.unclassifiedTotal}건`}
+              href="/finance/classify?unclassified=1"
+              cta={o.unclassifiedTotal === 0 ? '거래 분류' : '분류하러 가기'}
+            />
+            <TodoRow
+              done={o.latestConfirmed}
+              text={
+                o.latestConfirmed
+                  ? `${fmtYm(o.latest)} 확정됨`
+                  : o.unclassifiedLatest === 0
+                  ? `${fmtYm(o.latest)} 확정 가능 (미분류 0)`
+                  : `${fmtYm(o.latest)} 확정하려면 미분류 ${o.unclassifiedLatest}건 처리 필요`
+              }
+              href={o.unclassifiedLatest === 0 ? '/finance/close' : `/finance/classify?ym=${o.latest}&unclassified=1`}
+              cta={o.latestConfirmed ? '월 확정' : o.unclassifiedLatest === 0 ? '확정하러 가기' : '분류하러 가기'}
+            />
+          </div>
+
+          {/* 빠른 이동 */}
+          <div className="flex flex-wrap gap-2">
+            {[
+              { href: '/finance/classify', label: '거래 분류' },
+              { href: '/finance/flow', label: '자금 흐름' },
+              { href: '/finance/dashboard', label: '대시보드' },
+              { href: '/finance/cashflow', label: '월별 요약' },
+              { href: '/finance/uploads', label: '자료 이력' },
+            ].map((l) => (
+              <Link key={l.href} href={l.href} className="ta-btn h-8 px-3 text-[13px]">
+                {l.label}
+              </Link>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="ta-card text-[14px] text-muted-foreground">
+          아직 거래가 없어요. 아래에서 은행 거래내역을 올리면 여기 현황이 채워져요.
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SummaryCard({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="ta-card min-w-[160px] flex-[1_1_auto] p-[16px_18px]">
+      <div className="mb-1.5 text-[11px] uppercase tracking-[0.04em] text-muted-foreground">{label}</div>
+      <div className="tabular text-[21px] font-semibold" style={{ color }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function TodoRow({ done, text, href, cta }: { done: boolean; text: string; href: string; cta: string }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 first:border-t-0 first:pt-0">
+      <span className="flex items-center gap-2 text-[14px]">
+        <span className={done ? 'text-positive' : 'text-muted-foreground'}>{done ? '✓' : '•'}</span>
+        <span className={done ? 'text-muted-foreground' : 'text-foreground'}>{text}</span>
+      </span>
+      <Link href={href} className="ta-btn h-8 px-3 text-[13px]">
+        {cta} →
+      </Link>
     </div>
   );
 }
