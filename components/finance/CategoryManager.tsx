@@ -165,6 +165,14 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                         {c.parent_id && <span className="text-muted-foreground">└ </span>}
                         {label(c)}
                       </span>
+                      {(c.name === '카드대금정산' || c.name === '영수증분해') && (
+                        <span
+                          title="카드·영수증 정산에 쓰이는 계정이라 이름을 바꾸거나 지울 수 없어요"
+                          className="whitespace-nowrap rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground"
+                        >
+                          ⚙ 시스템 계정
+                        </span>
+                      )}
                       {VAT_TYPES.includes(c.type) && (
                         <button
                           onClick={() => patch(c.id, { vat_taxable: !c.vat_taxable })}
@@ -184,8 +192,9 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                       </button>
                       <button
                         onClick={() => remove(c.id)}
-                        disabled={busy === c.id}
-                        className="whitespace-nowrap rounded-md border border-border px-3 py-1 text-[12px] text-muted-foreground hover:text-destructive"
+                        disabled={busy === c.id || c.name === '카드대금정산' || c.name === '영수증분해'}
+                        title={c.name === '카드대금정산' || c.name === '영수증분해' ? '시스템 계정은 삭제할 수 없어요' : undefined}
+                        className="whitespace-nowrap rounded-md border border-border px-3 py-1 text-[12px] text-muted-foreground hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-muted-foreground"
                       >
                         삭제
                       </button>

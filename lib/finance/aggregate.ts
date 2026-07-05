@@ -25,6 +25,7 @@ export type Unit = 'month' | 'week';
 export interface MonthAgg {
   ym: string; // period key (월: YYYY-MM, 주: 그 주 월요일 YYYY-MM-DD)
   revenue: number;
+  unclassifiedIn: number; // 미분류 입금(대출·자본유입 등 비매출 가능) — 매출과 분리해 별도 표기
   cogs: number;
   sga: number;
   ebit: number;
@@ -70,15 +71,16 @@ export function aggregate(
     const key = periodKey(t.tx_at, unit);
     let mo = m.get(key);
     if (!mo) {
-      mo = { ym: key, revenue: 0, cogs: 0, sga: 0, ebit: 0, nonOp: 0, net: 0, costRatio: null, profitRatio: null, expense: {} };
+      mo = { ym: key, revenue: 0, unclassifiedIn: 0, cogs: 0, sga: 0, ebit: 0, nonOp: 0, net: 0, costRatio: null, profitRatio: null, expense: {} };
       m.set(key, mo);
     }
     const c = t.category_id != null ? catMap.get(t.category_id) : undefined;
 
     if (!c) {
-      // 미분류(또는 삭제된 계정): 손익에도 반영 — 지출은 지출. 수입→매출, 지출→'미분류' 비용(EBIT 차감).
-      // 분류가 없어 과세여부를 모르므로 순액화 안 함(총액 그대로). 분류하면 정확한 계정으로 이동.
-      mo.revenue += t.amount_in;
+      // 미분류(또는 삭제된 계정): 지출은 '미분류' 비용으로 EBIT 차감(유지). 단 입금은 대출·자본유입 등
+      // 비매출일 수 있어 매출에 넣지 않고 별도(unclassifiedIn)로 분리 — 분류하면 정확한 계정으로 이동.
+      // 과세여부를 모르므로 순액화 안 함(총액 그대로).
+      mo.unclassifiedIn += t.amount_in;
       if (t.amount_out) {
         mo.sga += t.amount_out;
         mo.expense[UNCLASSIFIED] = (mo.expense[UNCLASSIFIED] || 0) + t.amount_out;

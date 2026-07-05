@@ -82,7 +82,7 @@ async function PnlBody({
 }) {
   const [{ data: txnsRaw }, { data: catsRaw }, { data: invRaw }] = await Promise.all([
     supabase.schema('finance').from('transactions').select('category_id,amount_in,amount_out').eq('ym', selectedYm),
-    supabase.schema('finance').from('categories').select('id,type,name,parent_id'),
+    supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable'),
     supabase.schema('finance').from('inventory').select('ym,kind,amount'),
   ]);
   const txns = (txnsRaw as PnlTx[] | null) ?? [];

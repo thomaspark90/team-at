@@ -72,27 +72,34 @@ export function buildSankey(txns: SankTx[], cats: SankCat[]): SankeyData {
 
   for (const t of txns) {
     const c = t.category_id == null ? undefined : byId.get(t.category_id);
-    // 입금 → 왼쪽(유입)
+    // 정산/분해 표식('카드대금정산'=은행 카드결제 lump, '영수증분해'=쿠팡 원본)은 손익 제외
+    // — 각각 카드 사용내역·영수증 품목이 대체하므로 중복 방지.
+    if (c && (c.name === '카드대금정산' || c.name === '영수증분해')) continue;
+    const isExpenseGroup = !!c && grpLeaf.has(c.type); // cogs/sga/non_operating/excluded
+
+    // 입금 → 왼쪽(유입). 단 재료비·판관비 환불은 유입이 아니라 해당 지출에서 상계(아래 net).
     if (t.amount_in > 0) {
       if (c && c.type === 'revenue') revMap.set(leafName(c), (revMap.get(leafName(c)) ?? 0) + t.amount_in);
-      else if (c) otherIncome += t.amount_in;
+      else if (c && (c.type === 'cogs' || c.type === 'sga')) {
+        /* 환불: 아래 유출 집계에서 net 상계 (관리손익과 동일 기준) */
+      } else if (c) otherIncome += t.amount_in; // 영업외 수입·보증금 회수 등 실제 유입
       else unclassifiedIn += t.amount_in;
     }
-    // 출금 → 오른쪽(유출). 중분류(대분류명)와 소분류(자기 이름) 둘 다 집계.
-    // 단, 정산/분해 표식('카드대금정산'=은행 카드결제 lump, '영수증분해'=쿠팡 원본)은
-    // 손익에서 제외 — 각각 카드 사용내역·영수증 품목이 대체하므로 중복 방지.
-    if (t.amount_out > 0 && !(c && (c.name === '카드대금정산' || c.name === '영수증분해'))) {
-      const m = c ? grpLeaf.get(c.type) : undefined;
-      if (m) {
-        const mid = leafName(c!); // 인건비
-        const detail = c!.name; // 정규직 (또는 대분류 직접분류 시 인건비)
-        let dm = m.get(mid);
-        if (!dm) {
-          dm = new Map();
-          m.set(mid, dm);
-        }
-        dm.set(detail, (dm.get(detail) ?? 0) + t.amount_out);
-      } else unclassifiedOut += t.amount_out; // 미분류 or 매출계정 환불 등 그룹 없는 유출
+
+    // 출금 → 오른쪽(유출). cogs/sga는 환불(amount_in) 상계한 net으로 집계.
+    const outAmt = c && (c.type === 'cogs' || c.type === 'sga') ? t.amount_out - t.amount_in : t.amount_out;
+    if (isExpenseGroup && outAmt !== 0) {
+      const m = grpLeaf.get(c!.type)!;
+      const mid = leafName(c!); // 인건비
+      const detail = c!.name; // 정규직 (또는 대분류 직접분류 시 인건비)
+      let dm = m.get(mid);
+      if (!dm) {
+        dm = new Map();
+        m.set(mid, dm);
+      }
+      dm.set(detail, (dm.get(detail) ?? 0) + outAmt);
+    } else if (t.amount_out > 0) {
+      unclassifiedOut += t.amount_out; // 미분류 or 매출계정 환불 등 그룹 없는 유출
     }
   }
 

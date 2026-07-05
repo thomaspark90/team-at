@@ -6,12 +6,15 @@
 //   식자재 = cogs 중 포장재 외 전부 / 포장소모품 = cogs 포장재
 // 인건비 = sga '인건비'(+하위)   ·  고정비 = sga 나머지  ·  미분류 = category 없는 유출(경고)
 // 영업외·손익제외(카드대금정산/영수증분해 포함) = 관리손익 제외
+// VAT: 매출은 POS 공급가액(VAT 제외). 지출도 대칭 위해 과세 매입은 공급가액(÷1.1)으로 순액 처리.
+import { VAT_DIVISOR } from './aggregate';
 
 export interface PnlCat {
   id: number;
   type: string;
   name: string;
   parent_id: number | null;
+  vat_taxable?: boolean; // 과세 매입이면 순액(÷1.1) 대상. 미지정=과세로 간주(안전 기본값)
 }
 export interface PnlTx {
   category_id: number | null;
@@ -108,13 +111,16 @@ export function buildPnl(
   let fixed = 0;
   let unclassified = 0;
   for (const t of txns) {
-    const net = (t.amount_out || 0) - (t.amount_in || 0); // 환불 반영
+    const gross = (t.amount_out || 0) - (t.amount_in || 0); // 환불 반영(순 지출)
     if (t.category_id == null) {
+      // 미분류는 과세여부를 모르므로 총액 그대로(순액화 안 함)
       if ((t.amount_out || 0) > 0) unclassified += t.amount_out;
       continue;
     }
     const c = byId.get(t.category_id);
     if (!c) continue;
+    // 과세 매입은 공급가액(÷1.1)으로 순액 — 매출(공급가액)과 기준 통일. 면세(인건비·이자·세금 등)는 그대로.
+    const net = c.vat_taxable !== false ? Math.round(gross / VAT_DIVISOR) : gross;
     if (c.type === 'cogs') {
       if (kindOf(c) === '포장소모품') 포장매입 += net;
       else 식자재매입 += net;
@@ -127,9 +133,17 @@ export function buildPnl(
 
   // ---- 재료비(발생주의: 기초 + 매입 − 기말) ----
   const invAmt = (y: string, k: InvKind) => inventory.find((i) => i.ym === y && i.kind === k)?.amount;
+  // 기초 = 이월(carry-forward): 이번 달 이전 중 '가장 최근에 입력된 기말'을 소급.
+  // 매달 안 넣어도 분기 1회 입력값이 앞뒤 달로 제대로 이어지게 함.
+  const 기초Amt = (k: InvKind) => {
+    const prior = inventory
+      .filter((i) => i.kind === k && i.ym < ym)
+      .sort((a, b) => b.ym.localeCompare(a.ym))[0];
+    return prior?.amount ?? 0;
+  };
   const buildKind = (k: InvKind, 매입: number): CogsKind => {
     const 기말 = invAmt(ym, k);
-    const 기초 = invAmt(prevYm(ym), k) ?? 0;
+    const 기초 = 기초Amt(k);
     const 기말입력 = 기말 != null;
     // 기말 미입력이면 재료비=당월매입(그대로), 기초/기말 미적용
     const 재료비 = 기말입력 ? 기초 + 매입 - (기말 as number) : 매입;

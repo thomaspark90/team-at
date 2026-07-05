@@ -184,6 +184,11 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
         </div>
         {toggle}
       </div>
+      {last.unclassifiedIn > 0 && (
+        <div className="-mt-2 text-[12px] text-muted-foreground">
+          + 미분류 입금 {won(last.unclassifiedIn)} 은 매출에서 제외했어요(대출·자본유입 등 비매출 가능). 매출이면 <a href="/finance/classify?unclassified=1" className="underline">거래 분류</a>에서 지정하면 반영돼요.
+        </div>
+      )}
 
       <ChartCard title="매출 추이" subtitle="점선=평균">
         <ResponsiveContainer width="100%" height={260}>
