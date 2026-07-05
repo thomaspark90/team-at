@@ -12,15 +12,16 @@ export interface Period {
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 const pct = (n: number, total: number) => (total > 0 ? ((n / total) * 100).toFixed(2) : '0.00') + '%';
 
-// ---- 레이아웃 상수 ----
-const VW = 1360; // viewBox 가로
+// ---- 레이아웃 상수 (5열: 유입 · 총유입 · 지출그룹 · 중분류 · 소분류) ----
+const VW = 1600; // viewBox 가로
 const PAD_Y = 30;
 const BAR_W = 15;
 const GAP = 5; // 스택 노드 사이 간격
-const X_REV = 210;
-const X_INC = 455;
-const X_GRP = 705;
-const X_LEAF = 940;
+const X_REV = 180;
+const X_INC = 400;
+const X_GRP = 620;
+const X_MID = 880; // 중분류(원두·인건비·임대료 …)
+const X_DETAIL = 1150; // 소분류(정규직·단기·일일용역 …)
 const MIN_SEP = 22; // 같은 열에서 라벨을 표시할 최소 세로 간격
 
 interface Rect {
@@ -63,8 +64,8 @@ function layout(d: SankeyData) {
   const surplus = totalRevenue - totalExpense; // 영업이익(근사)
   const balanced = surplus > 0; // 흑자면 총매출 기준으로 영업이익 가지를 흐름에 표시
   const rightTotal = balanced ? totalRevenue : totalExpense;
-  const leafCount = groups.reduce((s, g) => s + g.leaves.length, 0);
-  const plotH = Math.max(560, leafCount * 40);
+  const midCount = groups.reduce((s, g) => s + g.leaves.length, 0);
+  const plotH = Math.max(560, midCount * 40);
 
   const rects: Rect[] = [];
   const ribbons: Ribbon[] = [];
@@ -119,12 +120,12 @@ function layout(d: SankeyData) {
   }
   const grpGaps = Math.max(0, rightEntries.length - 1) * GAP;
   const grpScale = rightTotal > 0 ? (plotH - grpGaps) / rightTotal : 0;
-  const leafGaps = Math.max(0, leafCount - 1) * GAP;
-  const leafScale = rightTotal > 0 ? (plotH - leafGaps) / rightTotal : 0;
+  const midGaps = Math.max(0, midCount - 1) * GAP;
+  const midScale = rightTotal > 0 ? (plotH - midGaps) / rightTotal : 0;
 
   let incRightY = incomeTop; // 총매출 오른쪽 모서리 분할(지출+이익 비중)
   let gy = PAD_Y; // 그룹 노드 스택
-  let ly = PAD_Y; // 세부 노드 스택(전 그룹 연속)
+  let my = PAD_Y; // 중분류 노드 스택(전 그룹 연속)
 
   rightEntries.forEach((g, gi) => {
     const gH = Math.max(1.5, g.amount * grpScale);
@@ -145,35 +146,62 @@ function layout(d: SankeyData) {
       linkType: gLink,
     });
 
-    // 그룹 → 세부: 그룹 오른쪽 모서리를 세부 비중대로 분할(영업이익은 세부 없음)
+    // 그룹 → 중분류(원두·인건비 …). 영업이익은 leaves 없음.
     let gBandY = gy;
-    g.leaves.forEach((lf, li) => {
-      const lH = Math.max(1.5, lf.amount * leafScale);
-      const gBandH = g.amount > 0 ? (lf.amount / g.amount) * gH : 0;
+    g.leaves.forEach((mid, li) => {
+      const midH = Math.max(1.5, mid.amount * midScale);
+      const gBandH = g.amount > 0 ? (mid.amount / g.amount) * gH : 0;
+      const midCat = mid.name === '기타' || mid.name === '미분류' ? undefined : mid.name;
       ribbons.push({
-        key: `leaf-${gi}-${li}`, color: g.color,
-        linkType: gLink, linkCat: lf.name === '기타' || lf.name === '미분류' ? undefined : lf.name,
+        key: `mid-${gi}-${li}`, color: g.color, linkType: gLink, linkCat: midCat,
         x0: X_GRP + BAR_W, y0t: gBandY, y0b: gBandY + gBandH,
-        x1: X_LEAF, y1t: ly, y1b: ly + lH,
+        x1: X_MID, y1t: my, y1b: my + midH,
       });
       gBandY += gBandH;
 
+      const kids = mid.children ?? [];
+      const hasKids = kids.length > 0;
       rects.push({
-        x: X_LEAF, y: ly, h: lH, color: g.color, name: lf.name, amount: lf.amount,
-        total: rightTotal, labelSide: 'right', labelX: X_LEAF + BAR_W + 11, col: X_LEAF,
-        linkType: gLink, linkCat: lf.name === '기타' || lf.name === '미분류' ? undefined : lf.name,
+        x: X_MID, y: my, h: midH, color: g.color, name: mid.name, amount: mid.amount,
+        total: rightTotal, col: X_MID, linkType: gLink, linkCat: midCat,
+        // 소분류가 있으면(오른쪽에 5열) 라벨은 왼쪽, 없으면 오른쪽(끝단이라 여백 있음)
+        labelSide: hasKids ? 'left' : 'right',
+        labelX: hasKids ? X_MID - 11 : X_MID + BAR_W + 11,
       });
-      ly += lH + GAP;
+
+      // 중분류 → 소분류(정규직·단기 …): 중분류 높이를 소분류 비중대로 나눠 수평 리본
+      if (hasKids) {
+        let dY = my;
+        kids.forEach((det, di) => {
+          const bandH = mid.amount > 0 ? (det.amount / mid.amount) * midH : 0;
+          const detH = Math.max(1.5, bandH - 2); // 소분류 사이 얇은 간격
+          const detCat = det.name === '기타' ? undefined : det.name;
+          ribbons.push({
+            key: `det-${gi}-${li}-${di}`, color: g.color, linkType: gLink, linkCat: detCat,
+            x0: X_MID + BAR_W, y0t: dY, y0b: dY + bandH,
+            x1: X_DETAIL, y1t: dY, y1b: dY + detH,
+          });
+          rects.push({
+            x: X_DETAIL, y: dY, h: detH, color: g.color, name: det.name, amount: det.amount,
+            total: rightTotal, labelSide: 'right', labelX: X_DETAIL + BAR_W + 11, col: X_DETAIL,
+            linkType: gLink, linkCat: detCat,
+          });
+          dY += bandH;
+        });
+      }
+      my += midH + GAP;
     });
 
     gy += gH + GAP;
   });
 
-  // 라벨 겹침 억제: 같은 열에서 위→아래로 훑으며 최소 간격을 못 채우면 라벨 생략
-  // (총 매출은 항상 표시). 작은 인접 노드는 라벨을 숨겨 Monarch 처럼 깔끔하게.
-  for (const colX of [X_REV, X_GRP, X_LEAF]) {
+  // 라벨 겹침 억제: (열, 라벨방향)별로 위→아래 훑으며 최소 간격 못 채우면 생략
+  const labelGroups: [number, 'left' | 'right'][] = [
+    [X_REV, 'left'], [X_GRP, 'left'], [X_MID, 'left'], [X_MID, 'right'], [X_DETAIL, 'right'],
+  ];
+  for (const [colX, side] of labelGroups) {
     let lastBottom = -Infinity;
-    for (const n of rects.filter((r) => r.col === colX).sort((a, b) => a.y - b.y)) {
+    for (const n of rects.filter((r) => r.col === colX && r.labelSide === side).sort((a, b) => a.y - b.y)) {
       const cy = n.y + n.h / 2;
       if (cy - MIN_SEP / 2 >= lastBottom) {
         n.showLabel = true;

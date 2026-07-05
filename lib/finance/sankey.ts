@@ -20,6 +20,7 @@ export interface SankCat {
 export interface SankLeaf {
   name: string;
   amount: number;
+  children?: SankLeaf[]; // 소분류(있으면 5번째 열로 펼침) — 예: 인건비 → 정규직/단기/일일용역
 }
 export interface SankGroup {
   key: string;
@@ -62,7 +63,8 @@ export function buildSankey(txns: SankTx[], cats: SankCat[]): SankeyData {
   };
 
   const revMap = new Map<string, number>();
-  const grpLeaf = new Map<string, Map<string, number>>();
+  // type → 중분류(대분류명) → 소분류(실제 계정명) → 금액
+  const grpLeaf = new Map<string, Map<string, Map<string, number>>>();
   for (const g of EXPENSE_GROUPS) grpLeaf.set(g.key, new Map());
   let otherIncome = 0; // 분류됐지만 매출이 아닌 유입(영업외수익·손익제외 유입 등)
   let unclassifiedIn = 0; // 미분류 유입
@@ -76,11 +78,19 @@ export function buildSankey(txns: SankTx[], cats: SankCat[]): SankeyData {
       else if (c) otherIncome += t.amount_in;
       else unclassifiedIn += t.amount_in;
     }
-    // 출금 → 오른쪽(유출)
+    // 출금 → 오른쪽(유출). 중분류(대분류명)와 소분류(자기 이름) 둘 다 집계.
     if (t.amount_out > 0) {
       const m = c ? grpLeaf.get(c.type) : undefined;
-      if (m) m.set(leafName(c!), (m.get(leafName(c!)) ?? 0) + t.amount_out);
-      else unclassifiedOut += t.amount_out; // 미분류 or 매출계정 환불 등 그룹 없는 유출
+      if (m) {
+        const mid = leafName(c!); // 인건비
+        const detail = c!.name; // 정규직 (또는 대분류 직접분류 시 인건비)
+        let dm = m.get(mid);
+        if (!dm) {
+          dm = new Map();
+          m.set(mid, dm);
+        }
+        dm.set(detail, (dm.get(detail) ?? 0) + t.amount_out);
+      } else unclassifiedOut += t.amount_out; // 미분류 or 매출계정 환불 등 그룹 없는 유출
     }
   }
 
@@ -93,14 +103,21 @@ export function buildSankey(txns: SankTx[], cats: SankCat[]): SankeyData {
   if (unclassifiedIn > 0) revenue.push({ name: '미분류 수입', amount: unclassifiedIn });
   const totalRevenue = revenue.reduce((s, r) => s + r.amount, 0);
 
-  // 오른쪽: 지출 그룹별 세부 항목 정리 + '기타' 롤업
+  // 오른쪽: 지출 그룹 → 중분류(대분류명) → 소분류(children)
   const rawGroups = EXPENSE_GROUPS.map((g) => {
-    const entries = Array.from((grpLeaf.get(g.key) ?? new Map<string, number>()).entries())
-      .map(([name, amount]) => ({ name, amount: amount as number }))
-      .filter((l) => l.amount > 0)
+    const midMap = grpLeaf.get(g.key) ?? new Map<string, Map<string, number>>();
+    const mids = Array.from(midMap.entries())
+      .map(([midName, dm]) => {
+        const details = Array.from(dm.entries())
+          .map(([name, amount]) => ({ name, amount: amount as number }))
+          .filter((dd) => dd.amount > 0)
+          .sort((a, b) => b.amount - a.amount);
+        return { name: midName, amount: details.reduce((s, dd) => s + dd.amount, 0), details };
+      })
+      .filter((m) => m.amount > 0)
       .sort((a, b) => b.amount - a.amount);
-    const amount = entries.reduce((s, l) => s + l.amount, 0);
-    return { ...g, amount, entries };
+    const amount = mids.reduce((s, m) => s + m.amount, 0);
+    return { ...g, amount, mids };
   }).filter((g) => g.amount > 0);
 
   // 총유출 = 분류된 유출 + 미분류 유출 (통장 현황의 총출금과 일치)
@@ -108,11 +125,23 @@ export function buildSankey(txns: SankTx[], cats: SankCat[]): SankeyData {
   const threshold = totalExpense * MIN_LEAF_RATIO;
 
   const groups: SankGroup[] = rawGroups.map((g) => {
-    const big = g.entries.filter((l) => l.amount >= threshold);
-    const small = g.entries.filter((l) => l.amount < threshold);
-    const leaves = [...big];
-    const rest = small.reduce((s, l) => s + l.amount, 0);
-    if (rest > 0) leaves.push({ name: '기타', amount: rest });
+    const bigMids = g.mids.filter((m) => m.amount >= threshold);
+    const smallMids = g.mids.filter((m) => m.amount < threshold);
+    const leaves: SankLeaf[] = bigMids.map((m) => {
+      // 소분류가 의미 있으면(2개 이상 또는 자기 이름과 다르면) 5번째 열로 펼친다
+      const expand = m.details.length > 1 || (m.details.length === 1 && m.details[0].name !== m.name);
+      let children: SankLeaf[] | undefined;
+      if (expand) {
+        const dth = m.amount * 0.05; // 중분류 대비 5% 미만 소분류는 '기타'로 묶음
+        const bigD = m.details.filter((dd) => dd.amount >= dth);
+        const restD = m.details.filter((dd) => dd.amount < dth).reduce((s, dd) => s + dd.amount, 0);
+        children = bigD.map((dd) => ({ name: dd.name, amount: dd.amount }));
+        if (restD > 0) children.push({ name: '기타', amount: restD });
+      }
+      return { name: m.name, amount: m.amount, children };
+    });
+    const restMid = smallMids.reduce((s, m) => s + m.amount, 0);
+    if (restMid > 0) leaves.push({ name: '기타', amount: restMid });
     return { key: g.key, label: g.label, color: g.color, amount: g.amount, leaves };
   });
   if (unclassifiedOut > 0) {

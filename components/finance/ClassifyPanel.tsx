@@ -108,7 +108,8 @@ export default function ClassifyPanel({
     if (catFilter.type) {
       const c = r.category_id != null ? catById.get(r.category_id) : undefined;
       if (!c || c.type !== catFilter.type) return false;
-      if (catFilter.cat) return leafNameOf(c) === catFilter.cat;
+      // cat 은 중분류(대분류명·leafNameOf) 또는 소분류(자기 이름) 둘 다 매칭
+      if (catFilter.cat) return leafNameOf(c) === catFilter.cat || c.name === catFilter.cat;
       return true;
     }
     return true;
