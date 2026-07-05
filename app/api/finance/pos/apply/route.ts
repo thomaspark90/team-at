@@ -6,8 +6,13 @@ import { resolveRole } from '@/lib/finance/access';
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-// 토스 매출리포트 → pos_sales 저장. 해당 월(들) 전부 삭제 후 재삽입(월 단위 교체).
-// 확정된 달은 덮어쓰기 금지.
+const MIGRATION_HINT =
+  'POS 매출 테이블이 아직 없어요. Supabase SQL Editor 에서 supabase/migration_pos_pnl.sql 을 먼저 실행해주세요.';
+const isMissingTable = (e: { code?: string; message?: string } | null) =>
+  !!e && (e.code === 'PGRST205' || e.code === '42P01' || /Could not find the table/i.test(e.message ?? ''));
+
+// 토스 매출리포트 → pos_sales 저장. 파일에 든 달을 upsert(덮어쓰기)하고,
+// 이번 업로드에 없는 옛 행만 정리(월 단위 교체). 확정된 달은 덮어쓰기 금지.
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -35,12 +40,15 @@ export async function POST(req: Request) {
   }
 
   // 확정된 달 보호
-  const { data: closed } = await supabase
+  const { data: closed, error: closeErr } = await supabase
     .schema('finance')
     .from('monthly_close')
     .select('ym,status')
     .in('ym', r.yms)
     .eq('status', 'confirmed');
+  if (closeErr && !isMissingTable(closeErr)) {
+    return NextResponse.json({ error: `확정월 확인 실패: ${closeErr.message}` }, { status: 500 });
+  }
   if (closed && closed.length > 0) {
     return NextResponse.json(
       { error: `이미 확정된 달(${closed.map((c: { ym: string }) => c.ym).join(', ')})은 덮어쓸 수 없습니다.` },
@@ -61,12 +69,24 @@ export async function POST(req: Request) {
     uploaded_at: now,
   }));
 
-  // 월 단위 교체: 파일에 포함된 ym 전부 삭제 후 재삽입
-  const { error: delErr } = await supabase.schema('finance').from('pos_sales').delete().in('ym', r.yms);
-  if (delErr) return NextResponse.json({ error: `기존 매출 삭제 실패: ${delErr.message}` }, { status: 500 });
+  // 월 단위 교체 = upsert(있으면 덮어쓰기) 후, 이번 업로드에 없는 옛 행만 정리.
+  // 삭제-먼저 방식과 달리 테이블이 비어 있어도/재업로드도 안전.
+  const { error: upErr } = await supabase
+    .schema('finance')
+    .from('pos_sales')
+    .upsert(rows, { onConflict: 'sale_date,category' });
+  if (upErr) {
+    if (isMissingTable(upErr)) return NextResponse.json({ error: MIGRATION_HINT }, { status: 400 });
+    return NextResponse.json({ error: `매출 저장 실패: ${upErr.message}` }, { status: 500 });
+  }
 
-  const { error: insErr } = await supabase.schema('finance').from('pos_sales').insert(rows);
-  if (insErr) return NextResponse.json({ error: `매출 저장 실패: ${insErr.message}` }, { status: 500 });
+  // 잔여 정리(비치명적): 같은 달인데 이번 파일엔 없는 (일×카테고리) 옛 행 제거
+  const { error: delErr } = await supabase
+    .schema('finance')
+    .from('pos_sales')
+    .delete()
+    .in('ym', r.yms)
+    .lt('uploaded_at', now);
 
   return NextResponse.json({
     ym: r.ym,
@@ -74,5 +94,6 @@ export async function POST(req: Request) {
     inserted: rows.length,
     supply: r.totals.supply,
     excludedRows: r.excluded.rows,
+    staleCleaned: !delErr,
   });
 }
