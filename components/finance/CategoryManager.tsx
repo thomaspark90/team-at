@@ -11,7 +11,11 @@ export interface ManagedCat {
   active: boolean;
   pinned: boolean;
   sort: number;
+  vat_taxable: boolean;
 }
+
+// 과세/면세 토글을 노출할 타입 (손익에서 순액 대상이 되는 매출·비용)
+const VAT_TYPES = ['revenue', 'cogs', 'sga'];
 
 const TYPE_LABEL: Record<string, string> = {
   revenue: '매출',
@@ -71,7 +75,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
       .schema('finance')
       .from('categories')
       .insert({ type, name, sort: maxSort + 10 })
-      .select('id,type,name,parent_id,active,pinned,sort')
+      .select('id,type,name,parent_id,active,pinned,sort,vat_taxable')
       .single();
     if (error) setError(error.message);
     else if (data) {
@@ -113,7 +117,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
   return (
     <div className="flex flex-col gap-7">
       <p className="text-[13px] text-muted-foreground">
-        왼쪽 <b>손잡이(⠿)를 드래그</b>해 순서를 바꿔요. <b>이름을 클릭</b>하면 ⭐즐겨찾기로 지정돼 분류 드롭다운 맨 위 &ldquo;자주 쓰는&rdquo;에 떠요. <b>활성</b>을 끄면 숨겨져요.
+        왼쪽 <b>손잡이(⠿)를 드래그</b>해 순서를 바꿔요. <b>이름을 클릭</b>하면 ⭐즐겨찾기로 지정돼 분류 드롭다운 맨 위 &ldquo;자주 쓰는&rdquo;에 떠요. <b>활성</b>을 끄면 숨겨져요. <b>과세/면세</b>는 손익 계산 기준 — 과세 항목은 대시보드에서 공급가액(÷1.1)으로 순액 처리돼요(인건비·이자·수도·세금 등 면세는 그대로).
       </p>
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
@@ -161,6 +165,16 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                         {c.parent_id && <span className="text-muted-foreground">└ </span>}
                         {label(c)}
                       </span>
+                      {VAT_TYPES.includes(c.type) && (
+                        <button
+                          onClick={() => patch(c.id, { vat_taxable: !c.vat_taxable })}
+                          disabled={busy === c.id}
+                          title="부가세 과세 여부 — 과세면 손익에서 공급가액(총액÷1.1)으로 순액 처리, 면세는 그대로"
+                          className={`whitespace-nowrap rounded-md border px-3 py-1 text-[12px] ${c.vat_taxable ? 'border-border text-foreground' : 'border-transparent bg-muted text-muted-foreground'}`}
+                        >
+                          {c.vat_taxable ? '과세' : '면세'}
+                        </button>
+                      )}
                       <button
                         onClick={() => patch(c.id, { active: !c.active })}
                         disabled={busy === c.id}

@@ -9,6 +9,7 @@ export interface AggCat {
   type: string;
   name: string;
   parent_id: number | null;
+  vat_taxable?: boolean; // 과세 매입/매출이면 순액(÷1.1) 대상. 없으면 과세로 간주(안전 기본값)
 }
 export interface AggTx {
   tx_at: string; // ISO
@@ -58,6 +59,10 @@ export function aggregate(
   const m = new Map<string, MonthAgg>();
   const expenseKeys = new Set<string>();
 
+  // 순액 모드에서 과세 항목만 공급가액(총액÷1.1)으로. VAT는 손익 아닌 예수/대급금이라 제외.
+  // 면세·비대상(인건비·이자·수도·세금 등)은 그대로. vat_taxable 미지정은 과세로 간주.
+  const netAmt = (v: number, c: AggCat) => (netVat && c.vat_taxable !== false ? Math.round(v / VAT_DIVISOR) : v);
+
   for (const t of txns) {
     if (t.category_id == null) continue;
     const c = catMap.get(t.category_id);
@@ -69,20 +74,21 @@ export function aggregate(
       m.set(key, mo);
     }
     if (c.type === 'revenue') {
-      // 순액 모드: 공급가액(총액/1.1)으로 매출 인식. VAT는 손익이 아닌 예수금이라 제외.
-      mo.revenue += netVat ? Math.round(t.amount_in / VAT_DIVISOR) : t.amount_in;
+      mo.revenue += netAmt(t.amount_in, c);
     } else if (c.type === 'cogs') {
-      mo.cogs += t.amount_out;
+      const amt = netAmt(t.amount_out, c);
+      mo.cogs += amt;
       const k = nameOf(c);
-      mo.expense[k] = (mo.expense[k] || 0) + t.amount_out;
+      mo.expense[k] = (mo.expense[k] || 0) + amt;
       expenseKeys.add(k);
     } else if (c.type === 'sga') {
-      mo.sga += t.amount_out;
+      const amt = netAmt(t.amount_out, c);
+      mo.sga += amt;
       const k = nameOf(c);
-      mo.expense[k] = (mo.expense[k] || 0) + t.amount_out;
+      mo.expense[k] = (mo.expense[k] || 0) + amt;
       expenseKeys.add(k);
     } else if (c.type === 'non_operating') {
-      mo.nonOp += t.amount_in - t.amount_out;
+      mo.nonOp += netAmt(t.amount_in, c) - netAmt(t.amount_out, c);
     }
   }
 

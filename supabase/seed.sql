@@ -82,3 +82,8 @@ insert into finance.categories (type,name,parent_id,in_pnl,sort)
 select 'excluded', v.name, p.id, false, v.sort
 from (values ('인테리어',11),('설비',12),('초기투자',13)) as v(name,sort),
      finance.categories p where p.type='excluded' and p.name='자본적지출';
+
+-- 부가세 면세·비대상 항목 (나머지는 default true=과세). 상세는 migration_vat_taxable.sql 참고.
+update finance.categories set vat_taxable = false
+where type in ('non_operating','excluded')
+   or (type='sga' and name in ('인건비','정규직','단기','일일용역','강사료','퇴직금','보험료','4대보험','기타보험','수도','세금과공과','여비교통비','잡비'));

@@ -59,6 +59,7 @@ create table finance.categories (
   in_pnl    boolean not null default true,  -- 손익 포함 여부(excluded=false)
   active    boolean not null default true,
   pinned    boolean not null default false,  -- 상위노출(분류 드롭다운 '자주 쓰는')
+  vat_taxable boolean not null default true, -- 부가세 과세 매입/매출 여부(손익 공급가액 순액 처리 대상)
   unique (type, name)
 );
 

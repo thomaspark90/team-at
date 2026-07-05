@@ -19,7 +19,7 @@ export default async function CategoriesPage() {
   const { data } = await supabase
     .schema('finance')
     .from('categories')
-    .select('id,type,name,parent_id,active,pinned,sort')
+    .select('id,type,name,parent_id,active,pinned,sort,vat_taxable')
     .order('sort', { ascending: true });
 
   return (

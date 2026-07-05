@@ -21,7 +21,7 @@ export default async function DashboardPage() {
     .schema('finance')
     .from('transactions')
     .select('tx_at,amount_in,amount_out,category_id');
-  const { data: cats } = await supabase.schema('finance').from('categories').select('id,type,name,parent_id');
+  const { data: cats } = await supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable');
 
   return (
     <div className="min-h-screen bg-background text-foreground">
