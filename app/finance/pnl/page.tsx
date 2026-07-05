@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
-import { buildPnl, benchmark, type PnlCat, type PnlTx, type PnlPosRow, type PnlInventory, type Signal } from '@/lib/finance/pnl';
+import { buildPnl, benchmark, prevYm, type PnlCat, type PnlTx, type PnlPosRow, type PnlInventory, type Signal } from '@/lib/finance/pnl';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import PnlUpload from '@/components/finance/PnlUpload';
@@ -171,6 +171,10 @@ async function PnlBody({
             initial={{
               식자재: p.cogs.식자재.기말입력 ? p.cogs.식자재.기말 : null,
               포장소모품: p.cogs.포장소모품.기말입력 ? p.cogs.포장소모품.기말 : null,
+            }}
+            prevMonth={{
+              식자재: inventory.find((i) => i.ym === prevYm(selectedYm) && i.kind === '식자재')?.amount ?? null,
+              포장소모품: inventory.find((i) => i.ym === prevYm(selectedYm) && i.kind === '포장소모품')?.amount ?? null,
             }}
           />
           <div className="ta-card">
