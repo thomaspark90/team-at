@@ -122,6 +122,26 @@ export async function POST(req: Request) {
   if (lockErr) return NextResponse.json({ error: `원본 잠금 실패: ${lockErr.message}` }, { status: 500 });
 
   if (freshRows.length > 0) {
+    // 업로드 이력(쿠팡 영수증 배치) 기록 → upload_id 연결
+    const dates = freshRows.map((r) => String(r.tx_at)).sort();
+    const total = freshRows.reduce((s, r) => s + (r.amount_out as number), 0);
+    const { data: up } = await supabase
+      .schema('finance')
+      .from('uploads')
+      .insert({
+        bank: 'shinhan',
+        source: 'receipt',
+        card_issuer: '쿠팡',
+        row_count: freshRows.length,
+        uploaded_by: user.id,
+        period_start: dates[0]?.slice(0, 10),
+        period_end: dates[dates.length - 1]?.slice(0, 10),
+        statement_total: total,
+      })
+      .select('id')
+      .single();
+    if (up) freshRows.forEach((r) => (r.upload_id = up.id));
+
     const { error: insErr } = await supabase.schema('finance').from('transactions').insert(freshRows);
     if (insErr) return NextResponse.json({ error: `품목 저장 실패: ${insErr.message}` }, { status: 500 });
   }

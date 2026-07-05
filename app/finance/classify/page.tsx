@@ -57,11 +57,16 @@ export default async function ClassifyPage({
       <div className="mx-auto max-w-[1600px] px-6 py-8">
         <div className="mb-4 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">거래 분류</h1>
-          {role === 'admin' && (
-            <Link href="/finance/categories" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-              계정과목 관리 →
+          <div className="flex gap-4">
+            <Link href="/finance/uploads" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+              자료 이력 →
             </Link>
-          )}
+            {role === 'admin' && (
+              <Link href="/finance/categories" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+                계정과목 관리 →
+              </Link>
+            )}
+          </div>
         </div>
         <div className="flex flex-col gap-6 lg:flex-row">
           <div className="min-w-0 flex-1">
