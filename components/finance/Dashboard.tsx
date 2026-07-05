@@ -141,6 +141,13 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
     if (hasOther) row['기타'] = otherKeys.reduce((s, k) => s + (m.expense[k] || 0), 0);
     return row;
   });
+  // 항목별 비중(전체 기간 지출 대비 %) — 지출 구분 차트 옆 리스트
+  const valueOf = (k: string) => (k === '기타' ? otherKeys.reduce((s, kk) => s + (totalByKey[kk] || 0), 0) : totalByKey[k] || 0);
+  const grandExpense = barKeys.reduce((s, k) => s + valueOf(k), 0);
+  const breakdown = barKeys.map((k, i) => {
+    const value = valueOf(k);
+    return { name: k, value, pct: grandExpense > 0 ? (value / grandExpense) * 100 : 0, color: colorOf(k, i) };
+  });
 
   const lastExpense = last.cogs + last.sga;
   const prevExpense = prev ? prev.cogs + prev.sga : null;
@@ -207,23 +214,36 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
         </ResponsiveContainer>
       </ChartCard>
 
-      <ChartCard title="지출 구분" subtitle="카테고리별 지출(누적)">
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={barData} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-            <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
-            <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
-            <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
-            <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} />
-            {barKeys.map((k, i) => (
-              <Bar key={k} dataKey={k} stackId="a" fill={colorOf(k, i)} stroke={CAT_SURFACE} strokeWidth={1}>
-                {i === barKeys.length - 1 && (
-                  <LabelList dataKey="총지출" position="top" offset={6} formatter={wonLabel} style={pointLabel} />
-                )}
-              </Bar>
+      <ChartCard title="지출 구분" subtitle="카테고리별 지출(누적) · 옆은 전체 기간 비중">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="min-w-0 flex-1">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={barData} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+                <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+                <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
+                <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
+                {barKeys.map((k, i) => (
+                  <Bar key={k} dataKey={k} stackId="a" fill={colorOf(k, i)} stroke={CAT_SURFACE} strokeWidth={1}>
+                    {i === barKeys.length - 1 && (
+                      <LabelList dataKey="총지출" position="top" offset={6} formatter={wonLabel} style={pointLabel} />
+                    )}
+                  </Bar>
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <ul className="flex w-full shrink-0 flex-col gap-1.5 md:w-[230px]">
+            {breakdown.map((b) => (
+              <li key={b.name} className="flex items-center gap-2 text-[12px]">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{ background: b.color }} aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-foreground" title={b.name}>{b.name}</span>
+                <span className="tabular shrink-0 text-[11px] text-muted-foreground">{won(b.value)}</span>
+                <span className="tabular w-[46px] shrink-0 text-right font-medium text-foreground">{b.pct.toFixed(1)}%</span>
+              </li>
             ))}
-          </BarChart>
-        </ResponsiveContainer>
+          </ul>
+        </div>
       </ChartCard>
 
       <ChartCard title="재료비 %" subtitle="원가율 = 재료비 ÷ 매출 · 카페 벤치마크 25~37%">
