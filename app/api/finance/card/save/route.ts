@@ -122,6 +122,7 @@ export async function POST(req: Request) {
     branch: null,
     dedup_hash: t.dedupHash,
     normalized_key: t.normalizedKey,
+    approval_no: t.approvalNo ?? null,
     category_id: null, // 카드는 자동 확정 안 함 — 거래 분류에서 직접 선택
     classified_by: null,
     classified_at: null,

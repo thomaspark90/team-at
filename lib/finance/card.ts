@@ -62,6 +62,7 @@ export function parseCardRows(rows: unknown[][], issuer = '신한'): ParsedTrans
       source: 'card',
       cardIssuer: issuer,
       isInstallment: /할부/.test(use),
+      approvalNo: approval || undefined,
       txAt: dt.iso,
       ym: dt.ym,
       channel: use, // 일시불/할부/해외일시불 — 분류엔 안 씀

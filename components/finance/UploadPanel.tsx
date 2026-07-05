@@ -51,7 +51,7 @@ export default function UploadPanel() {
     try {
       const res = await fetch('/api/finance/parse', { method: 'POST', body: buildForm() });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || '분석에 실패했습니다.');
+      if (!res.ok) throw new Error(json.error || '입력에 실패했습니다.');
       setPreview(json as Preview);
     } catch (e) {
       setError((e as Error).message);
@@ -144,7 +144,7 @@ export default function UploadPanel() {
             onClick={analyze} disabled={!file || loading}
             className="ta-btn-primary"
           >
-            {loading ? '분석 중…' : '분석하기'}
+            {loading ? '입력 중…' : '입력하기'}
           </button>
         </div>
 

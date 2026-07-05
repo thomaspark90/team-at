@@ -52,7 +52,7 @@ export default function CardReconcile() {
       fd.append('file', file);
       const res = await fetch('/api/finance/card/parse', { method: 'POST', body: fd });
       const j = await res.json();
-      if (!res.ok) throw new Error(j.error || '분석에 실패했어요.');
+      if (!res.ok) throw new Error(j.error || '입력에 실패했어요.');
       setPreview(j as Preview);
       // 최적 후보 자동 선택 — 단, 차액이 크면(사용합계의 15% 초과) 엉뚱한 매칭 방지 위해 '미연결' 기본
       const best = (j.candidates as Candidate[] | undefined)?.[0];
@@ -120,7 +120,7 @@ export default function CardReconcile() {
         </div>
         <div>
           <button onClick={analyze} disabled={!file || loading} className="ta-btn-primary">
-            {loading ? '분석 중…' : '분석하기'}
+            {loading ? '입력 중…' : '입력하기'}
           </button>
         </div>
         {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}

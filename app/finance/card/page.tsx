@@ -4,6 +4,7 @@ import { resolveRole } from '@/lib/finance/access';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import CardReconcile from '@/components/finance/CardReconcile';
+import ReceiptEnrich from '@/components/finance/ReceiptEnrich';
 
 export default async function CardPage() {
   const supabase = await createClient();
@@ -19,8 +20,9 @@ export default async function CardPage() {
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <FinanceNav role={role} />
-      <div className="mx-auto max-w-[1120px] px-6 py-8">
+      <div className="mx-auto flex max-w-[1120px] flex-col gap-8 px-6 py-8">
         <CardReconcile />
+        <ReceiptEnrich />
       </div>
     </div>
   );
