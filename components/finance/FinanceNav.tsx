@@ -39,10 +39,14 @@ export default function FinanceNav({ role }: { role: string | null }) {
 
   return (
     <nav className="border-b border-border bg-card/40">
-      <div className="mx-auto flex max-w-[1680px] flex-wrap items-center gap-x-5 gap-y-2 px-6 py-3">
-        {LEFT.map(item)}
+      <div className="mx-auto flex max-w-[1680px] items-center gap-4 px-6 py-3">
         <span className="flex-1" />
-        {isAdmin && ADMIN.map(item)}
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+          {LEFT.map(item)}
+        </div>
+        <div className="flex flex-1 flex-wrap items-center justify-end gap-x-5 gap-y-2">
+          {isAdmin && ADMIN.map(item)}
+        </div>
       </div>
     </nav>
   );
