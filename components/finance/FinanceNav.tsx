@@ -9,6 +9,7 @@ const LEFT = [
   { href: '/finance/cashflow', label: '월별 요약' },
   { href: '/finance/dashboard', label: '대시보드' },
   { href: '/finance/flow', label: '자금 흐름' },
+  { href: '/finance/pnl', label: '관리손익' },
   { href: '/finance/close', label: '월 확정' },
 ];
 const ADMIN = [
