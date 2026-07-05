@@ -1,30 +1,6 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { resolveRole } from '@/lib/finance/access';
-import TabNav from '@/components/TabNav';
-import FinanceNav from '@/components/finance/FinanceNav';
-import CardReconcile from '@/components/finance/CardReconcile';
-import ReceiptEnrich from '@/components/finance/ReceiptEnrich';
 
-export default async function CardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect('/');
-
-  const role = await resolveRole(supabase, user);
-  if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
-
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <FinanceNav role={role} />
-      <div className="mx-auto flex max-w-[1120px] flex-col gap-8 px-6 py-8">
-        <h1 className="m-0 text-[22px] tracking-[-0.5px]">지출 자료 보충</h1>
-        <CardReconcile />
-        <ReceiptEnrich />
-      </div>
-    </div>
-  );
+// 자료 보충(신한카드·쿠팡)은 거래 분류 우측 사이드바로 통합됨 — 옛 주소는 리다이렉트.
+export default function CardPage() {
+  redirect('/finance/classify');
 }
