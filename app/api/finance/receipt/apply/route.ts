@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { parseReceiptPdf, groupByApproval } from '@/lib/finance/receipt';
 import { normalizeKey } from '@/lib/finance/normalize';
-import { hash } from '@/lib/finance/dedup';
+import { hash, fetchExistingHashes } from '@/lib/finance/dedup';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 
@@ -103,11 +103,7 @@ export async function POST(req: Request) {
 
   // 품목 dedup(재적용 대비)
   const hashes = rowsToInsert.map((r) => r.dedup_hash as string);
-  const existing = new Set<string>();
-  for (let i = 0; i < hashes.length; i += 100) {
-    const { data } = await supabase.schema('finance').from('transactions').select('dedup_hash').in('dedup_hash', hashes.slice(i, i + 100));
-    (data ?? []).forEach((e: { dedup_hash: string }) => existing.add(e.dedup_hash));
-  }
+  const existing = await fetchExistingHashes(supabase, hashes);
   const freshRows = rowsToInsert.filter((r) => !existing.has(r.dedup_hash as string));
 
   // 1) 품목(영수증 분해분)을 먼저 저장. 실패 시 원본을 잠그지 않아 lump 누락/이중계상 없음.

@@ -3,6 +3,7 @@ import { parseCardXlsx } from '@/lib/finance/card';
 import { dedupe } from '@/lib/finance/parse';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { fetchExistingHashes } from '@/lib/finance/dedup';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -36,15 +37,7 @@ export async function POST(req: Request) {
 
   // DB 지문 대조 → 신규만
   const hashes = result.transactions.map((t) => t.dedupHash);
-  const existing = new Set<string>();
-  for (let i = 0; i < hashes.length; i += 100) {
-    const { data } = await supabase
-      .schema('finance')
-      .from('transactions')
-      .select('dedup_hash')
-      .in('dedup_hash', hashes.slice(i, i + 100));
-    (data ?? []).forEach((e: { dedup_hash: string }) => existing.add(e.dedup_hash));
-  }
+  const existing = await fetchExistingHashes(supabase, hashes);
   const { fresh, duplicates } = dedupe(result.transactions, existing);
 
   const net = result.sumOut - result.sumIn; // 청구 예상액(환불 차감)

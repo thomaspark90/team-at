@@ -3,6 +3,7 @@ import { pdfToLayoutText } from '@/lib/finance/pdf';
 import { parseStatement, dedupe } from '@/lib/finance/parse';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { fetchExistingHashes } from '@/lib/finance/dedup';
 import type { BankSource } from '@/lib/finance/types';
 
 export const runtime = 'nodejs';
@@ -61,21 +62,4 @@ export async function POST(req: Request) {
     duplicates,
     sample: fresh.slice(0, 200),
   });
-}
-
-// dedup_hash 청크 조회(URL 길이 회피)
-async function fetchExistingHashes(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  hashes: string[]
-): Promise<Set<string>> {
-  const set = new Set<string>();
-  for (let i = 0; i < hashes.length; i += 100) {
-    const { data } = await supabase
-      .schema('finance')
-      .from('transactions')
-      .select('dedup_hash')
-      .in('dedup_hash', hashes.slice(i, i + 100));
-    (data ?? []).forEach((e: { dedup_hash: string }) => set.add(e.dedup_hash));
-  }
-  return set;
 }

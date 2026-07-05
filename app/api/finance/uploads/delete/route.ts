@@ -142,8 +142,8 @@ export async function POST(req: Request) {
   const { error: dErr } = await supabase.schema('finance').from('transactions').delete().eq('upload_id', uploadId);
   if (dErr) return NextResponse.json({ error: `거래 삭제 실패: ${dErr.message}` }, { status: 500 });
 
-  // 업로드 기록 삭제
-  await supabase.schema('finance').from('uploads').delete().eq('id', uploadId);
+  // 업로드 기록 삭제(거래는 이미 지워졌으니 실패해도 데이터 정합성엔 문제없음 — 이력에만 빈 배치가 남음)
+  const { error: upErr } = await supabase.schema('finance').from('uploads').delete().eq('id', uploadId);
 
-  return NextResponse.json({ deleted: batch.length, unlocked: revertIds.length });
+  return NextResponse.json({ deleted: batch.length, unlocked: revertIds.length, uploadRecordRemoved: !upErr });
 }

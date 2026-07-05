@@ -3,6 +3,7 @@ import { pdfToLayoutText } from '@/lib/finance/pdf';
 import { parseStatement, dedupe } from '@/lib/finance/parse';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { fetchExistingHashes } from '@/lib/finance/dedup';
 import type { BankSource } from '@/lib/finance/types';
 
 export const runtime = 'nodejs';
@@ -43,16 +44,8 @@ export async function POST(req: Request) {
   }
 
   // DB 지문 대조 → 신규만
-  const existing = new Set<string>();
   const allHashes = result.transactions.map((t) => t.dedupHash);
-  for (let i = 0; i < allHashes.length; i += 100) {
-    const { data: ex } = await supabase
-      .schema('finance')
-      .from('transactions')
-      .select('dedup_hash')
-      .in('dedup_hash', allHashes.slice(i, i + 100));
-    (ex ?? []).forEach((e: { dedup_hash: string }) => existing.add(e.dedup_hash));
-  }
+  const existing = await fetchExistingHashes(supabase, allHashes);
   const { fresh } = dedupe(result.transactions, existing);
   const duplicates = result.totalRows - fresh.length;
   if (fresh.length === 0) {
