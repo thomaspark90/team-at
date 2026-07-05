@@ -106,7 +106,7 @@ async function PnlBody({
               aria-current={ym === selectedYm ? 'page' : undefined}
               className={`rounded-md border px-3 py-1.5 text-[13px] transition-colors ${
                 ym === selectedYm
-                  ? 'border-foreground font-semibold text-foreground'
+                  ? 'border-foreground font-medium text-foreground'
                   : 'border-border text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -139,7 +139,7 @@ async function PnlBody({
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         {/* 손익계산서 */}
         <div className="ta-card">
-          <h2 className="mb-4 text-[15px] font-semibold text-foreground">손익계산서 · {fmtYm(selectedYm)}</h2>
+          <h2 className="mb-4 text-[15px] text-foreground">손익계산서 · {fmtYm(selectedYm)}</h2>
           <table className="w-full border-collapse text-[13px]">
             <tbody>
               <Row label="총매출 (VAT 포함)" amount={p.sales.gross} muted />
@@ -178,7 +178,7 @@ async function PnlBody({
             }}
           />
           <div className="ta-card">
-            <h2 className="mb-3 text-[15px] font-semibold text-foreground">매출 구성</h2>
+            <h2 className="mb-3 text-[15px] text-foreground">매출 구성</h2>
             <table className="w-full border-collapse text-[13px]">
               <tbody>
                 {p.sales.byCategory.map((c) => (
@@ -215,7 +215,7 @@ function Metric({
   return (
     <div className="ta-card p-4">
       <div className="text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{label}</div>
-      <div className={`mt-1 text-[22px] font-semibold tabular ${showSig ? sig.cls : 'text-foreground'}`}>{value}</div>
+      <div className={`mt-1 text-[22px] tabular ${showSig ? sig.cls : 'text-foreground'}`}>{value}</div>
       <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
         {showSig && <span className={sig.cls}>● {sig.label}</span>}
         {uncertain && <span className="text-amber-600 dark:text-amber-500">● 미분류 있어 잠정</span>}
@@ -246,12 +246,12 @@ function Row({
 }) {
   return (
     <tr className={bold ? 'border-t-2 border-border' : 'border-t border-border'}>
-      <td className={`py-2 ${big ? 'text-[15px]' : ''} ${bold ? 'font-semibold text-foreground' : muted ? 'text-muted-foreground' : 'text-foreground'}`}>
+      <td className={`py-2 ${big ? 'text-[15px]' : ''} ${bold ? 'font-medium text-foreground' : muted ? 'text-muted-foreground' : 'text-foreground'}`}>
         {label}
         {sub && <span className="ml-2 text-[11px] font-normal text-muted-foreground">{sub}</span>}
       </td>
       <td className="py-2 text-right text-[11px] tabular text-muted-foreground">{rate != null ? pct(rate) : ''}</td>
-      <td className={`py-2 text-right tabular ${big ? 'text-[15px]' : ''} ${bold ? 'font-semibold text-foreground' : warn ? 'text-amber-600 dark:text-amber-500' : 'text-foreground'}`}>
+      <td className={`py-2 text-right tabular ${big ? 'text-[15px]' : ''} ${bold ? 'font-medium text-foreground' : warn ? 'text-amber-600 dark:text-amber-500' : 'text-foreground'}`}>
         {won(amount)}
       </td>
     </tr>

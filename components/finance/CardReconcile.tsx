@@ -106,7 +106,7 @@ export default function CardReconcile() {
       {/* 업로드 카드 */}
       <div className="ta-card flex flex-col gap-4">
         <div>
-          <h2 className="text-[15px] font-semibold text-foreground">신한카드 이용내역으로 지출 자료 세분화</h2>
+          <h2 className="text-[15px] text-foreground">신한카드 이용내역으로 지출 자료 세분화</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
             신한 사업자카드 <b>이용내역 엑셀</b>을 올려, 통장의 <b>‘신한카드’ 결제 건</b>과 연결하세요. 그 결제 한 줄이 아래 사용내역으로 나뉘어 거래 분류에 들어가요.
           </p>
@@ -134,17 +134,17 @@ export default function CardReconcile() {
           {/* 정산 스트립 */}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-border bg-muted p-4">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted-foreground">
+              <div className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
                 카드 사용합계 · {fmtYm(preview.usageYm)} · 신규 {preview.fresh}건
               </div>
-              <div className="tabular text-[22px] font-semibold text-foreground">{won(preview.net)}</div>
+              <div className="tabular text-[22px] text-foreground">{won(preview.net)}</div>
               {preview.sumIn > 0 && (
                 <div className="text-[11px] text-muted-foreground">사용 {won(preview.sumOut)} − 환불 {won(preview.sumIn)}</div>
               )}
             </div>
             <div className="text-[15px] text-muted-foreground">↔</div>
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted-foreground">은행 카드결제 (연결 대상)</div>
+              <div className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">은행 카드결제 (연결 대상)</div>
               {preview.candidates.length > 0 ? (
                 <select value={sel} onChange={(e) => setSel(e.target.value === 'none' ? 'none' : Number(e.target.value))} className="ta-input mt-1 text-[13px]">
                   {preview.candidates.map((c) => (

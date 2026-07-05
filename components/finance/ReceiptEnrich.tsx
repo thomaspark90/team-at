@@ -83,7 +83,7 @@ export default function ReceiptEnrich() {
   return (
     <div className="ta-card flex flex-col gap-4">
       <div>
-        <h2 className="text-[15px] font-semibold text-foreground">🧾 쿠팡 영수증으로 지출 자료 세분화</h2>
+        <h2 className="text-[15px] text-foreground">🧾 쿠팡 영수증으로 지출 자료 세분화</h2>
         <p className="mt-1 text-[13px] text-muted-foreground">
           쿠팡 <b>신용카드 매출전표(PDF)</b>를 올리면, 카드의 <b>쿠팡 결제</b>가 승인번호로 매칭돼 <b>산 물건(품목)별로 나뉘어</b>요. (마이쿠팡 &gt; 마이쇼핑 &gt; 영수증 조회/출력 &gt; 신용카드 매출전표)
         </p>

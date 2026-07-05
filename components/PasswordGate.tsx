@@ -29,7 +29,7 @@ export default function PasswordGate() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg">
       <form onSubmit={handleSubmit} className="bg-white p-9 rounded-[20px] border border-line shadow-card w-80 space-y-4">
-        <h1 className="text-xl font-bold text-center text-fg tracking-tight">team-at</h1>
+        <h1 className="text-xl font-medium text-center text-fg tracking-tight">team-at</h1>
         <p className="text-sm text-center text-gray-400">스토리 제작 도구</p>
         <input
           type="password"
@@ -43,7 +43,7 @@ export default function PasswordGate() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-fg hover:bg-accent disabled:opacity-50 text-white font-semibold py-3.5 rounded-pill transition-colors"
+          className="w-full bg-fg hover:bg-accent disabled:opacity-50 text-white font-medium py-3.5 rounded-pill transition-colors"
         >
           {loading ? '확인 중...' : '입장'}
         </button>

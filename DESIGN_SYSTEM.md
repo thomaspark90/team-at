@@ -11,7 +11,7 @@
 | 키워드 | 설명 |
 |--------|------|
 | **Warm monochrome** | 흑·백·그레이 + **따뜻한 크림 카드**(`45 18% 96%`). 컬러 액센트 없음. |
-| **Type** | IBM Plex Sans KR(한글·라틴 커버). 기본 400, 강조는 **색 대비**(muted↔foreground) 우선 + 필요시 500/600. |
+| **Type** | IBM Plex Sans KR(한글·라틴 커버). 기본 400, 강조는 **색 대비**(muted↔foreground) 우선 + 꼭 필요할 때만 **500(medium)**. 600/700 금지. |
 | **Square & compact** | radius `3px`(md, 전반 좌우) / sm 2 / lg 4. pill·큰 그림자 금지. 데이터 밀도 우선. |
 | **Border, not shadow** | 면 구분은 그림자가 아니라 `border-border`. |
 | **Signal = mono** | 수입/지출은 색이 아니라 부호·라벨로. 진짜 오류/삭제만 `destructive` 레드. |
@@ -47,7 +47,7 @@ CSS 변수 → Tailwind 유틸(`bg-*`, `text-*`, `border-*`)로 노출. 다크 �
 |--------|------|------|
 | sans / serif | `'IBM Plex Sans KR', system-ui, sans-serif` | 전 텍스트 단일 패밀리(한글·라틴 모두 커버). `.font-serif`도 동일 패밀리 |
 
-- 기본 웨이트 **400**. 강조는 색 대비 우선, 필요 시 500/600(로드된 웨이트: 300/400/500/600/700).
+- 기본 웨이트 **400**. 강조는 색 대비 우선 — 웨이트를 쓸 땐 **`font-medium`(500)만** (2026-07-05 확정: 600/700 금지, 활성 탭·선택 pill·합계 행·뱃지 등 상태 강조 전용). 크기(15/22px)가 이미 위계를 만드는 타이틀·큰 숫자·11px 라벨엔 웨이트 안 씀.
 - 숫자·금액·테이블 셀에 `.tabular`(tabular-nums).
 - 캡션/라벨: `.caption` 또는 `text-[11px] uppercase tracking-[0.06em] text-muted-foreground`.
 

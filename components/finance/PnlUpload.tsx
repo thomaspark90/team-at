@@ -92,7 +92,7 @@ export default function PnlUpload() {
     <div className="ta-card flex flex-col gap-4">
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-[15px] font-semibold text-foreground">POS 매출 올리기</h2>
+          <h2 className="text-[15px] text-foreground">POS 매출 올리기</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
             토스 매출리포트 엑셀(<b>상품 주문 상세내역</b>)을 올리면 <b>공급가액 매출</b>이 월별로 반영돼요. 같은 달을 다시 올리면 교체돼요. (상품권은 매출에서 제외)
           </p>

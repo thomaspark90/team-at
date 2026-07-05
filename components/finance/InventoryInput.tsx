@@ -57,7 +57,7 @@ export default function InventoryInput({ ym, initial, prevMonth }: Props) {
 
   return (
     <div className="ta-card">
-      <h2 className="text-[15px] font-semibold text-foreground">기말재고 입력 <span className="font-normal text-muted-foreground">(선택)</span></h2>
+      <h2 className="text-[15px] text-foreground">기말재고 입력 <span className="font-normal text-muted-foreground">(선택)</span></h2>
       <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
         <b className="text-foreground">매달 안 넣어도 돼요.</b> 비워두면 재료비가 <b>매입액 그대로</b> 잡혀요. 재고가 크게 바뀐 달(오픈·대량 선구매)이나 분기 1회만 어림값을 넣어도 충분해요.
       </p>

@@ -33,7 +33,7 @@ export default function FinanceNav({ role }: { role: string | null }) {
         href={href}
         aria-current={active ? 'page' : undefined}
         className={`whitespace-nowrap text-[13px] transition-colors ${
-          active ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'
+          active ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
         }`}
       >
         {label}

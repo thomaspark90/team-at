@@ -341,7 +341,7 @@ export default function ClassifyPanel({
         </div>
         <button
           onClick={() => setUnclOnly((v) => !v)}
-          className={`rounded-md border px-3 py-[7px] text-[13px] font-semibold ${
+          className={`rounded-md border px-3 py-[7px] text-[13px] font-medium ${
             unclOnly ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground'
           }`}
         >
@@ -357,7 +357,7 @@ export default function ClassifyPanel({
           <button
             onClick={() => setCatFilter({})}
             title="필터 해제"
-            className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3 py-1 text-[13px] font-semibold text-primary"
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3 py-1 text-[13px] font-medium text-primary"
           >
             {catFilterLabel}만 보기
             <span className="text-[15px] leading-none">×</span>
@@ -367,7 +367,7 @@ export default function ClassifyPanel({
           <button
             onClick={() => setSrcFilter('all')}
             title="필터 해제"
-            className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3 py-1 text-[13px] font-semibold text-primary"
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3 py-1 text-[13px] font-medium text-primary"
           >
             {srcFilter === 'card' ? '💳 카드만 보기' : '🏦 은행만 보기'}
             <span className="text-[15px] leading-none">×</span>
@@ -413,7 +413,7 @@ export default function ClassifyPanel({
       {/* 다중 선택 일괄 분류 바 */}
       {selCount > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-md border border-primary bg-primary/5 px-4 py-3">
-          <span className="text-[13px] font-semibold text-foreground">{selCount}건 선택됨</span>
+          <span className="text-[13px] font-medium text-foreground">{selCount}건 선택됨</span>
           <select
             value={bulkCat}
             onChange={(e) => setBulkCat(e.target.value === '' ? '' : Number(e.target.value))}
@@ -493,11 +493,11 @@ export default function ClassifyPanel({
                     </Td>
                     <td className="px-3 py-2 align-middle">
                       <div className="flex max-w-[380px] items-center gap-1.5">
-                        {tx.source === 'card' && <span title="신한카드 이용내역" className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">💳</span>}
+                        {tx.source === 'card' && <span title="신한카드 이용내역" className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">💳</span>}
                         <span className="line-clamp-2 min-w-0 break-all" title={tx.memo}>
                           {tx.memo || <span className="text-muted-foreground">(빈 내용)</span>}
                         </span>
-                        {tx.is_installment && <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[11px] font-bold text-muted-foreground">할부</span>}
+                        {tx.is_installment && <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">할부</span>}
                       </div>
                     </td>
                     <Td>
@@ -554,7 +554,7 @@ export default function ClassifyPanel({
                           <button
                             onClick={() => classify(tx, ruleSug)}
                             title="학습된 추천 — 눌러서 확정"
-                            className="whitespace-nowrap rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
+                            className="whitespace-nowrap rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
                           >
                             학습 · {catName(ruleSug)} 적용
                           </button>

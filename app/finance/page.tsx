@@ -71,7 +71,7 @@ export default async function FinancePage() {
           <div className="flex flex-col gap-8">
             <Overview o={overview} />
             <section className="flex flex-col gap-3">
-              <h2 className="m-0 text-[15px] font-semibold text-foreground">자료 입력</h2>
+              <h2 className="m-0 text-[15px] text-foreground">자료 입력</h2>
               <p className="m-0 text-[13px] text-muted-foreground">
                 은행 거래내역(PDF)은 여기서, <b>신한카드·쿠팡</b> 자료는{' '}
                 <Link href="/finance/classify" className="underline">거래 분류</Link> 우측 사이드바에서 올려요.
@@ -159,7 +159,7 @@ function SummaryCard({ label, value, color }: { label: string; value: string; co
   return (
     <div className="ta-card min-w-[160px] flex-[1_1_auto] p-[16px_18px]">
       <div className="mb-1.5 text-[11px] uppercase tracking-[0.04em] text-muted-foreground">{label}</div>
-      <div className="tabular text-[22px] font-semibold" style={{ color }}>
+      <div className="tabular text-[22px]" style={{ color }}>
         {value}
       </div>
     </div>
