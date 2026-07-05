@@ -54,7 +54,10 @@ export default function CardReconcile() {
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '분석에 실패했어요.');
       setPreview(j as Preview);
-      setSel(j.candidates?.[0]?.id ?? 'none'); // 최적 후보 자동 선택
+      // 최적 후보 자동 선택 — 단, 차액이 크면(사용합계의 15% 초과) 엉뚱한 매칭 방지 위해 '미연결' 기본
+      const best = (j.candidates as Candidate[] | undefined)?.[0];
+      const tol = Math.max(50000, (j.net as number) * 0.15);
+      setSel(best && Math.abs(best.diff) <= tol ? best.id : 'none');
     } catch (e) {
       setError((e as Error).message);
     } finally {
