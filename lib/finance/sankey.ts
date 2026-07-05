@@ -1,6 +1,8 @@
 // Monarch 스타일 Cash Flow Sankey 데이터 셰이핑.
-// 왼쪽: 매출 항목 → 중앙: 총 매출 → 오른쪽: 지출 그룹(재료비/판관비/영업외/손익제외) → 세부 항목.
-// 좌/우는 각각 자기 합계(총매출/총지출) 기준 100% 로 분배한다(금액이 서로 달라도 됨).
+// 왼쪽: 유입 항목(매출 + 기타/미분류 수입) → 중앙: 총 유입 →
+// 오른쪽: 유출 그룹(재료비/판관비/영업외/손익제외/미분류) → 세부 항목 (+ 남은 영업이익).
+// 통장 현황과 숫자가 맞도록 분류·미분류 관계없이 모든 입금/출금을 반영한다
+// (총유입 − 총유출 = 순증감 = 통장 현황 순증감).
 
 export interface SankTx {
   ym: string;
@@ -43,6 +45,8 @@ export const EXPENSE_GROUPS: { key: string; label: string; color: string }[] = [
   { key: 'excluded', label: '손익 제외', color: '#C2557A' },
 ];
 
+export const UNCLASSIFIED_COLOR = '#9AA3AD'; // 미분류(중립 회색)
+
 // 세부 항목이 총지출의 이 비율 미만이면 그룹 내 '기타'로 묶는다(라벨 가독성).
 const MIN_LEAF_RATIO = 0.015;
 
@@ -60,27 +64,36 @@ export function buildSankey(txns: SankTx[], cats: SankCat[]): SankeyData {
   const revMap = new Map<string, number>();
   const grpLeaf = new Map<string, Map<string, number>>();
   for (const g of EXPENSE_GROUPS) grpLeaf.set(g.key, new Map());
+  let otherIncome = 0; // 분류됐지만 매출이 아닌 유입(영업외수익·손익제외 유입 등)
+  let unclassifiedIn = 0; // 미분류 유입
+  let unclassifiedOut = 0; // 미분류 유출(+ 그룹에 안 맞는 분류 유출도 여기로)
 
   for (const t of txns) {
-    if (t.category_id == null) continue;
-    const c = byId.get(t.category_id);
-    if (!c) continue;
-    if (c.type === 'revenue') {
-      if (t.amount_in > 0) revMap.set(leafName(c), (revMap.get(leafName(c)) ?? 0) + t.amount_in);
-    } else {
-      // 지출: 출금액만 흐름으로 본다(영업외 이자수익 등 유입은 제외)
-      const m = grpLeaf.get(c.type);
-      if (m && t.amount_out > 0) m.set(leafName(c), (m.get(leafName(c)) ?? 0) + t.amount_out);
+    const c = t.category_id == null ? undefined : byId.get(t.category_id);
+    // 입금 → 왼쪽(유입)
+    if (t.amount_in > 0) {
+      if (c && c.type === 'revenue') revMap.set(leafName(c), (revMap.get(leafName(c)) ?? 0) + t.amount_in);
+      else if (c) otherIncome += t.amount_in;
+      else unclassifiedIn += t.amount_in;
+    }
+    // 출금 → 오른쪽(유출)
+    if (t.amount_out > 0) {
+      const m = c ? grpLeaf.get(c.type) : undefined;
+      if (m) m.set(leafName(c!), (m.get(leafName(c!)) ?? 0) + t.amount_out);
+      else unclassifiedOut += t.amount_out; // 미분류 or 매출계정 환불 등 그룹 없는 유출
     }
   }
 
+  // 왼쪽: 유입(매출 + 기타 수입 + 미분류 수입). 총유입 = 모든 입금 합.
   const revenue = Array.from(revMap.entries())
     .map(([name, amount]) => ({ name, amount }))
     .filter((r) => r.amount > 0)
     .sort((a, b) => b.amount - a.amount);
+  if (otherIncome > 0) revenue.push({ name: '기타 수입', amount: otherIncome });
+  if (unclassifiedIn > 0) revenue.push({ name: '미분류 수입', amount: unclassifiedIn });
   const totalRevenue = revenue.reduce((s, r) => s + r.amount, 0);
 
-  // 그룹별 세부 항목 정리 + '기타' 롤업
+  // 오른쪽: 지출 그룹별 세부 항목 정리 + '기타' 롤업
   const rawGroups = EXPENSE_GROUPS.map((g) => {
     const entries = Array.from((grpLeaf.get(g.key) ?? new Map<string, number>()).entries())
       .map(([name, amount]) => ({ name, amount: amount as number }))
@@ -90,7 +103,8 @@ export function buildSankey(txns: SankTx[], cats: SankCat[]): SankeyData {
     return { ...g, amount, entries };
   }).filter((g) => g.amount > 0);
 
-  const totalExpense = rawGroups.reduce((s, g) => s + g.amount, 0);
+  // 총유출 = 분류된 유출 + 미분류 유출 (통장 현황의 총출금과 일치)
+  const totalExpense = rawGroups.reduce((s, g) => s + g.amount, 0) + unclassifiedOut;
   const threshold = totalExpense * MIN_LEAF_RATIO;
 
   const groups: SankGroup[] = rawGroups.map((g) => {
@@ -101,6 +115,15 @@ export function buildSankey(txns: SankTx[], cats: SankCat[]): SankeyData {
     if (rest > 0) leaves.push({ name: '기타', amount: rest });
     return { key: g.key, label: g.label, color: g.color, amount: g.amount, leaves };
   });
+  if (unclassifiedOut > 0) {
+    groups.push({
+      key: 'unclassified',
+      label: '미분류',
+      color: UNCLASSIFIED_COLOR,
+      amount: unclassifiedOut,
+      leaves: [{ name: '미분류', amount: unclassifiedOut }],
+    });
+  }
 
   return { revenue, totalRevenue, groups, totalExpense };
 }

@@ -82,9 +82,9 @@ function layout(d: SankeyData) {
     ry += h + GAP;
   }
 
-  // 총 매출 노드(중앙, 전체 높이)
+  // 총 유입 노드(중앙, 전체 높이)
   rects.push({
-    x: X_INC, y: incomeTop, h: incomeH, color: REVENUE_COLOR, name: '총 매출', amount: totalRevenue,
+    x: X_INC, y: incomeTop, h: incomeH, color: REVENUE_COLOR, name: '총 유입', amount: totalRevenue,
     total: totalRevenue, labelSide: 'left', labelX: X_INC - 11, col: X_INC, isIncome: true, showLabel: true,
   });
 
@@ -198,9 +198,9 @@ export default function SankeyFlow({
     <div className="flex flex-col gap-4">
       {/* 요약 카드 */}
       <div className="flex flex-wrap items-center gap-3">
-        <Card label="총 매출" value={won(d.totalRevenue)} color="hsl(var(--number-colored))" />
-        <Card label="총 지출" value={won(d.totalExpense)} color="hsl(var(--foreground))" />
-        <Card label="영업이익(EBIT 근사)" value={won(ebit)} color={ebit >= 0 ? 'hsl(var(--number-colored))' : 'hsl(var(--destructive))'} />
+        <Card label="총 유입" value={won(d.totalRevenue)} color="hsl(var(--number-colored))" />
+        <Card label="총 유출" value={won(d.totalExpense)} color="hsl(var(--foreground))" />
+        <Card label="영업이익(순증감)" value={won(ebit)} color={ebit >= 0 ? 'hsl(var(--number-colored))' : 'hsl(var(--destructive))'} />
         <div className="flex-1" />
         <select
           value={key}
@@ -270,8 +270,8 @@ export default function SankeyFlow({
       )}
       <p className="m-0 text-[12px] leading-[1.6] text-muted-foreground">
         {balanced
-          ? '총 매출이 지출 그룹들과 영업이익(초록)으로 갈라져요 — 오른쪽 전체가 총 매출의 100%예요. 분류된 거래만 집계하며, 소분류는 대분류(예: 정규직→인건비)로 묶여요.'
-          : '이 기간은 적자라 영업이익 가지는 생략했어요(카드로 표시). 오른쪽은 총 지출 대비 비율이에요.'}
+          ? '통장의 모든 입금·출금을 반영해요(미분류 포함) — 총 유입 = 지출 그룹들 + 영업이익(초록), 오른쪽 전체가 총 유입의 100%. 영업이익은 통장 현황의 순증감과 일치해요. 아직 분류 안 된 건 회색 ‘미분류’로 보여요.'
+          : '이 기간은 순유출이 더 커요(적자). 오른쪽은 총 유출 대비 비율이고, 미분류도 포함돼요. 영업이익(순증감)은 카드로 표시.'}
       </p>
     </div>
   );
