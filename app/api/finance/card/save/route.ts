@@ -51,8 +51,8 @@ export async function POST(req: Request) {
 
   const net = result.sumOut - result.sumIn;
 
-  // 은행 카드결제 건 잠금(카드대금정산). 링크가 있을 때만.
-  let linked = false;
+  // 정산 대상 계정 확인(있을 때만) — 실제 잠금은 카드 건 저장이 끝난 뒤 마지막에 한다.
+  let settleCatId: number | null = null;
   if (settledTxId) {
     const { data: cat } = await supabase
       .schema('finance')
@@ -67,70 +67,85 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+    settleCatId = cat.id as number;
+  }
+
+  // 1) 카드 건 저장 먼저(업로드 기록 → 거래). 카드는 자동 확정 안 함 — 전부 미분류로 저장.
+  //    (학습된 가맹점은 거래 분류 화면에서 '추천'으로 미리 선택돼 보임)
+  let uploadId: number | null = null;
+  if (fresh.length > 0) {
+    const dates = fresh.map((t) => t.txAt).sort();
+    const { data: up, error: upErr } = await supabase
+      .schema('finance')
+      .from('uploads')
+      .insert({
+        bank: 'shinhan',
+        source: 'card',
+        card_issuer: '신한',
+        row_count: fresh.length,
+        uploaded_by: user.id,
+        period_start: dates[0]?.slice(0, 10),
+        period_end: dates[dates.length - 1]?.slice(0, 10),
+        settled_tx_id: settledTxId,
+        statement_total: net,
+      })
+      .select('id')
+      .single();
+    if (upErr || !up) {
+      return NextResponse.json({ error: `업로드 기록 실패: ${upErr?.message ?? ''}` }, { status: 500 });
+    }
+    uploadId = up.id;
+
+    const rows = fresh.map((t) => ({
+      bank: 'shinhan',
+      source: 'card',
+      card_issuer: '신한',
+      is_installment: !!t.isInstallment,
+      tx_at: t.txAt,
+      ym: t.ym,
+      channel: t.channel,
+      memo: t.memo,
+      amount_out: t.amountOut,
+      amount_in: t.amountIn,
+      balance: 0,
+      branch: null,
+      dedup_hash: t.dedupHash,
+      normalized_key: t.normalizedKey,
+      approval_no: t.approvalNo ?? null,
+      category_id: null, // 카드는 자동 확정 안 함 — 거래 분류에서 직접 선택
+      classified_by: null,
+      classified_at: null,
+      upload_id: up.id,
+    }));
+
+    const { error: insErr } = await supabase.schema('finance').from('transactions').insert(rows);
+    if (insErr) {
+      // 보정: 방금 만든 업로드 기록 제거(고아 방지)
+      await supabase.schema('finance').from('uploads').delete().eq('id', up.id);
+      return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
+    }
+  }
+
+  // 2) 카드 건이 안전히 들어간 뒤에야 은행 카드결제 lump을 잠근다(카드대금정산).
+  //    잠금 실패 시 방금 편입한 카드 건을 되돌려, lump만 빠지거나 이중계상되는 상태를 막는다.
+  let linked = false;
+  if (settledTxId && settleCatId != null) {
     const now = new Date().toISOString();
     const { error: lockErr } = await supabase
       .schema('finance')
       .from('transactions')
-      .update({ category_id: cat.id, classified_by: user.id, classified_at: now })
+      .update({ category_id: settleCatId, classified_by: user.id, classified_at: now })
       .eq('id', settledTxId)
       .eq('source', 'bank');
-    if (lockErr) return NextResponse.json({ error: `정산 연결 실패: ${lockErr.message}` }, { status: 500 });
+    if (lockErr) {
+      if (uploadId != null) {
+        await supabase.schema('finance').from('transactions').delete().eq('upload_id', uploadId);
+        await supabase.schema('finance').from('uploads').delete().eq('id', uploadId);
+      }
+      return NextResponse.json({ error: `정산 연결 실패: ${lockErr.message}` }, { status: 500 });
+    }
     linked = true;
   }
-
-  if (fresh.length === 0) {
-    return NextResponse.json({ saved: 0, duplicates, autoClassified: 0, linked });
-  }
-
-  // 카드 건은 자동 확정하지 않음 — 전부 미분류로 저장하고 거래 분류에서 직접 선택.
-  // (학습된 가맹점은 거래 분류 화면에서 '추천'으로 미리 선택돼 보임)
-
-  // 업로드 기록(카드 배치)
-  const dates = fresh.map((t) => t.txAt).sort();
-  const { data: up, error: upErr } = await supabase
-    .schema('finance')
-    .from('uploads')
-    .insert({
-      bank: 'shinhan',
-      source: 'card',
-      card_issuer: '신한',
-      row_count: fresh.length,
-      uploaded_by: user.id,
-      period_start: dates[0]?.slice(0, 10),
-      period_end: dates[dates.length - 1]?.slice(0, 10),
-      settled_tx_id: settledTxId,
-      statement_total: net,
-    })
-    .select('id')
-    .single();
-  if (upErr || !up) {
-    return NextResponse.json({ error: `업로드 기록 실패: ${upErr?.message ?? ''}` }, { status: 500 });
-  }
-
-  const rows = fresh.map((t) => ({
-    bank: 'shinhan',
-    source: 'card',
-    card_issuer: '신한',
-    is_installment: !!t.isInstallment,
-    tx_at: t.txAt,
-    ym: t.ym,
-    channel: t.channel,
-    memo: t.memo,
-    amount_out: t.amountOut,
-    amount_in: t.amountIn,
-    balance: 0,
-    branch: null,
-    dedup_hash: t.dedupHash,
-    normalized_key: t.normalizedKey,
-    approval_no: t.approvalNo ?? null,
-    category_id: null, // 카드는 자동 확정 안 함 — 거래 분류에서 직접 선택
-    classified_by: null,
-    classified_at: null,
-    upload_id: up.id,
-  }));
-
-  const { error: insErr } = await supabase.schema('finance').from('transactions').insert(rows);
-  if (insErr) return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
 
   return NextResponse.json({ saved: fresh.length, duplicates, autoClassified: 0, linked });
 }

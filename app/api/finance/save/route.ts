@@ -115,6 +115,8 @@ export async function POST(req: Request) {
 
   const { error: insErr } = await supabase.schema('finance').from('transactions').insert(rows);
   if (insErr) {
+    // 보정: 거래 저장 실패 시 방금 만든 업로드 기록 제거(0건짜리 고아 방지)
+    await supabase.schema('finance').from('uploads').delete().eq('id', up.id);
     return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
   }
 

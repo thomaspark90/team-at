@@ -113,19 +113,13 @@ export async function POST(req: Request) {
   }
   const freshRows = rowsToInsert.filter((r) => !existing.has(r.dedup_hash as string));
 
-  // 원본 쿠팡 카드 건 → 영수증분해(손익 제외)로 잠금
-  const { error: lockErr } = await supabase
-    .schema('finance')
-    .from('transactions')
-    .update({ category_id: splitId, classified_by: user.id, classified_at: now })
-    .in('id', parentIds);
-  if (lockErr) return NextResponse.json({ error: `원본 잠금 실패: ${lockErr.message}` }, { status: 500 });
-
+  // 1) 품목(영수증 분해분)을 먼저 저장. 실패 시 원본을 잠그지 않아 lump 누락/이중계상 없음.
+  let uploadId: number | null = null;
   if (freshRows.length > 0) {
     // 업로드 이력(쿠팡 영수증 배치) 기록 → upload_id 연결
     const dates = freshRows.map((r) => String(r.tx_at)).sort();
     const total = freshRows.reduce((s, r) => s + (r.amount_out as number), 0);
-    const { data: up } = await supabase
+    const { data: up, error: upErr } = await supabase
       .schema('finance')
       .from('uploads')
       .insert({
@@ -140,10 +134,29 @@ export async function POST(req: Request) {
       })
       .select('id')
       .single();
-    if (up) freshRows.forEach((r) => (r.upload_id = up.id));
+    if (upErr || !up) return NextResponse.json({ error: `업로드 기록 실패: ${upErr?.message ?? ''}` }, { status: 500 });
+    uploadId = up.id;
+    freshRows.forEach((r) => (r.upload_id = up.id));
 
     const { error: insErr } = await supabase.schema('finance').from('transactions').insert(freshRows);
-    if (insErr) return NextResponse.json({ error: `품목 저장 실패: ${insErr.message}` }, { status: 500 });
+    if (insErr) {
+      await supabase.schema('finance').from('uploads').delete().eq('id', up.id); // 보정: 고아 업로드 제거
+      return NextResponse.json({ error: `품목 저장 실패: ${insErr.message}` }, { status: 500 });
+    }
+  }
+
+  // 2) 품목이 안전히 들어간 뒤 원본 쿠팡 카드 건을 영수증분해로 잠금. 실패 시 방금 저장분 되돌림.
+  const { error: lockErr } = await supabase
+    .schema('finance')
+    .from('transactions')
+    .update({ category_id: splitId, classified_by: user.id, classified_at: now })
+    .in('id', parentIds);
+  if (lockErr) {
+    if (uploadId != null) {
+      await supabase.schema('finance').from('transactions').delete().eq('upload_id', uploadId);
+      await supabase.schema('finance').from('uploads').delete().eq('id', uploadId);
+    }
+    return NextResponse.json({ error: `원본 잠금 실패: ${lockErr.message}` }, { status: 500 });
   }
 
   return NextResponse.json({ matchedGroups, inserted: freshRows.length, duplicates: rowsToInsert.length - freshRows.length });
