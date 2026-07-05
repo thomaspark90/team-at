@@ -27,6 +27,9 @@ export interface ParsedTransaction {
   branch: string | null; // 신한 거래점 (우리는 없음)
   dedupHash: string; // 일시+출금+입금+잔액+내용 지문
   normalizedKey: string; // 학습·자동분류용 정규화 키 (숫자·날짜 제거)
+  source?: 'bank' | 'card'; // 기본 bank. 카드 이용내역은 'card'
+  cardIssuer?: string; // 카드 발급사(예: '신한')
+  isInstallment?: boolean; // 할부 여부(표기용)
 }
 
 // 파싱 결과 요약 (업로드 미리보기용)

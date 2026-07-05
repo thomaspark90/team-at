@@ -79,7 +79,8 @@ export function buildSankey(txns: SankTx[], cats: SankCat[]): SankeyData {
       else unclassifiedIn += t.amount_in;
     }
     // 출금 → 오른쪽(유출). 중분류(대분류명)와 소분류(자기 이름) 둘 다 집계.
-    if (t.amount_out > 0) {
+    // 단, '카드대금정산'(은행 카드결제 lump)은 손익에서 제외 — 카드 사용내역이 대체하므로 중복 방지.
+    if (t.amount_out > 0 && !(c && c.name === '카드대금정산')) {
       const m = c ? grpLeaf.get(c.type) : undefined;
       if (m) {
         const mid = leafName(c!); // 인건비

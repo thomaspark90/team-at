@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 // 재무 하위 내비게이션 — 모든 /finance 하위 페이지 상단에 고정 노출.
 const LEFT = [
   { href: '/finance/classify', label: '거래 분류' },
+  { href: '/finance/card', label: '카드 정산' },
   { href: '/finance/cashflow', label: '통장 현황' },
   { href: '/finance/dashboard', label: '대시보드' },
   { href: '/finance/flow', label: '자금 흐름' },

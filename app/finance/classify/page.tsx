@@ -9,7 +9,7 @@ import ClassifyPanel, { type TxRow, type Cat } from '@/components/finance/Classi
 export default async function ClassifyPage({
   searchParams,
 }: {
-  searchParams: { ym?: string; type?: string; cat?: string; unclassified?: string };
+  searchParams: { ym?: string; type?: string; cat?: string; unclassified?: string; source?: string };
 }) {
   const supabase = await createClient();
   const {
@@ -23,7 +23,7 @@ export default async function ClassifyPage({
   const { data: txns } = await supabase
     .schema('finance')
     .from('transactions')
-    .select('id,memo,normalized_key,amount_in,amount_out,category_id,tx_at,bank')
+    .select('id,memo,normalized_key,amount_in,amount_out,category_id,tx_at,bank,source,is_installment')
     .order('tx_at', { ascending: false });
 
   const { data: cats } = await supabase
@@ -69,6 +69,7 @@ export default async function ClassifyPage({
             type: searchParams.type,
             cat: searchParams.cat,
             unclassified: searchParams.unclassified === '1',
+            source: searchParams.source,
           }}
         />
       </div>

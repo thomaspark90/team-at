@@ -24,10 +24,12 @@ export default async function CashflowPage() {
   const role = await resolveRole(supabase, user);
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
+  // 통장 현황(현금)은 은행 거래만 — 카드 이용내역(source='card')은 제외해 현금 중복 방지
   const { data: txns } = await supabase
     .schema('finance')
     .from('transactions')
-    .select('ym,bank,amount_in,amount_out');
+    .select('ym,bank,amount_in,amount_out')
+    .eq('source', 'bank');
 
   const months = cashflow((txns as CashTx[]) ?? []);
 

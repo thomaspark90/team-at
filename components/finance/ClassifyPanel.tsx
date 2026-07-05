@@ -12,6 +12,8 @@ export interface TxRow {
   category_id: number | null;
   tx_at: string;
   bank: string;
+  source?: string;
+  is_installment?: boolean;
 }
 export interface Cat {
   id: number;
@@ -55,7 +57,7 @@ export default function ClassifyPanel({
   cats: Cat[];
   userId: string;
   confirmedYms?: string[];
-  initialFilter?: { ym?: string; type?: string; cat?: string; unclassified?: boolean };
+  initialFilter?: { ym?: string; type?: string; cat?: string; unclassified?: boolean; source?: string };
 }) {
   const confirmedSet = new Set(confirmedYms);
   const isLocked = (tx: TxRow) => confirmedSet.has(tx.tx_at.slice(0, 7));
@@ -80,6 +82,7 @@ export default function ClassifyPanel({
     cat: initialFilter?.cat,
     unclassified: !!initialFilter?.unclassified,
   });
+  const [srcFilter, setSrcFilter] = useState<string>(initialFilter?.source ?? 'all'); // all | bank | card
 
   const catById = new Map(cats.map((c) => [c.id, c]));
   const leafNameOf = (c: Cat) => {
@@ -125,6 +128,7 @@ export default function ClassifyPanel({
     (r) =>
       (filterYm === 'all' || r.tx_at.slice(0, 7) === filterYm) &&
       (filterBank === 'all' || r.bank === filterBank) &&
+      (srcFilter === 'all' || (r.source ?? 'bank') === srcFilter) &&
       matchesCat(r)
   );
 
@@ -277,6 +281,16 @@ export default function ClassifyPanel({
             <span className="text-[15px] leading-none">×</span>
           </button>
         )}
+        {srcFilter !== 'all' && (
+          <button
+            onClick={() => setSrcFilter('all')}
+            title="필터 해제"
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3 py-1 text-[13px] font-semibold text-primary"
+          >
+            {srcFilter === 'card' ? '💳 카드만 보기' : '🏦 은행만 보기'}
+            <span className="text-[15px] leading-none">×</span>
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -334,7 +348,11 @@ export default function ClassifyPanel({
                         ? <span className="text-positive">+{won(tx.amount_in)}</span>
                         : `-${won(tx.amount_out)}`}
                     </Td>
-                    <Td>{tx.memo || <span className="text-muted-foreground">(빈 내용)</span>}</Td>
+                    <Td>
+                      {tx.source === 'card' && <span title="신한카드 이용내역" className="mr-1.5 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">💳</span>}
+                      {tx.memo || <span className="text-muted-foreground">(빈 내용)</span>}
+                      {tx.is_installment && <span className="ml-1.5 rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">할부</span>}
+                    </Td>
                     <Td>
                       {locked ? (
                         <span className="inline-flex items-center gap-[6px] text-foreground">
