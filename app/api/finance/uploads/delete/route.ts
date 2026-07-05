@@ -26,7 +26,48 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
   }
   const uploadId = body.uploadId;
-  if (!uploadId) return NextResponse.json({ error: 'uploadId가 필요합니다.' }, { status: 400 });
+  if (uploadId == null) return NextResponse.json({ error: 'uploadId가 필요합니다.' }, { status: 400 });
+
+  // uploadId < 0: 이력 기록 없는 쿠팡 영수증 품목(과거 적용분) 일괄 취소
+  if (uploadId < 0) {
+    const { data: items } = await supabase
+      .schema('finance')
+      .from('transactions')
+      .select('id,ym,approval_no')
+      .eq('source', 'card')
+      .eq('channel', '쿠팡영수증')
+      .is('upload_id', null);
+    const its = (items as { id: number; ym: string; approval_no: string | null }[] | null) ?? [];
+    if (its.length === 0) return NextResponse.json({ deleted: 0, unlocked: 0 });
+    const affectedYms = new Set<string>(its.map((t) => t.ym));
+    const approvals = Array.from(new Set(its.map((t) => t.approval_no).filter(Boolean))) as string[];
+    const { data: splitCat } = await supabase.schema('finance').from('categories').select('id').eq('type', 'excluded').eq('name', '영수증분해').maybeSingle();
+    let parentIds: number[] = [];
+    if (splitCat && approvals.length) {
+      const { data: parents } = await supabase
+        .schema('finance')
+        .from('transactions')
+        .select('id,ym')
+        .eq('source', 'card')
+        .eq('category_id', splitCat.id)
+        .in('approval_no', approvals);
+      const ps = (parents as { id: number; ym: string }[] | null) ?? [];
+      parentIds = ps.map((p) => p.id);
+      ps.forEach((p) => affectedYms.add(p.ym));
+    }
+    const { data: closed } = await supabase.schema('finance').from('monthly_close').select('ym').eq('status', 'confirmed').in('ym', Array.from(affectedYms));
+    if ((closed ?? []).length > 0) {
+      const yms = (closed as { ym: string }[]).map((c) => c.ym).join(', ');
+      return NextResponse.json({ error: `확정된 달(${yms})이 포함돼 삭제할 수 없습니다. 먼저 월 확정을 재오픈하세요.` }, { status: 409 });
+    }
+    if (parentIds.length > 0) {
+      const { error: rErr } = await supabase.schema('finance').from('transactions').update({ category_id: null, classified_by: null, classified_at: null }).in('id', parentIds);
+      if (rErr) return NextResponse.json({ error: `잠금 해제 실패: ${rErr.message}` }, { status: 500 });
+    }
+    const { error: dErr } = await supabase.schema('finance').from('transactions').delete().in('id', its.map((t) => t.id));
+    if (dErr) return NextResponse.json({ error: `삭제 실패: ${dErr.message}` }, { status: 500 });
+    return NextResponse.json({ deleted: its.length, unlocked: parentIds.length });
+  }
 
   const { data: up } = await supabase
     .schema('finance')

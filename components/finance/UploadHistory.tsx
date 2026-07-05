@@ -87,8 +87,8 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
             <tbody>
               {uploads.map((u) => (
                 <tr key={u.id} className="border-t border-border hover:bg-accent">
-                  <Td>{kind(u)}</Td>
-                  <Td mono>{fmt(u.uploaded_at)}</Td>
+                  <Td>{kind(u)}{u.id < 0 && <span className="ml-1.5 text-[11px] text-muted-foreground">(이전 방식)</span>}</Td>
+                  <Td mono muted={u.id < 0}>{u.id < 0 ? '기록 없음' : fmt(u.uploaded_at)}</Td>
                   <Td mono muted>
                     {u.period_start ? `${fmt(u.period_start)} ~ ${fmt(u.period_end)}` : '—'}
                   </Td>
