@@ -15,7 +15,7 @@ import {
   ReferenceLine,
   LabelList,
 } from 'recharts';
-import { aggregate, type AggTx, type AggCat, type Unit } from '@/lib/finance/aggregate';
+import { aggregate, UNCLASSIFIED, type AggTx, type AggCat, type Unit } from '@/lib/finance/aggregate';
 
 const won = (n: number) => n.toLocaleString('ko-KR');
 const manwon = (v: number) => (Math.abs(v) >= 10000 ? `${Math.round(v / 10000).toLocaleString()}만` : String(v));
@@ -149,7 +149,7 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
   const topKeys = hasOther ? ranked.slice(0, CAT_MAX - 1) : ranked;
   const otherKeys = hasOther ? ranked.slice(CAT_MAX - 1) : [];
   const barKeys = hasOther ? [...topKeys, '기타'] : topKeys;
-  const colorOf = (k: string, i: number) => (k === '기타' ? CAT_OTHER : CAT[i]);
+  const colorOf = (k: string, i: number) => (k === '기타' || k === UNCLASSIFIED ? CAT_OTHER : CAT[i]);
   const barData = months.map((m) => {
     const row: Record<string, number | string> = { p: fmtP(m.ym), 총지출: m.cogs + m.sga };
     for (const k of topKeys) row[k] = m.expense[k] || 0;
@@ -287,6 +287,7 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
         {netVat
           ? '* 부가세 순액(공급가액) 기준 — 매출과 과세 매입(재료비·과세 판관비)을 총액÷1.1로 순액 처리. 인건비·이자·수도·세금 등 면세 항목은 그대로. 과세 여부는 계정과목 관리에서 조정.'
           : '* 매출·비용 모두 통장 금액(부가세 포함) 그대로.'}{' '}
+        미분류 거래도 손익에 반영해요(수입→매출, 지출→&lsquo;미분류&rsquo; 비용) — 분류하면 정확한 계정으로 옮겨가요.
         자본적지출·보증금·내부이체는 손익에서 제외. 감가상각 미반영(EBIT=EBITDA).
       </p>
     </div>

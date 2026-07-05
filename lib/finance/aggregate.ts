@@ -4,6 +4,9 @@
 // 과세 10% 가정(카페 음료·식음료). 이자수익 등 영업외(면세)는 순액화 대상 아님.
 export const VAT_DIVISOR = 1.1;
 
+// 미분류 지출을 지출 구분/손익에 노출할 때 쓰는 라벨
+export const UNCLASSIFIED = '미분류';
+
 export interface AggCat {
   id: number;
   type: string;
@@ -64,15 +67,26 @@ export function aggregate(
   const netAmt = (v: number, c: AggCat) => (netVat && c.vat_taxable !== false ? Math.round(v / VAT_DIVISOR) : v);
 
   for (const t of txns) {
-    if (t.category_id == null) continue;
-    const c = catMap.get(t.category_id);
-    if (!c) continue;
     const key = periodKey(t.tx_at, unit);
     let mo = m.get(key);
     if (!mo) {
       mo = { ym: key, revenue: 0, cogs: 0, sga: 0, ebit: 0, nonOp: 0, net: 0, costRatio: null, profitRatio: null, expense: {} };
       m.set(key, mo);
     }
+    const c = t.category_id != null ? catMap.get(t.category_id) : undefined;
+
+    if (!c) {
+      // 미분류(또는 삭제된 계정): 손익에도 반영 — 지출은 지출. 수입→매출, 지출→'미분류' 비용(EBIT 차감).
+      // 분류가 없어 과세여부를 모르므로 순액화 안 함(총액 그대로). 분류하면 정확한 계정으로 이동.
+      mo.revenue += t.amount_in;
+      if (t.amount_out) {
+        mo.sga += t.amount_out;
+        mo.expense[UNCLASSIFIED] = (mo.expense[UNCLASSIFIED] || 0) + t.amount_out;
+        expenseKeys.add(UNCLASSIFIED);
+      }
+      continue;
+    }
+
     if (c.type === 'revenue') {
       mo.revenue += netAmt(t.amount_in, c);
     } else if (c.type === 'cogs') {
