@@ -13,6 +13,7 @@
     "@vercel/blob": "^2.4.1",
     "html2canvas": "^1.4.1",
     "next": "14.2.15",
+    "officecrypto-tool": "^0.0.19",
     "pdfjs-dist": "^6.1.200",
     "react": "^18",
     "react-dom": "^18",
