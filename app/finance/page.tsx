@@ -102,8 +102,11 @@ function Overview({ o }: { o: OverviewData }) {
           <div className="flex flex-wrap gap-3">
             <SummaryCard label="총 유입" value={won(o.totalRevenue)} color={GREEN} />
             <SummaryCard label="총 유출" value={won(o.totalExpense)} color="hsl(var(--foreground))" />
-            <SummaryCard label="영업이익(순증감)" value={won(o.surplus)} color={o.surplus >= 0 ? GREEN : 'hsl(var(--destructive))'} />
+            <SummaryCard label="순증감 (현금)" value={won(o.surplus)} color={o.surplus >= 0 ? GREEN : 'hsl(var(--destructive))'} />
           </div>
+          <p className="-mt-1 text-[12px] text-muted-foreground">
+            통장 입출금 기준(현금)이에요. 발생주의 영업이익·원가율은 <Link href="/finance/pnl" className="underline">관리손익</Link>에서 봐요.
+          </p>
 
           {/* 해야 할 일 */}
           <div className="ta-card flex flex-col gap-3">

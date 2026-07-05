@@ -54,7 +54,7 @@ export default async function FlowPage() {
           </Link>
         </div>
         <p className="mb-5 text-[13px] text-muted-foreground">
-          분류된 매출·지출을 카테고리·품목별로 보여줘요(카드는 품목까지). 통장 현금 입출금·잔액은 <Link href="/finance/cashflow" className="underline">월별 요약</Link>에서 봐요.
+          통장 현금 기준으로 매출·지출을 카테고리·품목별로 보여줘요(미분류 포함, 카드는 품목까지). 현금 입출금·잔액 합계는 <Link href="/finance/cashflow" className="underline">월별 요약</Link>, 발생주의 손익은 <Link href="/finance/pnl" className="underline">관리손익</Link>에서 봐요.
         </p>
         {yms.length === 0 ? (
           <div className="mx-auto my-[60px] text-center text-muted-foreground">

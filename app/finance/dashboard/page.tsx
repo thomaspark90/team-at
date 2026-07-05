@@ -35,6 +35,9 @@ export default async function DashboardPage() {
             ← 업로드로
           </Link>
         </div>
+        <p className="mb-5 text-[13px] text-muted-foreground">
+          통장 입금 기준(현금)이에요. POS 발생주의 매출·원가율은 <Link href="/finance/pnl" className="underline">관리손익</Link>에서 봐요.
+        </p>
         <Dashboard txns={(txns as AggTx[]) ?? []} cats={(cats as AggCat[]) ?? []} />
       </div>
     </div>

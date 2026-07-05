@@ -119,9 +119,9 @@ async function PnlBody({
 
       {/* 지표 카드 */}
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Metric label="식자재 원가율" value={pct(p.metrics.foodCostRate)} sub={`전체 재료율 ${pct(p.metrics.materialRate)}`} sig={foodSig} />
-        <Metric label="인건비율" value={pct(p.metrics.laborRate)} sub="매출 대비" sig={laborSig} />
-        <Metric label="Prime Cost" value={pct(p.metrics.primeCost)} sub="식자재+인건비" sig={primeSig} />
+        <Metric label="식자재 원가율" value={pct(p.metrics.foodCostRate)} sub={`전체 재료율 ${pct(p.metrics.materialRate)}`} sig={foodSig} uncertain={p.unclassified > 0} />
+        <Metric label="인건비율" value={pct(p.metrics.laborRate)} sub="매출 대비" sig={laborSig} uncertain={p.unclassified > 0} />
+        <Metric label="Prime Cost" value={pct(p.metrics.primeCost)} sub="식자재+인건비" sig={primeSig} uncertain={p.unclassified > 0} />
         <Metric label="매출총이익률" value={pct(p.metrics.grossMargin)} sub={won(p.grossProfit)} />
       </div>
 
@@ -156,7 +156,7 @@ async function PnlBody({
               <Row label="(−) 인건비" amount={-p.labor} rate={p.metrics.laborRate} />
               <Row label="(−) 고정비 (판관비)" amount={-p.fixed} />
               {p.unclassified > 0 && <Row label="(−) 미분류" amount={-p.unclassified} warn />}
-              <Row label="영업이익 (EBIT 근사)" amount={p.operatingProfit} bold big />
+              <Row label="영업이익 (EBIT 근사)" amount={p.operatingProfit} bold big sub="채널수수료·감가상각 전" />
             </tbody>
           </table>
           <p className="mt-4 text-[12px] text-muted-foreground">
@@ -197,13 +197,28 @@ async function PnlBody({
   );
 }
 
-function Metric({ label, value, sub, sig }: { label: string; value: string; sub?: string; sig?: { cls: string; label: string } }) {
+function Metric({
+  label,
+  value,
+  sub,
+  sig,
+  uncertain,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  sig?: { cls: string; label: string };
+  uncertain?: boolean;
+}) {
+  // 미분류가 크면 지표(재료율·인건비율…)가 실제보다 좋게 보이는 착시 → 확신 신호(양호) 대신 '잠정'으로 낮춤
+  const showSig = sig && !uncertain;
   return (
     <div className="ta-card p-4">
       <div className="text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{label}</div>
-      <div className={`mt-1 text-[22px] font-semibold tabular ${sig ? sig.cls : 'text-foreground'}`}>{value}</div>
+      <div className={`mt-1 text-[22px] font-semibold tabular ${showSig ? sig.cls : 'text-foreground'}`}>{value}</div>
       <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        {sig && <span className={sig.cls}>● {sig.label}</span>}
+        {showSig && <span className={sig.cls}>● {sig.label}</span>}
+        {uncertain && <span className="text-amber-600 dark:text-amber-500">● 미분류 있어 잠정</span>}
         {sub && <span>{sub}</span>}
       </div>
     </div>
