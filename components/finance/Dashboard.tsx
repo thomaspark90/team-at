@@ -46,26 +46,46 @@ function ChartTooltip({ active, payload, label, fmt }: any) {
 
 export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[] }) {
   const [unit, setUnit] = useState<Unit>('month');
-  const { months, expenseKeys } = useMemo(() => aggregate(txns, cats, unit), [txns, cats, unit]);
+  const [netVat, setNetVat] = useState(true);
+  const { months, expenseKeys } = useMemo(() => aggregate(txns, cats, unit, netVat), [txns, cats, unit, netVat]);
 
   const fmtP = (key: string) => (unit === 'month' ? key.slice(2).replace('-', '.') : key.slice(5).replace('-', '/'));
 
   const toggle = (
-    <div className="inline-flex gap-1 rounded-md border border-border p-1">
-      {(['month', 'week'] as Unit[]).map((u) => {
-        const on = unit === u;
-        return (
-          <button
-            key={u}
-            onClick={() => setUnit(u)}
-            className={`rounded-sm px-3 py-1 text-[13px] transition-colors ${
-              on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {u === 'month' ? '월 단위' : '주 단위 (W)'}
-          </button>
-        );
-      })}
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="inline-flex gap-1 rounded-md border border-border p-1">
+        {(['month', 'week'] as Unit[]).map((u) => {
+          const on = unit === u;
+          return (
+            <button
+              key={u}
+              onClick={() => setUnit(u)}
+              className={`rounded-sm px-3 py-1 text-[13px] transition-colors ${
+                on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {u === 'month' ? '월 단위' : '주 단위 (W)'}
+            </button>
+          );
+        })}
+      </div>
+      <div className="inline-flex gap-1 rounded-md border border-border p-1">
+        {([true, false] as boolean[]).map((v) => {
+          const on = netVat === v;
+          return (
+            <button
+              key={String(v)}
+              onClick={() => setNetVat(v)}
+              className={`rounded-sm px-3 py-1 text-[13px] transition-colors ${
+                on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title={v ? '매출을 공급가액(총액÷1.1)으로 집계' : '매출을 통장 입금액(VAT 포함) 그대로 집계'}
+            >
+              {v ? '부가세 순액' : '총액'}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 
@@ -99,7 +119,7 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-3">
-          <Stat label={`${unitLabel} 매출`} value={won(last.revenue)} delta={delta(last.revenue, prev?.revenue)} />
+          <Stat label={`${unitLabel} 매출${netVat ? ' (순액)' : ''}`} value={won(last.revenue)} delta={delta(last.revenue, prev?.revenue)} />
           <Stat label="지출(원가+판관비)" value={won(lastExpense)} delta={delta(lastExpense, prevExpense)} />
           <Stat label="영업이익(EBIT)" value={won(last.ebit)} delta={delta(last.ebit, prev?.ebit)} />
           <Stat label="당기순이익" value={won(last.net)} delta={delta(last.net, prev?.net)} />
@@ -177,7 +197,10 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
       </ChartCard>
 
       <p className="m-0 text-[12px] text-muted-foreground">
-        * 매출은 입금액 기준(부가세 포함). 자본적지출·보증금·내부이체는 손익에서 제외. 감가상각 미반영(EBIT=EBITDA).
+        {netVat
+          ? '* 매출은 공급가액 기준(부가세 순액, 총액÷1.1·과세 10% 가정). 재료비·판관비는 아직 지급액(VAT 포함)이라 원가율은 다소 높게 보일 수 있어요.'
+          : '* 매출은 입금액 기준(부가세 포함).'}{' '}
+        자본적지출·보증금·내부이체는 손익에서 제외. 감가상각 미반영(EBIT=EBITDA).
       </p>
     </div>
   );

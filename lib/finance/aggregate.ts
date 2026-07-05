@@ -1,5 +1,9 @@
 // 월/주 단위 손익 집계 (EBIT 기준). 미분류·손익제외는 제외.
 
+// 부가세: 통장 입금액은 VAT 포함 총액이라, 손익상 매출은 공급가액(총액/1.1)이 맞음.
+// 과세 10% 가정(카페 음료·식음료). 이자수익 등 영업외(면세)는 순액화 대상 아님.
+export const VAT_DIVISOR = 1.1;
+
 export interface AggCat {
   id: number;
   type: string;
@@ -36,7 +40,12 @@ function periodKey(iso: string, unit: Unit): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function aggregate(txns: AggTx[], cats: AggCat[], unit: Unit = 'month'): { months: MonthAgg[]; expenseKeys: string[] } {
+export function aggregate(
+  txns: AggTx[],
+  cats: AggCat[],
+  unit: Unit = 'month',
+  netVat = true,
+): { months: MonthAgg[]; expenseKeys: string[] } {
   const catMap = new Map(cats.map((c) => [c.id, c]));
   const nameOf = (c: AggCat): string => {
     if (c.parent_id != null) {
@@ -60,7 +69,8 @@ export function aggregate(txns: AggTx[], cats: AggCat[], unit: Unit = 'month'): 
       m.set(key, mo);
     }
     if (c.type === 'revenue') {
-      mo.revenue += t.amount_in;
+      // 순액 모드: 공급가액(총액/1.1)으로 매출 인식. VAT는 손익이 아닌 예수금이라 제외.
+      mo.revenue += netVat ? Math.round(t.amount_in / VAT_DIVISOR) : t.amount_in;
     } else if (c.type === 'cogs') {
       mo.cogs += t.amount_out;
       const k = nameOf(c);
