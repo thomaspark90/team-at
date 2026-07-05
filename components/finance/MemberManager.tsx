@@ -68,7 +68,7 @@ function Section({
   return (
     <div>
       <h2 className="mb-[10px] text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{title}</h2>
-      <div className="overflow-hidden rounded-md border border-border bg-card">
+      <div className="overflow-hidden rounded-md border border-border bg-background">
         {isEmpty ? (
           <div className="px-5 py-[18px] text-[13px] text-muted-foreground">{empty}</div>
         ) : (

@@ -67,7 +67,7 @@ export default function MonthlyCloseManager({
   return (
     <div className="flex flex-col gap-3">
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
-      <div className="overflow-hidden rounded-md border border-border bg-card">
+      <div className="overflow-hidden rounded-md border border-border bg-background">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] border-collapse text-[13px]">
             <thead>

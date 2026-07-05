@@ -129,7 +129,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
             return (
               <div key={type}>
                 <h3 className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{TYPE_LABEL[type]}</h3>
-                <div className="overflow-hidden rounded-md border border-border bg-card">
+                <div className="overflow-hidden rounded-md border border-border bg-background">
                   {list.map((c) => (
                     <div
                       key={c.id}
@@ -138,7 +138,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                         if (overId !== c.id) setOverId(c.id);
                       }}
                       onDrop={() => reorder(type, c.id)}
-                      className={`flex flex-wrap items-center gap-[10px] px-[14px] py-[10px] ${overId === c.id ? 'border-t-2 border-foreground' : 'border-t border-border'} ${c.pinned ? 'bg-muted' : 'bg-card'} ${!c.active ? 'opacity-55' : dragId === c.id ? 'opacity-40' : ''}`}
+                      className={`flex flex-wrap items-center gap-[10px] px-[14px] py-[10px] ${overId === c.id ? 'border-t-2 border-foreground' : 'border-t border-border'} ${c.pinned ? 'bg-muted' : 'bg-background'} ${!c.active ? 'opacity-55' : dragId === c.id ? 'opacity-40' : ''}`}
                     >
                       <span
                         draggable

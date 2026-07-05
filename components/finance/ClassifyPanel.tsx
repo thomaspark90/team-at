@@ -299,7 +299,7 @@ export default function ClassifyPanel({
       </div>
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
-      <div className="overflow-hidden rounded-md border border-border bg-card">
+      <div className="overflow-hidden rounded-md border border-border bg-background">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] border-collapse text-[13px]">
             <thead>

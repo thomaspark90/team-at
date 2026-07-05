@@ -163,7 +163,7 @@ export default function UploadPanel() {
           </div>
 
           {preview.fresh > 0 && (
-          <div className="overflow-hidden rounded-md border border-border bg-card">
+          <div className="overflow-hidden rounded-md border border-border bg-background">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] border-collapse text-[13px]">
                 <thead>

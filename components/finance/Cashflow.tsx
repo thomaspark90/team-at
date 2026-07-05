@@ -23,7 +23,7 @@ export default function Cashflow({ months }: { months: MonthCash[] }) {
       {months.map((m) => {
         const net = m.totalIn - m.totalOut;
         return (
-          <div key={m.ym} className="overflow-hidden rounded-md border border-border bg-card">
+          <div key={m.ym} className="overflow-hidden rounded-md border border-border bg-background">
             <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border p-[14px_18px]">
               <h3 className="m-0 text-[16px] text-foreground">{fmtYm(m.ym)}</h3>
               <span className="text-[13px] text-muted-foreground">
