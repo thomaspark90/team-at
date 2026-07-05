@@ -101,8 +101,8 @@ export default function CardReconcile() {
         <div className="rounded-md border border-border bg-muted p-4">
           <div className="mb-1 text-foreground">✓ 저장 완료{saved.linked ? ' · 정산 연결됨' : ' · 미연결(결제 대기)'}</div>
           <div className="text-[14px] text-muted-foreground">
-            {won(saved.saved).replace('₩', '')}건 저장 (자동 분류 {saved.autoClassified}건) · 중복 {saved.duplicates}건 건너뜀 ·{' '}
-            <a href="/finance/classify?type=&source=card" className="text-foreground underline">거래 분류에서 카테고리 지정 →</a>
+            {won(saved.saved).replace('₩', '')}건 저장 · 중복 {saved.duplicates}건 건너뜀 · 카테고리는 직접 지정해요(학습된 가맹점은 미리 선택돼요) ·{' '}
+            <a href="/finance/classify?source=card" className="text-foreground underline">거래 분류에서 지정 →</a>
           </div>
         </div>
       )}

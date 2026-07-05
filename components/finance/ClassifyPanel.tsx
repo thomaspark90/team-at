@@ -51,14 +51,17 @@ export default function ClassifyPanel({
   cats,
   userId,
   confirmedYms = [],
+  rules = [],
   initialFilter,
 }: {
   txns: TxRow[];
   cats: Cat[];
   userId: string;
   confirmedYms?: string[];
+  rules?: { normalized_key: string; category_id: number }[];
   initialFilter?: { ym?: string; type?: string; cat?: string; unclassified?: boolean; source?: string };
 }) {
+  const ruleMap = new Map(rules.map((r) => [r.normalized_key, r.category_id]));
   const confirmedSet = new Set(confirmedYms);
   const isLocked = (tx: TxRow) => confirmedSet.has(tx.tx_at.slice(0, 7));
   const [rows, setRows] = useState<TxRow[]>(() =>
@@ -230,6 +233,24 @@ export default function ClassifyPanel({
     if (r.category_id == null && r.normalized_key && suggestions[r.normalized_key]?.confidence >= CONF)
       confidentKeys.add(r.normalized_key);
   }
+  // 학습된 규칙으로 미리 선택된(미분류) 그룹 — 사람이 '적용'하면 확정
+  const ruleKeys = new Set<string>();
+  for (const r of rows) {
+    if (r.category_id == null && r.normalized_key && !suggestions[r.normalized_key] && !isLocked(r) && ruleMap.has(r.normalized_key))
+      ruleKeys.add(r.normalized_key);
+  }
+  async function applyRules() {
+    setAiApplying(true);
+    const seen = new Set<string>();
+    for (const tx of rows) {
+      if (tx.category_id != null || !tx.normalized_key || isLocked(tx) || seen.has(tx.normalized_key)) continue;
+      const cat = ruleMap.get(tx.normalized_key);
+      if (!cat) continue;
+      seen.add(tx.normalized_key);
+      await classify(tx, cat);
+    }
+    setAiApplying(false);
+  }
 
   if (rows.length === 0) {
     return (
@@ -308,6 +329,11 @@ export default function ClassifyPanel({
             {aiApplying ? '적용 중…' : `확신 항목 저장 (${confidentKeys.size}그룹)`}
           </button>
         )}
+        {ruleKeys.size > 0 && (
+          <button onClick={applyRules} disabled={aiApplying} className="ta-btn-primary text-[13px]">
+            {aiApplying ? '적용 중…' : `학습 추천 적용 (${ruleKeys.size}그룹)`}
+          </button>
+        )}
         <button onClick={resetAll} disabled={aiApplying} className="ta-btn text-[13px] text-destructive">
           전체 초기화
         </button>
@@ -332,12 +358,14 @@ export default function ClassifyPanel({
                 const locked = isLocked(tx);
                 const pending = tx.category_id == null;
                 const sug = pending && tx.normalized_key ? suggestions[tx.normalized_key] : undefined;
+                // 학습된 규칙 추천(미분류 + AI추천 없을 때) — 미리 선택돼 보이지만 확정은 사람이
+                const ruleSug = pending && !sug && tx.normalized_key ? ruleMap.get(tx.normalized_key) : undefined;
                 const isInflow = tx.amount_in >= tx.amount_out;
                 const allowed = isInflow
                   ? ['revenue', 'non_operating', 'excluded']
                   : ['cogs', 'sga', 'non_operating', 'excluded'];
                 const [date, time] = tx.tx_at.split('T');
-                const selVal = tx.category_id ?? sug?.categoryId ?? '';
+                const selVal = tx.category_id ?? sug?.categoryId ?? ruleSug ?? '';
                 return (
                   <tr key={tx.id} className={`border-t border-border hover:bg-accent ${locked ? 'bg-muted' : ''}`}>
                     <Td>{BANK_LABEL[tx.bank] ?? tx.bank}</Td>
@@ -402,6 +430,15 @@ export default function ClassifyPanel({
                           <span title={sug.reason} className={`whitespace-nowrap text-[11px] ${sug.confidence >= CONF ? 'text-foreground' : 'text-muted-foreground'}`}>
                             {sug.confidence >= CONF ? '추천' : '⚠️ 확인'} · {catName(sug.categoryId)}
                           </span>
+                        )}
+                        {ruleSug && busy !== tx.id && (
+                          <button
+                            onClick={() => classify(tx, ruleSug)}
+                            title="학습된 추천 — 눌러서 확정"
+                            className="whitespace-nowrap rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
+                          >
+                            학습 · {catName(ruleSug)} 적용
+                          </button>
                         )}
                       </div>
                       )}

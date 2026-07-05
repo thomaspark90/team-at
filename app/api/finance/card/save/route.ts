@@ -82,17 +82,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ saved: 0, duplicates, autoClassified: 0, linked });
   }
 
-  // 규칙 자동분류(normalized_key → category_id)
-  const keys = Array.from(new Set(fresh.map((t) => t.normalizedKey).filter(Boolean)));
-  const keyToCat = new Map<string, number>();
-  for (let i = 0; i < keys.length; i += 100) {
-    const { data: rules } = await supabase
-      .schema('finance')
-      .from('rules')
-      .select('normalized_key,category_id')
-      .in('normalized_key', keys.slice(i, i + 100));
-    (rules ?? []).forEach((r: { normalized_key: string; category_id: number }) => keyToCat.set(r.normalized_key, r.category_id));
-  }
+  // 카드 건은 자동 확정하지 않음 — 전부 미분류로 저장하고 거래 분류에서 직접 선택.
+  // (학습된 가맹점은 거래 분류 화면에서 '추천'으로 미리 선택돼 보임)
 
   // 업로드 기록(카드 배치)
   const dates = fresh.map((t) => t.txAt).sort();
@@ -116,38 +107,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `업로드 기록 실패: ${upErr?.message ?? ''}` }, { status: 500 });
   }
 
-  const now = new Date().toISOString();
-  const rows = fresh.map((t) => {
-    const cat = keyToCat.get(t.normalizedKey) ?? null;
-    return {
-      bank: 'shinhan',
-      source: 'card',
-      card_issuer: '신한',
-      is_installment: !!t.isInstallment,
-      tx_at: t.txAt,
-      ym: t.ym,
-      channel: t.channel,
-      memo: t.memo,
-      amount_out: t.amountOut,
-      amount_in: t.amountIn,
-      balance: 0,
-      branch: null,
-      dedup_hash: t.dedupHash,
-      normalized_key: t.normalizedKey,
-      category_id: cat,
-      classified_by: cat ? user.id : null,
-      classified_at: cat ? now : null,
-      upload_id: up.id,
-    };
-  });
+  const rows = fresh.map((t) => ({
+    bank: 'shinhan',
+    source: 'card',
+    card_issuer: '신한',
+    is_installment: !!t.isInstallment,
+    tx_at: t.txAt,
+    ym: t.ym,
+    channel: t.channel,
+    memo: t.memo,
+    amount_out: t.amountOut,
+    amount_in: t.amountIn,
+    balance: 0,
+    branch: null,
+    dedup_hash: t.dedupHash,
+    normalized_key: t.normalizedKey,
+    category_id: null, // 카드는 자동 확정 안 함 — 거래 분류에서 직접 선택
+    classified_by: null,
+    classified_at: null,
+    upload_id: up.id,
+  }));
 
   const { error: insErr } = await supabase.schema('finance').from('transactions').insert(rows);
   if (insErr) return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
 
-  return NextResponse.json({
-    saved: fresh.length,
-    duplicates,
-    autoClassified: rows.filter((r) => r.category_id).length,
-    linked,
-  });
+  return NextResponse.json({ saved: fresh.length, duplicates, autoClassified: 0, linked });
 }

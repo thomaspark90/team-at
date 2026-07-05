@@ -41,6 +41,13 @@ export default async function ClassifyPage({
     .eq('status', 'confirmed');
   const confirmedYms = (closed as { ym: string }[] | null)?.map((c) => c.ym) ?? [];
 
+  // 학습된 규칙(정규화키→계정) — 미분류 행에 '추천'으로 미리 선택
+  const { data: ruleRows } = await supabase
+    .schema('finance')
+    .from('rules')
+    .select('normalized_key,category_id');
+  const rules = (ruleRows as { normalized_key: string; category_id: number }[] | null) ?? [];
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
@@ -64,6 +71,7 @@ export default async function ClassifyPage({
           cats={(cats as Cat[]) ?? []}
           userId={user.id}
           confirmedYms={confirmedYms}
+          rules={rules}
           initialFilter={{
             ym: searchParams.ym,
             type: searchParams.type,
