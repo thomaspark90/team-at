@@ -20,7 +20,7 @@ export default async function FinancePage() {
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <FinanceNav role={role} />
-      <div className="mx-auto max-w-[1100px] px-6 py-8">
+      <div className="mx-auto max-w-[1120px] px-6 py-8">
         {['admin', 'classifier'].includes(role ?? '') ? (
           <UploadPanel />
         ) : role === 'viewer' ? (

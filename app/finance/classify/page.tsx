@@ -45,7 +45,7 @@ export default async function ClassifyPage({
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <FinanceNav role={role} />
-      <div className="mx-auto max-w-[900px] px-6 py-8">
+      <div className="mx-auto max-w-[1120px] px-6 py-8">
         <div className="mb-4 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">거래 분류</h1>
           <div className="flex gap-4">

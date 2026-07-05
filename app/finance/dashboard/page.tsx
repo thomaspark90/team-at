@@ -27,7 +27,7 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <FinanceNav role={role} />
-      <div className="mx-auto max-w-[1000px] px-6 py-8">
+      <div className="mx-auto max-w-[1120px] px-6 py-8">
         <div className="mb-5 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">재무 대시보드</h1>
           <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
