@@ -491,11 +491,15 @@ export default function ClassifyPanel({
                         ? <span className="text-positive">+{won(tx.amount_in)}</span>
                         : `-${won(tx.amount_out)}`}
                     </Td>
-                    <Td>
-                      {tx.source === 'card' && <span title="신한카드 이용내역" className="mr-1.5 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">💳</span>}
-                      {tx.memo || <span className="text-muted-foreground">(빈 내용)</span>}
-                      {tx.is_installment && <span className="ml-1.5 rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">할부</span>}
-                    </Td>
+                    <td className="px-3 py-2 align-middle">
+                      <div className="flex max-w-[380px] items-center gap-1.5">
+                        {tx.source === 'card' && <span title="신한카드 이용내역" className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">💳</span>}
+                        <span className="line-clamp-2 min-w-0 break-all" title={tx.memo}>
+                          {tx.memo || <span className="text-muted-foreground">(빈 내용)</span>}
+                        </span>
+                        {tx.is_installment && <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">할부</span>}
+                      </div>
+                    </td>
                     <Td>
                       {locked ? (
                         <span className="inline-flex items-center gap-[6px] text-foreground">

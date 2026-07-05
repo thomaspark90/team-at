@@ -122,7 +122,7 @@ export default function CardReconcile() {
         </div>
         <div>
           <button onClick={analyze} disabled={!file || loading} className="ta-btn-primary">
-            {loading ? '입력 중…' : '입력하기'}
+            {loading ? '업로드 중…' : '업로드'}
           </button>
         </div>
         {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
