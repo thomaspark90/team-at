@@ -47,12 +47,15 @@ export default async function FlowPage() {
       <TabNav />
       <FinanceNav role={role} />
       <div className="mx-auto max-w-[1680px] px-6 py-8">
-        <div className="mb-5 flex items-baseline justify-between">
+        <div className="mb-1.5 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">자금 흐름</h1>
           <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
             ← 재무 홈
           </Link>
         </div>
+        <p className="mb-5 text-[13px] text-muted-foreground">
+          분류된 매출·지출을 카테고리·품목별로 보여줘요(카드는 품목까지). 통장 현금 입출금·잔액은 <Link href="/finance/cashflow" className="underline">월별 요약</Link>에서 봐요.
+        </p>
         {yms.length === 0 ? (
           <div className="mx-auto my-[60px] text-center text-muted-foreground">
             <div className="mb-2.5 text-[32px]">📭</div>

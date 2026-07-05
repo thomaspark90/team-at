@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 export interface MonthRow {
   ym: string;
@@ -116,13 +117,12 @@ export default function MonthlyCloseManager({
                         ) : (
                           <span className="text-[12px] text-muted-foreground">—</span>
                         )
+                      ) : !ready ? (
+                        <Link href={`/finance/classify?ym=${r.ym}&unclassified=1`} className="ta-btn text-[13px]">
+                          미분류 분류 →
+                        </Link>
                       ) : canConfirm ? (
-                        <button
-                          onClick={() => act(r.ym, 'confirm')}
-                          disabled={!ready}
-                          title={ready ? '' : '미분류를 모두 분류해야 확정할 수 있어요.'}
-                          className="ta-btn-primary text-[13px]"
-                        >
+                        <button onClick={() => act(r.ym, 'confirm')} className="ta-btn-primary text-[13px]">
                           확정
                         </button>
                       ) : (

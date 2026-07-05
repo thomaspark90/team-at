@@ -248,7 +248,9 @@ export default function ClassifyPanel({
   }
 
   async function resetAll() {
-    if (!window.confirm('모든 거래의 분류와 학습 규칙을 초기화할까요? 되돌릴 수 없어요.')) return;
+    const total = rows.filter((r) => r.category_id != null).length;
+    if (!window.confirm(`정말 전체 초기화할까요? 지금까지 분류한 ${won(total)}건과 학습 규칙이 모두 사라져요. 되돌릴 수 없어요.`)) return;
+    if (!window.confirm('한 번 더 확인할게요. 정말 모두 초기화합니다. 계속할까요?')) return;
     setAiApplying(true);
     setError(null);
     const supabase = createClient();
@@ -397,7 +399,12 @@ export default function ClassifyPanel({
             {aiApplying ? '적용 중…' : `학습 추천 적용 (${ruleKeys.size}그룹)`}
           </button>
         )}
-        <button onClick={resetAll} disabled={aiApplying} className="ta-btn text-[13px] text-destructive">
+        <button
+          onClick={resetAll}
+          disabled={aiApplying}
+          title="분류·학습 규칙을 모두 초기화(되돌릴 수 없음)"
+          className="text-[12px] text-muted-foreground underline underline-offset-2 transition-colors hover:text-destructive disabled:opacity-50"
+        >
           전체 초기화
         </button>
       </div>
