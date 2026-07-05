@@ -118,7 +118,7 @@ export default function PnlUpload() {
           />
         </label>
         <button onClick={analyze} disabled={!file || loading} className="ta-btn-primary">
-          {loading ? '읽는 중…' : '미리보기'}
+          {loading ? '읽는 중…' : '업로드'}
         </button>
       </div>
 
