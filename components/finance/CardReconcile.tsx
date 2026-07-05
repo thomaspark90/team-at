@@ -103,7 +103,7 @@ export default function CardReconcile() {
       {/* 업로드 카드 */}
       <div className="ta-card flex flex-col gap-4">
         <div>
-          <h2 className="text-[16px] font-bold text-foreground">신한카드 이용내역으로 지출 자료 세분화</h2>
+          <h2 className="text-[16px] font-semibold text-foreground">신한카드 이용내역으로 지출 자료 세분화</h2>
           <p className="mt-1 text-[14px] text-muted-foreground">
             신한 사업자카드 <b>이용내역 엑셀</b>을 올려, 통장의 <b>‘신한카드’ 결제 건</b>과 연결하세요. 그 결제 한 줄이 아래 사용내역으로 나뉘어 거래 분류에 들어가요.
           </p>
@@ -134,7 +134,7 @@ export default function CardReconcile() {
               <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted-foreground">
                 카드 사용합계 · {fmtYm(preview.usageYm)} · 신규 {preview.fresh}건
               </div>
-              <div className="tabular text-[20px] font-extrabold text-foreground">{won(preview.net)}</div>
+              <div className="tabular text-[20px] font-semibold text-foreground">{won(preview.net)}</div>
               {preview.sumIn > 0 && (
                 <div className="text-[11px] text-muted-foreground">사용 {won(preview.sumOut)} − 환불 {won(preview.sumIn)}</div>
               )}
@@ -158,12 +158,12 @@ export default function CardReconcile() {
             <div>
               {cand ? (
                 Math.abs(diff) < 1 ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-positive/15 px-3 py-1 text-[12px] font-bold text-positive">✅ 일치 · 차액 ₩0</span>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-[12px] font-medium text-positive">✅ 일치 · 차액 ₩0</span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1 text-[12px] font-bold text-amber-600">⚠️ 차액 {won(Math.abs(diff))}</span>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-[12px] font-medium text-foreground">⚠️ 차액 {won(Math.abs(diff))}</span>
                 )
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-[12px] font-bold text-muted-foreground">🕗 미연결(결제 대기)</span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-[12px] font-medium text-muted-foreground">🕗 미연결(결제 대기)</span>
               )}
             </div>
             <span className="flex-1" />
@@ -190,7 +190,7 @@ export default function CardReconcile() {
                     <Td mono>{t.txAt.slice(0, 10)}</Td>
                     <Td>
                       {t.memo}
-                      {t.isInstallment && <span className="ml-1.5 rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">할부</span>}
+                      {t.isInstallment && <span className="ml-1.5 rounded-sm bg-accent px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">할부</span>}
                     </Td>
                     <Td right mono>
                       {t.amountIn > 0 ? <span className="text-positive">+{won(t.amountIn).replace('₩', '')} 환불</span> : `-${won(t.amountOut).replace('₩', '')}`}

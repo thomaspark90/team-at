@@ -80,7 +80,7 @@ export default function ReceiptEnrich() {
   return (
     <div className="ta-card flex flex-col gap-4">
       <div>
-        <h2 className="text-[16px] font-bold text-foreground">🧾 쿠팡 영수증으로 지출 자료 세분화</h2>
+        <h2 className="text-[16px] font-semibold text-foreground">🧾 쿠팡 영수증으로 지출 자료 세분화</h2>
         <p className="mt-1 text-[13px] text-muted-foreground">
           쿠팡 <b>신용카드 매출전표(PDF)</b>를 올리면, 카드의 <b>쿠팡 결제</b>가 승인번호로 매칭돼 <b>품목별로 분해</b>돼요. (마이쿠팡 &gt; 마이쇼핑 &gt; 영수증 조회/출력 &gt; 신용카드 매출전표)
         </p>
@@ -93,7 +93,7 @@ export default function ReceiptEnrich() {
           onChange={(e) => { setFile(e.target.files?.[0] ?? null); setDone(null); setPreview(null); }}
           className="text-[14px] text-foreground"
         />
-        <button onClick={analyze} disabled={!file || loading} className="ta-btn-primary text-[13px]">
+        <button onClick={analyze} disabled={!file || loading} className="ta-btn-primary">
           {loading ? '입력 중…' : '입력하기'}
         </button>
       </div>
@@ -117,7 +117,7 @@ export default function ReceiptEnrich() {
             <span className="rounded-md border border-border px-3 py-1.5">전표 품목 <b>{preview.totalItems}</b></span>
             <span className="rounded-md border border-border px-3 py-1.5">결제(승인) <b>{preview.groups}</b>건</span>
             <span className="rounded-md border border-border px-3 py-1.5">
-              카드 매칭 <b className={preview.matched ? 'text-positive' : 'text-destructive'}>{preview.matched}</b>건
+              카드 매칭 <b className={preview.matched ? 'text-positive' : 'text-muted-foreground'}>{preview.matched}</b>건
             </span>
           </div>
           {preview.matched === 0 && (
@@ -159,7 +159,7 @@ export default function ReceiptEnrich() {
           </div>
 
           {preview.matched > 0 && (
-            <button onClick={apply} disabled={applying} className="ta-btn-primary self-start text-[13px]">
+            <button onClick={apply} disabled={applying} className="ta-btn-primary self-start">
               {applying ? '적용 중…' : `${preview.matched}건 분해 적용`}
             </button>
           )}
