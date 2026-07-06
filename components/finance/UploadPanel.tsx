@@ -144,7 +144,7 @@ export default function UploadPanel() {
             onClick={analyze} disabled={!file || loading}
             className="ta-btn-primary"
           >
-            {loading ? '입력 중…' : '입력하기'}
+            {loading ? '업로드 중…' : '업로드'}
           </button>
         </div>
 

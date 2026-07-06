@@ -6,6 +6,8 @@ import { buildSankey, type SankTx, type SankCat } from '@/lib/finance/sankey';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import UploadPanel from '@/components/finance/UploadPanel';
+import CardReconcile from '@/components/finance/CardReconcile';
+import ReceiptEnrich from '@/components/finance/ReceiptEnrich';
 import RequestAccessButton from '@/components/finance/RequestAccessButton';
 
 interface OverviewData {
@@ -70,13 +72,20 @@ export default async function FinancePage() {
         {isStaff && overview ? (
           <div className="flex flex-col gap-8">
             <Overview o={overview} />
-            <section className="flex flex-col gap-3">
-              <h2 className="m-0 text-[15px] text-foreground">자료 입력</h2>
-              <p className="m-0 text-[13px] text-muted-foreground">
-                은행 거래내역(PDF)은 여기서, <b>신한카드·쿠팡</b> 자료는{' '}
-                <Link href="/finance/classify" className="underline">거래 분류</Link> 우측 사이드바에서 올려요.
-              </p>
+            <section className="flex flex-col gap-4">
+              <div>
+                <h2 className="m-0 text-[15px] text-foreground">자료 입력</h2>
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  은행 거래내역(PDF)·신한카드·쿠팡 자료를 여기서 올려요. 올린 뒤{' '}
+                  <Link href="/finance/classify" className="underline">거래 분류</Link>에서 계정을 지정해요.
+                </p>
+              </div>
+              {/* 1) 은행 거래내역 */}
               <UploadPanel />
+              {/* 2) 신한카드 이용내역(통장 카드결제와 정산) */}
+              <CardReconcile />
+              {/* 3) 쿠팡 영수증(품목 분해) */}
+              <ReceiptEnrich />
             </section>
           </div>
         ) : (
