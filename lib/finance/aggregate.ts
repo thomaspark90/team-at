@@ -1,7 +1,6 @@
 // 월/주 단위 손익 집계 (EBIT 기준). 미분류·손익제외는 제외.
-
-// 부가세: 통장 입금액은 VAT 포함 총액이라, 손익상 매출은 공급가액(총액/1.1)이 맞음.
-// 과세 10% 가정(카페 음료·식음료). 이자수익 등 영업외(면세)는 순액화 대상 아님.
+// 매출 = POS 공급가액(발생주의). 통장 매출 입금이 아니라 POS 판매 시점 기준.
+// 지출(재료비·판관비)은 거래분류(통장·카드)에서, 과세분은 공급가액(÷1.1)으로 순액화해 매출과 기준 통일.
 export const VAT_DIVISOR = 1.1;
 
 // 미분류 지출을 지출 구분/손익에 노출할 때 쓰는 라벨
@@ -50,6 +49,7 @@ export function aggregate(
   cats: AggCat[],
   unit: Unit = 'month',
   netVat = true,
+  posSales: { saleDate: string; supply: number }[] = [],
 ): { months: MonthAgg[]; expenseKeys: string[] } {
   const catMap = new Map(cats.map((c) => [c.id, c]));
   const nameOf = (c: AggCat): string => {
@@ -66,14 +66,17 @@ export function aggregate(
   // 순액 모드에서 과세 항목만 공급가액(총액÷1.1)으로. VAT는 손익 아닌 예수/대급금이라 제외.
   // 면세·비대상(인건비·이자·수도·세금 등)은 그대로. vat_taxable 미지정은 과세로 간주.
   const netAmt = (v: number, c: AggCat) => (netVat && c.vat_taxable !== false ? Math.round(v / VAT_DIVISOR) : v);
-
-  for (const t of txns) {
-    const key = periodKey(t.tx_at, unit);
+  const getMo = (key: string): MonthAgg => {
     let mo = m.get(key);
     if (!mo) {
       mo = { ym: key, revenue: 0, unclassifiedIn: 0, cogs: 0, sga: 0, ebit: 0, nonOp: 0, net: 0, costRatio: null, profitRatio: null, expense: {} };
       m.set(key, mo);
     }
+    return mo;
+  };
+
+  for (const t of txns) {
+    const mo = getMo(periodKey(t.tx_at, unit));
     const c = t.category_id != null ? catMap.get(t.category_id) : undefined;
 
     if (!c) {
@@ -89,9 +92,8 @@ export function aggregate(
       continue;
     }
 
-    if (c.type === 'revenue') {
-      mo.revenue += netAmt(t.amount_in, c);
-    } else if (c.type === 'cogs') {
+    // 매출은 POS(발생주의)에서 잡으므로 은행 매출 입금(revenue)은 손익 집계에 넣지 않음.
+    if (c.type === 'cogs') {
       const amt = netAmt(t.amount_out, c);
       mo.cogs += amt;
       const k = nameOf(c);
@@ -106,6 +108,11 @@ export function aggregate(
     } else if (c.type === 'non_operating') {
       mo.nonOp += netAmt(t.amount_in, c) - netAmt(t.amount_out, c);
     }
+  }
+
+  // 매출 = POS 공급가액(발생주의). 통장 입금 대신 판매 시점(sale_date) 기준으로 기간 귀속.
+  for (const p of posSales) {
+    getMo(periodKey(p.saleDate, unit)).revenue += p.supply;
   }
 
   const months = Array.from(m.values()).sort((a, b) => a.ym.localeCompare(b.ym));

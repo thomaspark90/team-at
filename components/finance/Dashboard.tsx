@@ -76,10 +76,21 @@ function ChartTooltip({ active, payload, label, fmt, share }: any) {
   );
 }
 
-export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[] }) {
+export default function Dashboard({
+  txns,
+  cats,
+  posSales = [],
+}: {
+  txns: AggTx[];
+  cats: AggCat[];
+  posSales?: { saleDate: string; supply: number }[];
+}) {
   const [unit, setUnit] = useState<Unit>('month');
   const [netVat, setNetVat] = useState(true);
-  const { months, expenseKeys } = useMemo(() => aggregate(txns, cats, unit, netVat), [txns, cats, unit, netVat]);
+  const { months, expenseKeys } = useMemo(
+    () => aggregate(txns, cats, unit, netVat, posSales),
+    [txns, cats, unit, netVat, posSales],
+  );
 
   const fmtP = (key: string) => (unit === 'month' ? key.slice(2).replace('-', '.') : key.slice(5).replace('-', '/'));
 
@@ -184,9 +195,9 @@ export default function Dashboard({ txns, cats }: { txns: AggTx[]; cats: AggCat[
         </div>
         {toggle}
       </div>
-      {last.unclassifiedIn > 0 && (
+      {months.length > 0 && last.revenue === 0 && (
         <div className="-mt-2 text-[11px] text-muted-foreground">
-          + 미분류 입금 {won(last.unclassifiedIn)} 은 매출에서 제외했어요(대출·자본유입 등 비매출 가능). 매출이면 <a href="/finance/classify?unclassified=1" className="underline">거래 분류</a>에서 지정하면 반영돼요.
+          이 기간 <b>POS 매출이 없어요</b> — 매출은 <a href="/finance/pnl" className="underline">관리손익</a>에서 토스 매출리포트를 올려야 잡혀요.
         </div>
       )}
 

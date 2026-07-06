@@ -23,6 +23,9 @@ export default async function DashboardPage() {
     .from('dashboard_tx')
     .select('tx_at,amount_in,amount_out,category_id');
   const { data: cats } = await supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable');
+  // 매출 = POS 공급가액(발생주의). 지금은 pos_sales 직접 조회(admin/classifier) — viewer 노출은 후속(전용 뷰) 과제.
+  const { data: pos } = await supabase.schema('finance').from('pos_sales').select('sale_date,supply');
+  const posSales = ((pos as { sale_date: string; supply: number }[] | null) ?? []).map((p) => ({ saleDate: p.sale_date, supply: p.supply }));
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -36,9 +39,9 @@ export default async function DashboardPage() {
           </Link>
         </div>
         <p className="mb-5 text-[13px] text-muted-foreground">
-          통장 입금 기준(현금)이에요. POS 발생주의 매출·원가율은 <Link href="/finance/pnl" className="underline">관리손익</Link>에서 봐요.
+          <b>매출은 POS(발생주의)</b>, 지출은 통장·카드 기준이에요. 통장 현금흐름·잔액은 <Link href="/finance/cashflow" className="underline">월별 요약</Link>·<Link href="/finance/flow" className="underline">자금 흐름</Link>에서 봐요.
         </p>
-        <Dashboard txns={(txns as AggTx[]) ?? []} cats={(cats as AggCat[]) ?? []} />
+        <Dashboard txns={(txns as AggTx[]) ?? []} cats={(cats as AggCat[]) ?? []} posSales={posSales} />
       </div>
     </div>
   );
