@@ -42,8 +42,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['IBM Plex Sans KR', 'system-ui', 'sans-serif'],
-        serif: ['IBM Plex Sans KR', 'system-ui', 'sans-serif'],
+        sans: ['Freesentation', 'system-ui', 'sans-serif'],
+        serif: ['Freesentation', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         lg: '4px',

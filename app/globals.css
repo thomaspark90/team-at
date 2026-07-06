@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Freesentation (freesentation.blog, OFL) — 셀프호스팅, 실사용 웨이트 400/500만 */
+@font-face {
+  font-family: 'Freesentation';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/Freesentation-4Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Freesentation';
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/Freesentation-5Medium.woff2') format('woff2');
+}
+
 /*
  * team-at design tokens — midday.ai 이식본
  * 소스: github.com/midday-ai/midday (packages/ui/src/globals.css) — HSL 값 그대로.
@@ -112,13 +128,13 @@
     -webkit-font-smoothing: antialiased;
   }
   body {
-    font-family: 'IBM Plex Sans KR', system-ui, sans-serif;
+    font-family: 'Freesentation', system-ui, sans-serif;
     font-weight: 400;
     @apply bg-background text-foreground;
   }
   /* 브랜드/디스플레이 (동일 패밀리 — 한글·라틴 모두 커버) */
   .font-serif {
-    font-family: 'IBM Plex Sans KR', system-ui, sans-serif;
+    font-family: 'Freesentation', system-ui, sans-serif;
   }
   /* 숫자 정렬 (테이블·금액) */
   .tabular {
