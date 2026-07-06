@@ -104,7 +104,7 @@ export default function GardenService() {
 
   return (
     <div style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
-        <div className="ta-card min-w-0">
+        <div className="ta-card bg-background min-w-0">
           <p className="ta-label">판매가 산식 기준</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="구매 용량(g)" value={settings.capacityG} onChange={(v) => setNum('capacityG', v)} />
@@ -113,7 +113,7 @@ export default function GardenService() {
           </div>
         </div>
 
-        <div className="ta-card min-w-0">
+        <div className="ta-card bg-background min-w-0">
           <p className="ta-label">원두 정보 입력</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <input
@@ -198,7 +198,7 @@ export default function GardenService() {
 
         {/* 발주 기록 — 같은 원두 재발주 시 원가·판매가 비교 */}
         {purchases.length > 0 && (
-          <div className="ta-card min-w-0">
+          <div className="ta-card bg-background min-w-0">
             <p className="ta-label">이전 판매 리스트</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               {purchaseGroups.map((group) => (

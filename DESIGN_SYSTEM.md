@@ -71,7 +71,7 @@ CSS 변수 → Tailwind 유틸(`bg-*`, `text-*`, `border-*`)로 노출. 다크 �
 
 | 클래스 | = |
 |--------|---|
-| `.ta-card` | `rounded-md border border-border bg-card p-6` |
+| `.ta-card` | `rounded-md border border-border bg-card p-6` — 예외: 스탭밀(`/studio`)·가든(`/garden`) 카드는 `bg-background`(흰색) 오버라이드 (2026-07-06) |
 | `.ta-input` | `h-9 rounded-md border border-input bg-transparent px-3 text-[13px] …` (input/select/textarea) |
 | `.ta-btn` | 아웃라인 버튼 (h-9, border, hover:bg-accent) |
 | `.ta-btn-primary` | 다크 프라이머리 버튼 (h-9, bg-primary) |

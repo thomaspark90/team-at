@@ -50,7 +50,7 @@ export default function StudioPage() {
         >
           {/* 왼쪽: 입력 */}
           <div className="flex min-w-0 flex-col gap-5">
-            <div className="ta-card">
+            <div className="ta-card bg-background">
               <p className="ta-label">Date</p>
               <input
                 type="text"
@@ -62,7 +62,7 @@ export default function StudioPage() {
               <p className="mt-2 text-[11px] text-muted-foreground">배지에 표시될 날짜</p>
             </div>
 
-            <div className="ta-card">
+            <div className="ta-card bg-background">
               <p className="ta-label">Menu</p>
               <MenuEditor story={story} onChange={setStory} />
             </div>
@@ -70,7 +70,7 @@ export default function StudioPage() {
 
           {/* 오른쪽: 미리보기 + 다운로드 */}
           <div className="sticky top-6 flex min-w-0 flex-col gap-5">
-            <div className="ta-card min-w-0">
+            <div className="ta-card bg-background min-w-0">
               <p className="ta-label">Preview</p>
               <div ref={previewBoxRef} className="w-full">
                 <div
