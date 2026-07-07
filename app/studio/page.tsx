@@ -4,7 +4,7 @@ import { resolveRole } from '@/lib/finance/access';
 import TabNav from '@/components/TabNav';
 import StudioNav from '@/components/StudioNav';
 import TransferPanel from '@/components/finance/TransferPanel';
-import PushToggle from '@/components/PushToggle';
+import NotifySettings from '@/components/NotifySettings';
 import { OWNER_EMAIL } from '@/lib/finance/access';
 
 // 스탭밀 홈 = 대시보드 — 영수증 사진 업로드 → AI 인식 → 송금 대기 리스트.
@@ -29,8 +29,8 @@ export default async function StudioDashboardPage() {
       <TabNav />
       <StudioNav />
       <div className="mx-auto flex max-w-[720px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
-        {isNotifyRecipient && <PushToggle />}
-        <TransferPanel role={role} email={user.email ?? ''} />
+        {isNotifyRecipient && <NotifySettings />}
+        <TransferPanel role={role} email={user.email ?? ''} mode="dashboard" />
       </div>
     </div>
   );

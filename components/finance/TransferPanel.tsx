@@ -1,11 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TransferExtraction, TransferRequestRow } from '@/lib/finance/transfer';
 
 interface Props {
   role: string | null; // finance 역할 — 완료 처리는 admin/classifier 만
   email: string;
+  mode: 'dashboard' | 'history'; // 대시보드=업로드+최근 10건, 내역=월별 전체
 }
 
 interface Draft {
@@ -23,6 +25,10 @@ const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+const fmtYm = (ym: string) => {
+  const [y, m] = ym.split('-');
+  return `${y}년 ${Number(m)}월`;
 };
 
 // EXIF 회전을 반영해 비트맵 로드 (옵션 미지원 브라우저는 기본 동작 폴백)
@@ -73,7 +79,8 @@ async function rotateImage(file: File, deg: 90 | 180 | 270): Promise<File> {
   }
 }
 
-export default function TransferPanel({ role, email }: Props) {
+export default function TransferPanel({ role, email, mode }: Props) {
+  const isDashboard = mode === 'dashboard';
   const isStaff = ['admin', 'classifier'].includes(role ?? '');
   const fileInput = useRef<HTMLInputElement>(null);
   const resizedRef = useRef<File | null>(null);
@@ -87,7 +94,7 @@ export default function TransferPanel({ role, email }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const [tab, setTab] = useState<'pending' | 'done'>('pending');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all');
   const [rows, setRows] = useState<TransferRequestRow[]>([]);
   const [listError, setListError] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(true);
@@ -199,7 +206,6 @@ export default function TransferPanel({ role, email }: Props) {
       if (!res.ok) throw new Error(j.error || '등록에 실패했어요.');
       setNotice(`${draft.vendor_name} ${won(amount)} — 송금 대기에 올렸어요.`);
       closeDraft();
-      setTab('pending');
       loadList();
     } catch (e) {
       setError((e as Error).message);
@@ -208,7 +214,7 @@ export default function TransferPanel({ role, email }: Props) {
     }
   }
 
-  // ---------- 대시보드 액션 ----------
+  // ---------- 리스트 액션 ----------
   async function mark(id: number, action: 'done' | 'undo') {
     setBusyId(id);
     try {
@@ -252,40 +258,153 @@ export default function TransferPanel({ role, email }: Props) {
     }
   }
 
-  const visible = rows.filter((r) => r.status === tab);
-  const pendingSum = rows.filter((r) => r.status === 'pending').reduce((s, r) => s + Number(r.amount), 0);
-  const pendingCount = rows.filter((r) => r.status === 'pending').length;
+  const pendingRows = rows.filter((r) => r.status === 'pending');
+  const pendingSum = pendingRows.reduce((s, r) => s + Number(r.amount), 0);
+
+  // 대시보드=최근 10건(상태 무관), 내역=필터 적용 후 월별 그룹
+  const visible = isDashboard ? rows.slice(0, 10) : rows.filter((r) => filter === 'all' || r.status === filter);
+  const months: [string, TransferRequestRow[]][] = [];
+  if (!isDashboard) {
+    const map = new Map<string, TransferRequestRow[]>();
+    for (const r of visible) {
+      const ym = r.created_at.slice(0, 7);
+      if (!map.has(ym)) map.set(ym, []);
+      map.get(ym)!.push(r);
+    }
+    months.push(...Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0])));
+  }
 
   const inputCls =
     'w-full rounded-lg border border-border bg-background px-3 py-2 text-[14px] text-foreground outline-none focus:border-foreground/40';
   const labelCls = 'text-[12px] text-muted-foreground';
 
+  const card = (r: TransferRequestRow) => {
+    const account = [r.bank, r.account_no].filter(Boolean).join(' ');
+    const mine = r.requester_email === email;
+    return (
+      <div key={r.id} className="rounded-xl border border-border bg-background p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="flex items-baseline gap-2 text-[15px] font-medium">
+            {r.vendor_name}
+            <span
+              className={`rounded px-1.5 py-0.5 text-[10px] font-normal ${
+                r.status === 'pending' ? 'bg-amber-500/15 text-amber-600' : 'bg-foreground/10 text-muted-foreground'
+              }`}
+            >
+              {r.status === 'pending' ? '대기' : '완료'}
+            </span>
+          </span>
+          <span className="flex items-baseline gap-1.5 text-[16px] font-semibold" style={{ color: 'hsl(var(--number-colored))' }}>
+            {won(Number(r.amount))}
+            <button
+              onClick={() => copy(String(Math.round(Number(r.amount))), `amt${r.id}`)}
+              className="text-[11px] font-normal text-muted-foreground hover:text-foreground"
+            >
+              {copied === `amt${r.id}` ? '복사됨' : '복사'}
+            </button>
+          </span>
+        </div>
+
+        <div className="mt-1.5 text-[13px]">
+          {account ? (
+            <span className="flex flex-wrap items-center gap-1.5">
+              <span className="font-mono">{account}</span>
+              {r.account_holder && <span className="text-muted-foreground">({r.account_holder})</span>}
+              <button
+                onClick={() => copy(r.account_no ?? '', `acc${r.id}`)}
+                className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                {copied === `acc${r.id}` ? '복사됨 ✓' : '계좌 복사'}
+              </button>
+            </span>
+          ) : (
+            <span className="text-amber-600">계좌 미확인 — 거래처에 확인 필요</span>
+          )}
+        </div>
+
+        {r.items_summary && <p className="mt-1 text-[12px] text-muted-foreground">{r.items_summary}</p>}
+        {r.memo && <p className="mt-1 text-[12px] text-muted-foreground">메모: {r.memo}</p>}
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          {r.requester_email.split('@')[0]} · {fmtDate(r.created_at)}
+          {r.doc_date && ` · 거래일 ${r.doc_date}`}
+          {r.status === 'done' && r.done_by_email && ` · ${r.done_by_email.split('@')[0]}가 ${r.done_at ? fmtDate(r.done_at) : ''} 이체 완료`}
+        </p>
+
+        <div className="mt-3 flex flex-wrap gap-2 text-[12px]">
+          {r.image_path && (
+            <button onClick={() => setImageViewId(r.id)} className="rounded-lg border border-border px-3 py-1.5 text-muted-foreground hover:text-foreground">
+              원본 사진
+            </button>
+          )}
+          {isStaff && r.status === 'pending' && (
+            <button
+              onClick={() => mark(r.id, 'done')}
+              disabled={busyId === r.id}
+              className="rounded-lg bg-foreground px-3 py-1.5 font-medium text-background disabled:opacity-60"
+            >
+              이체 완료
+            </button>
+          )}
+          {isStaff && r.status === 'done' && (
+            <button
+              onClick={() => mark(r.id, 'undo')}
+              disabled={busyId === r.id}
+              className="rounded-lg border border-border px-3 py-1.5 text-muted-foreground hover:text-foreground disabled:opacity-60"
+            >
+              완료 취소
+            </button>
+          )}
+          {(isStaff || (mine && r.status === 'pending')) && (
+            <button
+              onClick={() => remove(r.id)}
+              disabled={busyId === r.id}
+              className="rounded-lg border border-border px-3 py-1.5 text-muted-foreground hover:text-red-500 disabled:opacity-60"
+            >
+              삭제
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const monthSummary = (list: TransferRequestRow[]) => {
+    const p = list.filter((r) => r.status === 'pending');
+    const d = list.filter((r) => r.status === 'done');
+    const parts = [];
+    if (p.length) parts.push(`대기 ${p.length}건 ${won(p.reduce((s, r) => s + Number(r.amount), 0))}`);
+    if (d.length) parts.push(`완료 ${d.length}건 ${won(d.reduce((s, r) => s + Number(r.amount), 0))}`);
+    return parts.join(' · ');
+  };
+
   return (
     <div className="flex flex-col gap-6">
-      {/* ---------- 업로드 ---------- */}
-      <section className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="m-0 text-[15px] font-medium">송금 요청 올리기</h2>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          거래명세서·영수증 사진을 올리면 거래처, 금액, 입금 계좌를 자동으로 읽어요. 내용을 확인하고 등록하면
-          송금 담당자 리스트에 올라가요.
-        </p>
-        <input
-          ref={fileInput}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
-        />
-        <button
-          onClick={() => fileInput.current?.click()}
-          disabled={parsing}
-          className="mt-4 w-full rounded-xl border border-dashed border-border bg-background py-6 text-[14px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground disabled:opacity-60 sm:w-auto sm:px-10"
-        >
-          {parsing ? 'AI가 읽는 중…' : '📷 사진 촬영 / 이미지 선택'}
-        </button>
-        {notice && <p className="mt-3 text-[13px]" style={{ color: 'hsl(var(--number-colored))' }}>{notice}</p>}
-        {error && !draft && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
-      </section>
+      {/* ---------- 업로드 (대시보드 전용) ---------- */}
+      {isDashboard && (
+        <section className="rounded-2xl border border-border bg-card p-5">
+          <h2 className="m-0 text-[15px] font-medium">송금 요청 올리기</h2>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            거래명세서·영수증 사진을 올리면 거래처, 금액, 입금 계좌를 자동으로 읽어요. 내용을 확인하고 등록하면
+            송금 담당자 리스트에 올라가요.
+          </p>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+          />
+          <button
+            onClick={() => fileInput.current?.click()}
+            disabled={parsing}
+            className="mt-4 w-full rounded-xl border border-dashed border-border bg-background py-6 text-[14px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground disabled:opacity-60 sm:w-auto sm:px-10"
+          >
+            {parsing ? 'AI가 읽는 중…' : '📷 사진 촬영 / 이미지 선택'}
+          </button>
+          {notice && <p className="mt-3 text-[13px]" style={{ color: 'hsl(var(--number-colored))' }}>{notice}</p>}
+          {error && !draft && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
+        </section>
+      )}
 
       {/* ---------- 확인창 ---------- */}
       {draft && (
@@ -383,25 +502,31 @@ export default function TransferPanel({ role, email }: Props) {
         </div>
       )}
 
-      {/* ---------- 송금 대시보드 ---------- */}
+      {/* ---------- 리스트 ---------- */}
       <section className="rounded-2xl border border-border bg-card p-5">
         <div className="flex items-center justify-between">
-          <h2 className="m-0 text-[15px] font-medium">송금 대시보드</h2>
-          <div className="flex gap-1 rounded-lg border border-border p-0.5 text-[13px]">
-            {(['pending', 'done'] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`rounded-md px-3 py-1 ${tab === t ? 'bg-foreground text-background' : 'text-muted-foreground'}`}
-              >
-                {t === 'pending' ? `대기 ${pendingCount}` : '완료'}
-              </button>
-            ))}
-          </div>
+          <h2 className="m-0 text-[15px] font-medium">{isDashboard ? '송금 대시보드' : '송금 내역'}</h2>
+          {isDashboard ? (
+            <Link href="/studio/history" className="text-[13px] text-muted-foreground hover:text-foreground">
+              전체 내역 →
+            </Link>
+          ) : (
+            <div className="flex gap-1 rounded-lg border border-border p-0.5 text-[13px]">
+              {(['all', 'pending', 'done'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setFilter(t)}
+                  className={`rounded-md px-3 py-1 ${filter === t ? 'bg-foreground text-background' : 'text-muted-foreground'}`}
+                >
+                  {t === 'all' ? '전체' : t === 'pending' ? '대기' : '완료'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        {tab === 'pending' && pendingCount > 0 && (
+        {pendingRows.length > 0 && (
           <p className="mt-2 text-[13px] text-muted-foreground">
-            대기 합계 <span className="font-medium text-foreground">{won(pendingSum)}</span> · {pendingCount}건
+            대기 합계 <span className="font-medium text-foreground">{won(pendingSum)}</span> · {pendingRows.length}건
           </p>
         )}
 
@@ -416,88 +541,22 @@ export default function TransferPanel({ role, email }: Props) {
             </div>
           )}
           {!loadingList && !listError && visible.length === 0 && (
-            <p className="text-[13px] text-muted-foreground">{tab === 'pending' ? '대기 중인 송금이 없어요.' : '완료된 송금이 없어요.'}</p>
+            <p className="text-[13px] text-muted-foreground">
+              {isDashboard ? '아직 송금 요청이 없어요.' : filter === 'pending' ? '대기 중인 송금이 없어요.' : filter === 'done' ? '완료된 송금이 없어요.' : '송금 내역이 없어요.'}
+            </p>
           )}
-          {visible.map((r) => {
-            const account = [r.bank, r.account_no].filter(Boolean).join(' ');
-            const mine = r.requester_email === email;
-            return (
-              <div key={r.id} className="rounded-xl border border-border bg-background p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-[15px] font-medium">{r.vendor_name}</span>
-                  <span className="flex items-baseline gap-1.5 text-[16px] font-semibold" style={{ color: 'hsl(var(--number-colored))' }}>
-                    {won(Number(r.amount))}
-                    <button
-                      onClick={() => copy(String(Math.round(Number(r.amount))), `amt${r.id}`)}
-                      className="text-[11px] font-normal text-muted-foreground hover:text-foreground"
-                    >
-                      {copied === `amt${r.id}` ? '복사됨' : '복사'}
-                    </button>
-                  </span>
-                </div>
 
-                <div className="mt-1.5 text-[13px]">
-                  {account ? (
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-mono">{account}</span>
-                      {r.account_holder && <span className="text-muted-foreground">({r.account_holder})</span>}
-                      <button
-                        onClick={() => copy(r.account_no ?? '', `acc${r.id}`)}
-                        className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
-                      >
-                        {copied === `acc${r.id}` ? '복사됨 ✓' : '계좌 복사'}
-                      </button>
-                    </span>
-                  ) : (
-                    <span className="text-amber-600">계좌 미확인 — 거래처에 확인 필요</span>
-                  )}
+          {isDashboard
+            ? visible.map(card)
+            : months.map(([ym, list]) => (
+                <div key={ym} className="flex flex-col gap-3">
+                  <div className="mt-2 flex items-baseline justify-between border-b border-border pb-1.5 first:mt-0">
+                    <h3 className="m-0 text-[14px] font-medium">{fmtYm(ym)}</h3>
+                    <span className="text-[12px] text-muted-foreground">{monthSummary(list)}</span>
+                  </div>
+                  {list.map(card)}
                 </div>
-
-                {r.items_summary && <p className="mt-1 text-[12px] text-muted-foreground">{r.items_summary}</p>}
-                {r.memo && <p className="mt-1 text-[12px] text-muted-foreground">메모: {r.memo}</p>}
-                <p className="mt-1.5 text-[11px] text-muted-foreground">
-                  {r.requester_email.split('@')[0]} · {fmtDate(r.created_at)}
-                  {r.doc_date && ` · 거래일 ${r.doc_date}`}
-                  {r.status === 'done' && r.done_by_email && ` · ${r.done_by_email.split('@')[0]}가 ${r.done_at ? fmtDate(r.done_at) : ''} 이체 완료`}
-                </p>
-
-                <div className="mt-3 flex flex-wrap gap-2 text-[12px]">
-                  {r.image_path && (
-                    <button onClick={() => setImageViewId(r.id)} className="rounded-lg border border-border px-3 py-1.5 text-muted-foreground hover:text-foreground">
-                      원본 사진
-                    </button>
-                  )}
-                  {isStaff && r.status === 'pending' && (
-                    <button
-                      onClick={() => mark(r.id, 'done')}
-                      disabled={busyId === r.id}
-                      className="rounded-lg bg-foreground px-3 py-1.5 font-medium text-background disabled:opacity-60"
-                    >
-                      이체 완료
-                    </button>
-                  )}
-                  {isStaff && r.status === 'done' && (
-                    <button
-                      onClick={() => mark(r.id, 'undo')}
-                      disabled={busyId === r.id}
-                      className="rounded-lg border border-border px-3 py-1.5 text-muted-foreground hover:text-foreground disabled:opacity-60"
-                    >
-                      완료 취소
-                    </button>
-                  )}
-                  {(isStaff || (mine && r.status === 'pending')) && (
-                    <button
-                      onClick={() => remove(r.id)}
-                      disabled={busyId === r.id}
-                      className="rounded-lg border border-border px-3 py-1.5 text-muted-foreground hover:text-red-500 disabled:opacity-60"
-                    >
-                      삭제
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+              ))}
         </div>
       </section>
 

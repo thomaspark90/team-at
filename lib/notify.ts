@@ -22,9 +22,23 @@ const recipients = () =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-async function sendEmail(n: TransferNotice) {
+async function sendEmail(supabase: SupabaseClient, n: TransferNotice) {
   const key = process.env.RESEND_API_KEY;
   if (!key) return; // 키 없으면 조용히 스킵
+
+  // 이메일 알림을 끈 수신자는 제외 (설정 행 없으면 기본 켜짐)
+  const to = recipients();
+  const { data: prefs } = await supabase
+    .schema('finance')
+    .from('notify_prefs')
+    .select('email,email_enabled')
+    .in('email', to);
+  const off = new Set(
+    (prefs ?? []).filter((p) => !p.email_enabled).map((p) => String(p.email).toLowerCase())
+  );
+  const finalTo = to.filter((e) => !off.has(e.toLowerCase()));
+  if (finalTo.length === 0) return;
+
   const account = [n.bank, n.accountNo, n.accountHolder && `(${n.accountHolder})`]
     .filter(Boolean)
     .join(' ');
@@ -33,7 +47,7 @@ async function sendEmail(n: TransferNotice) {
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: 'team at <goodday@our-hour.me>', // Resend에 our-hour.me 도메인 검증돼 있음(ourhour-contract와 같은 계정)
-      to: recipients(),
+      to: finalTo,
       subject: `[송금 요청] ${n.vendorName} ${won(n.amount)}`,
       html: `
         <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
@@ -85,7 +99,7 @@ async function sendPush(supabase: SupabaseClient, n: TransferNotice) {
 
 // 등록 API 에서 호출 — 어떤 실패도 등록 자체를 막지 않음
 export async function notifyTransferRequest(supabase: SupabaseClient, n: TransferNotice) {
-  const results = await Promise.allSettled([sendEmail(n), sendPush(supabase, n)]);
+  const results = await Promise.allSettled([sendEmail(supabase, n), sendPush(supabase, n)]);
   for (const r of results) {
     if (r.status === 'rejected') console.error('transfer notify 실패:', r.reason);
   }
