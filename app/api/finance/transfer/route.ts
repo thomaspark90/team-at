@@ -6,6 +6,12 @@ import { createClient } from '@/lib/supabase/server';
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
+// PGRST205 = 테이블이 스키마 캐시에 없음 → 마이그레이션 미실행이 원인
+const friendly = (e: { code?: string; message: string }) =>
+  e.code === 'PGRST205' || e.message.includes('schema cache')
+    ? '송금 테이블이 아직 생성되지 않았어요. 관리자가 supabase/migration_transfer.sql 을 Supabase SQL Editor에서 실행해야 해요.'
+    : e.message;
+
 // 송금 요청 목록 — 로그인한 누구나 열람
 export async function GET(req: Request) {
   const supabase = await createClient();
@@ -26,7 +32,7 @@ export async function GET(req: Request) {
   if (status === 'pending' || status === 'done') q = q.eq('status', status);
 
   const { data, error } = await q;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: friendly(error) }, { status: 500 });
   return NextResponse.json({ requests: data ?? [] });
 }
 
@@ -89,7 +95,7 @@ export async function POST(req: Request) {
     .insert(row)
     .select('id')
     .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: friendly(error) }, { status: 500 });
 
   // 계좌장부 갱신 — 확인된 계좌를 기억해 다음 업로드 때 자동 완성
   if (row.account_no) {

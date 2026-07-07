@@ -60,6 +60,7 @@ export default function TransferPanel({ role, email }: Props) {
 
   const [tab, setTab] = useState<'pending' | 'done'>('pending');
   const [rows, setRows] = useState<TransferRequestRow[]>([]);
+  const [listError, setListError] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(true);
   const [imageViewId, setImageViewId] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -67,10 +68,14 @@ export default function TransferPanel({ role, email }: Props) {
 
   const loadList = useCallback(async () => {
     setLoadingList(true);
+    setListError(null);
     try {
       const res = await fetch('/api/finance/transfer');
       const j = await res.json();
-      if (res.ok) setRows(j.requests as TransferRequestRow[]);
+      if (!res.ok) throw new Error(j.error || '목록을 불러오지 못했어요.');
+      setRows(j.requests as TransferRequestRow[]);
+    } catch (e) {
+      setListError((e as Error).message);
     } finally {
       setLoadingList(false);
     }
@@ -344,7 +349,15 @@ export default function TransferPanel({ role, email }: Props) {
 
         <div className="mt-4 flex flex-col gap-3">
           {loadingList && <p className="text-[13px] text-muted-foreground">불러오는 중…</p>}
-          {!loadingList && visible.length === 0 && (
+          {!loadingList && listError && (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-[13px]">
+              <p className="m-0">{listError}</p>
+              <button onClick={loadList} className="mt-2 rounded border border-border px-2 py-1 text-[12px] text-muted-foreground hover:text-foreground">
+                다시 시도
+              </button>
+            </div>
+          )}
+          {!loadingList && !listError && visible.length === 0 && (
             <p className="text-[13px] text-muted-foreground">{tab === 'pending' ? '대기 중인 송금이 없어요.' : '완료된 송금이 없어요.'}</p>
           )}
           {visible.map((r) => {
