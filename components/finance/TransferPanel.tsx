@@ -25,10 +25,19 @@ const fmtDate = (iso: string) => {
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
+// EXIF 회전을 반영해 비트맵 로드 (옵션 미지원 브라우저는 기본 동작 폴백)
+async function loadBitmap(file: File | Blob): Promise<ImageBitmap> {
+  try {
+    return await createImageBitmap(file, { imageOrientation: 'from-image' });
+  } catch {
+    return await createImageBitmap(file);
+  }
+}
+
 // 폰 사진(수 MB)을 서버 한도·AI 비용에 맞게 축소 (긴 변 1600px JPEG)
 async function resizeImage(file: File): Promise<File> {
   try {
-    const bmp = await createImageBitmap(file);
+    const bmp = await loadBitmap(file);
     const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
     const w = Math.round(bmp.width * scale);
     const h = Math.round(bmp.height * scale);
@@ -36,6 +45,26 @@ async function resizeImage(file: File): Promise<File> {
     canvas.width = w;
     canvas.height = h;
     canvas.getContext('2d')!.drawImage(bmp, 0, 0, w, h);
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
+    if (!blob) return file;
+    return new File([blob], 'receipt.jpg', { type: 'image/jpeg' });
+  } catch {
+    return file;
+  }
+}
+
+// 옆으로 눕혀 찍힌 영수증을 정면(글자 바로 서게)으로 회전 — 각도는 AI가 판정
+async function rotateImage(file: File, deg: 90 | 180 | 270): Promise<File> {
+  try {
+    const bmp = await loadBitmap(file);
+    const swap = deg === 90 || deg === 270;
+    const canvas = document.createElement('canvas');
+    canvas.width = swap ? bmp.height : bmp.width;
+    canvas.height = swap ? bmp.width : bmp.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate((deg * Math.PI) / 180);
+    ctx.drawImage(bmp, -bmp.width / 2, -bmp.height / 2);
     const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
     if (!blob) return file;
     return new File([blob], 'receipt.jpg', { type: 'image/jpeg' });
@@ -93,7 +122,7 @@ export default function TransferPanel({ role, email }: Props) {
     setDraft(null);
     setParsing(true);
     try {
-      const resized = await resizeImage(f);
+      let resized = await resizeImage(f);
       resizedRef.current = resized;
       setPreviewUrl((old) => {
         if (old) URL.revokeObjectURL(old);
@@ -105,6 +134,15 @@ export default function TransferPanel({ role, email }: Props) {
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '인식에 실패했어요.');
       const ex = j.extraction as TransferExtraction;
+      // 옆으로 눕은 사진이면 AI가 알려준 각도로 정면 회전 — 미리보기·저장본 모두 교체
+      if (ex.rotation === 90 || ex.rotation === 180 || ex.rotation === 270) {
+        resized = await rotateImage(resized, ex.rotation);
+        resizedRef.current = resized;
+        setPreviewUrl((old) => {
+          if (old) URL.revokeObjectURL(old);
+          return URL.createObjectURL(resized);
+        });
+      }
       setBalanceTotal(ex.balance_total);
       setAccountFromBook(!!j.savedAccount && !!ex.account_no);
       setDraft({
@@ -123,6 +161,17 @@ export default function TransferPanel({ role, email }: Props) {
       setParsing(false);
       if (fileInput.current) fileInput.current.value = '';
     }
+  }
+
+  // AI 방향 판정이 빗나간 경우 수동 보정 — 누를 때마다 시계방향 90°
+  async function rotateManually() {
+    if (!resizedRef.current) return;
+    const rotated = await rotateImage(resizedRef.current, 90);
+    resizedRef.current = rotated;
+    setPreviewUrl((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return URL.createObjectURL(rotated);
+    });
   }
 
   function closeDraft() {
@@ -252,8 +301,17 @@ export default function TransferPanel({ role, email }: Props) {
             </p>
 
             {previewUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={previewUrl} alt="영수증 미리보기" className="mt-3 max-h-[180px] w-full rounded-lg border border-border object-contain" />
+              <div className="relative mt-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={previewUrl} alt="영수증 미리보기" className="max-h-[180px] w-full rounded-lg border border-border object-contain" />
+                <button
+                  onClick={rotateManually}
+                  className="absolute bottom-2 right-2 rounded-lg border border-border bg-card/90 px-2.5 py-1 text-[12px] text-muted-foreground hover:text-foreground"
+                  title="사진이 눕어 보이면 눌러서 돌리세요"
+                >
+                  ↻ 90°
+                </button>
+              </div>
             )}
 
             <div className="mt-4 grid grid-cols-2 gap-3">
