@@ -2,6 +2,7 @@ import { put } from '@vercel/blob';
 import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { notifyTransferRequest } from '@/lib/notify';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -113,6 +114,17 @@ export async function POST(req: Request) {
         { onConflict: 'vendor_name' }
       );
   }
+
+  // 송금 담당자(대표) 알림 — 이메일+웹푸시. 실패해도 등록은 성공 처리
+  await notifyTransferRequest(supabase, {
+    vendorName: vendorName,
+    amount,
+    requesterEmail: user.email ?? '',
+    bank: row.bank,
+    accountNo: row.account_no,
+    accountHolder: row.account_holder,
+    itemsSummary: row.items_summary,
+  });
 
   return NextResponse.json({ id: inserted.id });
 }
