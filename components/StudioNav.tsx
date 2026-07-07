@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation';
 const ITEMS = [
   { href: '/studio', label: '대시보드' },
   { href: '/studio/menu', label: 'IG 메뉴 업데이트' },
-  { href: '/studio/history', label: '송금내역' },
+  { href: '/studio/history', label: '송금 관리' },
 ];
 
 export default function StudioNav() {
