@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { won } from '@/lib/finance/format';
 
 interface KindVals {
   식자재: number | null;
@@ -14,7 +15,6 @@ interface Props {
 }
 
 const KINDS: ('식자재' | '포장소모품')[] = ['식자재', '포장소모품'];
-const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 
 export default function InventoryInput({ ym, initial, prevMonth }: Props) {
   const router = useRouter();

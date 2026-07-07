@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { BankSource, ParsedTransaction } from '@/lib/finance/types';
+import { wonNum as won } from '@/lib/finance/format';
 
 interface Preview {
   bank: BankSource;
@@ -18,7 +19,6 @@ interface SaveResult {
   autoClassified: number;
 }
 
-const won = (n: number) => n.toLocaleString('ko-KR');
 const BANKS: { value: BankSource; label: string }[] = [
   { value: 'shinhan', label: '신한은행' },
   { value: 'woori', label: '우리은행' },

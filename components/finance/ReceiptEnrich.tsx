@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { won } from '@/lib/finance/format';
 
 interface Item {
   product: string;
@@ -28,8 +29,6 @@ interface ApplyResult {
   duplicates?: number;
   note?: string;
 }
-
-const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 
 export default function ReceiptEnrich() {
   const router = useRouter();

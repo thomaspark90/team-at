@@ -16,8 +16,8 @@ import {
   LabelList,
 } from 'recharts';
 import { aggregate, UNCLASSIFIED, type AggTx, type AggCat, type Unit } from '@/lib/finance/aggregate';
+import { wonNum as won } from '@/lib/finance/format';
 
-const won = (n: number) => n.toLocaleString('ko-KR');
 const manwon = (v: number) => (Math.abs(v) >= 10000 ? `${Math.round(v / 10000).toLocaleString()}만` : String(v));
 
 const GRID = 'var(--chart-grid-stroke)';

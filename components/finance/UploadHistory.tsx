@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { won } from '@/lib/finance/format';
 
 export interface UploadRow {
   id: number;
@@ -17,7 +18,6 @@ export interface UploadRow {
 }
 
 const BANK_LABEL: Record<string, string> = { shinhan: '신한', woori: '우리' };
-const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 const fmt = (s: string | null) => (s ? s.slice(0, 10) : '');
 
 function kind(u: UploadRow): string {

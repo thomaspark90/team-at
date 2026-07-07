@@ -3,13 +3,13 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { REVENUE_COLOR, type SankeyData } from '@/lib/finance/sankey';
+import { won } from '@/lib/finance/format';
 
 export interface Period {
   key: string; // 'all' | 'YYYY-MM'
   label: string;
 }
 
-const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 const pct = (n: number, total: number) => (total > 0 ? ((n / total) * 100).toFixed(2) : '0.00') + '%';
 
 // ---- 레이아웃 상수 (5열: 유입 · 총유입 · 지출그룹 · 중분류 · 소분류) ----
