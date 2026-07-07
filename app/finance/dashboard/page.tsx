@@ -23,9 +23,11 @@ export default async function DashboardPage() {
     .from('dashboard_tx')
     .select('tx_at,amount_in,amount_out,category_id');
   const { data: cats } = await supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable');
-  // 매출 = POS 공급가액(발생주의). 지금은 pos_sales 직접 조회(admin/classifier) — viewer 노출은 후속(전용 뷰) 과제.
-  const { data: pos } = await supabase.schema('finance').from('pos_sales').select('sale_date,supply');
-  const posSales = ((pos as { sale_date: string; supply: number }[] | null) ?? []).map((p) => ({ saleDate: p.sale_date, supply: p.supply }));
+  // 매출 = POS 공급가액(발생주의). viewer도 볼 수 있는 memo-free 뷰(dashboard_pos)에서 조회.
+  // 뷰가 아직 없으면(마이그레이션 전) pos_sales로 폴백 — admin/classifier는 즉시 동작.
+  let posRows = await supabase.schema('finance').from('dashboard_pos').select('sale_date,supply');
+  if (posRows.error) posRows = await supabase.schema('finance').from('pos_sales').select('sale_date,supply');
+  const posSales = ((posRows.data as { sale_date: string; supply: number }[] | null) ?? []).map((p) => ({ saleDate: p.sale_date, supply: p.supply }));
 
   return (
     <div className="min-h-screen bg-background text-foreground">
