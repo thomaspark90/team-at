@@ -32,7 +32,7 @@ async function sendEmail(n: TransferNotice) {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: 'team at <onboarding@resend.dev>',
+      from: 'team at <goodday@our-hour.me>', // Resend에 our-hour.me 도메인 검증돼 있음(ourhour-contract와 같은 계정)
       to: recipients(),
       subject: `[송금 요청] ${n.vendorName} ${won(n.amount)}`,
       html: `
