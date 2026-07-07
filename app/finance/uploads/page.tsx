@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import UploadHistory, { type UploadRow } from '@/components/finance/UploadHistory';
@@ -16,21 +17,27 @@ export default async function UploadsPage() {
   const role = await resolveRole(supabase, user);
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
-  const { data } = await supabase
-    .schema('finance')
-    .from('uploads')
-    .select('id,source,bank,card_issuer,period_start,period_end,row_count,uploaded_at,settled_tx_id,statement_total')
-    .order('uploaded_at', { ascending: false });
+  const data = unwrap(
+    await supabase
+      .schema('finance')
+      .from('uploads')
+      .select('id,source,bank,card_issuer,period_start,period_end,row_count,uploaded_at,settled_tx_id,statement_total')
+      .order('uploaded_at', { ascending: false }),
+    '자료 이력',
+  );
   const list: UploadRow[] = (data as UploadRow[] | null) ?? [];
 
   // 이력(uploads) 기록 없이 들어온 쿠팡 영수증 품목(과거 적용분)도 합산 행으로 보여줌
-  const { data: orphan } = await supabase
-    .schema('finance')
-    .from('transactions')
-    .select('amount_out,tx_at')
-    .eq('source', 'card')
-    .eq('channel', '쿠팡영수증')
-    .is('upload_id', null);
+  const orphan = unwrap(
+    await supabase
+      .schema('finance')
+      .from('transactions')
+      .select('amount_out,tx_at')
+      .eq('source', 'card')
+      .eq('channel', '쿠팡영수증')
+      .is('upload_id', null),
+    '쿠팡 영수증 품목',
+  );
   const orphans = (orphan as { amount_out: number; tx_at: string }[] | null) ?? [];
   if (orphans.length > 0) {
     const dates = orphans.map((r) => r.tx_at).sort();

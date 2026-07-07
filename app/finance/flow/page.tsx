@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { unwrap } from '@/lib/finance/db';
 import { buildSankey, type SankTx, type SankCat, type SankeyData } from '@/lib/finance/sankey';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
@@ -22,14 +23,14 @@ export default async function FlowPage() {
   const role = await resolveRole(supabase, user);
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
-  const { data: txnsRaw } = await supabase
-    .schema('finance')
-    .from('transactions')
-    .select('ym,category_id,amount_in,amount_out');
-  const { data: catsRaw } = await supabase
-    .schema('finance')
-    .from('categories')
-    .select('id,type,name,parent_id');
+  const txnsRaw = unwrap(
+    await supabase.schema('finance').from('transactions').select('ym,category_id,amount_in,amount_out'),
+    '거래',
+  );
+  const catsRaw = unwrap(
+    await supabase.schema('finance').from('categories').select('id,type,name,parent_id'),
+    '계정과목',
+  );
 
   const txns = (txnsRaw as SankTx[] | null) ?? [];
   const cats = (catsRaw as SankCat[] | null) ?? [];

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { unwrap } from '@/lib/finance/db';
 import { buildSankey, type SankTx, type SankCat } from '@/lib/finance/sankey';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
@@ -41,9 +42,9 @@ export default async function FinancePage() {
   // 현황 계산(스태프만)
   let overview: OverviewData | null = null;
   if (isStaff) {
-    const { data: txnsRaw } = await supabase.schema('finance').from('transactions').select('ym,category_id,amount_in,amount_out');
-    const { data: catsRaw } = await supabase.schema('finance').from('categories').select('id,type,name,parent_id');
-    const { data: closesRaw } = await supabase.schema('finance').from('monthly_close').select('ym,status');
+    const txnsRaw = unwrap(await supabase.schema('finance').from('transactions').select('ym,category_id,amount_in,amount_out'), '거래');
+    const catsRaw = unwrap(await supabase.schema('finance').from('categories').select('id,type,name,parent_id'), '계정과목');
+    const closesRaw = unwrap(await supabase.schema('finance').from('monthly_close').select('ym,status'), '월 확정');
     const txns = (txnsRaw as SankTx[] | null) ?? [];
     const cats = (catsRaw as SankCat[] | null) ?? [];
     const closes = (closesRaw as { ym: string; status: string }[] | null) ?? [];

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole, canConfirm } from '@/lib/finance/access';
+import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import MonthlyCloseManager, { type MonthRow } from '@/components/finance/MonthlyCloseManager';
@@ -18,15 +19,15 @@ export default async function ClosePage() {
   const allowConfirm = await canConfirm(supabase, user);
 
   // 월별 거래수·미분류수 집계 (데이터량이 작아 JS 집계)
-  const { data: txns } = await supabase
-    .schema('finance')
-    .from('transactions')
-    .select('ym,category_id');
+  const txns = unwrap(
+    await supabase.schema('finance').from('transactions').select('ym,category_id'),
+    '거래',
+  );
 
-  const { data: closes } = await supabase
-    .schema('finance')
-    .from('monthly_close')
-    .select('ym,status,confirmed_at');
+  const closes = unwrap(
+    await supabase.schema('finance').from('monthly_close').select('ym,status,confirmed_at'),
+    '월 확정',
+  );
 
   const closeMap = new Map(
     (closes ?? []).map((c: { ym: string; status: string; confirmed_at: string | null }) => [c.ym, c])

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import MemberManager, { type Member } from '@/components/finance/MemberManager';
@@ -16,11 +17,14 @@ export default async function MembersPage() {
   const role = await resolveRole(supabase, user);
   if (role !== 'admin') redirect('/finance');
 
-  const { data } = await supabase
-    .schema('finance')
-    .from('members')
-    .select('id,email,role,can_confirm')
-    .order('created_at', { ascending: true });
+  const data = unwrap(
+    await supabase
+      .schema('finance')
+      .from('members')
+      .select('id,email,role,can_confirm')
+      .order('created_at', { ascending: true }),
+    '멤버',
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground">

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { unwrap } from '@/lib/finance/db';
 import { cashflow } from '@/lib/finance/cashflow';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
@@ -27,11 +28,14 @@ export default async function CashflowPage() {
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
   // 통장 현황(현금)은 은행 거래만 — 카드 이용내역(source='card')은 제외해 현금 중복 방지
-  const { data: txns } = await supabase
-    .schema('finance')
-    .from('transactions')
-    .select('ym,bank,tx_at,amount_in,amount_out,balance')
-    .eq('source', 'bank');
+  const txns = unwrap(
+    await supabase
+      .schema('finance')
+      .from('transactions')
+      .select('ym,bank,tx_at,amount_in,amount_out,balance')
+      .eq('source', 'bank'),
+    '통장 거래',
+  );
 
   const months = cashflow((txns as CashTx[]) ?? []);
 

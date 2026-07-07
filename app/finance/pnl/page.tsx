@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { unwrap } from '@/lib/finance/db';
 import { buildPnl, benchmark, prevYm, type PnlCat, type PnlTx, type PnlPosRow, type PnlInventory, type Signal } from '@/lib/finance/pnl';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
@@ -27,10 +28,10 @@ export default async function PnlPage({ searchParams }: { searchParams: { ym?: s
   const role = await resolveRole(supabase, user);
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
-  const { data: posRaw } = await supabase
-    .schema('finance')
-    .from('pos_sales')
-    .select('ym,category,qty,gross,vat,supply');
+  const posRaw = unwrap(
+    await supabase.schema('finance').from('pos_sales').select('ym,category,qty,gross,vat,supply'),
+    'POS 매출',
+  );
   const pos = (posRaw as PnlPosRow[] | null) ?? [];
   const yms = Array.from(new Set(pos.map((p) => p.ym))).sort((a, b) => b.localeCompare(a));
 
@@ -80,14 +81,14 @@ async function PnlBody({
   selectedYm: string;
   supabase: Awaited<ReturnType<typeof createClient>>;
 }) {
-  const [{ data: txnsRaw }, { data: catsRaw }, { data: invRaw }] = await Promise.all([
+  const [txnsRes, catsRes, invRes] = await Promise.all([
     supabase.schema('finance').from('transactions').select('category_id,amount_in,amount_out').eq('ym', selectedYm),
     supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable'),
     supabase.schema('finance').from('inventory').select('ym,kind,amount'),
   ]);
-  const txns = (txnsRaw as PnlTx[] | null) ?? [];
-  const cats = (catsRaw as PnlCat[] | null) ?? [];
-  const inventory = (invRaw as PnlInventory[] | null) ?? [];
+  const txns = (unwrap(txnsRes, '거래') as PnlTx[] | null) ?? [];
+  const cats = (unwrap(catsRes, '계정과목') as PnlCat[] | null) ?? [];
+  const inventory = (unwrap(invRes, '기말재고') as PnlInventory[] | null) ?? [];
 
   const p = buildPnl(selectedYm, { pos, txns, cats, inventory });
   const foodSig = SIG[benchmark('food', p.metrics.foodCostRate)];

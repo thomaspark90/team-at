@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import CategoryManager, { type ManagedCat } from '@/components/finance/CategoryManager';
@@ -16,11 +17,14 @@ export default async function CategoriesPage() {
   const role = await resolveRole(supabase, user);
   if (role !== 'admin') redirect('/finance');
 
-  const { data } = await supabase
-    .schema('finance')
-    .from('categories')
-    .select('id,type,name,parent_id,active,pinned,sort,vat_taxable')
-    .order('sort', { ascending: true });
+  const data = unwrap(
+    await supabase
+      .schema('finance')
+      .from('categories')
+      .select('id,type,name,parent_id,active,pinned,sort,vat_taxable')
+      .order('sort', { ascending: true }),
+    '계정과목',
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground">
