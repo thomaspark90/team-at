@@ -15,19 +15,26 @@ export interface TransferNotice {
   itemsSummary: string | null;
 }
 
-// 수신자 — 기본 대표. NOTIFY_EMAIL 로 교체/복수(쉼표) 가능.
-const recipients = () =>
+// env 폴백 수신자 — notify_recipients 테이블이 비었거나 없을 때만 사용
+export const fallbackRecipients = () =>
   (process.env.NOTIFY_EMAIL ?? OWNER_EMAIL)
     .split(',')
-    .map((s) => s.trim())
+    .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
+
+// 수신자 목록 — admin이 송금 관리 화면에서 지정(finance.notify_recipients). 비면 env/대표 폴백.
+export async function recipientEmails(supabase: SupabaseClient): Promise<string[]> {
+  const { data } = await supabase.schema('finance').from('notify_recipients').select('email');
+  const fromDb = (data ?? []).map((r) => String(r.email).trim().toLowerCase()).filter(Boolean);
+  return fromDb.length > 0 ? fromDb : fallbackRecipients();
+}
 
 async function sendEmail(supabase: SupabaseClient, n: TransferNotice) {
   const key = process.env.RESEND_API_KEY;
   if (!key) return; // 키 없으면 조용히 스킵
 
   // 이메일 알림을 끈 수신자는 제외 (설정 행 없으면 기본 켜짐)
-  const to = recipients();
+  const to = await recipientEmails(supabase);
   const { data: prefs } = await supabase
     .schema('finance')
     .from('notify_prefs')
@@ -71,7 +78,7 @@ async function sendPush(supabase: SupabaseClient, n: TransferNotice) {
     .schema('finance')
     .from('push_subscriptions')
     .select('id,endpoint,p256dh,auth')
-    .in('email', recipients());
+    .in('email', await recipientEmails(supabase));
   if (!subs?.length) return;
 
   const payload = JSON.stringify({
