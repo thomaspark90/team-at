@@ -35,8 +35,12 @@ export default async function TransferManagePage() {
       <TabNav />
       <StudioNav />
       <div className="mx-auto flex max-w-[720px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
-        {role === 'admin' && <NotifyRecipients initial={recipientRows?.map((r) => String(r.email)) ?? []} />}
-        {isNotifyRecipient && <NotifySettings />}
+        {(role === 'admin' || isNotifyRecipient) && (
+          <div className={`grid gap-4 ${role === 'admin' && isNotifyRecipient ? 'sm:grid-cols-2' : ''}`}>
+            {role === 'admin' && <NotifyRecipients initial={recipientRows?.map((r) => String(r.email)) ?? []} />}
+            {isNotifyRecipient && <NotifySettings />}
+          </div>
+        )}
         <TransferPanel role={role} email={user.email ?? ''} mode="history" />
       </div>
     </div>
