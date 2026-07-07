@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 // 재무 하위 내비게이션 — 모든 /finance 하위 페이지 상단에 고정 노출.
 const LEFT = [
+  { href: '/finance/transfer', label: '송금' },
   { href: '/finance/classify', label: '거래 분류' },
   { href: '/finance/cashflow', label: '월별 요약' },
   { href: '/finance/dashboard', label: '대시보드' },
@@ -12,6 +13,8 @@ const LEFT = [
   { href: '/finance/pnl', label: '관리손익' },
   { href: '/finance/close', label: '월 확정' },
 ];
+// 송금(영수증 업로드)은 구글 로그인만 하면 누구나 — 역할 없는 직원에게도 노출
+const TRANSFER = { href: '/finance/transfer', label: '송금' };
 const ADMIN = [
   { href: '/finance/categories', label: '계정과목' },
   { href: '/finance/members', label: '멤버 관리' },
@@ -19,11 +22,14 @@ const ADMIN = [
 
 export default function FinanceNav({ role }: { role: string | null }) {
   const pathname = usePathname();
-  if (!role) return null;
-  const isStaff = ['admin', 'classifier'].includes(role);
+  const isStaff = !!role && ['admin', 'classifier'].includes(role);
   const isAdmin = role === 'admin';
-  // viewer(팀원)는 대시보드만 노출 (원본·분류·업로드 등은 접근 불가)
-  const leftItems = isStaff ? LEFT : [{ href: '/finance/dashboard', label: '대시보드' }];
+  // viewer(팀원)는 대시보드+송금, 역할 없는 직원은 송금만 노출
+  const leftItems = isStaff
+    ? LEFT
+    : role
+      ? [TRANSFER, { href: '/finance/dashboard', label: '대시보드' }]
+      : [TRANSFER];
 
   const item = ({ href, label }: { href: string; label: string }) => {
     const active = pathname === href;
