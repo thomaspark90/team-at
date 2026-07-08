@@ -30,11 +30,10 @@ export interface TransferRequestRow {
   done_at: string | null;
 }
 
-const PROMPT = `이 이미지는 한국의 거래명세서 또는 영수증이야. 공급자에게 대금을 이체(송금)하기 위한 정보를 추출해서 아래 JSON 스키마로만 답해.
+const PROMPT = `이 이미지는 한국의 거래명세서 또는 영수증이야. 문서가 옆으로 눕거나 뒤집혀 있을 수 있어. 공급자에게 대금을 이체(송금)하기 위한 정보를 추출해서 아래 JSON 스키마로만 답해.
 
 {
-  "first_line_box": [ymin,xmin,ymax,xmax], // 문서 내용상 가장 첫 줄(제목·상호 등 문서 머리) 텍스트의 박스. 0-1000 정규화 좌표
-  "last_line_box": [ymin,xmin,ymax,xmax],  // 문서 내용상 가장 마지막 줄 텍스트의 박스. 0-1000 정규화 좌표
+  "title_edge": "top"|"right"|"bottom"|"left", // 이미지 픽셀 그대로 봤을 때(자동 보정 없이) 문서의 제목/머리(거래명세서·상호 등 논리적으로 가장 먼저 오는 부분)가 이미지 프레임의 어느 변에 붙어 있는지. 글자가 정상으로 읽히면 top, 문서 머리가 오른쪽 변이면 right, 아래 변이면 bottom, 왼쪽 변이면 left
   "vendor_name": string|null,   // 돈을 받을 공급자 상호. 문서를 발행한 회사명. '고객명'·'거래처명' 칸(구매자, 예: 스텝밀·판교)이 아님에 주의
   "doc_date": string|null,      // 거래일자 YYYY-MM-DD
   "amount": number|null,        // 이번 거래 청구 금액(합계·청구금액합계). 숫자만
@@ -55,22 +54,21 @@ const MODELS = [
   'gemini-2.0-flash-lite',
 ];
 
-// 문서 첫 줄→마지막 줄 흐름 방향으로 회전각 역산.
+// 문서 제목(머리)이 붙은 변 → 정면 회전각.
 // Gemini 는 기울어진 이미지도 내부에서 방향을 정규화해 읽기 때문에 "몇 도 돌려야 하나"를
-// 직접 물으면 항상 0이 나온다. 대신 박스 좌표는 원본 픽셀 기준이라 이 방식이 유일하게 정확.
-function inferRotation(first: unknown, last: unknown): 0 | 90 | 180 | 270 {
-  const box = (v: unknown): [number, number] | null => {
-    if (!Array.isArray(v) || v.length !== 4 || v.some((n) => typeof n !== 'number')) return null;
-    return [(v[0] + v[2]) / 2, (v[1] + v[3]) / 2]; // [cy, cx]
-  };
-  const f = box(first);
-  const l = box(last);
-  if (!f || !l) return 0;
-  const dy = l[0] - f[0];
-  const dx = l[1] - f[1];
-  if (dy === 0 && dx === 0) return 0;
-  if (Math.abs(dy) >= Math.abs(dx)) return dy > 0 ? 0 : 180; // 세로 흐름: 아래로 = 정상
-  return dx < 0 ? 270 : 90; // 가로 흐름: 문서 머리가 오른쪽(←로 흐름)=270, 왼쪽(→로 흐름)=90
+// 직접 물으면 항상 0이 나온다. 제목 위치(변)를 묻는 방식이 실측 검증에서 가장 안정적
+// (정방향·좌우 눕힘 모두 정확, 180° 거꾸로만 놓칠 수 있음 → 확인창 수동 ↻ 버튼이 보완).
+function inferRotation(edge: unknown): 0 | 90 | 180 | 270 {
+  switch (edge) {
+    case 'right':
+      return 270; // 문서 머리가 오른쪽 = 시계방향으로 90 돌아간 사진 → 270 더 돌려 복원
+    case 'bottom':
+      return 180;
+    case 'left':
+      return 90;
+    default:
+      return 0;
+  }
 }
 
 // Gemini 비전으로 이미지에서 이체 정보 추출. 모든 모델 실패 시 throw.
@@ -121,7 +119,7 @@ export async function extractTransferInfo(
     return Number.isFinite(n) && n > 0 ? n : null;
   };
   return {
-    rotation: inferRotation(raw.first_line_box, raw.last_line_box),
+    rotation: inferRotation(raw.title_edge),
     vendor_name: str(raw.vendor_name),
     doc_date: str(raw.doc_date),
     amount: num(raw.amount),
