@@ -21,6 +21,14 @@ interface Draft {
   memo: string;
 }
 
+// 여러 장 일괄 인식 시 큐에 담아두는 개별 결과(아직 확인창에 안 뜬 나머지)
+interface ParsedItem {
+  file: File;
+  draft: Draft;
+  balanceTotal: number | null;
+  accountFromBook: boolean;
+}
+
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
@@ -93,6 +101,9 @@ export default function TransferPanel({ role, email, mode }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // 여러 장 일괄: 확인창엔 현재 1장(draft), 나머지는 큐(pendingParsed)에서 대기
+  const [pendingParsed, setPendingParsed] = useState<ParsedItem[]>([]);
+  const [batchTotal, setBatchTotal] = useState(0);
 
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all');
   const [rows, setRows] = useState<TransferRequestRow[]>([]);
@@ -121,52 +132,88 @@ export default function TransferPanel({ role, email, mode }: Props) {
     loadList();
   }, [loadList]);
 
-  // ---------- 업로드 → AI 인식 ----------
-  async function onPickFile(f: File | null) {
-    if (!f) return;
+  // ---------- 업로드 → AI 인식(여러 장 병렬) ----------
+  async function onPickFiles(files: File[]) {
+    if (!files.length) return;
     setError(null);
     setNotice(null);
     setDraft(null);
+    setPendingParsed([]);
+    setBatchTotal(files.length);
     setParsing(true);
     try {
+      // 모든 장을 동시에 리사이즈+인식 → 총 대기시간 ≈ 한 장 처리시간
+      const results = await Promise.all(files.map(parseOne));
+      const items = results.filter((x): x is ParsedItem => x !== null);
+      const failed = files.length - items.length;
+      setBatchTotal(items.length);
+      if (items.length === 0) {
+        setError('사진을 인식하지 못했어요. 다시 시도해주세요.');
+        return;
+      }
+      loadItem(items[0]); // 첫 장은 확인창에 바로
+      setPendingParsed(items.slice(1)); // 나머지는 큐에서 대기
+      if (failed > 0) setNotice(`${failed}장은 인식 실패 — 나머지 ${items.length}장을 확인하세요.`);
+    } finally {
+      setParsing(false);
+      if (fileInput.current) fileInput.current.value = '';
+    }
+  }
+
+  // 한 장을 리사이즈+인식(+눕은 사진 정면 회전)해 큐 항목으로. 실패 시 null.
+  async function parseOne(f: File): Promise<ParsedItem | null> {
+    try {
       let resized = await resizeImage(f);
-      resizedRef.current = resized;
-      setPreviewUrl((old) => {
-        if (old) URL.revokeObjectURL(old);
-        return URL.createObjectURL(resized);
-      });
       const fd = new FormData();
       fd.append('file', resized);
       const res = await fetch('/api/finance/transfer/parse', { method: 'POST', body: fd });
       const j = await res.json();
-      if (!res.ok) throw new Error(j.error || '인식에 실패했어요.');
+      if (!res.ok) throw new Error(j.error || '인식 실패');
       const ex = j.extraction as TransferExtraction;
-      // 옆으로 눕은 사진이면 AI가 알려준 각도로 정면 회전 — 미리보기·저장본 모두 교체
       if (ex.rotation === 90 || ex.rotation === 180 || ex.rotation === 270) {
         resized = await rotateImage(resized, ex.rotation);
-        resizedRef.current = resized;
-        setPreviewUrl((old) => {
-          if (old) URL.revokeObjectURL(old);
-          return URL.createObjectURL(resized);
-        });
       }
-      setBalanceTotal(ex.balance_total);
-      setAccountFromBook(!!j.savedAccount && !!ex.account_no);
-      setDraft({
-        vendor_name: ex.vendor_name ?? '',
-        doc_date: ex.doc_date ?? '',
-        amount: ex.amount != null ? String(ex.amount) : '',
-        items_summary: ex.items_summary ?? '',
-        bank: ex.bank ?? '',
-        account_no: ex.account_no ?? '',
-        account_holder: ex.account_holder ?? '',
-        memo: '',
-      });
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setParsing(false);
-      if (fileInput.current) fileInput.current.value = '';
+      return {
+        file: resized,
+        balanceTotal: ex.balance_total,
+        accountFromBook: !!j.savedAccount && !!ex.account_no,
+        draft: {
+          vendor_name: ex.vendor_name ?? '',
+          doc_date: ex.doc_date ?? '',
+          amount: ex.amount != null ? String(ex.amount) : '',
+          items_summary: ex.items_summary ?? '',
+          bank: ex.bank ?? '',
+          account_no: ex.account_no ?? '',
+          account_holder: ex.account_holder ?? '',
+          memo: '',
+        },
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  // 큐 항목을 확인창(단일 draft 상태)에 올림
+  function loadItem(item: ParsedItem) {
+    resizedRef.current = item.file;
+    setPreviewUrl((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return URL.createObjectURL(item.file);
+    });
+    setDraft(item.draft);
+    setBalanceTotal(item.balanceTotal);
+    setAccountFromBook(item.accountFromBook);
+    setError(null);
+  }
+
+  // 다음 장으로 넘어가기(등록·건너뛰기 후). 남은 게 없으면 확인창 닫기.
+  function advanceNext() {
+    const [next, ...rest] = pendingParsed;
+    if (next) {
+      loadItem(next);
+      setPendingParsed(rest);
+    } else {
+      closeDraft();
     }
   }
 
@@ -187,6 +234,9 @@ export default function TransferPanel({ role, email, mode }: Props) {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     resizedRef.current = null;
+    setPendingParsed([]);
+    setBatchTotal(0);
+    setError(null);
   }
 
   // ---------- 확인 → 등록 ----------
@@ -204,9 +254,11 @@ export default function TransferPanel({ role, email, mode }: Props) {
       const res = await fetch('/api/finance/transfer', { method: 'POST', body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '등록에 실패했어요.');
-      setNotice(`${draft.vendor_name} ${won(amount)} — 송금 대기에 올렸어요.`);
-      closeDraft();
+      setNotice(
+        `${draft.vendor_name} ${won(amount)} 등록${pendingParsed.length ? ` · 남은 ${pendingParsed.length}장 확인` : ' — 모두 완료'}`,
+      );
       loadList();
+      advanceNext(); // 남은 장이 있으면 다음 확인창, 없으면 닫힘
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -384,22 +436,23 @@ export default function TransferPanel({ role, email, mode }: Props) {
         <section className="rounded-2xl border border-border bg-card p-5">
           <h2 className="m-0 text-[15px] font-medium">송금 요청 올리기</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            거래명세서·영수증 사진을 올리면 거래처, 금액, 입금 계좌를 자동으로 읽어요. 내용을 확인하고 등록하면
-            송금 담당자 리스트에 올라가요.
+            거래명세서·영수증 사진을 올리면 거래처, 금액, 입금 계좌를 자동으로 읽어요. <b>여러 장을 한 번에</b> 올리면
+            동시에 인식하고, 한 장씩 확인해 등록하면 송금 담당자 리스트에 올라가요.
           </p>
           <input
             ref={fileInput}
             type="file"
             accept="image/*"
+            multiple
             className="hidden"
-            onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => onPickFiles(Array.from(e.target.files ?? []))}
           />
           <button
             onClick={() => fileInput.current?.click()}
             disabled={parsing}
             className="mt-4 w-full rounded-xl border border-dashed border-border bg-background py-6 text-[14px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground disabled:opacity-60 sm:w-auto sm:px-10"
           >
-            {parsing ? 'AI가 읽는 중…' : '📷 사진 촬영 / 이미지 선택'}
+            {parsing ? `AI가 읽는 중…${batchTotal > 1 ? ` (${batchTotal}장)` : ''}` : '📷 사진 촬영 / 여러 장 선택'}
           </button>
           {notice && <p className="mt-3 text-[13px]" style={{ color: 'hsl(var(--number-colored))' }}>{notice}</p>}
           {error && !draft && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
@@ -413,7 +466,14 @@ export default function TransferPanel({ role, email, mode }: Props) {
             className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-card p-5 sm:max-w-[520px] sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="m-0 text-[15px] font-medium">인식 결과 확인</h3>
+            <h3 className="m-0 text-[15px] font-medium">
+              인식 결과 확인
+              {batchTotal > 1 && (
+                <span className="ml-2 text-[12px] font-normal text-muted-foreground">
+                  {batchTotal - pendingParsed.length} / {batchTotal}장
+                </span>
+              )}
+            </h3>
             <p className="mt-1 text-[12px] text-muted-foreground">
               잘못 읽은 부분은 고친 뒤 등록하세요.
               {accountFromBook && ' 계좌는 이전에 확인된 거래처 계좌로 채웠어요.'}
@@ -487,15 +547,19 @@ export default function TransferPanel({ role, email, mode }: Props) {
             {error && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
 
             <div className="mt-5 flex gap-2">
-              <button onClick={closeDraft} className="flex-1 rounded-xl border border-border py-2.5 text-[14px] text-muted-foreground hover:text-foreground">
-                취소
+              <button
+                onClick={batchTotal > 1 ? advanceNext : closeDraft}
+                disabled={submitting}
+                className="flex-1 rounded-xl border border-border py-2.5 text-[14px] text-muted-foreground hover:text-foreground disabled:opacity-60"
+              >
+                {batchTotal > 1 ? '이 장 건너뛰기' : '취소'}
               </button>
               <button
                 onClick={submit}
                 disabled={submitting}
                 className="flex-[2] rounded-xl bg-foreground py-2.5 text-[14px] font-medium text-background disabled:opacity-60"
               >
-                {submitting ? '등록 중…' : '확인 — 송금 대기에 등록'}
+                {submitting ? '등록 중…' : pendingParsed.length ? '등록 · 다음 장 →' : '확인 — 송금 대기에 등록'}
               </button>
             </div>
           </div>
