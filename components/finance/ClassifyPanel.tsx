@@ -30,8 +30,8 @@ interface Suggestion {
 }
 
 const CONF = 0.6;
-// Gemini 무료 티어 한도 이슈로 AI 추천 잠시 끔. API에 billing 연결하면 true 로 되살림.
-const AI_ENABLED = false;
+// Gemini billing(유료 Tier 1) 연결 확인(2026-07) → AI 추천 부활.
+const AI_ENABLED = true;
 const TYPE_LABEL: Record<string, string> = {
   revenue: '매출',
   cogs: '재료비(원가)',
