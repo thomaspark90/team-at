@@ -16,6 +16,7 @@ alter table finance.activity_logs enable row level security;
 drop policy if exists "activity insert" on finance.activity_logs;
 drop policy if exists "activity read"   on finance.activity_logs;
 -- 기록은 로그인한 사용자 요청 처리 중 서버가 남김, 열람은 대표 계정만 (UI·DB 이중 잠금)
+-- ⚠️ auth.users 직접 조회는 일반 롤 권한이 없어 42501 → JWT 클레임(auth.jwt())로 판정해야 함
 create policy "activity insert" on finance.activity_logs for insert with check (auth.uid() is not null);
 create policy "activity read" on finance.activity_logs for select
-  using ((select email from auth.users where id = auth.uid()) = 'thomas.in.park@gmail.com');
+  using (lower(coalesce(auth.jwt() ->> 'email', '')) = 'thomas.in.park@gmail.com');
