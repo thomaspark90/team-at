@@ -452,7 +452,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
             disabled={parsing}
             className="mt-4 w-full rounded-xl border border-dashed border-border bg-background py-6 text-[14px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground disabled:opacity-60 sm:w-auto sm:px-10"
           >
-            {parsing ? `AI가 읽는 중…${batchTotal > 1 ? ` (${batchTotal}장)` : ''}` : '📷 사진 촬영 / 여러 장 선택'}
+            {parsing ? `인식 중…${batchTotal > 1 ? ` (${batchTotal}장)` : ''}` : '📷 사진 촬영 / 여러 장 선택'}
           </button>
           {notice && <p className="mt-3 text-[13px]" style={{ color: 'hsl(var(--number-colored))' }}>{notice}</p>}
           {error && !draft && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
