@@ -25,7 +25,8 @@ export default function TabNav() {
   return (
     <header className="border-b border-border bg-background">
       <div className={`mx-auto flex h-12 items-center justify-between gap-2 px-4 sm:gap-6 sm:px-6 ${wide ? 'max-w-[1680px]' : 'max-w-[1100px]'}`}>
-        <span className="shrink-0 font-serif text-[15px] tracking-tight text-foreground">team-at</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-team-at.png" alt="TEAM at" className="h-6 w-auto shrink-0 dark:invert" />
 
         <nav className="scrollbar-hide flex flex-1 items-center justify-center gap-1 overflow-x-auto">
           {TABS.map((tab) => {

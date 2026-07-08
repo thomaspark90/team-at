@@ -14,7 +14,8 @@ export default async function LandingPage({ searchParams }: { searchParams: { de
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6">
       <div className="flex w-full max-w-[360px] flex-col">
-        <h1 className="mb-1 font-serif text-5xl tracking-tight text-foreground">team-at</h1>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-team-at.png" alt="TEAM at" className="mb-3 h-auto w-[210px] dark:invert" />
         <p className="caption mb-10">Cafe operations</p>
         <LoginButton />
         {denied ? (
