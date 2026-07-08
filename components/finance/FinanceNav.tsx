@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { isOwner } from '@/lib/finance/access';
 
 // 재무 하위 내비게이션 — 모든 /finance 하위 페이지 상단에 고정 노출.
 const LEFT = [
@@ -15,11 +18,19 @@ const LEFT = [
 const ADMIN = [
   { href: '/finance/categories', label: '계정과목' },
   { href: '/finance/members', label: '멤버 관리' },
-  { href: '/finance/activity', label: '활동 로그' },
 ];
+// 활동 로그는 대표(OWNER) 계정에만 노출
+const OWNER_ONLY = { href: '/finance/activity', label: '활동 로그' };
 
 export default function FinanceNav({ role }: { role: string | null }) {
   const pathname = usePathname();
+  const [owner, setOwner] = useState(false);
+  useEffect(() => {
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => setOwner(isOwner(data.user?.email)))
+      .catch(() => setOwner(false));
+  }, []);
   if (!role) return null;
   const isStaff = ['admin', 'classifier'].includes(role);
   const isAdmin = role === 'admin';
@@ -51,6 +62,7 @@ export default function FinanceNav({ role }: { role: string | null }) {
         </div>
         <div className="flex flex-1 flex-wrap items-center justify-end gap-x-5 gap-y-2">
           {isAdmin && ADMIN.map(item)}
+          {isAdmin && owner && item(OWNER_ONLY)}
         </div>
       </div>
     </nav>

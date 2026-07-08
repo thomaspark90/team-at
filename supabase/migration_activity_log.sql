@@ -1,4 +1,4 @@
--- 활동 로그 — 누가 어떤 기능을 썼는지 기록. 열람은 admin 전용 (멱등)
+-- 활동 로그 — 누가 어떤 기능을 썼는지 기록. 열람은 대표(OWNER) 계정 전용 (멱등)
 -- Supabase SQL Editor 에 붙여넣고 Run.
 
 create table if not exists finance.activity_logs (
@@ -15,6 +15,7 @@ alter table finance.activity_logs enable row level security;
 
 drop policy if exists "activity insert" on finance.activity_logs;
 drop policy if exists "activity read"   on finance.activity_logs;
--- 기록은 로그인한 사용자 요청 처리 중 서버가 남김, 열람은 admin 만
+-- 기록은 로그인한 사용자 요청 처리 중 서버가 남김, 열람은 대표 계정만 (UI·DB 이중 잠금)
 create policy "activity insert" on finance.activity_logs for insert with check (auth.uid() is not null);
-create policy "activity read" on finance.activity_logs for select using (finance.my_role() = 'admin');
+create policy "activity read" on finance.activity_logs for select
+  using ((select email from auth.users where id = auth.uid()) = 'thomas.in.park@gmail.com');

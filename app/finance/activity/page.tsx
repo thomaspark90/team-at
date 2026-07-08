@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { resolveRole } from '@/lib/finance/access';
+import { resolveRole, isOwner } from '@/lib/finance/access';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import ActivityLog, { type ActivityRow } from '@/components/finance/ActivityLog';
 
-// 활동 로그 — admin 전용. 누가 어떤 기능을 썼는지.
+// 활동 로그 — 대표(OWNER) 전용. 누가 어떤 기능을 썼는지.
 export default async function ActivityPage() {
   const supabase = await createClient();
   const {
@@ -14,7 +14,7 @@ export default async function ActivityPage() {
   if (!user) redirect('/');
 
   const role = await resolveRole(supabase, user);
-  if (role !== 'admin') redirect('/finance');
+  if (!isOwner(user.email)) redirect('/finance');
 
   const { data } = await supabase
     .schema('finance')
