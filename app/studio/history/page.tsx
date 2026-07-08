@@ -5,6 +5,7 @@ import { fallbackRecipients } from '@/lib/notify';
 import TabNav from '@/components/TabNav';
 import StudioNav from '@/components/StudioNav';
 import TransferPanel from '@/components/finance/TransferPanel';
+import VendorBook from '@/components/finance/VendorBook';
 import NotifySettings from '@/components/NotifySettings';
 import NotifyRecipients from '@/components/NotifyRecipients';
 
@@ -41,6 +42,7 @@ export default async function TransferManagePage() {
             {isNotifyRecipient && <NotifySettings />}
           </div>
         )}
+        {['admin', 'classifier'].includes(role ?? '') && <VendorBook />}
         <TransferPanel role={role} email={user.email ?? ''} mode="history" />
       </div>
     </div>
