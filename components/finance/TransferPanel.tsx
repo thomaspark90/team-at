@@ -434,7 +434,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
       {/* ---------- 업로드 (대시보드 전용) ---------- */}
       {isDashboard && (
         <section className="rounded-2xl border border-border bg-card p-5">
-          <h2 className="m-0 text-[15px] font-medium">송금 요청 올리기</h2>
+          <h2 className="m-0 text-[15px] font-medium">송금 요청</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
             거래명세서·영수증 사진을 올리면 거래처, 금액, 입금 계좌를 자동으로 읽어요. <b>여러 장을 한 번에</b> 올리면
             동시에 인식하고, 한 장씩 확인해 등록하면 송금 담당자 리스트에 올라가요.
