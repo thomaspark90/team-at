@@ -104,6 +104,9 @@ export default function TransferPanel({ role, email, mode }: Props) {
   // 여러 장 일괄: 확인창엔 현재 1장(draft), 나머지는 큐(pendingParsed)에서 대기
   const [pendingParsed, setPendingParsed] = useState<ParsedItem[]>([]);
   const [batchTotal, setBatchTotal] = useState(0);
+  // 완료 알림(푸시) 미구독자에게 첫 등록 후 신청 카드로 유도
+  const [pushOn, setPushOn] = useState<boolean | null>(null);
+  const [notifyPrompt, setNotifyPrompt] = useState(false);
 
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all');
   const [rows, setRows] = useState<TransferRequestRow[]>([]);
@@ -131,6 +134,32 @@ export default function TransferPanel({ role, email, mode }: Props) {
   useEffect(() => {
     loadList();
   }, [loadList]);
+
+  // 이 기기에서 완료 알림(푸시)이 켜져 있는지 확인 — 안 켜져 있으면 첫 등록 후 유도
+  useEffect(() => {
+    (async () => {
+      try {
+        const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+        const sub = reg ? await reg.pushManager.getSubscription() : null;
+        setPushOn(!!sub);
+      } catch {
+        setPushOn(false);
+      }
+    })();
+  }, []);
+
+  function goToNotify() {
+    setNotifyPrompt(false);
+    document.getElementById('notify-optin')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  function dismissNotify() {
+    setNotifyPrompt(false);
+    try {
+      localStorage.setItem('transfer_notify_dismissed', '1');
+    } catch {
+      /* private mode 등 무시 */
+    }
+  }
 
   // ---------- 업로드 → AI 인식(여러 장 병렬) ----------
   async function onPickFiles(files: File[]) {
@@ -257,6 +286,16 @@ export default function TransferPanel({ role, email, mode }: Props) {
       setNotice(
         `${draft.vendor_name} ${won(amount)} 등록${pendingParsed.length ? ` · 남은 ${pendingParsed.length}장 확인` : ' — 모두 완료'}`,
       );
+      // 배치의 마지막 등록을 마쳤고, 완료 알림을 아직 안 켰고, 유도카드가 있고, 거절한 적 없으면 안내
+      if (
+        pendingParsed.length === 0 &&
+        pushOn === false &&
+        typeof document !== 'undefined' &&
+        document.getElementById('notify-optin') &&
+        !localStorage.getItem('transfer_notify_dismissed')
+      ) {
+        setNotifyPrompt(true);
+      }
       loadList();
       advanceNext(); // 남은 장이 있으면 다음 확인창, 없으면 닫힘
     } catch (e) {
@@ -456,6 +495,24 @@ export default function TransferPanel({ role, email, mode }: Props) {
           </button>
           {notice && <p className="mt-3 text-[13px]" style={{ color: 'hsl(var(--number-colored))' }}>{notice}</p>}
           {error && !draft && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
+          {notifyPrompt && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-background p-3 text-[13px]">
+              <span>🔔 내가 올린 송금이 <b>이체 완료되면 알림</b>으로 바로 알려드려요.</span>
+              <span className="hidden flex-1 sm:block" />
+              <button
+                onClick={goToNotify}
+                className="rounded-lg bg-foreground px-3 py-1.5 text-[12px] font-medium text-background"
+              >
+                알림 켜러 가기 ↓
+              </button>
+              <button
+                onClick={dismissNotify}
+                className="rounded-lg border border-border px-3 py-1.5 text-[12px] text-muted-foreground hover:text-foreground"
+              >
+                다음에
+              </button>
+            </div>
+          )}
         </section>
       )}
 

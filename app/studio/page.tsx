@@ -35,7 +35,11 @@ export default async function StudioDashboardPage() {
       <StudioNav />
       <div className="mx-auto flex max-w-[720px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
         <TransferPanel role={role} email={user.email ?? ''} mode="dashboard" />
-        {!isNotifyRecipient && <NotifySettings variant="requester" />}
+        {!isNotifyRecipient && (
+          <div id="notify-optin" className="scroll-mt-20">
+            <NotifySettings variant="requester" />
+          </div>
+        )}
       </div>
     </div>
   );
