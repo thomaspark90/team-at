@@ -3,6 +3,7 @@ import { parseReceiptPdf, groupByApproval } from '@/lib/finance/receipt';
 import { normalizeKey } from '@/lib/finance/normalize';
 import { hash, fetchExistingHashes } from '@/lib/finance/dedup';
 import { createClient } from '@/lib/supabase/server';
+import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
 
 export const runtime = 'nodejs';
@@ -152,5 +153,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `원본 잠금 실패: ${lockErr.message}` }, { status: 500 });
   }
 
+  await logActivity(supabase, user, '쿠팡 전표 분해', `${matchedGroups}건 매칭 · ${freshRows.length}행`);
   return NextResponse.json({ matchedGroups, inserted: freshRows.length, duplicates: rowsToInsert.length - freshRows.length });
 }

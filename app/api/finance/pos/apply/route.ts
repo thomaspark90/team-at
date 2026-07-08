@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { parsePosXlsx } from '@/lib/finance/pos';
 import { createClient } from '@/lib/supabase/server';
+import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
 
 export const runtime = 'nodejs';
@@ -87,6 +88,8 @@ export async function POST(req: Request) {
     .delete()
     .in('ym', r.yms)
     .lt('uploaded_at', now);
+
+  await logActivity(supabase, user, 'POS 매출 업로드', `${r.ym} ${rows.length}행`);
 
   return NextResponse.json({
     ym: r.ym,

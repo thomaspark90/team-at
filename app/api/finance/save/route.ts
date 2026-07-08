@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { pdfToLayoutText } from '@/lib/finance/pdf';
 import { parseStatement, dedupe } from '@/lib/finance/parse';
 import { createClient } from '@/lib/supabase/server';
+import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
 import { fetchExistingHashes } from '@/lib/finance/dedup';
 import type { BankSource } from '@/lib/finance/types';
@@ -112,6 +113,8 @@ export async function POST(req: Request) {
     await supabase.schema('finance').from('uploads').delete().eq('id', up.id);
     return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
   }
+
+  await logActivity(supabase, user, '은행 내역 저장', `${bank} ${fresh.length}건(중복 ${duplicates})`);
 
   return NextResponse.json({
     saved: fresh.length,

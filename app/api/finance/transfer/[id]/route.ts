@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import { notifyTransferDone } from '@/lib/notify';
+import { logActivity } from '@/lib/finance/activity';
+
+const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 
 export const runtime = 'nodejs';
 
@@ -38,6 +41,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  if (updated) {
+    await logActivity(
+      supabase,
+      user,
+      done ? '이체 완료 처리' : '이체 완료 취소',
+      `${updated.vendor_name} ${won(Number(updated.amount))}`
+    );
+  }
+
   // 요청한 직원에게 역방향 알림(완료 시에만). 실패해도 처리 자체는 성공.
   if (done && updated) {
     await notifyTransferDone(supabase, {
@@ -63,12 +75,18 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
     .from('transfer_requests')
     .delete()
     .eq('id', Number(params.id))
-    .select('id,image_path');
+    .select('id,image_path,vendor_name,amount');
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!deleted || deleted.length === 0) {
     return NextResponse.json({ error: '삭제할 수 없는 항목이에요.' }, { status: 403 });
   }
   const path = deleted[0].image_path as string | null;
   if (path) await del(path).catch(() => {});
+  await logActivity(
+    supabase,
+    user,
+    '송금 요청 삭제',
+    `${deleted[0].vendor_name} ${won(Number(deleted[0].amount))}`
+  );
   return NextResponse.json({ ok: true });
 }

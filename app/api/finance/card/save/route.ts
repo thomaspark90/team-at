@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { parseCardXlsx } from '@/lib/finance/card';
 import { dedupe } from '@/lib/finance/parse';
 import { createClient } from '@/lib/supabase/server';
+import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
 import { fetchExistingHashes } from '@/lib/finance/dedup';
 
@@ -140,5 +141,6 @@ export async function POST(req: Request) {
     linked = true;
   }
 
+  await logActivity(supabase, user, '카드 내역 저장', `${fresh.length}건(중복 ${duplicates})`);
   return NextResponse.json({ saved: fresh.length, duplicates, autoClassified: 0, linked });
 }

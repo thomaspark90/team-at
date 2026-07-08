@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logActivity } from '@/lib/finance/activity';
 import { canConfirm } from '@/lib/finance/access';
 
 export const runtime = 'nodejs';
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
         { onConflict: 'ym' }
       );
     if (error) return NextResponse.json({ error: `확정 실패: ${error.message}` }, { status: 500 });
+    await logActivity(supabase, user, '월 확정', ym);
     return NextResponse.json({ ym, status: 'confirmed', confirmed_at: now });
   }
 
@@ -72,5 +74,6 @@ export async function POST(req: Request) {
       { onConflict: 'ym' }
     );
   if (error) return NextResponse.json({ error: `재오픈 실패: ${error.message}` }, { status: 500 });
+  await logActivity(supabase, user, '월 확정 재오픈', ym);
   return NextResponse.json({ ym, status: 'open' });
 }

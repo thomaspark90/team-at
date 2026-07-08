@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
 
 export const runtime = 'nodejs';
@@ -44,5 +45,6 @@ export async function POST(req: Request) {
     );
   if (error) return NextResponse.json({ error: `저장 실패: ${error.message}` }, { status: 500 });
 
+  await logActivity(supabase, user, '기말재고 입력', `${ym} ${kind} ${amount.toLocaleString('ko-KR')}원`);
   return NextResponse.json({ ok: true, ym, kind, amount });
 }

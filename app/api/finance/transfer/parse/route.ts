@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { extractTransferInfo } from '@/lib/finance/transfer';
+import { logActivity } from '@/lib/finance/activity';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -58,6 +59,8 @@ export async function POST(req: Request) {
       extraction.account_holder = extraction.account_holder ?? savedAccount.account_holder;
     }
   }
+
+  await logActivity(supabase, user, '영수증 AI 인식', extraction.vendor_name ?? '(거래처 미인식)');
 
   return NextResponse.json({ extraction, savedAccount });
 }

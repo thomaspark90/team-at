@@ -15,6 +15,7 @@ const LEFT = [
 const ADMIN = [
   { href: '/finance/categories', label: '계정과목' },
   { href: '/finance/members', label: '멤버 관리' },
+  { href: '/finance/activity', label: '활동 로그' },
 ];
 
 export default function FinanceNav({ role }: { role: string | null }) {

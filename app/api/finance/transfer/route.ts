@@ -3,6 +3,9 @@ import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { notifyTransferRequest } from '@/lib/notify';
+import { logActivity } from '@/lib/finance/activity';
+
+const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -114,6 +117,8 @@ export async function POST(req: Request) {
         { onConflict: 'vendor_name' }
       );
   }
+
+  await logActivity(supabase, user, '송금 요청 등록', `${vendorName} ${won(amount)}`);
 
   // 송금 담당자(대표) 알림 — 이메일+웹푸시. 실패해도 등록은 성공 처리
   await notifyTransferRequest(supabase, {

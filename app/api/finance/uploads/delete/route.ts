@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
 
 export const runtime = 'nodejs';
@@ -145,5 +146,6 @@ export async function POST(req: Request) {
   // 업로드 기록 삭제(거래는 이미 지워졌으니 실패해도 데이터 정합성엔 문제없음 — 이력에만 빈 배치가 남음)
   const { error: upErr } = await supabase.schema('finance').from('uploads').delete().eq('id', uploadId);
 
+  await logActivity(supabase, user, '업로드 삭제', `거래 ${batch.length}건`);
   return NextResponse.json({ deleted: batch.length, unlocked: revertIds.length, uploadRecordRemoved: !upErr });
 }

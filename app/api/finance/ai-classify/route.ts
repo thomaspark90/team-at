@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
 
 export const runtime = 'nodejs';
@@ -131,5 +132,6 @@ ${groups.map((g, i) => `${i}. 내용="${g.memo}" ${g.inflow ? '입금' : '출금
     }))
     .filter((s) => s.key && validIds.has(s.categoryId));
 
+  await logActivity(supabase, user, 'AI 분류 추천 실행', `${suggestions.length}건 추천`);
   return NextResponse.json({ suggestions });
 }

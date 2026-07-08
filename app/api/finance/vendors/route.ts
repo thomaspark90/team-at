@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { logActivity } from '@/lib/finance/activity';
 
 export const runtime = 'nodejs';
 
@@ -15,7 +16,7 @@ async function requireStaff() {
   if (!role || !['admin', 'classifier'].includes(role)) {
     return { error: NextResponse.json({ error: '계좌장부 관리 권한이 없어요.' }, { status: 403 }) };
   }
-  return { supabase };
+  return { supabase, user };
 }
 
 async function list(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -65,6 +66,7 @@ export async function PUT(req: Request) {
     ? await q.update(row).eq('id', b.id)
     : await q.upsert(row, { onConflict: 'vendor_name' });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await logActivity(g.supabase, g.user, b.id ? '거래처 계좌 수정' : '거래처 계좌 추가', vendorName);
   return NextResponse.json({ vendors: await list(g.supabase) });
 }
 
@@ -73,7 +75,13 @@ export async function DELETE(req: Request) {
   if ('error' in g) return g.error;
   const { id } = (await req.json()) as { id?: number };
   if (!id) return NextResponse.json({ error: 'id가 없어요.' }, { status: 400 });
-  const { error } = await g.supabase.schema('finance').from('vendor_accounts').delete().eq('id', id);
+  const { data: removed, error } = await g.supabase
+    .schema('finance')
+    .from('vendor_accounts')
+    .delete()
+    .eq('id', id)
+    .select('vendor_name');
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (removed?.length) await logActivity(g.supabase, g.user, '거래처 계좌 삭제', removed[0].vendor_name);
   return NextResponse.json({ vendors: await list(g.supabase) });
 }

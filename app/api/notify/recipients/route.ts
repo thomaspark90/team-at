@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { logActivity } from '@/lib/finance/activity';
 
 export const runtime = 'nodejs';
 
@@ -16,7 +17,7 @@ async function requireAdmin() {
   if (role !== 'admin') {
     return { error: NextResponse.json({ error: '수신자 관리는 관리자만 가능해요.' }, { status: 403 }) };
   }
-  return { supabase };
+  return { supabase, user };
 }
 
 async function list(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -54,6 +55,7 @@ export async function POST(req: Request) {
     .from('notify_recipients')
     .upsert({ email: normalized }, { onConflict: 'email', ignoreDuplicates: true }); // DO NOTHING — update 정책 불필요
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await logActivity(g.supabase, g.user, '알림 수신자 추가', normalized);
   return NextResponse.json({ recipients: await list(g.supabase) });
 }
 
@@ -69,5 +71,6 @@ export async function DELETE(req: Request) {
     .delete()
     .eq('email', String(email).trim().toLowerCase());
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  await logActivity(g.supabase, g.user, '알림 수신자 제거', String(email).trim().toLowerCase());
   return NextResponse.json({ recipients: await list(g.supabase) });
 }
