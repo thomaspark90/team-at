@@ -83,7 +83,13 @@ export async function extractTransferInfo(
         parts: [{ inline_data: { mime_type: mimeType, data: imageBase64 } }, { text: PROMPT }],
       },
     ],
-    generationConfig: { response_mime_type: 'application/json', temperature: 0 },
+    generationConfig: {
+      response_mime_type: 'application/json',
+      temperature: 0,
+      // 2.5 계열은 기본 '생각(thinking)' 모드라 응답이 수 초 느려짐 — JSON 추출엔 불필요하므로 끔.
+      // (2.0 계열은 이 옵션을 무시하므로 폴백에도 안전)
+      thinkingConfig: { thinkingBudget: 0 },
+    },
   });
 
   let text: string | undefined;

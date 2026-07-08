@@ -44,14 +44,14 @@ async function loadBitmap(file: File | Blob): Promise<ImageBitmap> {
 async function resizeImage(file: File): Promise<File> {
   try {
     const bmp = await loadBitmap(file);
-    const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const scale = Math.min(1, 1400 / Math.max(bmp.width, bmp.height));
     const w = Math.round(bmp.width * scale);
     const h = Math.round(bmp.height * scale);
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
     canvas.getContext('2d')!.drawImage(bmp, 0, 0, w, h);
-    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.8));
     if (!blob) return file;
     return new File([blob], 'receipt.jpg', { type: 'image/jpeg' });
   } catch {
