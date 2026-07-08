@@ -15,8 +15,15 @@ export default async function LandingPage({ searchParams }: { searchParams: { de
     <div className="flex min-h-screen items-center justify-center bg-background px-6">
       <div className="flex w-full max-w-[360px] flex-col">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-team-at.png" alt="TEAM at" className="mb-3 h-auto w-[210px] dark:invert" />
-        <p className="caption mb-10">F&B operations</p>
+        <img src="/logo-team-at.png" alt="TEAM at" className="mb-6 h-auto w-[210px] dark:invert" />
+        {/* 주요 브랜드 — Staff Meal(그린, 다크에서도 그대로) · Garden Service(블랙, 다크에선 반전) */}
+        <div className="mb-2.5 flex items-center gap-5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/staffmeal.png" alt="STAFF MEAL" className="h-[15px] w-auto" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/garden-service.png" alt="Garden Service" className="h-[15px] w-auto dark:invert" />
+        </div>
+        <p className="caption mb-10">F&B Brand Operations</p>
         <LoginButton />
         {denied ? (
           <p className="mt-4 text-center text-[13px] text-destructive">
