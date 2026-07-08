@@ -15,7 +15,7 @@ import {
   ReferenceLine,
   LabelList,
 } from 'recharts';
-import { aggregate, UNCLASSIFIED, type AggTx, type AggCat, type Unit } from '@/lib/finance/aggregate';
+import { aggregate, capexDepreciation, UNCLASSIFIED, type AggTx, type AggCat, type Unit } from '@/lib/finance/aggregate';
 import { wonNum as won } from '@/lib/finance/format';
 
 const manwon = (v: number) => (Math.abs(v) >= 10000 ? `${Math.round(v / 10000).toLocaleString()}만` : String(v));
@@ -150,6 +150,10 @@ export default function Dashboard({
   const avgRev = months.reduce((a, m) => a + m.revenue, 0) / months.length;
 
   const lineData = months.map((m) => ({ p: fmtP(m.ym), 매출: m.revenue, EBIT: m.ebit, 순이익: m.net }));
+  // 감가상각(자본적지출 5년 정액) 반영 영업이익 — 비교용
+  const dep = capexDepreciation(txns, cats);
+  const hasCapex = Object.keys(dep).length > 0;
+  const depData = months.map((m) => ({ p: fmtP(m.ym), 영업이익: m.ebit, '감가상각 반영': m.ebit - (dep[m.ym] ?? 0) }));
   const ratioData = months.map((m) => ({ p: fmtP(m.ym), 손익률: m.profitRatio != null ? +(m.profitRatio * 100).toFixed(1) : null }));
   const costData = months.map((m) => ({ p: fmtP(m.ym), 재료비율: m.costRatio != null ? +(m.costRatio * 100).toFixed(1) : null }));
   // 지출 카테고리를 총액 큰 순으로 세우고, 8색을 넘기면 나머지는 '기타'로 접음(색 순환·중복 방지)
@@ -234,6 +238,25 @@ export default function Dashboard({
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>
+
+      {unit === 'month' && hasCapex && (
+        <ChartCard title="감가상각 반영 영업이익" subtitle="자본적지출을 5년 정액 상각해 뺀 실질 영업이익 · 위 EBIT와 비교">
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={depData} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+              <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+              <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
+              <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
+              <Legend wrapperStyle={{ fontSize: 12, color: AXIS }} />
+              <ReferenceLine y={0} stroke={REF} />
+              <Line type="monotone" dataKey="영업이익" stroke={LINE2} strokeWidth={1.5} strokeDasharray="4 3" dot={{ r: 2, fill: LINE2 }} />
+              <Line type="monotone" dataKey="감가상각 반영" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
+                <LabelList dataKey="감가상각 반영" position="top" offset={8} formatter={wonLabel} style={pointLabel} />
+              </Line>
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      )}
 
       <ChartCard title="손익 추이 %" subtitle="영업이익률 = EBIT ÷ 매출">
         <ResponsiveContainer width="100%" height={240}>

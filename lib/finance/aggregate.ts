@@ -124,3 +124,32 @@ export function aggregate(
   }
   return { months, expenseKeys: Array.from(expenseKeys) };
 }
+
+// 감가상각(정액법): 자본적지출(인테리어·설비·초기투자)을 usefulMonths(기본 60=5년)로 나눠
+// 지출한 달부터 매달 균등 배분한다. ym → 월 감가상각액 맵을 반환.
+// 관리손익/EBIT엔 자본적지출이 통째로 빠져 있어 영업이익이 과대 → 이 상각액을 빼면 '실질'에 가까움.
+export function capexDepreciation(txns: AggTx[], cats: AggCat[], usefulMonths = 60): Record<string, number> {
+  const capexRoot = cats.find((c) => c.type === 'excluded' && c.name === '자본적지출' && c.parent_id == null);
+  if (!capexRoot) return {};
+  const capexIds = new Set<number>([capexRoot.id]);
+  for (const c of cats) if (c.parent_id === capexRoot.id) capexIds.add(c.id);
+
+  const addMonths = (ym: string, k: number): string => {
+    const [y, m] = ym.split('-').map(Number);
+    const t = y * 12 + (m - 1) + k;
+    return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`;
+  };
+
+  const dep: Record<string, number> = {};
+  for (const t of txns) {
+    if (t.category_id == null || !capexIds.has(t.category_id) || !(t.amount_out > 0)) continue;
+    const startYm = t.tx_at.slice(0, 7);
+    const monthly = t.amount_out / usefulMonths;
+    for (let k = 0; k < usefulMonths; k++) {
+      const ym = addMonths(startYm, k);
+      dep[ym] = (dep[ym] ?? 0) + monthly;
+    }
+  }
+  for (const k of Object.keys(dep)) dep[k] = Math.round(dep[k]);
+  return dep;
+}
