@@ -13,7 +13,7 @@ export default async function LandingPage({ searchParams }: { searchParams: { de
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6">
-      <div className="flex w-full max-w-[360px] flex-col">
+      <div className="flex w-full max-w-[360px] flex-col items-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-team-at.png" alt="TEAM at" className="mb-12 h-auto w-[210px] dark:invert" />
         {/* 주요 브랜드 — Staff Meal(그린, 다크에서도 그대로) · Garden Service(블랙, 다크에선 반전) */}
