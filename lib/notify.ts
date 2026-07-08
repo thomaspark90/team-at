@@ -1,9 +1,10 @@
-// 송금 요청 알림 — 이메일(Resend) + 웹 푸시. 실패해도 요청 등록은 막지 않는다(전부 무시).
+// 송금 요청 알림 — 이메일(Resend) + 웹 푸시. 실패해도 요청 등록/처리는 막지 않는다(전부 무시).
 import webpush from 'web-push';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { OWNER_EMAIL } from '@/lib/finance/access';
 
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
+const APP_URL = 'https://team-at-apps.vercel.app/studio';
 
 export interface TransferNotice {
   vendorName: string;
@@ -29,69 +30,61 @@ export async function recipientEmails(supabase: SupabaseClient): Promise<string[
   return fromDb.length > 0 ? fromDb : fallbackRecipients();
 }
 
-async function sendEmail(supabase: SupabaseClient, n: TransferNotice) {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return; // 키 없으면 조용히 스킵
-
-  // 이메일 알림을 끈 수신자는 제외 (설정 행 없으면 기본 켜짐)
-  const to = await recipientEmails(supabase);
+// 이메일 알림을 끈 사용자 제외 (notify_prefs 행 없으면 기본 켜짐)
+async function filterEmailEnabled(supabase: SupabaseClient, emails: string[]): Promise<string[]> {
+  if (emails.length === 0) return [];
   const { data: prefs } = await supabase
     .schema('finance')
     .from('notify_prefs')
     .select('email,email_enabled')
-    .in('email', to);
+    .in('email', emails);
   const off = new Set(
     (prefs ?? []).filter((p) => !p.email_enabled).map((p) => String(p.email).toLowerCase())
   );
-  const finalTo = to.filter((e) => !off.has(e.toLowerCase()));
-  if (finalTo.length === 0) return;
+  return emails.filter((e) => !off.has(e.toLowerCase()));
+}
 
-  const account = [n.bank, n.accountNo, n.accountHolder && `(${n.accountHolder})`]
-    .filter(Boolean)
-    .join(' ');
+async function sendEmailTo(supabase: SupabaseClient, to: string[], subject: string, html: string) {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return; // 키 없으면 조용히 스킵
+  const finalTo = await filterEmailEnabled(supabase, to);
+  if (finalTo.length === 0) return;
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: 'team at <goodday@our-hour.me>', // Resend에 our-hour.me 도메인 검증돼 있음(ourhour-contract와 같은 계정)
       to: finalTo,
-      subject: `[송금 요청] ${n.vendorName} ${won(n.amount)}`,
-      html: `
-        <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
-          <p><strong>${n.vendorName}</strong> — <strong>${won(n.amount)}</strong></p>
-          <p>계좌: ${account || '미확인 (거래처에 확인 필요)'}</p>
-          ${n.itemsSummary ? `<p>품목: ${n.itemsSummary}</p>` : ''}
-          <p>요청: ${n.requesterEmail}</p>
-          <p><a href="https://team-at-apps.vercel.app/studio">송금 대시보드 열기 →</a></p>
-        </div>`,
+      subject,
+      html,
     }),
   });
 }
 
-async function sendPush(supabase: SupabaseClient, n: TransferNotice) {
+async function sendPushTo(
+  supabase: SupabaseClient,
+  emails: string[],
+  payload: { title: string; body: string; url: string }
+) {
   const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const priv = process.env.VAPID_PRIVATE_KEY;
-  if (!pub || !priv) return;
+  if (!pub || !priv || emails.length === 0) return;
   webpush.setVapidDetails(`mailto:${OWNER_EMAIL}`, pub, priv);
 
   const { data: subs } = await supabase
     .schema('finance')
     .from('push_subscriptions')
     .select('id,endpoint,p256dh,auth')
-    .in('email', await recipientEmails(supabase));
+    .in('email', emails);
   if (!subs?.length) return;
 
-  const payload = JSON.stringify({
-    title: `송금 요청 · ${n.vendorName}`,
-    body: `${won(n.amount)} — ${n.requesterEmail.split('@')[0]} 등록`,
-    url: '/studio',
-  });
+  const body = JSON.stringify(payload);
   await Promise.all(
     subs.map(async (s) => {
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          payload
+          body
         );
       } catch (e) {
         // 410 Gone/404 = 구독 만료 → 정리
@@ -104,10 +97,69 @@ async function sendPush(supabase: SupabaseClient, n: TransferNotice) {
   );
 }
 
-// 등록 API 에서 호출 — 어떤 실패도 등록 자체를 막지 않음
+// 새 송금 요청 → 담당자(수신자 목록)에게. 등록 API 에서 호출 — 어떤 실패도 등록을 막지 않음.
 export async function notifyTransferRequest(supabase: SupabaseClient, n: TransferNotice) {
-  const results = await Promise.allSettled([sendEmail(supabase, n), sendPush(supabase, n)]);
+  const account = [n.bank, n.accountNo, n.accountHolder && `(${n.accountHolder})`]
+    .filter(Boolean)
+    .join(' ');
+  const recipientsP = recipientEmails(supabase);
+  const results = await Promise.allSettled([
+    recipientsP.then((to) =>
+      sendEmailTo(
+        supabase,
+        to,
+        `[송금 요청] ${n.vendorName} ${won(n.amount)}`,
+        `
+        <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
+          <p><strong>${n.vendorName}</strong> — <strong>${won(n.amount)}</strong></p>
+          <p>계좌: ${account || '미확인 (거래처에 확인 필요)'}</p>
+          ${n.itemsSummary ? `<p>품목: ${n.itemsSummary}</p>` : ''}
+          <p>요청: ${n.requesterEmail}</p>
+          <p><a href="${APP_URL}">송금 대시보드 열기 →</a></p>
+        </div>`
+      )
+    ),
+    recipientsP.then((to) =>
+      sendPushTo(supabase, to, {
+        title: `송금 요청 · ${n.vendorName}`,
+        body: `${won(n.amount)} — ${n.requesterEmail.split('@')[0]} 등록`,
+        url: '/studio',
+      })
+    ),
+  ]);
   for (const r of results) {
     if (r.status === 'rejected') console.error('transfer notify 실패:', r.reason);
+  }
+}
+
+// 이체 완료 → 요청한 직원에게 역방향 알림. 본인이 완료 처리한 건 스킵.
+export async function notifyTransferDone(
+  supabase: SupabaseClient,
+  n: { vendorName: string; amount: number; requesterEmail: string; doneByEmail: string }
+) {
+  const requester = n.requesterEmail.trim().toLowerCase();
+  if (!requester || requester === n.doneByEmail.trim().toLowerCase()) return;
+  const doneBy = n.doneByEmail.split('@')[0];
+  const results = await Promise.allSettled([
+    sendEmailTo(
+      supabase,
+      [requester],
+      `[이체 완료] ${n.vendorName} ${won(n.amount)}`,
+      `
+      <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
+        <p>요청하신 송금이 이체 완료됐어요.</p>
+        <p><strong>${n.vendorName}</strong> — <strong>${won(n.amount)}</strong></p>
+        <p>처리: ${doneBy}</p>
+        <p><a href="${APP_URL}">송금 대시보드 열기 →</a></p>
+      </div>`
+    ),
+    sendPushTo(supabase, [requester], {
+      title: `이체 완료 · ${n.vendorName}`,
+      body: `${won(n.amount)} — ${doneBy}님이 이체했어요`,
+      url: '/studio',
+    }),
+  ]);
+  for (const r of results) {
+    if (r.status === 'rejected') console.error('transfer done notify 실패:', r.reason);
   }
 }

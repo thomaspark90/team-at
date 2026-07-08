@@ -13,17 +13,21 @@ function urlBase64ToUint8Array(base64: string) {
 
 type PushStatus = 'unsupported' | 'ios-browser' | 'off' | 'on' | 'busy';
 
-export default function NotifySettings() {
+// variant 'recipient' = 담당자(이메일+푸시, 새 요청 알림) / 'requester' = 직원(푸시만, 내 요청 완료 알림)
+export default function NotifySettings({ variant = 'recipient' }: { variant?: 'recipient' | 'requester' }) {
+  const isRecipient = variant === 'recipient';
   const [emailEnabled, setEmailEnabled] = useState<boolean | null>(null); // null = 로딩
   const [push, setPush] = useState<PushStatus>('busy');
   const [error, setError] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
-    fetch('/api/notify/prefs')
-      .then((r) => r.json())
-      .then((j) => setEmailEnabled(!!j.emailEnabled))
-      .catch(() => setEmailEnabled(true));
+    if (isRecipient) {
+      fetch('/api/notify/prefs')
+        .then((r) => r.json())
+        .then((j) => setEmailEnabled(!!j.emailEnabled))
+        .catch(() => setEmailEnabled(true));
+    }
 
     (async () => {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -36,7 +40,7 @@ export default function NotifySettings() {
       const sub = await reg.pushManager.getSubscription();
       setPush(sub ? 'on' : 'off');
     })().catch(() => setPush('unsupported'));
-  }, []);
+  }, [isRecipient]);
 
   async function toggleEmail() {
     if (emailEnabled === null) return;
@@ -115,17 +119,23 @@ export default function NotifySettings() {
 
   return (
     <div className="rounded-2xl border border-border bg-card px-5 py-4">
-      <h2 className="m-0 text-[15px] font-medium">알림 설정</h2>
-      <p className="mt-0.5 text-[12px] text-muted-foreground">새 송금 요청이 등록되면 알림을 받아요. 채널별로 켜고 끌 수 있어요.</p>
+      <h2 className="m-0 text-[15px] font-medium">{isRecipient ? '알림 설정' : '내 요청 알림'}</h2>
+      <p className="mt-0.5 text-[12px] text-muted-foreground">
+        {isRecipient
+          ? '새 송금 요청이 등록되면 알림을 받아요. 채널별로 켜고 끌 수 있어요.'
+          : '내가 올린 송금 요청이 이체 완료되면 알림을 받아요. 완료 이메일은 자동으로 오고, 푸시는 아래에서 켤 수 있어요.'}
+      </p>
 
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <span className="text-[13px]">이메일 알림</span>
-        {emailEnabled === null ? (
-          <span className="text-[12px] text-muted-foreground">…</span>
-        ) : (
-          toggleBtn(emailEnabled, false, toggleEmail)
-        )}
-      </div>
+      {isRecipient && (
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <span className="text-[13px]">이메일 알림</span>
+          {emailEnabled === null ? (
+            <span className="text-[12px] text-muted-foreground">…</span>
+          ) : (
+            toggleBtn(emailEnabled, false, toggleEmail)
+          )}
+        </div>
+      )}
 
       <div className="mt-2.5 flex items-center justify-between gap-2">
         <div>

@@ -2,6 +2,7 @@ import { del } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { notifyTransferDone } from '@/lib/notify';
 
 export const runtime = 'nodejs';
 
@@ -24,7 +25,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: 'action 은 done 또는 undo 여야 해요.' }, { status: 400 });
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .schema('finance')
     .from('transfer_requests')
     .update(
@@ -32,8 +33,20 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         ? { status: 'done', done_by: user.id, done_by_email: user.email ?? '', done_at: new Date().toISOString() }
         : { status: 'pending', done_by: null, done_by_email: null, done_at: null }
     )
-    .eq('id', Number(params.id));
+    .eq('id', Number(params.id))
+    .select('vendor_name,amount,requester_email')
+    .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // 요청한 직원에게 역방향 알림(완료 시에만). 실패해도 처리 자체는 성공.
+  if (done && updated) {
+    await notifyTransferDone(supabase, {
+      vendorName: updated.vendor_name,
+      amount: Number(updated.amount),
+      requesterEmail: updated.requester_email,
+      doneByEmail: user.email ?? '',
+    });
+  }
   return NextResponse.json({ ok: true });
 }
 
