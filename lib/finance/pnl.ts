@@ -51,8 +51,10 @@ export interface PnlResult {
     supply: number;
     byCategory: { category: string; qty: number; supply: number }[];
   };
+  channelFee: { amount: number; estimated: boolean }; // 채널수수료(카드·간편결제 등). estimated=추정
+  netSales: number; // 순매출 = 공급가액 − 채널수수료
   cogs: { 식자재: CogsKind; 포장소모품: CogsKind; total: number; invMissing: boolean };
-  grossProfit: number; // 매출총이익
+  grossProfit: number; // 매출총이익 = 순매출 − 재료비
   labor: number; // 인건비
   fixed: number; // 고정비(나머지 판관비)
   unclassified: number; // 미분류 유출(경고)
@@ -75,9 +77,13 @@ export function prevYm(ym: string): string {
 
 const kindOf = (cat: PnlCat): InvKind => (cat.name === '포장재' ? '포장소모품' : '식자재');
 
+// 채널수수료 추정 기본율(정산서 실제 금액 미입력 시) — 토스 POS(카드+간편결제) 블렌디드 근사.
+// 실제 금액을 입력하면 이 추정은 무시된다.
+export const CHANNEL_FEE_RATE = 0.017;
+
 export function buildPnl(
   ym: string,
-  data: { pos: PnlPosRow[]; txns: PnlTx[]; cats: PnlCat[]; inventory: PnlInventory[] },
+  data: { pos: PnlPosRow[]; txns: PnlTx[]; cats: PnlCat[]; inventory: PnlInventory[]; channelFee?: number | null },
 ): PnlResult {
   const { pos, txns, cats, inventory } = data;
   const byId = new Map(cats.map((c) => [c.id, c]));
@@ -154,13 +160,18 @@ export function buildPnl(
   const cogsTotal = 식자재.재료비 + 포장소모품.재료비;
   const invMissing = !식자재.기말입력 || !포장소모품.기말입력;
 
-  const grossProfit = sales.supply - cogsTotal;
+  // 채널수수료: 입력값 있으면 실제, 없으면 공급가액×기본율 추정. 순매출 = 공급가액 − 채널수수료.
+  const feeAmount = data.channelFee != null ? data.channelFee : Math.round(sales.supply * CHANNEL_FEE_RATE);
+  const netSales = sales.supply - feeAmount;
+  const grossProfit = netSales - cogsTotal;
   const operatingProfit = grossProfit - labor - fixed - unclassified;
 
   const div = (n: number) => (sales.supply > 0 ? n / sales.supply : 0);
   return {
     ym,
     sales,
+    channelFee: { amount: feeAmount, estimated: data.channelFee == null },
+    netSales,
     cogs: { 식자재, 포장소모품, total: cogsTotal, invMissing },
     grossProfit,
     labor,

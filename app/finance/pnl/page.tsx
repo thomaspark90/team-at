@@ -3,11 +3,12 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import { unwrap } from '@/lib/finance/db';
-import { buildPnl, benchmark, prevYm, type PnlCat, type PnlTx, type PnlPosRow, type PnlInventory, type Signal } from '@/lib/finance/pnl';
+import { buildPnl, benchmark, prevYm, CHANNEL_FEE_RATE, type PnlCat, type PnlTx, type PnlPosRow, type PnlInventory, type Signal } from '@/lib/finance/pnl';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import PnlUpload from '@/components/finance/PnlUpload';
 import InventoryInput from '@/components/finance/InventoryInput';
+import ChannelFeeInput from '@/components/finance/ChannelFeeInput';
 
 const won = (n: number) => (n < 0 ? '-₩' : '₩') + Math.abs(Math.round(n)).toLocaleString('ko-KR');
 const pct = (n: number) => (n * 100).toFixed(1) + '%';
@@ -81,16 +82,19 @@ async function PnlBody({
   selectedYm: string;
   supabase: Awaited<ReturnType<typeof createClient>>;
 }) {
-  const [txnsRes, catsRes, invRes] = await Promise.all([
+  const [txnsRes, catsRes, invRes, feeRes] = await Promise.all([
     supabase.schema('finance').from('transactions').select('category_id,amount_in,amount_out').eq('ym', selectedYm),
     supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable'),
     supabase.schema('finance').from('inventory').select('ym,kind,amount'),
+    supabase.schema('finance').from('channel_fees').select('amount').eq('ym', selectedYm).maybeSingle(),
   ]);
   const txns = (unwrap(txnsRes, '거래') as PnlTx[] | null) ?? [];
   const cats = (unwrap(catsRes, '계정과목') as PnlCat[] | null) ?? [];
   const inventory = (unwrap(invRes, '기말재고') as PnlInventory[] | null) ?? [];
+  // 채널수수료 실제 입력값(테이블 없거나 미입력이면 null → pnl에서 추정)
+  const channelFee = feeRes.error ? null : ((feeRes.data as { amount: number } | null)?.amount ?? null);
 
-  const p = buildPnl(selectedYm, { pos, txns, cats, inventory });
+  const p = buildPnl(selectedYm, { pos, txns, cats, inventory, channelFee });
   const foodSig = SIG[benchmark('food', p.metrics.foodCostRate)];
   const laborSig = SIG[benchmark('labor', p.metrics.laborRate)];
   const primeSig = SIG[benchmark('prime', p.metrics.primeCost)];
@@ -145,7 +149,13 @@ async function PnlBody({
             <tbody>
               <Row label="총매출 (VAT 포함)" amount={p.sales.gross} muted />
               <Row label="(−) 부가세" amount={-p.sales.vat} muted />
-              <Row label="공급가액 매출 (순매출)" amount={p.sales.supply} bold />
+              <Row label="공급가액 매출" amount={p.sales.supply} bold />
+              <Row
+                label="(−) 채널수수료"
+                amount={-p.channelFee.amount}
+                sub={p.channelFee.estimated ? '추정 · 정산서 실제 금액 입력 시 교체' : undefined}
+              />
+              <Row label="순매출" amount={p.netSales} bold />
               <Row
                 label="(−) 재료비"
                 amount={-p.cogs.total}
@@ -157,11 +167,11 @@ async function PnlBody({
               <Row label="(−) 인건비" amount={-p.labor} rate={p.metrics.laborRate} />
               <Row label="(−) 고정비 (판관비)" amount={-p.fixed} />
               {p.unclassified > 0 && <Row label="(−) 미분류" amount={-p.unclassified} warn />}
-              <Row label="영업이익 (EBIT 근사)" amount={p.operatingProfit} bold big sub="채널수수료·감가상각 전" />
+              <Row label="영업이익 (EBIT 근사)" amount={p.operatingProfit} bold big sub="감가상각 전" />
             </tbody>
           </table>
           <p className="mt-4 text-[11px] text-muted-foreground">
-            채널수수료(카드·배달)는 아직 미반영이에요(후속). 영업외·자본적지출 등 손익제외 계정은 빠져 있어요.
+            채널수수료는 정산서 금액(없으면 추정)까지 반영했어요. 영업외·자본적지출(감가상각) 등 손익제외 계정은 빠져 있어요.
           </p>
         </div>
 
@@ -177,6 +187,11 @@ async function PnlBody({
               식자재: inventory.find((i) => i.ym === prevYm(selectedYm) && i.kind === '식자재')?.amount ?? null,
               포장소모품: inventory.find((i) => i.ym === prevYm(selectedYm) && i.kind === '포장소모품')?.amount ?? null,
             }}
+          />
+          <ChannelFeeInput
+            ym={selectedYm}
+            initial={p.channelFee.estimated ? null : p.channelFee.amount}
+            estimate={Math.round(p.sales.supply * CHANNEL_FEE_RATE)}
           />
           <div className="ta-card">
             <h2 className="mb-3 text-[15px] text-foreground">매출 구성</h2>
