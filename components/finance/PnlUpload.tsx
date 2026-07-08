@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { won, fmtYm } from '@/lib/finance/format';
 
 interface CatAgg {
   category: string;
@@ -24,8 +25,6 @@ interface ApplyResult {
   excludedRows: number;
 }
 
-const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
-const fmtYm = (ym: string) => `${ym.split('-')[0]}년 ${Number(ym.split('-')[1])}월`;
 
 export default function PnlUpload() {
   const router = useRouter();

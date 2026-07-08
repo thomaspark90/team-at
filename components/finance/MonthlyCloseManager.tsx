@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { wonNum as won, fmtYm } from '@/lib/finance/format';
 
 export interface MonthRow {
   ym: string;
@@ -11,12 +12,6 @@ export interface MonthRow {
   confirmedAt: string | null;
 }
 
-const won = (n: number) => n.toLocaleString('ko-KR');
-
-const fmtYm = (ym: string) => {
-  const [y, mo] = ym.split('-');
-  return `${y}년 ${Number(mo)}월`;
-};
 const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10) : '');
 
 export default function MonthlyCloseManager({

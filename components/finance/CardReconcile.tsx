@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { ParsedTransaction } from '@/lib/finance/types';
+import { won, fmtYm } from '@/lib/finance/format';
 
 interface Candidate {
   id: number;
@@ -30,8 +31,6 @@ interface SaveResult {
   linked: boolean;
 }
 
-const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
-const fmtYm = (ym: string | null) => (ym ? `${ym.split('-')[0]}년 ${Number(ym.split('-')[1])}월` : '');
 
 export default function CardReconcile() {
   const router = useRouter();

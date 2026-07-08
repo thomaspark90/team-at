@@ -1,11 +1,7 @@
 import type { MonthCash } from '@/lib/finance/cashflow';
+import { wonNum as won, fmtYm } from '@/lib/finance/format';
 
-const won = (n: number) => n.toLocaleString('ko-KR');
 const BANK: Record<string, string> = { shinhan: '신한은행', woori: '우리은행' };
-const fmtYm = (ym: string) => {
-  const [y, mo] = ym.split('-');
-  return `${y}년 ${Number(mo)}월`;
-};
 
 export default function Cashflow({ months }: { months: MonthCash[] }) {
   if (months.length === 0) {

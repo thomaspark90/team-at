@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { wonNum as won, fmtYm as fmtYmLabel } from '@/lib/finance/format';
 
 export interface TxRow {
   id: number;
@@ -28,7 +29,6 @@ interface Suggestion {
   reason: string;
 }
 
-const won = (n: number) => n.toLocaleString('ko-KR');
 const CONF = 0.6;
 // Gemini 무료 티어 한도 이슈로 AI 추천 잠시 끔. API에 billing 연결하면 true 로 되살림.
 const AI_ENABLED = false;
@@ -41,10 +41,6 @@ const TYPE_LABEL: Record<string, string> = {
 };
 const TYPE_ORDER = ['revenue', 'cogs', 'sga', 'non_operating', 'excluded'];
 const BANK_LABEL: Record<string, string> = { shinhan: '신한', woori: '우리' };
-const fmtYmLabel = (ym: string) => {
-  const [y, mo] = ym.split('-');
-  return `${y}년 ${Number(mo)}월`;
-};
 
 export default function ClassifyPanel({
   txns,
