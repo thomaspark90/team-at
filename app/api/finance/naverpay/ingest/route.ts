@@ -1,0 +1,137 @@
+import { NextResponse } from 'next/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { normalizeKey } from '@/lib/finance/normalize';
+import { hash } from '@/lib/finance/dedup';
+
+export const runtime = 'nodejs';
+export const maxDuration = 30;
+
+// 네이버페이 무인 수집기(로컬 Mac, launchd) 전용 적재 엔드포인트.
+// 사용자 세션이 없으므로 비밀 토큰(x-naverpay-token) + service role 클라이언트로 동작한다.
+// 적재 규칙은 supabase/migration_naverpay.sql 상단 주석 참조.
+
+type IngestRow = {
+  external_id?: string;
+  paid_at: string;   // 'YYYY-MM-DD HH:mm:ss' (KST) 또는 ISO
+  merchant?: string;
+  product?: string;
+  amount: number;
+  pay_status?: string;
+};
+
+const toKstIso = (s: string) => {
+  const t = s.trim().replace(' ', 'T');
+  if (/[+Z]/i.test(t)) return t;                       // 이미 타임존 있음
+  return (t.length === 10 ? `${t}T00:00:00` : t) + '+09:00'; // KST 명시
+};
+
+export async function POST(req: Request) {
+  const token = process.env.NAVERPAY_INGEST_TOKEN;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!token || !url || !serviceKey) {
+    return NextResponse.json({ error: '서버에 NAVERPAY_INGEST_TOKEN / SUPABASE_SERVICE_ROLE_KEY 설정이 필요합니다.' }, { status: 500 });
+  }
+  if (req.headers.get('x-naverpay-token') !== token) {
+    return NextResponse.json({ error: '인증 실패' }, { status: 401 });
+  }
+
+  let rows: IngestRow[];
+  try {
+    const body = await req.json();
+    rows = Array.isArray(body?.rows) ? body.rows : [];
+  } catch {
+    return NextResponse.json({ error: 'JSON 본문이 필요합니다.' }, { status: 400 });
+  }
+  const valid = rows.filter((r) => r && r.paid_at && Number(r.amount) > 0);
+  if (valid.length === 0) return NextResponse.json({ saved: 0, duplicates: 0, autoClassified: 0 });
+
+  const supabase = createServiceClient(url, serviceKey, { db: { schema: 'finance' } });
+
+  const mapped = valid.map((r) => {
+    const merchant = (r.merchant || '네이버페이').trim();
+    const isRefund = /취소|환불/.test(r.pay_status || '');
+    const txAt = toKstIso(r.paid_at);
+    return {
+      bank: 'naverpay',
+      source: 'naverpay',
+      tx_at: txAt,
+      ym: txAt.slice(0, 7),
+      channel: (r.product || '').trim() || null, // 상품명(참고 표시)
+      memo: merchant,                            // 분류 단서 = 가맹점명
+      amount_out: isRefund ? 0 : Math.round(Number(r.amount)),
+      amount_in: isRefund ? Math.round(Number(r.amount)) : 0,
+      balance: 0,
+      branch: null,
+      dedup_hash: r.external_id
+        ? hash('naverpay', r.external_id)
+        : hash('naverpay', r.paid_at, merchant, r.product ?? '', r.amount),
+      normalized_key: normalizeKey(merchant),
+      category_id: null as number | null,
+      classified_by: null,
+      classified_at: null,
+      upload_id: null as number | null,
+    };
+  });
+
+  // 재적재 중복 차단 (dedup_hash 기존 여부 청크 조회)
+  const hashes = Array.from(new Set(mapped.map((m) => m.dedup_hash)));
+  const existing = new Set<string>();
+  for (let i = 0; i < hashes.length; i += 100) {
+    const { data } = await supabase.from('transactions').select('dedup_hash').in('dedup_hash', hashes.slice(i, i + 100));
+    (data ?? []).forEach((e: { dedup_hash: string }) => existing.add(e.dedup_hash));
+  }
+  const seen = new Set<string>();
+  const fresh = mapped.filter((m) => {
+    if (existing.has(m.dedup_hash) || seen.has(m.dedup_hash)) return false;
+    seen.add(m.dedup_hash);
+    return true;
+  });
+  if (fresh.length === 0) {
+    return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0 });
+  }
+
+  // 학습 규칙(normalized_key → category_id)으로 자동 분류
+  const keys = Array.from(new Set(fresh.map((m) => m.normalized_key)));
+  const keyToCat = new Map<string, number>();
+  for (let i = 0; i < keys.length; i += 100) {
+    const { data: rules } = await supabase.from('rules').select('normalized_key,category_id').in('normalized_key', keys.slice(i, i + 100));
+    (rules ?? []).forEach((r: { normalized_key: string; category_id: number }) => keyToCat.set(r.normalized_key, r.category_id));
+  }
+  const now = new Date().toISOString();
+  let autoClassified = 0;
+  fresh.forEach((m) => {
+    const cat = keyToCat.get(m.normalized_key);
+    if (cat != null) {
+      m.category_id = cat;
+      m.classified_at = now as never;
+      autoClassified++;
+    }
+  });
+
+  // 업로드 기록(수집 배치 추적) → 거래 저장
+  const dates = fresh.map((m) => m.tx_at).sort();
+  const { data: up, error: upErr } = await supabase
+    .from('uploads')
+    .insert({
+      bank: 'naverpay',
+      source: 'naverpay',
+      row_count: fresh.length,
+      period_start: dates[0]?.slice(0, 10),
+      period_end: dates[dates.length - 1]?.slice(0, 10),
+    })
+    .select('id')
+    .single();
+  if (upErr || !up) {
+    return NextResponse.json({ error: `업로드 기록 실패: ${upErr?.message ?? ''}` }, { status: 500 });
+  }
+  fresh.forEach((m) => { m.upload_id = up.id; });
+
+  const { error: insErr } = await supabase.from('transactions').insert(fresh);
+  if (insErr) {
+    await supabase.from('uploads').delete().eq('id', up.id);
+    return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
+  }
+
+  return NextResponse.json({ saved: fresh.length, duplicates: mapped.length - fresh.length, autoClassified });
+}

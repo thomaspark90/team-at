@@ -7,6 +7,7 @@ import { wonNum as won, fmtYm as fmtYmLabel } from '@/lib/finance/format';
 export interface TxRow {
   id: number;
   memo: string;
+  channel?: string | null; // naverpay: 상품명(참고 표시)
   normalized_key: string;
   amount_in: number;
   amount_out: number;
@@ -40,7 +41,7 @@ const TYPE_LABEL: Record<string, string> = {
   excluded: '손익 제외',
 };
 const TYPE_ORDER = ['revenue', 'cogs', 'sga', 'non_operating', 'excluded'];
-const BANK_LABEL: Record<string, string> = { shinhan: '신한', woori: '우리' };
+const BANK_LABEL: Record<string, string> = { shinhan: '신한', woori: '우리', naverpay: '네이버' };
 
 export default function ClassifyPanel({
   txns,
@@ -85,7 +86,7 @@ export default function ClassifyPanel({
     type: initialFilter?.type,
     cat: initialFilter?.cat,
   });
-  const [srcFilter, setSrcFilter] = useState<string>(initialFilter?.source ?? 'all'); // all | bank | card
+  const [srcFilter, setSrcFilter] = useState<string>(initialFilter?.source ?? 'all'); // all | bank | card | naverpay
   const [unclOnly, setUnclOnly] = useState(!!initialFilter?.unclassified); // 미분류만 보기
   const [search, setSearch] = useState(''); // 가맹점/내용 검색
   const [selected, setSelected] = useState<Set<number>>(new Set()); // 다중 선택
@@ -133,7 +134,7 @@ export default function ClassifyPanel({
       (filterBank === 'all' || r.bank === filterBank) &&
       (srcFilter === 'all' || (r.source ?? 'bank') === srcFilter) &&
       (!unclOnly || r.category_id == null) &&
-      (!q || r.memo.toLowerCase().includes(q) || r.normalized_key.toLowerCase().includes(q)) &&
+      (!q || r.memo.toLowerCase().includes(q) || r.normalized_key.toLowerCase().includes(q) || (r.channel ?? '').toLowerCase().includes(q)) &&
       matchesCat(r)
   );
   const classifiedCount = filtered.filter((r) => r.category_id != null).length;
@@ -365,7 +366,7 @@ export default function ClassifyPanel({
             title="필터 해제"
             className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3 py-1 text-[13px] font-medium text-primary"
           >
-            {srcFilter === 'card' ? '💳 카드만 보기' : '🏦 은행만 보기'}
+            {srcFilter === 'card' ? '💳 카드만 보기' : srcFilter === 'naverpay' ? '🟢 네이버페이만 보기' : '🏦 은행만 보기'}
             <span className="text-[15px] leading-none">×</span>
           </button>
         )}
@@ -490,8 +491,12 @@ export default function ClassifyPanel({
                     <td className="px-3 py-2 align-middle">
                       <div className="flex max-w-[380px] items-center gap-1.5">
                         {tx.source === 'card' && <span title="신한카드 이용내역" className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">💳</span>}
+                        {tx.source === 'naverpay' && <span title="네이버페이 결제내역" className="shrink-0 rounded bg-positive/10 px-1.5 py-0.5 text-[11px] font-medium text-positive">N</span>}
                         <span className="line-clamp-2 min-w-0 break-all" title={tx.memo}>
                           {tx.memo || <span className="text-muted-foreground">(빈 내용)</span>}
+                          {tx.source === 'naverpay' && tx.channel && (
+                            <span className="text-muted-foreground"> · {tx.channel}</span>
+                          )}
                         </span>
                         {tx.is_installment && <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">할부</span>}
                       </div>

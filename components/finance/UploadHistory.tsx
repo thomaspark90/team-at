@@ -23,6 +23,7 @@ const fmt = (s: string | null) => (s ? s.slice(0, 10) : '');
 function kind(u: UploadRow): string {
   if (u.source === 'card') return `${u.card_issuer ?? '신한'}카드 이용내역`;
   if (u.source === 'receipt') return `${u.card_issuer ?? '쿠팡'} 영수증`;
+  if (u.source === 'naverpay') return '네이버페이 결제내역(자동)';
   return `${BANK_LABEL[u.bank] ?? u.bank}은행 거래내역`;
 }
 
