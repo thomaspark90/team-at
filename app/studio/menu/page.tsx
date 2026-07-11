@@ -86,7 +86,7 @@ export default function StudioMenuPage() {
               </div>
             </div>
 
-            <DownloadButton previewRef={previewRef} date={story.date} />
+            <DownloadButton previewRef={previewRef} story={story} />
 
             <p className="text-center text-[11px] text-muted-foreground">
               다운로드 후 인스타그램 앱에서 스토리로 업로드하세요

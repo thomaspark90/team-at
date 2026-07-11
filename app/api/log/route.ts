@@ -4,7 +4,7 @@ import { logActivity } from '@/lib/finance/activity';
 
 // 클라이언트 전용 기능(스탭밀 다운로드 등)의 사용 기록. 허용된 action만 받는다.
 const ALLOWED_ACTIONS = new Set([
-  '스탭밀 스토리 다운로드',
+  // 스토리 다운로드는 /api/staffmeals(아카이브 저장)에서 함께 기록
   '스탭밀 배경 업로드',
   '스탭밀 배경 삭제',
 ]);

@@ -1,16 +1,17 @@
 'use client';
 
 import { RefObject, useState } from 'react';
-import { logUsage } from '@/lib/log-client';
+import type { StoryData } from '@/lib/types';
 
 interface Props {
   previewRef: RefObject<HTMLDivElement | null>;
-  date: string;
+  story: StoryData;
 }
 
 const DOWNLOAD_SCALE = 3;
 
-export default function DownloadButton({ previewRef, date }: Props) {
+export default function DownloadButton({ previewRef, story }: Props) {
+  const { date } = story;
   const [loading, setLoading] = useState(false);
 
   const handleDownload = async () => {
@@ -33,7 +34,19 @@ export default function DownloadButton({ previewRef, date }: Props) {
     link.href = canvas.toDataURL('image/png');
     link.click();
 
-    logUsage('스탭밀 스토리 다운로드', date);
+    // 메뉴 아카이브 저장(+활동 로그는 서버에서) — 실패해도 다운로드를 막지 않음
+    fetch('/api/staffmeals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date,
+        inputMode: story.inputMode,
+        categories: story.categories,
+        manualText: story.manualText,
+      }),
+      keepalive: true,
+    }).catch(() => {});
+
     setLoading(false);
   };
 

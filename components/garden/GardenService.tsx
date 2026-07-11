@@ -36,6 +36,8 @@ export default function GardenService() {
   const [selectedMult, setSelectedMult] = useState<number | null>(null);
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [saving, setSaving] = useState(false);
+  const [sharingId, setSharingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const refreshPurchases = async () => {
     const res = await fetch('/api/purchases', { cache: 'no-store' });
@@ -78,6 +80,31 @@ export default function GardenService() {
     await refreshPurchases();
     setSelectedMult(null);
     setSaving(false);
+  };
+
+  // 판매가 공유 링크 생성 → 모바일은 공유시트, 그 외 클립보드 복사 (카톡방 공지용)
+  const sharePurchase = async (rec: PurchaseRecord) => {
+    if (sharingId) return;
+    setSharingId(rec.id);
+    try {
+      const res = await fetch('/api/garden-share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recordId: rec.id }),
+      });
+      if (!res.ok) return;
+      const { url } = await res.json();
+      const title = `${rec.bean} — 판매가 ${rec.chosenPrice != null ? won(rec.chosenPrice) : ''}`;
+      if (navigator.share) {
+        await navigator.share({ title, url }).catch(() => {});
+      } else {
+        await navigator.clipboard.writeText(url);
+        setCopiedId(rec.id);
+        setTimeout(() => setCopiedId(null), 2000);
+      }
+    } finally {
+      setSharingId(null);
+    }
   };
 
   const deletePurchase = async (id: string) => {
@@ -217,6 +244,9 @@ export default function GardenService() {
                         <div key={rec.id} className="gs-row">
                           <span className="gs-meta">
                             <span className="tabular text-muted-foreground" style={{ width: 64, flexShrink: 0 }}>{fmtDate(rec.createdAt)}</span>
+                            {rec.createdBy && (
+                              <span className="text-muted-foreground" style={{ flexShrink: 0 }}>{rec.createdBy.split('@')[0]}</span>
+                            )}
                             <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>원가 {won(rec.purchasePrice)}</span>
                             <span className="tabular text-foreground" style={{ flexShrink: 0 }}>
                               재료비 {won(rec.costPerCup)}

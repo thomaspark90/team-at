@@ -55,8 +55,24 @@ export interface PurchaseRecord {
   rangeHigh: number; // 당시 권장가 상단 (배수 maxMult)
   chosenMult: number | null; // 사장님이 선택한 배수
   chosenPrice: number | null; // 선택한 배수의 책정 판매가
+  createdBy?: string; // 저장한 사람 이메일 (구 기록엔 없음)
 }
 
 export interface PurchaseStore {
   records: PurchaseRecord[];
+}
+
+// 스탭밀 메뉴 아카이브 한 건 — 스토리 다운로드 시점의 메뉴 스냅샷
+export interface StaffMealRecord {
+  id: string;
+  createdAt: string; // ISO (저장 시각)
+  date: string; // 배지 날짜 (예: 5/12)
+  inputMode: InputMode;
+  categories: Category[];
+  manualText: string;
+  createdBy: string; // 저장한 사람 이메일
+}
+
+export interface StaffMealStore {
+  records: StaffMealRecord[];
 }

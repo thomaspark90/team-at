@@ -58,6 +58,7 @@ export async function POST(req: Request) {
     rangeHigh: body.rangeHigh,
     chosenMult: body.chosenMult ?? null,
     chosenPrice: body.chosenPrice ?? null,
+    createdBy: user.email ?? '',
   };
   store.records = [...store.records, record];
   await writeStore(store);
