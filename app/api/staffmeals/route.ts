@@ -51,3 +51,18 @@ export async function POST(req: Request) {
   await logActivity(supabase, user, '스탭밀 스토리 다운로드', date);
   return NextResponse.json(record);
 }
+
+export async function DELETE(req: Request) {
+  const { supabase, user } = await requireUser();
+  if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+
+  const { id } = await req.json().catch(() => ({}));
+  const store = await readStaffMeals();
+  const removed = store.records.find((r) => r.id === id);
+  if (!removed) return NextResponse.json({ error: '기록을 찾을 수 없습니다.' }, { status: 404 });
+  store.records = store.records.filter((r) => r.id !== id);
+  await writeStaffMeals(store);
+
+  await logActivity(supabase, user, '스탭밀 메뉴 기록 삭제', removed.date);
+  return NextResponse.json({ ok: true });
+}
