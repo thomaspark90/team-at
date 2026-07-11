@@ -25,6 +25,9 @@ const fmtDate = (iso: string) => {
 // 스프레드로 보여줄 배수 (3.0 ~ 7.0, 0.5 단위 — 가로 스와이프)
 const SPREAD = [3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7];
 const HIGHLIGHT = C.accent; // 권장 구간(배수 minMult~maxMult) 강조색 (무채색)
+// 선택 칸 강조 — 연두(라임). 투명도를 높여 뒤 텍스트 가독 유지. 라이트/다크 공통 리터럴.
+const SELECT_BORDER = 'rgba(132, 204, 22, 0.55)';
+const SELECT_FILL = 'rgba(132, 204, 22, 0.14)';
 
 export default function GardenService() {
   const [settings, setSettings] = useState<PricingSettings>(DEFAULT_SETTINGS);
@@ -316,8 +319,9 @@ function Cell({
     style.zIndex = 2;
   }
   if (selected) {
-    // 세 칸의 바깥 테두리만 강조(다크) 2px → 한 박스처럼, 모서리 라운드
-    const B = `2px solid ${C.primary}`;
+    // 세 칸의 바깥 테두리만 강조(투명 연두) 2px → 한 박스처럼, 모서리 라운드 + 옅은 채움
+    const B = `2px solid ${SELECT_BORDER}`;
+    style.backgroundColor = SELECT_FILL;
     style.borderLeft = B;
     style.borderRight = B;
     if (pos === 'top') {
