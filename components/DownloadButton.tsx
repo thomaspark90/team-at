@@ -1,6 +1,7 @@
 'use client';
 
 import { RefObject, useState } from 'react';
+import { logUsage } from '@/lib/log-client';
 
 interface Props {
   previewRef: RefObject<HTMLDivElement | null>;
@@ -32,6 +33,7 @@ export default function DownloadButton({ previewRef, date }: Props) {
     link.href = canvas.toDataURL('image/png');
     link.click();
 
+    logUsage('스탭밀 스토리 다운로드', date);
     setLoading(false);
   };
 

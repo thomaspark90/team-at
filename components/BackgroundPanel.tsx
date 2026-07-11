@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { upload } from '@vercel/blob/client';
 import type { BlobItem } from '@/lib/types';
+import { logUsage } from '@/lib/log-client';
 
 interface Props {
   selected: string;
@@ -41,6 +42,7 @@ export default function BackgroundPanel({ selected, onSelect }: Props) {
         handleUploadUrl: '/api/upload',
       });
       onSelect(blob.url);   // 미리보기 즉시 반영
+      logUsage('스탭밀 배경 업로드', file.name);
       await refresh();       // 썸네일 목록만 갱신 (onSelect 재호출 없음)
     } catch (err) {
       console.error('Upload error:', err);
@@ -58,6 +60,7 @@ export default function BackgroundPanel({ selected, onSelect }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
     });
+    logUsage('스탭밀 배경 삭제', url.split('/').pop() ?? url);
     const data = await refresh();
     if (selected === url) onSelect(data.length > 0 ? data[0].url : '');
   };
