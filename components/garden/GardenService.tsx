@@ -161,17 +161,41 @@ export default function GardenService() {
               placeholder="원두명 (예: 에티오피아 게뎁)"
               className="ta-input w-full"
             />
-            <input
-              type="text"
-              inputMode="numeric"
-              value={price ? price.toLocaleString('ko-KR') : ''}
-              onChange={(e) => {
-                setPrice(Number(e.target.value.replace(/[^\d]/g, '')) || 0);
-                setSelectedMult(null);
-              }}
-              placeholder={`공급가 000,000 (${settings.capacityG}g·부가세 별도)`}
-              className="ta-input w-full tabular"
-            />
+            <div style={{ display: 'flex', gap: 8, minWidth: 0 }}>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={price ? price.toLocaleString('ko-KR') : ''}
+                onChange={(e) => {
+                  setPrice(Number(e.target.value.replace(/[^\d]/g, '')) || 0);
+                  setSelectedMult(null);
+                }}
+                placeholder={`공급가 000,000 (${settings.capacityG}g·부가세 ${settings.vatIncluded ? '포함' : '별도'})`}
+                className="ta-input tabular"
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              {/* 로스터리별 공급가 안내 방식(부가세 포함/별도)에 맞춰 선택 */}
+              <div className="inline-flex gap-1 rounded-md border border-border p-1" style={{ flexShrink: 0, alignSelf: 'center' }}>
+                {([false, true] as boolean[]).map((v) => {
+                  const on = !!settings.vatIncluded === v;
+                  return (
+                    <button
+                      key={String(v)}
+                      onClick={() => {
+                        setSettings((s) => ({ ...s, vatIncluded: v }));
+                        setSelectedMult(null);
+                      }}
+                      className={`rounded-sm px-2.5 py-1 text-[12px] transition-colors ${
+                        on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                      title={v ? '입력한 공급가를 부가세 포함가로 계산' : '입력한 공급가에 부가세 10%를 더해 계산'}
+                    >
+                      {v ? 'VAT 포함' : 'VAT 별도'}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {result && (

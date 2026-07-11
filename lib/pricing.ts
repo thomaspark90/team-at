@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS: PricingSettings = {
   doseG: 19,
   minMult: 4,
   maxMult: 5.5,
+  vatIncluded: false,
 };
 
 // 시트와 동일하게 100원 단위 올림(ceil)
@@ -17,14 +18,15 @@ export const normalize = (s: string) =>
 
 const tokenize = (s: string) => normalize(s).split(' ').filter(Boolean);
 
-// 공급가(구매가)는 부가세 별도 → 부가세 포함가로 원가 산정
+// 원가는 항상 부가세 포함가 기준. 공급가가 별도면 ×1.1, 포함이면 그대로 사용.
 export const VAT = 1.1;
 
 // 1g당 원가 / 잔당 재료비 (부가세 포함가 기준)
 export function costPerCup(purchasePrice: number, s: PricingSettings): number {
   const actual = s.capacityG * s.yieldRate; // 실제 용량(g)
   if (actual <= 0) return 0;
-  return ((purchasePrice * VAT) / actual) * s.doseG;
+  const grossPrice = s.vatIncluded ? purchasePrice : purchasePrice * VAT;
+  return (grossPrice / actual) * s.doseG;
 }
 
 // 배수 → 100원 단위 판매가

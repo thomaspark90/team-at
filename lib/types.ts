@@ -28,6 +28,7 @@ export interface PricingSettings {
   doseG: number; // 드립커피 투입량(g)
   minMult: number; // 권장 하한 배수
   maxMult: number; // 권장 상한 배수
+  vatIncluded?: boolean; // 공급가에 부가세 포함 여부 (미지정=별도, 구 기록 호환)
 }
 
 // 경쟁사 메뉴 한 줄 (비전 추출 결과). 이미지는 저장하지 않음(비공개).
