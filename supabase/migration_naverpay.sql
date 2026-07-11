@@ -15,6 +15,14 @@
 -- 1) bank enum에 naverpay 추가 (신규 값은 이 실행이 끝난 뒤부터 사용 가능)
 alter type finance.bank_source add value if not exists 'naverpay';
 
+-- 1-b) service_role 권한: 무인 수집기(ingest API)가 쓰는 service role은
+--      schema.sql 의 grant(anon, authenticated) 대상에 없어 명시적으로 부여해야 한다.
+grant usage on schema finance to service_role;
+grant all on all tables in schema finance to service_role;
+grant all on all sequences in schema finance to service_role;
+alter default privileges in schema finance grant all on tables to service_role;
+alter default privileges in schema finance grant all on sequences to service_role;
+
 -- 2) 계정과목: 손익 제외 › 네이버페이대체 (카드/은행의 네이버페이 결제·충전 건 전용)
 insert into finance.categories (type, name, in_pnl, sort)
 values ('excluded', '네이버페이대체', false, 41)
