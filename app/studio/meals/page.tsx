@@ -12,6 +12,15 @@ const fmtSaved = (iso: string) => {
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
+// 기록 한 건에서 메뉴 항목들 추출 — 빈 칸 제외, 직접 입력은 줄 단위
+const menuItems = (rec: StaffMealRecord): string[] =>
+  (rec.inputMode === 'manual'
+    ? rec.manualText.split('\n')
+    : rec.categories.flatMap((c) => c.items)
+  )
+    .map((s) => s.trim())
+    .filter(Boolean);
+
 // 메뉴 항목 요약 — 빈 칸 제외
 const menuLines = (rec: StaffMealRecord): [string, string][] => {
   if (rec.inputMode === 'manual') {
@@ -22,7 +31,7 @@ const menuLines = (rec: StaffMealRecord): [string, string][] => {
     .filter(([, items]) => items.length > 0);
 };
 
-// 지난 스탭밀 — 다운로드 시점에 저장된 메뉴 스냅샷 아카이브 (최신순)
+// 메뉴 기록 — 다운로드 시점에 저장된 메뉴 스냅샷 아카이브 (최신순) + 메뉴별 기록 횟수
 export default async function StaffMealsPage() {
   const supabase = await createClient();
   const {
@@ -35,13 +44,21 @@ export default async function StaffMealsPage() {
     .slice()
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
+  // 메뉴별 기록 횟수 — 전체 기록 집계, 많이 나온 순(동률은 가나다순)
+  const counts = new Map<string, number>();
+  for (const rec of records)
+    for (const item of menuItems(rec)) counts.set(item, (counts.get(item) ?? 0) + 1);
+  const ranked = Array.from(counts.entries()).sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko')
+  );
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <StudioNav />
       <div className="mx-auto flex max-w-[720px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
         <div className="ta-card bg-background">
-          <p className="ta-label">지난 스탭밀</p>
+          <p className="ta-label">메뉴 기록</p>
           {records.length === 0 ? (
             <p className="text-[13px] text-muted-foreground">
               아직 기록이 없습니다. IG 메뉴 업데이트에서 스토리를 다운로드하면 자동으로 쌓입니다.
@@ -69,6 +86,23 @@ export default async function StaffMealsPage() {
             </div>
           )}
         </div>
+
+        {ranked.length > 0 && (
+          <div className="ta-card bg-background">
+            <p className="ta-label">메뉴별 기록 횟수</p>
+            <div className="flex flex-wrap gap-1.5">
+              {ranked.map(([name, count]) => (
+                <span
+                  key={name}
+                  className="rounded-full border border-border px-2.5 py-1 text-[12px]"
+                >
+                  <span className="text-foreground">{name}</span>{' '}
+                  <span className="tabular text-muted-foreground">{count}회</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
