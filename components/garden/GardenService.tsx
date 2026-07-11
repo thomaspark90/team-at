@@ -48,7 +48,7 @@ export default function GardenService() {
   }, []);
 
   const result = useMemo(
-    () => (price > 0 ? computePricing(price, [], settings) : null),
+    () => (price > 0 ? computePricing(price, settings) : null),
     [price, settings]
   );
 
@@ -292,7 +292,11 @@ export default function GardenService() {
                             {rec.createdBy && (
                               <span className="text-muted-foreground" style={{ flexShrink: 0 }}>{rec.createdBy.split('@')[0]}</span>
                             )}
-                            <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>원가 {won(rec.purchasePrice)}</span>
+                            <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>
+                              원가 {won(rec.purchasePrice)}
+                              {/* VAT 포함가로 입력한 기록만 표시 — 무표시 = 별도(구 기록 포함) */}
+                              {rec.settings?.vatIncluded && <span style={{ fontSize: 10 }}>·VAT포함</span>}
+                            </span>
                             <span className="tabular text-foreground" style={{ flexShrink: 0 }}>
                               재료비 {won(rec.costPerCup)}
                               {older && delta !== 0 && (

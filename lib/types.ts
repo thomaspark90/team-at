@@ -31,19 +31,6 @@ export interface PricingSettings {
   vatIncluded?: boolean; // 공급가에 부가세 포함 여부 (미지정=별도, 구 기록 호환)
 }
 
-// 경쟁사 메뉴 한 줄 (비전 추출 결과). 이미지는 저장하지 않음(비공개).
-export interface CompetitorRow {
-  id: string;
-  cafe: string;
-  bean: string;
-  price: number;
-  createdAt: string;
-}
-
-export interface CompetitorStore {
-  rows: CompetitorRow[];
-}
-
 // 내 발주 기록 한 건 (같은 원두 재발주 시 원가·판매가 비교용)
 export interface PurchaseRecord {
   id: string;
