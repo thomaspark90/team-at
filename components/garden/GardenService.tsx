@@ -116,6 +116,15 @@ export default function GardenService() {
     refreshPurchases();
   };
 
+  // 카드 우측 상단 공유 대상 — 판매가가 책정된 가장 최근 기록
+  const latestPriced = useMemo(
+    () =>
+      purchases
+        .filter((r) => r.chosenPrice != null)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null,
+    [purchases]
+  );
+
   // 발주 기록 — 원두별 그룹(각 그룹 최신순), 그룹은 최근 기록순
   const purchaseGroups = useMemo(() => {
     const m = new Map<string, PurchaseRecord[]>();
@@ -229,7 +238,19 @@ export default function GardenService() {
         {/* 발주 기록 — 같은 원두 재발주 시 원가·판매가 비교 */}
         {purchases.length > 0 && (
           <div className="ta-card bg-background min-w-0">
-            <p className="ta-label">이전 판매 리스트</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <p className="ta-label">이전 판매 리스트</p>
+              {latestPriced && (
+                <button
+                  onClick={() => sharePurchase(latestPriced)}
+                  className="text-muted-foreground hover:text-foreground"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, flexShrink: 0 }}
+                  title={`최근 책정 판매가 공유 — ${latestPriced.bean} (카톡방 공지용)`}
+                >
+                  {copiedId === latestPriced.id ? '링크 복사됨 ✓' : sharingId === latestPriced.id ? '…' : '공유'}
+                </button>
+              )}
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               {purchaseGroups.map((group) => (
                 <div key={group[0].id}>
@@ -267,16 +288,6 @@ export default function GardenService() {
                               <span className="tabular text-muted-foreground">판매 {won(rec.rangeLow)}~{won(rec.rangeHigh)}</span>
                             )}
                           </span>
-                          {rec.chosenPrice != null && (
-                            <button
-                              onClick={() => sharePurchase(rec)}
-                              className="text-muted-foreground hover:text-foreground"
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, flexShrink: 0 }}
-                              title="판매가 공유 링크 복사 (카톡방 공지용)"
-                            >
-                              {copiedId === rec.id ? '복사됨 ✓' : sharingId === rec.id ? '…' : '공유'}
-                            </button>
-                          )}
                           <button
                             onClick={() => deletePurchase(rec.id)}
                             className="gs-del text-muted-foreground hover:text-foreground"
