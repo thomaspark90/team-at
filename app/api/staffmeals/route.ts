@@ -20,7 +20,7 @@ export async function GET() {
 }
 
 // 스토리 다운로드 시 메뉴 스냅샷 저장: { date, inputMode, categories, manualText }
-// 같은 해·같은 날짜는 최신본으로 교체(수정 후 재다운로드 대응)
+// 같은 날짜 재다운로드(메뉴 수정 케이스)도 모두 별건으로 남긴다 — 화면에서 중복 표시
 export async function POST(req: Request) {
   const { supabase, user } = await requireUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
@@ -41,10 +41,6 @@ export async function POST(req: Request) {
   };
 
   const store = await readStaffMeals();
-  const year = now.getFullYear();
-  store.records = store.records.filter(
-    (r) => !(r.date === date && new Date(r.createdAt).getFullYear() === year)
-  );
   store.records = [...store.records, record];
   await writeStaffMeals(store);
 

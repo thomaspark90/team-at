@@ -47,15 +47,32 @@ export default function StaffMealArchive({ initial }: { initial: StaffMealRecord
     }
   };
 
-  // 메뉴별 기록 횟수 — 현재 남아 있는 기록 전체 집계, 많이 나온 순(동률은 가나다순)
+  // 같은 해·같은 날짜 키 — 하루 2건 = 메뉴 수정 후 재다운로드 케이스
+  const dupKey = (r: StaffMealRecord) => `${new Date(r.createdAt).getFullYear()}-${r.date}`;
+
+  // 날짜별 기록 수 + 날짜별 최신 기록 id (records는 최신순 정렬 상태)
+  const { dupCounts, latestIds } = useMemo(() => {
+    const dupCounts = new Map<string, number>();
+    const latestIds = new Set<string>();
+    for (const rec of records) {
+      const k = dupKey(rec);
+      if (!dupCounts.has(k)) latestIds.add(rec.id);
+      dupCounts.set(k, (dupCounts.get(k) ?? 0) + 1);
+    }
+    return { dupCounts, latestIds };
+  }, [records]);
+
+  // 메뉴별 기록 횟수 — 같은 날 중복은 최신 1건만 집계, 많이 나온 순(동률은 가나다순)
   const ranked = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const rec of records)
+    for (const rec of records) {
+      if (!latestIds.has(rec.id)) continue;
       for (const item of menuItems(rec)) counts.set(item, (counts.get(item) ?? 0) + 1);
+    }
     return Array.from(counts.entries()).sort(
       (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko')
     );
-  }, [records]);
+  }, [records, latestIds]);
 
   return (
     <>
@@ -70,7 +87,14 @@ export default function StaffMealArchive({ initial }: { initial: StaffMealRecord
             {records.map((rec) => (
               <div key={rec.id} className="rounded-lg border border-border p-3.5">
                 <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                  <span className="tabular text-[15px] font-medium">{rec.date}</span>
+                  <span className="flex items-baseline gap-2">
+                    <span className="tabular text-[15px] font-medium">{rec.date}</span>
+                    {(dupCounts.get(dupKey(rec)) ?? 0) > 1 && (
+                      <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+                        {latestIds.has(rec.id) ? '최신' : '이전 버전'}
+                      </span>
+                    )}
+                  </span>
                   <span className="text-[11px] text-muted-foreground">
                     {rec.createdBy.split('@')[0]} · 저장 {fmtSaved(rec.createdAt)}
                   </span>
@@ -102,6 +126,9 @@ export default function StaffMealArchive({ initial }: { initial: StaffMealRecord
       {ranked.length > 0 && (
         <div className="ta-card bg-background">
           <p className="ta-label">메뉴별 기록 횟수</p>
+          <p className="mb-2 mt-0 text-[11px] text-muted-foreground">
+            같은 날 중복 기록은 최신 1건만 집계됩니다
+          </p>
           <div className="flex flex-wrap gap-1.5">
             {ranked.map(([name, count]) => (
               <span
