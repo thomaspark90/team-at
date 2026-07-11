@@ -267,6 +267,16 @@ export default function GardenService() {
                               <span className="tabular text-muted-foreground">판매 {won(rec.rangeLow)}~{won(rec.rangeHigh)}</span>
                             )}
                           </span>
+                          {rec.chosenPrice != null && (
+                            <button
+                              onClick={() => sharePurchase(rec)}
+                              className="text-muted-foreground hover:text-foreground"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, flexShrink: 0 }}
+                              title="판매가 공유 링크 복사 (카톡방 공지용)"
+                            >
+                              {copiedId === rec.id ? '복사됨 ✓' : sharingId === rec.id ? '…' : '공유'}
+                            </button>
+                          )}
                           <button
                             onClick={() => deletePurchase(rec.id)}
                             className="gs-del text-muted-foreground hover:text-foreground"
