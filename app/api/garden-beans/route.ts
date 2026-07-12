@@ -1,7 +1,7 @@
 import { get, put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import type { BeanMeta, BeanMetaStore, StoreId } from '@/lib/types';
-import { STORES } from '@/lib/types';
+import { STORES, STOCK_LEVELS, stockOf } from '@/lib/types';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 
@@ -39,12 +39,9 @@ export async function GET() {
 }
 
 const STORE_IDS = STORES.map((s) => s.id);
-// 구버전 status=soldout은 전 지점 소진으로 해석
-const soldOf = (b?: BeanMeta): StoreId[] =>
-  b?.soldoutStores ?? (b?.status === 'soldout' ? [...STORE_IDS] : []);
 
-// 원두 메타 업서트: { beanKey, bean, tasting?, soldoutStores? } — 안 보낸 필드는 기존 값 유지.
-// 노트도 없고 소진 지점도 없으면 엔트리 자체를 제거.
+// 원두 메타 업서트: { beanKey, bean, tasting?, stockByStore?, soldoutStores? } — 안 보낸 필드는 기존 값 유지.
+// stockByStore는 지점 단위 병합(한 지점만 보내도 됨). 노트도 없고 전 지점 재고 100%면 엔트리 제거.
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -60,16 +57,31 @@ export async function POST(req: Request) {
   const store = await readStore();
   const prev = store.beans.find((b) => b.beanKey === body.beanKey);
   const tasting = body.tasting !== undefined ? String(body.tasting).trim() : prev?.tasting ?? '';
-  const soldoutStores = Array.isArray(body.soldoutStores)
-    ? (body.soldoutStores.filter((s: unknown) => STORE_IDS.includes(s as StoreId)) as StoreId[])
-    : soldOf(prev);
+
+  // 현재 재고(구버전 소진 기록 포함)에서 출발해 요청 값을 지점 단위로 병합
+  const stockByStore: Partial<Record<StoreId, number>> = {};
+  for (const id of STORE_IDS) stockByStore[id] = stockOf(prev, id);
+  const stockTouched = body.stockByStore != null && typeof body.stockByStore === 'object';
+  if (stockTouched) {
+    for (const id of STORE_IDS) {
+      const v = Number(body.stockByStore[id]);
+      if (body.stockByStore[id] != null && STOCK_LEVELS.includes(v)) stockByStore[id] = v;
+    }
+  } else if (Array.isArray(body.soldoutStores)) {
+    // 구버전 클라이언트 호환 — 소진 배열이 오면 0%/100%로 반영
+    for (const id of STORE_IDS) stockByStore[id] = body.soldoutStores.includes(id) ? 0 : 100;
+  }
+
+  const allFull = STORE_IDS.every((id) => stockByStore[id] === 100);
   const rest = store.beans.filter((b) => b.beanKey !== body.beanKey);
-  if (tasting || soldoutStores.length > 0) {
+  if (tasting || !allFull) {
     const meta: BeanMeta = {
       beanKey: body.beanKey,
       bean: body.bean,
       tasting,
-      soldoutStores,
+      stockByStore,
+      // 구버전 호환 — 재고 0% 지점을 소진으로 함께 기록
+      soldoutStores: STORE_IDS.filter((id) => stockByStore[id] === 0),
       updatedAt: new Date().toISOString(),
       updatedBy: user.email ?? '',
     };
@@ -78,18 +90,17 @@ export async function POST(req: Request) {
     store.beans = rest;
   }
   await writeStore(store);
-  const soldLabels = STORES.filter((s) => soldoutStores.includes(s.id)).map((s) => s.label);
+  const stockChanged = stockTouched || Array.isArray(body.soldoutStores);
+  const stockLabel = STORES.map((s) => `${s.short} ${stockByStore[s.id]}%`).join(' · ');
   await logActivity(
     supabase,
     user,
-    body.soldoutStores !== undefined
-      ? '가든서비스 원두 소진 상태 변경'
+    stockChanged
+      ? '가든서비스 원두 재고량 변경'
       : tasting
         ? '가든서비스 테이스팅 노트 저장'
         : '가든서비스 테이스팅 노트 삭제',
-    body.soldoutStores !== undefined
-      ? `${body.bean} · 소진 ${soldLabels.length ? soldLabels.join('·') : '없음(전체 판매 중)'}`
-      : body.bean
+    stockChanged ? `${body.bean} · ${stockLabel}` : body.bean
   );
   return NextResponse.json({ ok: true });
 }

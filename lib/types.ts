@@ -94,15 +94,27 @@ export const STORES: { id: StoreId; label: string; short: string }[] = [
   { id: 'yangjae', label: '양재천점', short: '양재천' },
 ];
 
-// 원두 단위 메타 — ICE/HOT 공통 정보 (테이스팅 노트·지점별 소진)
+// 원두 단위 메타 — ICE/HOT 공통 정보 (테이스팅 노트·지점별 재고량)
 export interface BeanMeta {
   beanKey: string; // normalize(원두명) — upsert 키
   bean: string; // 표시용 원두명
   tasting: string; // 테이스팅 노트 (산미·단맛·향 표현)
-  soldoutStores?: StoreId[]; // 소진된 지점 목록 (모든 지점 소진 시 아카이브)
-  status?: BeanStatus; // 구버전 호환 — soldout이면 전 지점 소진으로 해석
+  stockByStore?: Partial<Record<StoreId, number>>; // 지점별 재고량 % (100/80/…/0) — 없으면 100
+  soldoutStores?: StoreId[]; // 구버전 호환 — 포함된 지점은 재고 0%로 해석
+  status?: BeanStatus; // 구버전 호환 — soldout이면 전 지점 재고 0%로 해석
   updatedAt: string;
   updatedBy?: string;
+}
+
+// 재고량 선택지 (%)
+export const STOCK_LEVELS = [100, 80, 60, 40, 20, 0];
+
+// 지점별 재고 % — stockByStore 우선, 없으면 구버전 소진 기록으로 해석 (기본 100)
+export function stockOf(meta: BeanMeta | undefined, storeId: StoreId): number {
+  const v = meta?.stockByStore?.[storeId];
+  if (v != null) return v;
+  const sold = meta?.soldoutStores ?? (meta?.status === 'soldout' ? STORES.map((s) => s.id) : []);
+  return sold.includes(storeId) ? 0 : 100;
 }
 
 export interface BeanMetaStore {

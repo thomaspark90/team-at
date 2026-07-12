@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { BeanMeta, BrewType, DripRecipe, DripRecipeSnapshot, PourStep, PurchaseRecord, StoreId } from '@/lib/types';
-import { STORES } from '@/lib/types';
+import { STORES, STOCK_LEVELS, stockOf } from '@/lib/types';
 import { costPerCup, normalize } from '@/lib/pricing';
 import { applyPreset, presetById } from '@/lib/drip-presets';
 import { flavorGradient } from '@/lib/flavor-colors';
@@ -150,8 +150,8 @@ export default function GardenDashboard() {
   const [tastingSaving, setTastingSaving] = useState(false);
   // 이력 펼침 상태 — `${beanKey}:${brewType}` 키
   const [openHistory, setOpenHistory] = useState<Set<string>>(new Set());
-  // 판매중 버튼 → 소진 지점 선택 중인 원두
-  const [soldPicker, setSoldPicker] = useState<string | null>(null);
+  // 재고량 칩 → 퍼센트 선택 중인 원두·지점
+  const [stockPicker, setStockPicker] = useState<{ beanKey: string; store: StoreId } | null>(null);
 
   const refresh = async () => {
     const [pRes, rRes, bRes] = await Promise.all([
@@ -198,27 +198,18 @@ export default function GardenDashboard() {
     () => new Map(beanMetas.map((b) => [b.beanKey, b.tasting])),
     [beanMetas]
   );
-  // 지점별 소진 상태 — 구버전 status=soldout은 전 지점 소진으로 해석
-  const soldByBean = useMemo(
-    () =>
-      new Map(
-        beanMetas.map((b) => [
-          b.beanKey,
-          b.soldoutStores ?? (b.status === 'soldout' ? STORES.map((s) => s.id) : []),
-        ])
-      ),
-    [beanMetas]
-  );
-  const soldStoresOf = (beanKey: string): StoreId[] => soldByBean.get(beanKey) ?? [];
+  // 지점별 재고량 — stockByStore 우선, 구버전 소진 기록은 0%/100%로 해석
+  const metaByBean = useMemo(() => new Map(beanMetas.map((b) => [b.beanKey, b])), [beanMetas]);
+  const stockOfBean = (beanKey: string, storeId: StoreId) => stockOf(metaByBean.get(beanKey), storeId);
 
-  // 판매 중 / 전 지점 소진 분리 — 대시보드엔 판매 중만, 전 지점 소진은 필터 레시피 탭에서만 조회
+  // 재고 있음 / 전 지점 0% 분리 — 대시보드엔 재고 있는 원두만, 전 지점 0%는 필터 레시피 탭에서만 조회
   const activeGroups = useMemo(
-    () => beanGroups.filter((g) => (soldByBean.get(g.beanKey) ?? []).length < STORES.length),
-    [beanGroups, soldByBean]
+    () => beanGroups.filter((g) => STORES.some((s) => stockOf(metaByBean.get(g.beanKey), s.id) > 0)),
+    [beanGroups, metaByBean]
   );
   const soldGroups = useMemo(
-    () => beanGroups.filter((g) => (soldByBean.get(g.beanKey) ?? []).length >= STORES.length),
-    [beanGroups, soldByBean]
+    () => beanGroups.filter((g) => STORES.every((s) => stockOf(metaByBean.get(g.beanKey), s.id) === 0)),
+    [beanGroups, metaByBean]
   );
 
   // 발주 기록엔 있지만 레시피가 하나도 없는 원두
@@ -282,13 +273,13 @@ export default function GardenDashboard() {
     setTastingSaving(false);
   };
 
-  // 지점별 소진 상태 저장 — 빈 배열이면 전체 판매 재개
-  const setSoldStores = async (beanKey: string, bean: string, stores: StoreId[]) => {
-    setSoldPicker(null);
+  // 지점 재고량 저장 — 한 지점만 병합 업데이트
+  const setStock = async (beanKey: string, bean: string, storeId: StoreId, pct: number) => {
+    setStockPicker(null);
     await fetch('/api/garden-beans', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ beanKey, bean, soldoutStores: stores }),
+      body: JSON.stringify({ beanKey, bean, stockByStore: { [storeId]: pct } }),
     });
     refresh();
   };
@@ -378,7 +369,6 @@ export default function GardenDashboard() {
   // 원두 카드 한 장
   const renderBeanCard = (g: BeanGroup) => {
     const latest = latestByBean.get(g.beanKey);
-    const sold = soldStoresOf(g.beanKey);
     return (
       <div key={g.beanKey} className="rounded-md border border-border" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         {/* 원두명 헤더 — muted 배경 밴드 + 테이스팅 노트 색 그라데이션(카운터컬처 플레이버 휠 차용) */}
@@ -397,52 +387,51 @@ export default function GardenDashboard() {
             <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {g.bean}
             </span>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-              {/* 소진된 지점 칩 — 누르면 그 지점 판매 재개 */}
-              {STORES.filter((s) => sold.includes(s.id)).map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setSoldStores(g.beanKey, g.bean, sold.filter((id) => id !== s.id))}
-                  className="rounded-sm border text-[11px]"
-                  style={{ ...ghostBtn, padding: '0 6px', borderColor: 'rgba(220, 38, 38, 0.4)', color: '#dc2626' }}
-                  title={`${s.label} 판매 재개`}
-                >
-                  {s.short} 소진 ×
-                </button>
-              ))}
-              {/* 판매 상태 버튼 — 누르면 소진 처리할 지점 선택 */}
-              {soldPicker === g.beanKey ? (
-                <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                  {STORES.filter((s) => !sold.includes(s.id)).map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setSoldStores(g.beanKey, g.bean, [...sold, s.id])}
-                      className="ta-btn"
-                      style={{ height: 24, paddingLeft: 8, paddingRight: 8, fontSize: 11 }}
-                      title={`${s.label} 소진 처리`}
-                    >
-                      {s.label} 소진
-                    </button>
-                  ))}
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
+              {/* 지점별 재고량 칩 — 누르면 100~0% 선택. 20% 이하 빨간색 */}
+              {STORES.map((s) => {
+                const pct = stockOfBean(g.beanKey, s.id);
+                const low = pct <= 20;
+                if (stockPicker?.beanKey === g.beanKey && stockPicker.store === s.id) {
+                  return (
+                    <span key={s.id} style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                      <span className="text-[11px] text-muted-foreground">{s.short}</span>
+                      {STOCK_LEVELS.map((lv) => (
+                        <button
+                          key={lv}
+                          onClick={() => setStock(g.beanKey, g.bean, s.id, lv)}
+                          className={`rounded-sm border text-[11px] tabular ${
+                            lv === pct ? 'border-foreground text-foreground' : 'border-border text-muted-foreground hover:text-foreground'
+                          }`}
+                          style={{ ...ghostBtn, padding: '1px 5px', ...(lv <= 20 ? { color: '#dc2626', borderColor: 'rgba(220, 38, 38, 0.4)' } : {}) }}
+                          title={`${s.label} 재고 ${lv}%`}
+                        >
+                          {lv}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setStockPicker(null)}
+                        className="text-muted-foreground hover:text-foreground"
+                        style={{ ...ghostBtn, fontSize: 13 }}
+                        title="취소"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                }
+                return (
                   <button
-                    onClick={() => setSoldPicker(null)}
-                    className="text-muted-foreground hover:text-foreground"
-                    style={{ ...ghostBtn, fontSize: 13 }}
-                    title="취소"
+                    key={s.id}
+                    onClick={() => setStockPicker({ beanKey: g.beanKey, store: s.id })}
+                    className={`rounded-sm border text-[11px] tabular ${low ? '' : 'border-border text-foreground hover:bg-accent'}`}
+                    style={{ ...ghostBtn, padding: '1px 8px', ...(low ? { borderColor: 'rgba(220, 38, 38, 0.4)', color: '#dc2626' } : {}) }}
+                    title={`${s.label} 재고량 변경`}
                   >
-                    ×
+                    {s.short} {pct}%
                   </button>
-                </span>
-              ) : (
-                <button
-                  onClick={() => setSoldPicker(g.beanKey)}
-                  className="rounded-sm border border-border text-[11px] text-foreground hover:bg-accent"
-                  style={{ ...ghostBtn, padding: '1px 8px' }}
-                  title="소진 처리할 지점 선택"
-                >
-                  판매중
-                </button>
-              )}
+                );
+              })}
             </span>
           </div>
           {/* 테이스팅 노트(좌) + 판매가/재료비율(우) */}
@@ -796,7 +785,7 @@ export default function GardenDashboard() {
         </div>
       )}
 
-      {/* 원두 레시피 카드 — 판매 중인 원두만, 최신 업데이트순 */}
+      {/* 원두 레시피 카드 — 재고 있는 원두만, 최신 업데이트순 */}
       <div className="min-w-0">
         <p className="ta-label">원두 레시피</p>
         {activeGroups.length === 0 ? (
@@ -804,7 +793,7 @@ export default function GardenDashboard() {
             {loading
               ? '불러오는 중…'
               : soldGroups.length > 0
-                ? '판매 중인 원두가 없어요. 소진된 원두는 필터 레시피 탭에서 볼 수 있어요.'
+                ? '재고가 남은 원두가 없어요. 재고 0% 원두는 필터 레시피 탭에서 볼 수 있어요.'
                 : '아직 레시피가 설정된 원두가 없어요. 아래 원두에서 레시피를 설정해 보세요.'}
           </p>
         ) : (
@@ -812,10 +801,10 @@ export default function GardenDashboard() {
             {activeGroups.map(renderBeanCard)}
           </div>
         )}
-        {/* 전 지점 소진 원두는 대시보드에서 제외 — 필터 레시피 탭에서 조회·재개 */}
+        {/* 두 지점 모두 재고 0%면 대시보드에서 제외 — 필터 레시피 탭에서 조회·재입고 */}
         {soldGroups.length > 0 && (
           <p className="text-[11px] text-muted-foreground" style={{ marginTop: 10 }}>
-            소진 원두 {soldGroups.length}종은{' '}
+            재고 0% 원두 {soldGroups.length}종은{' '}
             <Link href="/garden/recipes" className="underline hover:text-foreground">
               필터 레시피
             </Link>

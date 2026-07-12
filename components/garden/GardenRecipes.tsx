@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { BeanMeta, BrewType, DripRecipe, PourStep, StoreId } from '@/lib/types';
-import { STORES } from '@/lib/types';
+import { STORES, stockOf } from '@/lib/types';
 import { normalize } from '@/lib/pricing';
 import { flavorGradient } from '@/lib/flavor-colors';
 
@@ -84,25 +84,15 @@ export default function GardenRecipes() {
     [beanMetas]
   );
 
-  // 지점별 소진 상태 — 구버전 status=soldout은 전 지점 소진으로 해석
-  const soldByBean = useMemo(
-    () =>
-      new Map(
-        beanMetas.map((b) => [
-          b.beanKey,
-          b.soldoutStores ?? (b.status === 'soldout' ? STORES.map((s) => s.id) : []),
-        ])
-      ),
-    [beanMetas]
-  );
+  // 지점별 재고량 — 구버전 소진 기록은 0%/100%로 해석
+  const metaByBean = useMemo(() => new Map(beanMetas.map((b) => [b.beanKey, b])), [beanMetas]);
 
-  // 소진 지점 칩 클릭 → 그 지점 판매 재개 (대시보드로 복귀)
-  const reopenStore = async (beanKey: string, bean: string, storeId: StoreId) => {
-    const sold = soldByBean.get(beanKey) ?? [];
+  // 재고 0% 지점 칩 클릭 → 그 지점 재고 100%로 재입고 (대시보드로 복귀)
+  const restockStore = async (beanKey: string, bean: string, storeId: StoreId) => {
     await fetch('/api/garden-beans', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ beanKey, bean, soldoutStores: sold.filter((id) => id !== storeId) }),
+      body: JSON.stringify({ beanKey, bean, stockByStore: { [storeId]: 100 } }),
     });
     refresh();
   };
@@ -205,20 +195,29 @@ export default function GardenRecipes() {
                     <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {g.bean}
                     </span>
-                    {/* 소진 지점 칩 — 클릭하면 그 지점 판매 재개 */}
-                    {(soldByBean.get(g.beanKey) ?? []).length > 0 && (
+                    {/* 재고 20% 이하 지점 칩 — 0% 칩은 클릭하면 100%로 재입고 */}
+                    {STORES.some((s) => stockOf(metaByBean.get(g.beanKey), s.id) <= 20) && (
                       <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        {STORES.filter((s) => (soldByBean.get(g.beanKey) ?? []).includes(s.id)).map((s) => (
-                          <button
-                            key={s.id}
-                            onClick={() => reopenStore(g.beanKey, g.bean, s.id)}
-                            className="rounded-sm border text-[11px]"
-                            style={{ background: 'none', cursor: 'pointer', padding: '0 6px', borderColor: 'rgba(220, 38, 38, 0.4)', color: '#dc2626' }}
-                            title={`${s.label} 판매 재개`}
-                          >
-                            {s.short} 소진 ×
-                          </button>
-                        ))}
+                        {STORES.filter((s) => stockOf(metaByBean.get(g.beanKey), s.id) <= 20).map((s) => {
+                          const pct = stockOf(metaByBean.get(g.beanKey), s.id);
+                          return (
+                            <button
+                              key={s.id}
+                              onClick={() => pct === 0 && restockStore(g.beanKey, g.bean, s.id)}
+                              className="rounded-sm border text-[11px] tabular"
+                              style={{
+                                background: 'none',
+                                cursor: pct === 0 ? 'pointer' : 'default',
+                                padding: '0 6px',
+                                borderColor: 'rgba(220, 38, 38, 0.4)',
+                                color: '#dc2626',
+                              }}
+                              title={pct === 0 ? `${s.label} 재고 100%로 재입고` : `${s.label} 재고 ${pct}%`}
+                            >
+                              {s.short} {pct}%{pct === 0 && ' ↺'}
+                            </button>
+                          );
+                        })}
                       </span>
                     )}
                   </div>
