@@ -288,7 +288,7 @@ export default function GardenDashboard() {
                 <button
                   key={bt}
                   onClick={() => !on && openEditor(draft.beanKey, draft.bean, bt)}
-                  className={`rounded-sm px-3 py-1 text-[12px] transition-colors ${
+                  className={`rounded-sm px-3 py-1 text-[13px] transition-colors ${
                     on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -342,7 +342,7 @@ export default function GardenDashboard() {
               const cum = draft.pours.slice(0, i + 1).reduce((a, s) => a + s.water, 0);
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                  <span className="text-[12px] text-foreground" style={{ width: 76, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span className="text-[13px] text-foreground" style={{ width: 76, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {p.at ? `${p.at} ` : ''}
                     {pourName(p, i)}
                   </span>
@@ -374,7 +374,7 @@ export default function GardenDashboard() {
               );
             })}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button onClick={addPour} className="ta-btn" style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 12 }}>
+              <button onClick={addPour} className="ta-btn" style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 13 }}>
                 + 푸어링 추가
               </button>
               {draftWater > 0 && (
@@ -411,7 +411,7 @@ export default function GardenDashboard() {
       <div className="min-w-0">
         <p className="ta-label">원두 레시피</p>
         {beanGroups.length === 0 ? (
-          <p className="text-[12px] text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground">
             {loading ? '불러오는 중…' : '아직 레시피가 설정된 원두가 없어요. 아래 원두에서 레시피를 설정해 보세요.'}
           </p>
         ) : (
@@ -421,11 +421,11 @@ export default function GardenDashboard() {
               return (
                 <div key={g.beanKey} className="rounded-md border border-border" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-                    <span className="text-[14px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {g.bean}
                     </span>
                     {latest?.chosenPrice != null && (
-                      <span className="tabular text-[12px] text-muted-foreground" style={{ flexShrink: 0 }}>{won(latest.chosenPrice)}</span>
+                      <span className="tabular text-[13px] text-muted-foreground" style={{ flexShrink: 0 }}>{won(latest.chosenPrice)}</span>
                     )}
                   </div>
 
@@ -437,7 +437,7 @@ export default function GardenDashboard() {
                           <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                             <BrewBadge bt={bt} />
                             {r && ratioOf(r.doseG, r.waterG) && (
-                              <span className="tabular text-[12px] text-foreground">{ratioOf(r.doseG, r.waterG)}</span>
+                              <span className="tabular text-[13px] text-foreground">{ratioOf(r.doseG, r.waterG)}</span>
                             )}
                           </span>
                           {r ? (
@@ -539,7 +539,7 @@ export default function GardenDashboard() {
                     key={bt}
                     onClick={() => openEditor(normalize(rec.bean), rec.bean, bt)}
                     className="ta-btn"
-                    style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 12, flexShrink: 0 }}
+                    style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 13, flexShrink: 0 }}
                   >
                     {btLabel(bt)} 설정
                   </button>
@@ -557,7 +557,7 @@ export default function GardenDashboard() {
 function BrewBadge({ bt }: { bt: BrewType }) {
   return (
     <span
-      className="rounded-sm text-[10px]"
+      className="rounded-sm text-[11px]"
       style={{
         padding: '1px 6px',
         letterSpacing: '0.05em',
@@ -575,7 +575,7 @@ function BrewBadge({ bt }: { bt: BrewType }) {
 function SpecRow({ label, value }: { label: string; value: string | null }) {
   if (!value) return null;
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 12 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13 }}>
       <span className="text-muted-foreground">{label}</span>
       <span className="tabular text-foreground">{value}</span>
     </div>
