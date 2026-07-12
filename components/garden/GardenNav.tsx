@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation';
 
 // 가든 하위 내비게이션 — /garden 하위 페이지 상단에 노출 (FinanceNav와 동일 문법)
 const TABS = [
-  { href: '/garden', label: '가격 세팅' },
   { href: '/garden/dashboard', label: '대시보드' },
+  { href: '/garden', label: '필터커피 가격 세팅' },
 ];
 
 export default function GardenNav() {
