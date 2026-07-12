@@ -67,6 +67,7 @@ interface Draft {
   pours: PourStep[];
   notes: string; // 사용자가 직접 쓴 메모만 — 추천 안내문은 notesHint(placeholder)로만 노출
   notesHint: string;
+  tasting: string; // 테이스팅 노트 (원두 공통 — 저장 시 garden-beans로 별도 업서트)
 }
 
 // 타입별 매장 기준 안내문 — 메모 칸 회색 placeholder로만 쓰고 저장하지 않는다
@@ -94,6 +95,7 @@ const draftFromRecipe = (r: DripRecipe): Draft => ({
   pours: r.pours ?? (r.waterG != null ? [{ water: r.waterG, label: '총 물량' }] : []),
   notes: r.notes,
   notesHint: houseHint(btOf(r)),
+  tasting: '', // openEditor에서 원두 공통 노트로 채움
 });
 
 // 새 레시피 — 해당 타입의 매장 기준 프리셋으로 채워서 시작
@@ -113,6 +115,7 @@ const presetDraft = (beanKey: string, bean: string, brewType: BrewType): Draft =
     pours: a.pours,
     notes: '',
     notesHint: a.notes,
+    tasting: '', // openEditor에서 원두 공통 노트로 채움
   };
 };
 
@@ -196,7 +199,8 @@ export default function GardenDashboard() {
   // 편집 열기 — 기존 레시피가 있으면 불러오고, 없으면 매장 기준 프리셋으로 시작
   const openEditor = (beanKey: string, bean: string, brewType: BrewType) => {
     const existing = recipes.find((r) => r.beanKey === beanKey && btOf(r) === brewType);
-    setDraft(existing ? draftFromRecipe(existing) : presetDraft(beanKey, bean, brewType));
+    const base = existing ? draftFromRecipe(existing) : presetDraft(beanKey, bean, brewType);
+    setDraft({ ...base, tasting: tastingByBean.get(beanKey) ?? '' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -220,6 +224,7 @@ export default function GardenDashboard() {
         updatedBy: s.updatedBy,
       })
     );
+    setDraft((d) => (d ? { ...d, tasting: tastingByBean.get(beanKey) ?? '' } : d));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -271,6 +276,14 @@ export default function GardenDashboard() {
         presetId: draft.presetId || null,
       }),
     });
+    // 테이스팅 노트는 원두 공통 — 값이 바뀐 경우에만 별도 업서트
+    if (draft.tasting.trim() !== (tastingByBean.get(draft.beanKey) ?? '')) {
+      await fetch('/api/garden-beans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ beanKey: draft.beanKey, bean: draft.bean, tasting: draft.tasting }),
+      });
+    }
     await refresh();
     setDraft(null);
     setSaving(false);
@@ -442,6 +455,17 @@ export default function GardenDashboard() {
               )}
             </div>
           </div>
+
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12 }}>
+            <span className="text-[11px] text-muted-foreground">테이스팅 노트 (ICE/HOT 공통)</span>
+            <input
+              type="text"
+              value={draft.tasting}
+              onChange={(e) => setD('tasting', e.target.value)}
+              placeholder="예: 자두 · 홍차 · 긴 단맛"
+              className="ta-input w-full"
+            />
+          </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12 }}>
             <span className="text-[11px] text-muted-foreground">메모</span>
