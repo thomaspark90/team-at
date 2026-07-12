@@ -65,8 +65,15 @@ interface Draft {
   grindMesh: string; // '' = 미설정, 그 외 '6.5' 형태
   totalTime: string;
   pours: PourStep[];
-  notes: string;
+  notes: string; // 사용자가 직접 쓴 메모만 — 추천 안내문은 notesHint(placeholder)로만 노출
+  notesHint: string;
 }
+
+// 타입별 매장 기준 안내문 — 메모 칸 회색 placeholder로만 쓰고 저장하지 않는다
+const houseHint = (bt: BrewType) => {
+  const p = presetById(housePresetId(bt));
+  return p ? applyPreset(p).notes : '';
+};
 
 // 구 기록의 분쇄도 텍스트(예: 'EK43(양재천) 6.5')에서 수치만 추출
 const meshFromLegacy = (grind: string) => {
@@ -86,6 +93,7 @@ const draftFromRecipe = (r: DripRecipe): Draft => ({
   // 푸어링 없이 총 물량만 있는 구 기록은 한 단계로 변환해 표시
   pours: r.pours ?? (r.waterG != null ? [{ water: r.waterG, label: '총 물량' }] : []),
   notes: r.notes,
+  notesHint: houseHint(btOf(r)),
 });
 
 // 새 레시피 — 해당 타입의 매장 기준 프리셋으로 채워서 시작
@@ -103,7 +111,8 @@ const presetDraft = (beanKey: string, bean: string, brewType: BrewType): Draft =
     grindMesh: a.grindMesh != null ? meshFmt(a.grindMesh) : '',
     totalTime: a.totalTime,
     pours: a.pours,
-    notes: a.notes,
+    notes: '',
+    notesHint: a.notes,
   };
 };
 
@@ -381,9 +390,9 @@ export default function GardenDashboard() {
             <textarea
               value={draft.notes}
               onChange={(e) => setD('notes', e.target.value)}
-              placeholder="예: 물온도 — 배전도 있는 원두 92°C / 에티오피아·케냐·게이샤 93°C"
+              placeholder={draft.notesHint || '메모를 남기면 카드에 표시돼요'}
               className="ta-input w-full"
-              style={{ height: 'auto', minHeight: 72, paddingTop: 8, paddingBottom: 8, resize: 'vertical' }}
+              style={{ height: 'auto', minHeight: 96, paddingTop: 8, paddingBottom: 8, resize: 'vertical' }}
             />
           </label>
 
