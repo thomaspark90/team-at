@@ -63,6 +63,7 @@ export async function POST(req: Request) {
     pours: Array.isArray(body.pours) && body.pours.length > 0 ? body.pours : null,
     tempC: body.tempC ?? null,
     grind: body.grind ?? '',
+    grindMesh: body.grindMesh ?? null,
     totalTime: body.totalTime ?? '',
     notes: body.notes ?? '',
     presetId: body.presetId ?? null,

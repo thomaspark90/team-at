@@ -14,7 +14,7 @@ export interface DripPreset {
   dripper: string;
   defaultDoseG: number;
   tempC: number | null; // 출처에 없으면 null
-  grind: string;
+  grindMesh: number | null; // 분쇄도 수치 (EK43 양재천 기준, 0.1 단위)
   totalTime: string; // 드리퍼 분리 시각. 출처에 없으면 ''
   steps: PresetStep[];
   extra?: (scale: (g: number) => number) => string; // 가수 등 추가 안내
@@ -29,7 +29,7 @@ export const DRIP_PRESETS: DripPreset[] = [
     dripper: '',
     defaultDoseG: 22,
     tempC: 92, // 기본 92°C — 에티오피아·케냐·페루·게이샤는 93으로 조정 (extra 안내)
-    grind: 'EK43(양재천) 6.0~7.0',
+    grindMesh: 6.5, // 권장 6.0~7.0의 가운데
     totalTime: '3:30',
     steps: [
       { at: '', water: 35, label: '뜸' },
@@ -39,7 +39,7 @@ export const DRIP_PRESETS: DripPreset[] = [
       { at: '', water: 35, label: '4차' },
     ],
     extra: () =>
-      '물온도 — 과테말라·브라질·콜롬비아·온두라스 92°C / 에티오피아·케냐·페루·게이샤 93°C.\n1~4차를 3차로 줄여 푸어링당 더 많이 부으며 빠르게 끝내기도.',
+      '분쇄도(EK43 양재천) 권장 6.0~7.0.\n물온도 — 과테말라·브라질·콜롬비아·온두라스 92°C / 에티오피아·케냐·페루·게이샤 93°C.\n1~4차를 3차로 줄여 푸어링당 더 많이 부으며 빠르게 끝내기도.',
   },
   {
     id: 'house-hot',
@@ -48,7 +48,7 @@ export const DRIP_PRESETS: DripPreset[] = [
     dripper: '',
     defaultDoseG: 18,
     tempC: 92, // 기본 92°C — 에티오피아·케냐·페루·게이샤는 93으로 조정 (extra 안내)
-    grind: 'EK43(양재천) 6.5~7.5',
+    grindMesh: 7, // 권장 6.5~7.5의 가운데
     totalTime: '3:30',
     steps: [
       { at: '', water: 30, label: '뜸' },
@@ -58,7 +58,7 @@ export const DRIP_PRESETS: DripPreset[] = [
       { at: '', water: 60, label: '4차' },
     ],
     extra: () =>
-      '물온도 — 과테말라·브라질·콜롬비아·온두라스 92°C / 에티오피아·케냐·페루·게이샤 93°C.\n1~4차를 3차로 줄여 푸어링당 더 많이 부으며 빠르게 끝내기도.',
+      '분쇄도(EK43 양재천) 권장 6.5~7.5.\n물온도 — 과테말라·브라질·콜롬비아·온두라스 92°C / 에티오피아·케냐·페루·게이샤 93°C.\n1~4차를 3차로 줄여 푸어링당 더 많이 부으며 빠르게 끝내기도.',
   },
 ];
 
@@ -78,7 +78,7 @@ export function applyPreset(p: DripPreset) {
     doseG: p.defaultDoseG,
     waterG,
     tempC: p.tempC,
-    grind: p.grind,
+    grindMesh: p.grindMesh,
     totalTime: p.totalTime,
     pours,
     notes: [...actionLines, extra].filter(Boolean).join('\n'),

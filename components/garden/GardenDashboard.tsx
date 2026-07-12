@@ -26,6 +26,11 @@ const TIME_OPTS = Array.from({ length: 10 }, (_, i) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 });
 
+// 분쇄도 (EK43 양재천 기준) — 0.1 단위 스테퍼, 4.0~9.0
+const MESH_MIN = 4;
+const MESH_MAX = 9;
+const meshFmt = (n: number) => n.toFixed(1);
+
 // 프리셋/구 기록 값이 범위 밖이면 그 값도 선택지에 포함해 표기 유지
 const withCur = (opts: number[], cur: number | null) =>
   cur != null && !opts.includes(cur) ? [...opts, cur].sort((a, b) => a - b) : opts;
@@ -33,6 +38,17 @@ const withCurStr = (opts: string[], cur: string) =>
   cur && !opts.includes(cur) ? [...opts, cur].sort() : opts;
 
 const pourName = (p: PourStep, i: number) => p.label ?? (i === 0 ? '뜸' : `${i}차`);
+
+const meshBtn: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontSize: 16,
+  lineHeight: 1,
+  padding: '0 14px',
+  height: '100%',
+  fontFamily: 'inherit',
+};
 
 // 비율 표기 (1 : n.n) — 도징·물량 둘 다 있을 때만
 const ratioOf = (doseG: number | null | undefined, waterG: number | null | undefined) =>
@@ -46,11 +62,17 @@ interface Draft {
   presetId: string;
   doseG: string;
   tempC: string;
-  grind: string;
+  grindMesh: string; // '' = 미설정, 그 외 '6.5' 형태
   totalTime: string;
   pours: PourStep[];
   notes: string;
 }
+
+// 구 기록의 분쇄도 텍스트(예: 'EK43(양재천) 6.5')에서 수치만 추출
+const meshFromLegacy = (grind: string) => {
+  const m = grind.match(/\d+(\.\d+)?/);
+  return m ? m[0] : '';
+};
 
 const draftFromRecipe = (r: DripRecipe): Draft => ({
   beanKey: r.beanKey,
@@ -59,7 +81,7 @@ const draftFromRecipe = (r: DripRecipe): Draft => ({
   presetId: r.presetId ?? '',
   doseG: r.doseG != null ? String(r.doseG) : '',
   tempC: r.tempC != null ? String(r.tempC) : '',
-  grind: r.grind,
+  grindMesh: r.grindMesh != null ? meshFmt(r.grindMesh) : meshFromLegacy(r.grind),
   totalTime: r.totalTime,
   // 푸어링 없이 총 물량만 있는 구 기록은 한 단계로 변환해 표시
   pours: r.pours ?? (r.waterG != null ? [{ water: r.waterG, label: '총 물량' }] : []),
@@ -78,7 +100,7 @@ const presetDraft = (beanKey: string, bean: string, brewType: BrewType): Draft =
     presetId,
     doseG: String(a.doseG),
     tempC: a.tempC != null ? String(a.tempC) : '',
-    grind: a.grind,
+    grindMesh: a.grindMesh != null ? meshFmt(a.grindMesh) : '',
     totalTime: a.totalTime,
     pours: a.pours,
     notes: a.notes,
@@ -175,7 +197,8 @@ export default function GardenDashboard() {
         waterG: waterG > 0 ? waterG : null,
         pours: draft.pours,
         tempC: num(draft.tempC),
-        grind: draft.grind.trim(),
+        grind: '',
+        grindMesh: num(draft.grindMesh),
         totalTime: draft.totalTime,
         notes: draft.notes.trim(),
         presetId: draft.presetId || null,
@@ -200,6 +223,16 @@ export default function GardenDashboard() {
   // 매장 기준 레시피로 초기화 (현재 타입 기준)
   const resetToHouse = () =>
     setDraft((d) => (d ? presetDraft(d.beanKey, d.bean, d.brewType) : d));
+
+  // 분쇄도 ±0.1 — 미설정이면 타입별 매장 기준값에서 시작
+  const adjMesh = (delta: number) =>
+    setDraft((d) => {
+      if (!d) return d;
+      const cur = Number(d.grindMesh);
+      const base = d.grindMesh && Number.isFinite(cur) ? cur : d.brewType === 'ice' ? 6.5 : 7;
+      const next = Math.min(MESH_MAX, Math.max(MESH_MIN, Math.round((base + (d.grindMesh ? delta : 0)) * 10) / 10));
+      return { ...d, grindMesh: meshFmt(next) };
+    });
 
   // ---- 푸어링 단계 조작 ----
   const setPour = (i: number, water: number) =>
@@ -277,16 +310,20 @@ export default function GardenDashboard() {
               onChange={(v) => setD('totalTime', v)}
               options={withCurStr(TIME_OPTS, draft.totalTime)}
             />
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-              <span className="text-[11px] text-muted-foreground">분쇄도 (Mesh)</span>
-              <input
-                type="text"
-                value={draft.grind}
-                onChange={(e) => setD('grind', e.target.value)}
-                placeholder="예: EK43(양재천) 6.0~7.0"
-                className="ta-input w-full"
-              />
-            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+              <span className="text-[11px] text-muted-foreground">분쇄도 (Mesh · EK43 양재천)</span>
+              <div className="rounded-md border border-input" style={{ display: 'flex', alignItems: 'center', height: 36 }}>
+                <button onClick={() => adjMesh(-0.1)} className="text-muted-foreground hover:text-foreground" style={meshBtn} title="0.1 곱게">
+                  ‹
+                </button>
+                <span className="tabular text-[13px] text-foreground" style={{ flex: 1, textAlign: 'center' }}>
+                  {draft.grindMesh || '—'}
+                </span>
+                <button onClick={() => adjMesh(0.1)} className="text-muted-foreground hover:text-foreground" style={meshBtn} title="0.1 굵게">
+                  ›
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* 푸어링 단계 — 물 투입량 30~60g, 5g 단위 드랍다운 */}
@@ -428,7 +465,7 @@ export default function GardenDashboard() {
                               <SpecRow label="도징량" value={r.doseG != null ? `${r.doseG}g` : null} />
                               <SpecRow label="총 물량" value={r.waterG != null ? `${r.waterG}g` : null} />
                               <SpecRow label="물 온도" value={r.tempC != null ? `${r.tempC}°C` : null} />
-                              <SpecRow label="분쇄도" value={r.grind || null} />
+                              <SpecRow label="분쇄도" value={r.grindMesh != null ? `EK43(양재천) ${meshFmt(r.grindMesh)}` : r.grind || null} />
                               <SpecRow label="추출 시간(최대)" value={r.totalTime || null} />
                             </div>
 

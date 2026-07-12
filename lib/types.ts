@@ -68,7 +68,8 @@ export interface DripRecipe {
   waterG: number | null; // 총 물량(ml) — 푸어링이 있으면 그 합
   pours?: PourStep[] | null; // 푸어링 단계 (구 기록엔 없음)
   tempC: number | null; // 물 온도(°C)
-  grind: string; // 분쇄도 (예: EK43 9.5, 중간)
+  grind: string; // 분쇄도 텍스트 (구 기록 호환 — grindMesh가 있으면 그쪽 우선)
+  grindMesh?: number | null; // 분쇄도 수치 (EK43 양재천 기준, 0.1 단위)
   totalTime: string; // 총 추출 시간 (예: 2:30)
   notes: string; // 푸어링/메모
   presetId?: string | null; // 적용한 프리셋 (lib/drip-presets.ts) — 직접 입력이면 null
