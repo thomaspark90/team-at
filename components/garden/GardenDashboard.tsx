@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { BeanMeta, BeanStatus, BrewType, DripRecipe, DripRecipeSnapshot, PourStep, PurchaseRecord } from '@/lib/types';
+import type { BeanMeta, BrewType, DripRecipe, DripRecipeSnapshot, PourStep, PurchaseRecord, StoreId } from '@/lib/types';
+import { STORES } from '@/lib/types';
 import { costPerCup, normalize } from '@/lib/pricing';
 import { applyPreset, presetById } from '@/lib/drip-presets';
 
@@ -149,6 +150,8 @@ export default function GardenDashboard() {
   const [openHistory, setOpenHistory] = useState<Set<string>>(new Set());
   // 소진 원두 아카이브 펼침
   const [soldOpen, setSoldOpen] = useState(false);
+  // 소진 버튼 → 지점 선택 중인 원두
+  const [soldPicker, setSoldPicker] = useState<string | null>(null);
 
   const refresh = async () => {
     const [pRes, rRes, bRes] = await Promise.all([
@@ -195,19 +198,28 @@ export default function GardenDashboard() {
     () => new Map(beanMetas.map((b) => [b.beanKey, b.tasting])),
     [beanMetas]
   );
-  const statusByBean = useMemo(
-    () => new Map(beanMetas.map((b) => [b.beanKey, b.status ?? 'active'])),
+  // 지점별 소진 상태 — 구버전 status=soldout은 전 지점 소진으로 해석
+  const soldByBean = useMemo(
+    () =>
+      new Map(
+        beanMetas.map((b) => [
+          b.beanKey,
+          b.soldoutStores ?? (b.status === 'soldout' ? STORES.map((s) => s.id) : []),
+        ])
+      ),
     [beanMetas]
   );
+  const soldStoresOf = (beanKey: string): StoreId[] => soldByBean.get(beanKey) ?? [];
+  const isFullySold = (beanKey: string) => soldStoresOf(beanKey).length >= STORES.length;
 
-  // 판매 중 / 소진 원두 분리 — 대시보드엔 판매 중만, 소진은 접힌 아카이브로
+  // 판매 중 / 전 지점 소진 분리 — 대시보드엔 판매 중(일부 지점 소진 포함), 전 지점 소진은 접힌 아카이브로
   const activeGroups = useMemo(
-    () => beanGroups.filter((g) => statusByBean.get(g.beanKey) !== 'soldout'),
-    [beanGroups, statusByBean]
+    () => beanGroups.filter((g) => (soldByBean.get(g.beanKey) ?? []).length < STORES.length),
+    [beanGroups, soldByBean]
   );
   const soldGroups = useMemo(
-    () => beanGroups.filter((g) => statusByBean.get(g.beanKey) === 'soldout'),
-    [beanGroups, statusByBean]
+    () => beanGroups.filter((g) => (soldByBean.get(g.beanKey) ?? []).length >= STORES.length),
+    [beanGroups, soldByBean]
   );
 
   // 발주 기록엔 있지만 레시피가 하나도 없는 원두
@@ -271,12 +283,13 @@ export default function GardenDashboard() {
     setTastingSaving(false);
   };
 
-  // 판매 상태 변경 — 소진 처리 / 판매 재개
-  const setStatus = async (beanKey: string, bean: string, status: BeanStatus) => {
+  // 지점별 소진 상태 저장 — 빈 배열이면 전체 판매 재개
+  const setSoldStores = async (beanKey: string, bean: string, stores: StoreId[]) => {
+    setSoldPicker(null);
     await fetch('/api/garden-beans', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ beanKey, bean, status }),
+      body: JSON.stringify({ beanKey, bean, soldoutStores: stores }),
     });
     refresh();
   };
@@ -366,30 +379,69 @@ export default function GardenDashboard() {
   // 원두 카드 한 장 — 판매 중 그리드와 소진 아카이브에서 공용
   const renderBeanCard = (g: BeanGroup) => {
     const latest = latestByBean.get(g.beanKey);
-    const isSold = statusByBean.get(g.beanKey) === 'soldout';
+    const sold = soldStoresOf(g.beanKey);
+    const fullySold = isFullySold(g.beanKey);
     return (
-      <div key={g.beanKey} className="rounded-md border border-border" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', opacity: isSold ? 0.8 : 1 }}>
-        {/* 원두명 헤더 — muted 배경 밴드, 테이스팅 노트 + 판매 상태 토글 */}
+      <div key={g.beanKey} className="rounded-md border border-border" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', opacity: fullySold ? 0.8 : 1 }}>
+        {/* 원두명 헤더 — muted 배경 밴드, 테이스팅 노트 + 지점별 소진 관리 */}
         <div className="bg-muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 16px', borderBottom: '1px solid hsl(var(--border))' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
             <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {g.bean}
             </span>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexShrink: 0 }}>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
               {latest?.chosenPrice != null && (
                 // 책정 판매가 / 재료비율(잔당 재료비 ÷ 판매가)
                 <span className="tabular text-[13px] text-muted-foreground">
                   {won(latest.chosenPrice)} / {Math.round((latest.costPerCup / latest.chosenPrice) * 100)}%
                 </span>
               )}
-              <button
-                onClick={() => setStatus(g.beanKey, g.bean, isSold ? 'active' : 'soldout')}
-                className="text-[11px] text-muted-foreground hover:text-foreground"
-                style={ghostBtn}
-                title={isSold ? '판매 중으로 되돌리기' : '소진 처리 — 아래 소진 원두로 이동'}
-              >
-                {isSold ? '판매 재개' : '소진'}
-              </button>
+              {/* 소진된 지점 칩 — 누르면 그 지점 판매 재개 */}
+              {STORES.filter((s) => sold.includes(s.id)).map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setSoldStores(g.beanKey, g.bean, sold.filter((id) => id !== s.id))}
+                  className="rounded-sm border text-[11px]"
+                  style={{ ...ghostBtn, padding: '0 6px', borderColor: 'rgba(220, 38, 38, 0.4)', color: '#dc2626' }}
+                  title={`${s.label} 판매 재개`}
+                >
+                  {s.short} 소진 ×
+                </button>
+              ))}
+              {/* 소진 → 지점 선택 (한 번 더 눌러 특정) */}
+              {soldPicker === g.beanKey ? (
+                <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                  {STORES.filter((s) => !sold.includes(s.id)).map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSoldStores(g.beanKey, g.bean, [...sold, s.id])}
+                      className="ta-btn"
+                      style={{ height: 24, paddingLeft: 8, paddingRight: 8, fontSize: 11 }}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setSoldPicker(null)}
+                    className="text-muted-foreground hover:text-foreground"
+                    style={{ ...ghostBtn, fontSize: 13 }}
+                    title="취소"
+                  >
+                    ×
+                  </button>
+                </span>
+              ) : (
+                sold.length < STORES.length && (
+                  <button
+                    onClick={() => setSoldPicker(g.beanKey)}
+                    className="text-[11px] text-muted-foreground hover:text-foreground"
+                    style={ghostBtn}
+                    title="소진 처리할 지점 선택"
+                  >
+                    소진
+                  </button>
+                )
+              )}
             </span>
           </div>
           {/* 테이스팅 노트 — 원두 공통(ICE/HOT), 클릭해서 인라인 편집 */}

@@ -87,12 +87,20 @@ export interface RecipeStore {
 
 export type BeanStatus = 'active' | 'soldout';
 
-// 원두 단위 메타 — ICE/HOT 공통 정보 (테이스팅 노트·판매 상태)
+// 지점 — 소진은 지점 단위로 관리
+export type StoreId = 'pangyo' | 'yangjae';
+export const STORES: { id: StoreId; label: string; short: string }[] = [
+  { id: 'pangyo', label: '판교점', short: '판교' },
+  { id: 'yangjae', label: '양재천점', short: '양재천' },
+];
+
+// 원두 단위 메타 — ICE/HOT 공통 정보 (테이스팅 노트·지점별 소진)
 export interface BeanMeta {
   beanKey: string; // normalize(원두명) — upsert 키
   bean: string; // 표시용 원두명
   tasting: string; // 테이스팅 노트 (산미·단맛·향 표현)
-  status?: BeanStatus; // 없으면 active (판매 중)
+  soldoutStores?: StoreId[]; // 소진된 지점 목록 (모든 지점 소진 시 아카이브)
+  status?: BeanStatus; // 구버전 호환 — soldout이면 전 지점 소진으로 해석
   updatedAt: string;
   updatedBy?: string;
 }

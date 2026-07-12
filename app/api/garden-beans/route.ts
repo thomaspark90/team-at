@@ -1,6 +1,7 @@
 import { get, put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
-import type { BeanMeta, BeanMetaStore } from '@/lib/types';
+import type { BeanMeta, BeanMetaStore, StoreId } from '@/lib/types';
+import { STORES } from '@/lib/types';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 
@@ -37,8 +38,13 @@ export async function GET() {
   return NextResponse.json(store.beans);
 }
 
-// 원두 메타 업서트: { beanKey, bean, tasting?, status? } — 안 보낸 필드는 기존 값 유지.
-// 노트도 없고 판매 중(active)이면 엔트리 자체를 제거.
+const STORE_IDS = STORES.map((s) => s.id);
+// 구버전 status=soldout은 전 지점 소진으로 해석
+const soldOf = (b?: BeanMeta): StoreId[] =>
+  b?.soldoutStores ?? (b?.status === 'soldout' ? [...STORE_IDS] : []);
+
+// 원두 메타 업서트: { beanKey, bean, tasting?, soldoutStores? } — 안 보낸 필드는 기존 값 유지.
+// 노트도 없고 소진 지점도 없으면 엔트리 자체를 제거.
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -54,15 +60,16 @@ export async function POST(req: Request) {
   const store = await readStore();
   const prev = store.beans.find((b) => b.beanKey === body.beanKey);
   const tasting = body.tasting !== undefined ? String(body.tasting).trim() : prev?.tasting ?? '';
-  const status =
-    body.status === 'soldout' || body.status === 'active' ? body.status : prev?.status ?? 'active';
+  const soldoutStores = Array.isArray(body.soldoutStores)
+    ? (body.soldoutStores.filter((s: unknown) => STORE_IDS.includes(s as StoreId)) as StoreId[])
+    : soldOf(prev);
   const rest = store.beans.filter((b) => b.beanKey !== body.beanKey);
-  if (tasting || status === 'soldout') {
+  if (tasting || soldoutStores.length > 0) {
     const meta: BeanMeta = {
       beanKey: body.beanKey,
       bean: body.bean,
       tasting,
-      status,
+      soldoutStores,
       updatedAt: new Date().toISOString(),
       updatedBy: user.email ?? '',
     };
@@ -71,15 +78,18 @@ export async function POST(req: Request) {
     store.beans = rest;
   }
   await writeStore(store);
+  const soldLabels = STORES.filter((s) => soldoutStores.includes(s.id)).map((s) => s.label);
   await logActivity(
     supabase,
     user,
-    body.status !== undefined
-      ? `가든서비스 원두 ${status === 'soldout' ? '소진 처리' : '판매 재개'}`
+    body.soldoutStores !== undefined
+      ? '가든서비스 원두 소진 상태 변경'
       : tasting
         ? '가든서비스 테이스팅 노트 저장'
         : '가든서비스 테이스팅 노트 삭제',
-    body.bean
+    body.soldoutStores !== undefined
+      ? `${body.bean} · 소진 ${soldLabels.length ? soldLabels.join('·') : '없음(전체 판매 중)'}`
+      : body.bean
   );
   return NextResponse.json({ ok: true });
 }
