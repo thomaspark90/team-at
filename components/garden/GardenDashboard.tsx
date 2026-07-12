@@ -507,11 +507,20 @@ export default function GardenDashboard() {
   );
 }
 
+// ICE = 파란 배지·검정 글자 / HOT = 빨간 배지·흰 글자 (라이트/다크 공통 리터럴)
 function BrewBadge({ bt }: { bt: BrewType }) {
+  const ice = bt === 'ice';
   return (
     <span
-      className="rounded-sm border border-border text-[10px] text-muted-foreground"
-      style={{ padding: '1px 6px', letterSpacing: '0.05em', flexShrink: 0 }}
+      className="rounded-sm text-[10px]"
+      style={{
+        padding: '1px 6px',
+        letterSpacing: '0.05em',
+        flexShrink: 0,
+        fontWeight: 500,
+        backgroundColor: ice ? '#3b82f6' : '#dc2626',
+        color: ice ? '#000000' : '#ffffff',
+      }}
     >
       {bt.toUpperCase()}
     </span>
