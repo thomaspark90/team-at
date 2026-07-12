@@ -21,7 +21,7 @@ export interface BlobItem {
 
 // ---- Garden Service (드립 판매가 추정) ----
 
-// 산식 설정값. 시트 기본값과 동일 (구매용량 1000g / 로스율제외 90% / 투입량 19g / 배수 4~5.5)
+// 산식 설정값 (구매용량 1000g / 로스율제외 90% / 투입량 20g=ICE·HOT 평균 / 배수 4~5.5)
 export interface PricingSettings {
   capacityG: number; // 구매 용량(g)
   yieldRate: number; // 로스율 제외 비율 (0~1)

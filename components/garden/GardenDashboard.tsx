@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { BrewType, DripRecipe, PourStep, PurchaseRecord } from '@/lib/types';
-import { normalize } from '@/lib/pricing';
+import { costPerCup, normalize } from '@/lib/pricing';
 import { applyPreset, presetById } from '@/lib/drip-presets';
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
@@ -436,6 +436,11 @@ export default function GardenDashboard() {
                   <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {BREW_TYPES.map((bt, idx) => {
                     const r = g[bt];
+                    // 이 레시피 도징량 기준 잔당 재료비 (최신 발주가의 g당 원가 × 도징)
+                    const matCost =
+                      r && r.doseG != null && latest
+                        ? costPerCup(latest.purchasePrice, { ...latest.settings, doseG: r.doseG })
+                        : null;
                     return (
                       <div key={bt} style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: idx > 0 ? '1px solid hsl(var(--border))' : 'none', paddingTop: idx > 0 ? 12 : 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -481,6 +486,18 @@ export default function GardenDashboard() {
                               <SpecRow label="물 온도" value={r.tempC != null ? `${r.tempC}°C` : null} />
                               <SpecRow label="분쇄도" value={r.grindMesh != null ? `EK43(양재천) ${meshFmt(r.grindMesh)}` : r.grind || null} />
                               <SpecRow label="추출 시간(최대)" value={r.totalTime || null} />
+                              <SpecRow
+                                label="재료비"
+                                value={
+                                  matCost != null
+                                    ? `${won(matCost)}${
+                                        latest?.chosenPrice != null
+                                          ? ` / ${Math.round((matCost / latest.chosenPrice) * 100)}%`
+                                          : ''
+                                      }`
+                                    : null
+                                }
+                              />
                             </div>
 
                             {r.pours && r.pours.length > 0 && (
