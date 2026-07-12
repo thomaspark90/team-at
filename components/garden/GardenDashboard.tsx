@@ -5,6 +5,7 @@ import type { BeanMeta, BrewType, DripRecipe, DripRecipeSnapshot, PourStep, Purc
 import { STORES } from '@/lib/types';
 import { costPerCup, normalize } from '@/lib/pricing';
 import { applyPreset, presetById } from '@/lib/drip-presets';
+import { flavorGradient } from '@/lib/flavor-colors';
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 const fmtDate = (iso: string) => {
@@ -383,8 +384,18 @@ export default function GardenDashboard() {
     const fullySold = isFullySold(g.beanKey);
     return (
       <div key={g.beanKey} className="rounded-md border border-border" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', opacity: fullySold ? 0.8 : 1 }}>
-        {/* 원두명 헤더 — muted 배경 밴드, 테이스팅 노트 + 지점별 소진 관리 */}
-        <div className="bg-muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 16px', borderBottom: '1px solid hsl(var(--border))' }}>
+        {/* 원두명 헤더 — muted 배경 밴드 + 테이스팅 노트 색 그라데이션(카운터컬처 플레이버 휠 차용) */}
+        <div
+          className="bg-muted"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            padding: '10px 16px',
+            borderBottom: '1px solid hsl(var(--border))',
+            backgroundImage: flavorGradient(tastingByBean.get(g.beanKey) ?? '') ?? undefined,
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
             <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {g.bean}
