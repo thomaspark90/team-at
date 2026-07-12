@@ -1,17 +1,6 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import TabNav from '@/components/TabNav';
-import GardenNav from '@/components/garden/GardenNav';
-import GardenDashboard from '@/components/garden/GardenDashboard';
-
-export default function GardenDashboardPage() {
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <GardenNav />
-      <div className="mx-auto max-w-[1100px] px-6 py-8">
-        <GardenDashboard />
-      </div>
-    </div>
-  );
+// 구 대시보드 URL — 대시보드가 가든 첫 화면(/garden)이 되면서 리다이렉트만 남김
+export default function GardenDashboardRedirect() {
+  redirect('/garden');
 }
