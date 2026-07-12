@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import type { BrewType, DripRecipe, PourStep } from '@/lib/types';
+import type { BeanMeta, BrewType, DripRecipe, PourStep, StoreId } from '@/lib/types';
+import { STORES } from '@/lib/types';
 import { normalize } from '@/lib/pricing';
+import { flavorGradient } from '@/lib/flavor-colors';
 
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
@@ -60,16 +62,50 @@ interface BeanGroup {
 
 export default function GardenRecipes() {
   const [recipes, setRecipes] = useState<DripRecipe[]>([]);
+  const [beanMetas, setBeanMetas] = useState<BeanMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string>('전체');
 
+  const refresh = async () => {
+    const [rRes, bRes] = await Promise.all([
+      fetch('/api/garden-recipes', { cache: 'no-store' }),
+      fetch('/api/garden-beans', { cache: 'no-store' }),
+    ]);
+    if (rRes.ok) setRecipes(await rRes.json());
+    if (bRes.ok) setBeanMetas(await bRes.json());
+    setLoading(false);
+  };
   useEffect(() => {
-    (async () => {
-      const res = await fetch('/api/garden-recipes', { cache: 'no-store' });
-      if (res.ok) setRecipes(await res.json());
-      setLoading(false);
-    })();
+    refresh();
   }, []);
+
+  const tastingByBean = useMemo(
+    () => new Map(beanMetas.map((b) => [b.beanKey, b.tasting])),
+    [beanMetas]
+  );
+
+  // 지점별 소진 상태 — 구버전 status=soldout은 전 지점 소진으로 해석
+  const soldByBean = useMemo(
+    () =>
+      new Map(
+        beanMetas.map((b) => [
+          b.beanKey,
+          b.soldoutStores ?? (b.status === 'soldout' ? STORES.map((s) => s.id) : []),
+        ])
+      ),
+    [beanMetas]
+  );
+
+  // 소진 지점 칩 클릭 → 그 지점 판매 재개 (대시보드로 복귀)
+  const reopenStore = async (beanKey: string, bean: string, storeId: StoreId) => {
+    const sold = soldByBean.get(beanKey) ?? [];
+    await fetch('/api/garden-beans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ beanKey, bean, soldoutStores: sold.filter((id) => id !== storeId) }),
+    });
+    refresh();
+  };
 
   // 국가 → 원두 그룹(ICE/HOT 슬롯) 정리
   const sections = useMemo(() => {
@@ -156,10 +192,41 @@ export default function GardenRecipes() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
             {groups.map((g) => (
               <div key={g.beanKey} className="rounded-md border border-border" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-                <div className="bg-muted" style={{ padding: '10px 16px', borderBottom: '1px solid hsl(var(--border))' }}>
-                  <span className="text-[15px] text-foreground" style={{ fontWeight: 500, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {g.bean}
-                  </span>
+                {/* 헤더 — 대시보드와 동일하게 테이스팅 노트 색 그라데이션(카운터컬처 플레이버 휠 차용) */}
+                <div
+                  className="bg-muted"
+                  style={{
+                    padding: '10px 16px',
+                    borderBottom: '1px solid hsl(var(--border))',
+                    backgroundImage: flavorGradient(tastingByBean.get(g.beanKey) ?? '') ?? undefined,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                    <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {g.bean}
+                    </span>
+                    {/* 소진 지점 칩 — 클릭하면 그 지점 판매 재개 */}
+                    {(soldByBean.get(g.beanKey) ?? []).length > 0 && (
+                      <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        {STORES.filter((s) => (soldByBean.get(g.beanKey) ?? []).includes(s.id)).map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={() => reopenStore(g.beanKey, g.bean, s.id)}
+                            className="rounded-sm border text-[11px]"
+                            style={{ background: 'none', cursor: 'pointer', padding: '0 6px', borderColor: 'rgba(220, 38, 38, 0.4)', color: '#dc2626' }}
+                            title={`${s.label} 판매 재개`}
+                          >
+                            {s.short} 소진 ×
+                          </button>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                  {tastingByBean.get(g.beanKey) && (
+                    <span className="text-[11px] text-muted-foreground" style={{ display: 'block', marginTop: 2 }}>
+                      {tastingByBean.get(g.beanKey)}
+                    </span>
+                  )}
                 </div>
                 <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {BREW_TYPES.map((bt, idx) => {

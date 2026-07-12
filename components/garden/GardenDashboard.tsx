@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import type { BeanMeta, BrewType, DripRecipe, DripRecipeSnapshot, PourStep, PurchaseRecord, StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import { costPerCup, normalize } from '@/lib/pricing';
@@ -149,9 +150,7 @@ export default function GardenDashboard() {
   const [tastingSaving, setTastingSaving] = useState(false);
   // 이력 펼침 상태 — `${beanKey}:${brewType}` 키
   const [openHistory, setOpenHistory] = useState<Set<string>>(new Set());
-  // 소진 원두 아카이브 펼침
-  const [soldOpen, setSoldOpen] = useState(false);
-  // 소진 버튼 → 지점 선택 중인 원두
+  // 판매중 버튼 → 소진 지점 선택 중인 원두
   const [soldPicker, setSoldPicker] = useState<string | null>(null);
 
   const refresh = async () => {
@@ -211,9 +210,8 @@ export default function GardenDashboard() {
     [beanMetas]
   );
   const soldStoresOf = (beanKey: string): StoreId[] => soldByBean.get(beanKey) ?? [];
-  const isFullySold = (beanKey: string) => soldStoresOf(beanKey).length >= STORES.length;
 
-  // 판매 중 / 전 지점 소진 분리 — 대시보드엔 판매 중(일부 지점 소진 포함), 전 지점 소진은 접힌 아카이브로
+  // 판매 중 / 전 지점 소진 분리 — 대시보드엔 판매 중만, 전 지점 소진은 필터 레시피 탭에서만 조회
   const activeGroups = useMemo(
     () => beanGroups.filter((g) => (soldByBean.get(g.beanKey) ?? []).length < STORES.length),
     [beanGroups, soldByBean]
@@ -377,13 +375,12 @@ export default function GardenDashboard() {
 
   const draftWater = draft ? draft.pours.reduce((a, s) => a + s.water, 0) : 0;
 
-  // 원두 카드 한 장 — 판매 중 그리드와 소진 아카이브에서 공용
+  // 원두 카드 한 장
   const renderBeanCard = (g: BeanGroup) => {
     const latest = latestByBean.get(g.beanKey);
     const sold = soldStoresOf(g.beanKey);
-    const fullySold = isFullySold(g.beanKey);
     return (
-      <div key={g.beanKey} className="rounded-md border border-border" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', opacity: fullySold ? 0.8 : 1 }}>
+      <div key={g.beanKey} className="rounded-md border border-border" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         {/* 원두명 헤더 — muted 배경 밴드 + 테이스팅 노트 색 그라데이션(카운터컬처 플레이버 휠 차용) */}
         <div
           className="bg-muted"
@@ -400,13 +397,7 @@ export default function GardenDashboard() {
             <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {g.bean}
             </span>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
-              {latest?.chosenPrice != null && (
-                // 책정 판매가 / 재료비율(잔당 재료비 ÷ 판매가)
-                <span className="tabular text-[13px] text-muted-foreground">
-                  {won(latest.chosenPrice)} / {Math.round((latest.costPerCup / latest.chosenPrice) * 100)}%
-                </span>
-              )}
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
               {/* 소진된 지점 칩 — 누르면 그 지점 판매 재개 */}
               {STORES.filter((s) => sold.includes(s.id)).map((s) => (
                 <button
@@ -419,7 +410,7 @@ export default function GardenDashboard() {
                   {s.short} 소진 ×
                 </button>
               ))}
-              {/* 소진 → 지점 선택 (한 번 더 눌러 특정) */}
+              {/* 판매 상태 버튼 — 누르면 소진 처리할 지점 선택 */}
               {soldPicker === g.beanKey ? (
                 <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                   {STORES.filter((s) => !sold.includes(s.id)).map((s) => (
@@ -428,8 +419,9 @@ export default function GardenDashboard() {
                       onClick={() => setSoldStores(g.beanKey, g.bean, [...sold, s.id])}
                       className="ta-btn"
                       style={{ height: 24, paddingLeft: 8, paddingRight: 8, fontSize: 11 }}
+                      title={`${s.label} 소진 처리`}
                     >
-                      {s.label}
+                      {s.label} 소진
                     </button>
                   ))}
                   <button
@@ -442,53 +434,61 @@ export default function GardenDashboard() {
                   </button>
                 </span>
               ) : (
-                sold.length < STORES.length && (
-                  <button
-                    onClick={() => setSoldPicker(g.beanKey)}
-                    className="text-[11px] text-muted-foreground hover:text-foreground"
-                    style={ghostBtn}
-                    title="소진 처리할 지점 선택"
-                  >
-                    소진
-                  </button>
-                )
+                <button
+                  onClick={() => setSoldPicker(g.beanKey)}
+                  className="rounded-sm border border-border text-[11px] text-foreground hover:bg-accent"
+                  style={{ ...ghostBtn, padding: '1px 8px' }}
+                  title="소진 처리할 지점 선택"
+                >
+                  판매중
+                </button>
               )}
             </span>
           </div>
-          {/* 테이스팅 노트 — 원두 공통(ICE/HOT), 클릭해서 인라인 편집 */}
-          {tastingEdit?.beanKey === g.beanKey ? (
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input
-                type="text"
-                value={tastingEdit.value}
-                onChange={(e) => setTastingEdit((t) => (t ? { ...t, value: e.target.value } : t))}
-                onKeyDown={(e) => e.key === 'Enter' && saveTasting()}
-                placeholder="예: 자두 · 홍차 · 긴 단맛"
-                className="ta-input w-full"
-                style={{ height: 30, fontSize: 12.5 }}
-                autoFocus
-              />
-              <button onClick={saveTasting} disabled={tastingSaving} className="ta-btn" style={{ height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 11, flexShrink: 0 }}>
-                {tastingSaving ? '…' : '저장'}
-              </button>
-              <button
-                onClick={() => setTastingEdit(null)}
-                className="text-muted-foreground hover:text-foreground"
-                style={{ ...ghostBtn, fontSize: 13, flexShrink: 0 }}
-              >
-                ×
-              </button>
+          {/* 테이스팅 노트(좌) + 판매가/재료비율(우) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {tastingEdit?.beanKey === g.beanKey ? (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={tastingEdit.value}
+                    onChange={(e) => setTastingEdit((t) => (t ? { ...t, value: e.target.value } : t))}
+                    onKeyDown={(e) => e.key === 'Enter' && saveTasting()}
+                    placeholder="예: 자두 · 홍차 · 긴 단맛"
+                    className="ta-input w-full"
+                    style={{ height: 30, fontSize: 12.5 }}
+                    autoFocus
+                  />
+                  <button onClick={saveTasting} disabled={tastingSaving} className="ta-btn" style={{ height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 11, flexShrink: 0 }}>
+                    {tastingSaving ? '…' : '저장'}
+                  </button>
+                  <button
+                    onClick={() => setTastingEdit(null)}
+                    className="text-muted-foreground hover:text-foreground"
+                    style={{ ...ghostBtn, fontSize: 13, flexShrink: 0 }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setTastingEdit({ beanKey: g.beanKey, bean: g.bean, value: tastingByBean.get(g.beanKey) ?? '' })}
+                  className={`text-[11px] ${tastingByBean.get(g.beanKey) ? 'text-muted-foreground hover:text-foreground' : 'text-muted-foreground/60 hover:text-foreground'}`}
+                  style={{ ...ghostBtn, textAlign: 'left' }}
+                  title="테이스팅 노트 편집"
+                >
+                  {tastingByBean.get(g.beanKey) || '+ 테이스팅 노트'}
+                </button>
+              )}
             </div>
-          ) : (
-            <button
-              onClick={() => setTastingEdit({ beanKey: g.beanKey, bean: g.bean, value: tastingByBean.get(g.beanKey) ?? '' })}
-              className={`text-[11px] ${tastingByBean.get(g.beanKey) ? 'text-muted-foreground hover:text-foreground' : 'text-muted-foreground/60 hover:text-foreground'}`}
-              style={{ ...ghostBtn, textAlign: 'left' }}
-              title="테이스팅 노트 편집"
-            >
-              {tastingByBean.get(g.beanKey) || '+ 테이스팅 노트'}
-            </button>
-          )}
+            {latest?.chosenPrice != null && (
+              // 책정 판매가 / 재료비율(잔당 재료비 ÷ 판매가)
+              <span className="tabular text-[13px] text-muted-foreground" style={{ flexShrink: 0 }}>
+                {won(latest.chosenPrice)} / {Math.round((latest.costPerCup / latest.chosenPrice) * 100)}%
+              </span>
+            )}
+          </div>
         </div>
 
         <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -804,7 +804,7 @@ export default function GardenDashboard() {
             {loading
               ? '불러오는 중…'
               : soldGroups.length > 0
-                ? '판매 중인 원두가 없어요. 아래 소진 원두에서 판매를 재개하거나 새 레시피를 설정하세요.'
+                ? '판매 중인 원두가 없어요. 소진된 원두는 필터 레시피 탭에서 볼 수 있어요.'
                 : '아직 레시피가 설정된 원두가 없어요. 아래 원두에서 레시피를 설정해 보세요.'}
           </p>
         ) : (
@@ -812,25 +812,17 @@ export default function GardenDashboard() {
             {activeGroups.map(renderBeanCard)}
           </div>
         )}
+        {/* 전 지점 소진 원두는 대시보드에서 제외 — 필터 레시피 탭에서 조회·재개 */}
+        {soldGroups.length > 0 && (
+          <p className="text-[11px] text-muted-foreground" style={{ marginTop: 10 }}>
+            소진 원두 {soldGroups.length}종은{' '}
+            <Link href="/garden/recipes" className="underline hover:text-foreground">
+              필터 레시피
+            </Link>
+            에서 볼 수 있어요.
+          </p>
+        )}
       </div>
-
-      {/* 소진 원두 아카이브 — 접힌 상태로 보관, 판매 재개 가능 */}
-      {soldGroups.length > 0 && (
-        <div className="min-w-0">
-          <button
-            onClick={() => setSoldOpen((o) => !o)}
-            className="ta-label"
-            style={{ ...ghostBtn, marginBottom: soldOpen ? undefined : 0 }}
-          >
-            소진 원두 {soldGroups.length} {soldOpen ? '▴' : '▾'}
-          </button>
-          {soldOpen && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-              {soldGroups.map(renderBeanCard)}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* 레시피 미설정 원두 — 가격 세팅에서 저장한 원두 목록 */}
       {unsetBeans.length > 0 && (
