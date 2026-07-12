@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { DripRecipe, PourStep, PurchaseRecord } from '@/lib/types';
+import type { BrewType, DripRecipe, PourStep, PurchaseRecord } from '@/lib/types';
 import { normalize } from '@/lib/pricing';
-import { DRIP_PRESETS, applyPreset, presetById } from '@/lib/drip-presets';
+import { applyPreset, presetById } from '@/lib/drip-presets';
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 const fmtDate = (iso: string) => {
@@ -11,6 +11,11 @@ const fmtDate = (iso: string) => {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${String(d.getFullYear()).slice(2)}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
 };
+
+const BREW_TYPES: BrewType[] = ['ice', 'hot'];
+const btOf = (r: DripRecipe): BrewType => r.brewType ?? 'ice';
+const btLabel = (bt: BrewType) => bt.toUpperCase();
+const housePresetId = (bt: BrewType) => (bt === 'ice' ? 'house-ice' : 'house-hot');
 
 // ---- 드랍다운 선택지 ----
 const DOSE_OPTS = Array.from({ length: 9 }, (_, i) => 16 + i); // 도징량 16~24g (1g)
@@ -29,11 +34,16 @@ const withCurStr = (opts: string[], cur: string) =>
 
 const pourName = (p: PourStep, i: number) => p.label ?? (i === 0 ? '뜸' : `${i}차`);
 
+// 비율 표기 (1 : n.n) — 도징·물량 둘 다 있을 때만
+const ratioOf = (doseG: number | null | undefined, waterG: number | null | undefined) =>
+  doseG && waterG ? `1 : ${(waterG / doseG).toFixed(1).replace(/\.0$/, '')}` : null;
+
 // 레시피 편집 폼 상태 (셀렉트 값은 문자열, '' = 미설정)
 interface Draft {
   beanKey: string;
   bean: string;
-  presetId: string; // '' = 직접 설정
+  brewType: BrewType;
+  presetId: string;
   doseG: string;
   tempC: string;
   grind: string;
@@ -42,21 +52,10 @@ interface Draft {
   notes: string;
 }
 
-const emptyDraft = (beanKey: string, bean: string): Draft => ({
-  beanKey,
-  bean,
-  presetId: '',
-  doseG: '',
-  tempC: '',
-  grind: '',
-  totalTime: '',
-  pours: [],
-  notes: '',
-});
-
 const draftFromRecipe = (r: DripRecipe): Draft => ({
   beanKey: r.beanKey,
   bean: r.bean,
+  brewType: btOf(r),
   presetId: r.presetId ?? '',
   doseG: r.doseG != null ? String(r.doseG) : '',
   tempC: r.tempC != null ? String(r.tempC) : '',
@@ -67,14 +66,15 @@ const draftFromRecipe = (r: DripRecipe): Draft => ({
   notes: r.notes,
 });
 
-// 프리셋 값 그대로 채운 드래프트
-const presetDraft = (beanKey: string, bean: string, presetId: string): Draft => {
+// 새 레시피 — 해당 타입의 매장 기준 프리셋으로 채워서 시작
+const presetDraft = (beanKey: string, bean: string, brewType: BrewType): Draft => {
+  const presetId = housePresetId(brewType);
   const p = presetById(presetId);
-  if (!p) return emptyDraft(beanKey, bean);
-  const a = applyPreset(p);
+  const a = applyPreset(p!);
   return {
     beanKey,
     bean,
+    brewType,
     presetId,
     doseG: String(a.doseG),
     tempC: a.tempC != null ? String(a.tempC) : '',
@@ -84,6 +84,15 @@ const presetDraft = (beanKey: string, bean: string, presetId: string): Draft => 
     notes: a.notes,
   };
 };
+
+// 원두 하나 = ICE/HOT 레시피 슬롯 한 쌍
+interface BeanGroup {
+  beanKey: string;
+  bean: string;
+  ice: DripRecipe | null;
+  hot: DripRecipe | null;
+  latestUpdate: string;
+}
 
 export default function GardenDashboard() {
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
@@ -116,13 +125,22 @@ export default function GardenDashboard() {
     return m;
   }, [purchases]);
 
-  // 레시피가 설정된 원두 — 업데이트 최신순으로 대시보드에 노출
-  const recipeCards = useMemo(
-    () => recipes.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-    [recipes]
-  );
+  // 레시피가 하나라도 있는 원두 — ICE/HOT 슬롯으로 묶고 최신 업데이트순
+  const beanGroups = useMemo(() => {
+    const m = new Map<string, BeanGroup>();
+    for (const r of recipes) {
+      const g = m.get(r.beanKey) ?? { beanKey: r.beanKey, bean: r.bean, ice: null, hot: null, latestUpdate: '' };
+      g[btOf(r)] = r;
+      if (r.updatedAt.localeCompare(g.latestUpdate) > 0) {
+        g.latestUpdate = r.updatedAt;
+        g.bean = r.bean;
+      }
+      m.set(r.beanKey, g);
+    }
+    return Array.from(m.values()).sort((a, b) => b.latestUpdate.localeCompare(a.latestUpdate));
+  }, [recipes]);
 
-  // 발주 기록엔 있지만 아직 레시피가 없는 원두
+  // 발주 기록엔 있지만 레시피가 하나도 없는 원두
   const unsetBeans = useMemo(() => {
     const has = new Set(recipes.map((r) => r.beanKey));
     return Array.from(latestByBean.entries())
@@ -131,9 +149,11 @@ export default function GardenDashboard() {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [latestByBean, recipes]);
 
-  const openEditor = (beanKey: string, bean: string) => {
-    const existing = recipes.find((r) => r.beanKey === beanKey);
-    setDraft(existing ? draftFromRecipe(existing) : emptyDraft(beanKey, bean));
+  // 편집 열기 — 기존 레시피가 있으면 불러오고, 없으면 매장 기준 프리셋으로 시작
+  const openEditor = (beanKey: string, bean: string, brewType: BrewType) => {
+    const existing = recipes.find((r) => r.beanKey === beanKey && btOf(r) === brewType);
+    setDraft(existing ? draftFromRecipe(existing) : presetDraft(beanKey, bean, brewType));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const saveDraft = async () => {
@@ -149,6 +169,7 @@ export default function GardenDashboard() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         beanKey: draft.beanKey,
+        brewType: draft.brewType,
         bean: draft.bean,
         doseG: num(draft.doseG),
         waterG: waterG > 0 ? waterG : null,
@@ -165,33 +186,20 @@ export default function GardenDashboard() {
     setSaving(false);
   };
 
-  const deleteRecipe = async (beanKey: string) => {
+  const deleteRecipe = async (beanKey: string, brewType: BrewType) => {
     await fetch('/api/garden-recipes', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ beanKey }),
+      body: JSON.stringify({ beanKey, brewType }),
     });
     refresh();
   };
 
-  // 비율 표기 (1 : n.n) — 도징·물량 둘 다 있을 때만
-  const ratioOf = (doseG: number | null, waterG: number | null) =>
-    doseG && waterG ? `1 : ${(waterG / doseG).toFixed(1).replace(/\.0$/, '')}` : null;
-
   const setD = (key: keyof Draft, v: string) => setDraft((d) => (d ? { ...d, [key]: v } : d));
 
-  // 프리셋 선택 — 값 전체를 프리셋으로 교체 (이후 드랍다운으로 자유 조정)
-  const selectPreset = (id: string) =>
-    setDraft((d) => {
-      if (!d) return d;
-      return id ? presetDraft(d.beanKey, d.bean, id) : { ...d, presetId: '' };
-    });
-
-  // 미설정 원두 행의 드랍다운 — 프리셋 즉시 적용해 편집 폼 오픈
-  const pickForBean = (beanKey: string, bean: string, id: string) => {
-    setDraft(id === 'custom' ? emptyDraft(beanKey, bean) : presetDraft(beanKey, bean, id));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  // 매장 기준 레시피로 초기화 (현재 타입 기준)
+  const resetToHouse = () =>
+    setDraft((d) => (d ? presetDraft(d.beanKey, d.bean, d.brewType) : d));
 
   // ---- 푸어링 단계 조작 ----
   const setPour = (i: number, water: number) =>
@@ -216,19 +224,37 @@ export default function GardenDashboard() {
       {/* 레시피 편집 폼 — 설정/수정 클릭 시 상단에 노출 */}
       {draft && (
         <div className="ta-card bg-background min-w-0">
-          <p className="ta-label">{draft.bean} — 드립 레시피</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <p className="ta-label" style={{ marginBottom: 0 }}>
+              {draft.bean} — {btLabel(draft.brewType)} 레시피
+            </p>
+            <button
+              onClick={resetToHouse}
+              className="text-[11px] text-muted-foreground hover:text-foreground"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+              title={`${btLabel(draft.brewType)} 매장 기준 레시피로 되돌리기`}
+            >
+              매장 기준으로 초기화
+            </button>
+          </div>
 
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
-            <span className="text-[11px] text-muted-foreground">레시피 프리셋</span>
-            <select value={draft.presetId} onChange={(e) => selectPreset(e.target.value)} className="ta-input w-full" style={{ cursor: 'pointer' }}>
-              <option value="">직접 설정</option>
-              {DRIP_PRESETS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} — {p.source}
-                </option>
-              ))}
-            </select>
-          </label>
+          {/* ICE / HOT 전환 — 같은 원두의 다른 타입 레시피로 이동 */}
+          <div className="inline-flex gap-1 rounded-md border border-border p-1" style={{ margin: '12px 0' }}>
+            {BREW_TYPES.map((bt) => {
+              const on = draft.brewType === bt;
+              return (
+                <button
+                  key={bt}
+                  onClick={() => !on && openEditor(draft.beanKey, draft.bean, bt)}
+                  className={`rounded-sm px-3 py-1 text-[12px] transition-colors ${
+                    on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {btLabel(bt)}
+                </button>
+              );
+            })}
+          </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <SelField
@@ -326,7 +352,7 @@ export default function GardenDashboard() {
 
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             <button onClick={saveDraft} disabled={saving} className="ta-btn-primary" style={{ flex: 1 }}>
-              {saving ? '저장 중…' : '레시피 저장'}
+              {saving ? '저장 중…' : `${btLabel(draft.brewType)} 레시피 저장`}
             </button>
             <button onClick={() => setDraft(null)} className="ta-btn">
               취소
@@ -335,90 +361,111 @@ export default function GardenDashboard() {
         </div>
       )}
 
-      {/* 레시피 카드 — 레시피가 설정(업데이트)된 원두만, 최신 업데이트순 */}
+      {/* 원두 레시피 카드 — 원두 하나에 ICE/HOT 슬롯, 최신 업데이트순 */}
       <div className="ta-card bg-background min-w-0">
         <p className="ta-label">원두 레시피</p>
-        {recipeCards.length === 0 ? (
+        {beanGroups.length === 0 ? (
           <p className="text-[12px] text-muted-foreground">
             {loading ? '불러오는 중…' : '아직 레시피가 설정된 원두가 없어요. 아래 원두에서 레시피를 설정해 보세요.'}
           </p>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-            {recipeCards.map((r) => {
-              const latest = latestByBean.get(r.beanKey);
-              const ratio = ratioOf(r.doseG, r.waterG);
-              const preset = presetById(r.presetId);
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+            {beanGroups.map((g) => {
+              const latest = latestByBean.get(g.beanKey);
               return (
-                <div key={r.beanKey} className="rounded-md border border-border bg-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+                <div key={g.beanKey} className="rounded-md border border-border bg-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
                     <span className="text-[14px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {r.bean}
+                      {g.bean}
                     </span>
-                    {ratio && <span className="tabular text-[13px] text-foreground" style={{ flexShrink: 0 }}>{ratio}</span>}
-                  </div>
-                  {preset && (
-                    <p className="text-[11px] text-muted-foreground" style={{ margin: '-6px 0 0' }}>
-                      {preset.name} · {preset.source}
-                    </p>
-                  )}
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <SpecRow label="도징량" value={r.doseG != null ? `${r.doseG}g` : null} />
-                    <SpecRow label="총 물량" value={r.waterG != null ? `${r.waterG}g` : null} />
-                    <SpecRow label="물 온도" value={r.tempC != null ? `${r.tempC}°C` : null} />
-                    <SpecRow label="분쇄도" value={r.grind || null} />
-                    <SpecRow label="추출 시간(최대)" value={r.totalTime || null} />
-                    {latest?.chosenPrice != null && <SpecRow label="판매가" value={won(latest.chosenPrice)} />}
+                    {latest?.chosenPrice != null && (
+                      <span className="tabular text-[12px] text-muted-foreground" style={{ flexShrink: 0 }}>{won(latest.chosenPrice)}</span>
+                    )}
                   </div>
 
-                  {/* 푸어링 단계 — 단계별 투입량 / 누적 */}
-                  {r.pours && r.pours.length > 0 && (
-                    <div className="rounded-md border border-border" style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {r.pours.map((s, i) => {
-                        const cum = r.pours!.slice(0, i + 1).reduce((a, x) => a + x.water, 0);
-                        return (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11 }}>
-                            <span className="text-muted-foreground">
-                              {s.at ? `${s.at} ` : ''}
-                              {pourName(s, i)}
+                  {BREW_TYPES.map((bt, idx) => {
+                    const r = g[bt];
+                    return (
+                      <div key={bt} style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: idx > 0 ? '1px solid hsl(var(--border))' : 'none', paddingTop: idx > 0 ? 12 : 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                            <BrewBadge bt={bt} />
+                            {r && ratioOf(r.doseG, r.waterG) && (
+                              <span className="tabular text-[12px] text-foreground">{ratioOf(r.doseG, r.waterG)}</span>
+                            )}
+                          </span>
+                          {r ? (
+                            <span style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+                              <button
+                                onClick={() => openEditor(g.beanKey, g.bean, bt)}
+                                className="text-[11px] text-muted-foreground hover:text-foreground"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                              >
+                                수정
+                              </button>
+                              <button
+                                onClick={() => deleteRecipe(g.beanKey, bt)}
+                                className="text-[11px] text-muted-foreground hover:text-foreground"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                              >
+                                삭제
+                              </button>
                             </span>
-                            <span className="tabular text-foreground">
-                              {s.water}g <span className="text-muted-foreground">/ {cum}g</span>
+                          ) : (
+                            <button
+                              onClick={() => openEditor(g.beanKey, g.bean, bt)}
+                              className="ta-btn"
+                              style={{ height: 26, paddingLeft: 10, paddingRight: 10, fontSize: 11, flexShrink: 0 }}
+                            >
+                              {btLabel(bt)} 레시피 설정
+                            </button>
+                          )}
+                        </div>
+
+                        {r && (
+                          <>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                              <SpecRow label="도징량" value={r.doseG != null ? `${r.doseG}g` : null} />
+                              <SpecRow label="총 물량" value={r.waterG != null ? `${r.waterG}g` : null} />
+                              <SpecRow label="물 온도" value={r.tempC != null ? `${r.tempC}°C` : null} />
+                              <SpecRow label="분쇄도" value={r.grind || null} />
+                              <SpecRow label="추출 시간(최대)" value={r.totalTime || null} />
+                            </div>
+
+                            {r.pours && r.pours.length > 0 && (
+                              <div className="rounded-md border border-border" style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                {r.pours.map((s, i) => {
+                                  const cum = r.pours!.slice(0, i + 1).reduce((a, x) => a + x.water, 0);
+                                  return (
+                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11 }}>
+                                      <span className="text-muted-foreground">
+                                        {s.at ? `${s.at} ` : ''}
+                                        {pourName(s, i)}
+                                      </span>
+                                      <span className="tabular text-foreground">
+                                        {s.water}g <span className="text-muted-foreground">/ {cum}g</span>
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {r.notes && (
+                              <p className="text-[11px] text-muted-foreground" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                                {r.notes}
+                              </p>
+                            )}
+
+                            <span className="tabular text-[11px] text-muted-foreground">
+                              {fmtDate(r.updatedAt)}
+                              {r.updatedBy && ` · ${r.updatedBy.split('@')[0]}`}
                             </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {r.notes && (
-                    <p className="text-[11px] text-muted-foreground" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
-                      {r.notes}
-                    </p>
-                  )}
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 'auto', paddingTop: 4 }}>
-                    <span className="tabular text-[11px] text-muted-foreground">
-                      {fmtDate(r.updatedAt)}
-                      {r.updatedBy && ` · ${r.updatedBy.split('@')[0]}`}
-                    </span>
-                    <span style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
-                      <button
-                        onClick={() => openEditor(r.beanKey, r.bean)}
-                        className="text-[11px] text-muted-foreground hover:text-foreground"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                      >
-                        수정
-                      </button>
-                      <button
-                        onClick={() => deleteRecipe(r.beanKey)}
-                        className="text-[11px] text-muted-foreground hover:text-foreground"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                      >
-                        삭제
-                      </button>
-                    </span>
-                  </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
@@ -441,28 +488,33 @@ export default function GardenDashboard() {
                   {rec.chosenPrice != null && ` · ${won(rec.chosenPrice)}`}
                 </span>
                 <span style={{ flex: 1 }} />
-                <select
-                  value=""
-                  onChange={(e) => pickForBean(normalize(rec.bean), rec.bean, e.target.value)}
-                  className="ta-btn"
-                  style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 12, flexShrink: 0, cursor: 'pointer' }}
-                >
-                  <option value="" disabled>
-                    레시피 설정 ▾
-                  </option>
-                  {DRIP_PRESETS.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                  <option value="custom">직접 설정</option>
-                </select>
+                {BREW_TYPES.map((bt) => (
+                  <button
+                    key={bt}
+                    onClick={() => openEditor(normalize(rec.bean), rec.bean, bt)}
+                    className="ta-btn"
+                    style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 12, flexShrink: 0 }}
+                  >
+                    {btLabel(bt)} 설정
+                  </button>
+                ))}
               </div>
             ))}
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+function BrewBadge({ bt }: { bt: BrewType }) {
+  return (
+    <span
+      className="rounded-sm border border-border text-[10px] text-muted-foreground"
+      style={{ padding: '1px 6px', letterSpacing: '0.05em', flexShrink: 0 }}
+    >
+      {bt.toUpperCase()}
+    </span>
   );
 }
 

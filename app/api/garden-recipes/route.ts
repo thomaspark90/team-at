@@ -37,7 +37,9 @@ export async function GET() {
   return NextResponse.json(store.recipes);
 }
 
-// 레시피 저장(업서트): beanKey 기준 — { beanKey, bean, doseG, waterG, tempC, grind, totalTime, notes }
+const brewTypeOf = (v: unknown) => (v === 'hot' ? 'hot' : 'ice') as 'ice' | 'hot';
+
+// 레시피 저장(업서트): beanKey+brewType 기준 — { beanKey, brewType, bean, doseG, waterG, pours, tempC, grind, totalTime, notes }
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -51,8 +53,10 @@ export async function POST(req: Request) {
   }
 
   const store = await readStore();
+  const brewType = brewTypeOf(body.brewType);
   const recipe: DripRecipe = {
     beanKey: body.beanKey,
+    brewType,
     bean: body.bean,
     doseG: body.doseG ?? null,
     waterG: body.waterG ?? null,
@@ -65,14 +69,15 @@ export async function POST(req: Request) {
     updatedAt: new Date().toISOString(),
     updatedBy: user.email ?? '',
   };
-  const isNew = !store.recipes.some((r) => r.beanKey === recipe.beanKey);
-  store.recipes = [...store.recipes.filter((r) => r.beanKey !== recipe.beanKey), recipe];
+  const same = (r: DripRecipe) => r.beanKey === recipe.beanKey && brewTypeOf(r.brewType) === brewType;
+  const isNew = !store.recipes.some(same);
+  store.recipes = [...store.recipes.filter((r) => !same(r)), recipe];
   await writeStore(store);
   await logActivity(
     supabase,
     user,
     isNew ? '가든서비스 레시피 등록' : '가든서비스 레시피 수정',
-    `${recipe.bean}` +
+    `${recipe.bean} ${brewType.toUpperCase()}` +
       (recipe.doseG != null && recipe.waterG != null
         ? ` · ${recipe.doseG}g : ${recipe.waterG}ml`
         : '')
@@ -87,11 +92,18 @@ export async function DELETE(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
-  const { beanKey } = await req.json();
+  const { beanKey, brewType: bt } = await req.json();
+  const brewType = brewTypeOf(bt);
   const store = await readStore();
-  const removed = store.recipes.find((r) => r.beanKey === beanKey);
-  store.recipes = store.recipes.filter((r) => r.beanKey !== beanKey);
+  const same = (r: DripRecipe) => r.beanKey === beanKey && brewTypeOf(r.brewType) === brewType;
+  const removed = store.recipes.find(same);
+  store.recipes = store.recipes.filter((r) => !same(r));
   await writeStore(store);
-  await logActivity(supabase, user, '가든서비스 레시피 삭제', removed ? removed.bean : null);
+  await logActivity(
+    supabase,
+    user,
+    '가든서비스 레시피 삭제',
+    removed ? `${removed.bean} ${brewType.toUpperCase()}` : null
+  );
   return NextResponse.json({ ok: true });
 }

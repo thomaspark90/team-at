@@ -57,9 +57,12 @@ export interface PourStep {
   label?: string; // 표기 (뜸/1차/… 비면 순번으로 표시)
 }
 
-// 원두별 드립 레시피 — 발주 기록의 원두명(normalize 키)에 1:1로 붙는다
+export type BrewType = 'ice' | 'hot';
+
+// 원두별 드립 레시피 — 원두(normalize 키)마다 ICE/HOT 하나씩
 export interface DripRecipe {
-  beanKey: string; // normalize(bean) — upsert 키
+  beanKey: string; // normalize(bean) — brewType과 함께 upsert 키
+  brewType?: BrewType; // 없으면 ice (구 기록 호환)
   bean: string; // 표시용 원두명 (마지막 저장 시점 표기)
   doseG: number | null; // 투입량(g)
   waterG: number | null; // 총 물량(ml) — 푸어링이 있으면 그 합
