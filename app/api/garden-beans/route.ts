@@ -37,7 +37,8 @@ export async function GET() {
   return NextResponse.json(store.beans);
 }
 
-// 원두 메타 업서트: { beanKey, bean, tasting } — tasting 비우면 삭제
+// 원두 메타 업서트: { beanKey, bean, tasting?, status? } — 안 보낸 필드는 기존 값 유지.
+// 노트도 없고 판매 중(active)이면 엔트리 자체를 제거.
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -51,13 +52,17 @@ export async function POST(req: Request) {
   }
 
   const store = await readStore();
-  const tasting = (body.tasting ?? '').trim();
+  const prev = store.beans.find((b) => b.beanKey === body.beanKey);
+  const tasting = body.tasting !== undefined ? String(body.tasting).trim() : prev?.tasting ?? '';
+  const status =
+    body.status === 'soldout' || body.status === 'active' ? body.status : prev?.status ?? 'active';
   const rest = store.beans.filter((b) => b.beanKey !== body.beanKey);
-  if (tasting) {
+  if (tasting || status === 'soldout') {
     const meta: BeanMeta = {
       beanKey: body.beanKey,
       bean: body.bean,
       tasting,
+      status,
       updatedAt: new Date().toISOString(),
       updatedBy: user.email ?? '',
     };
@@ -69,7 +74,11 @@ export async function POST(req: Request) {
   await logActivity(
     supabase,
     user,
-    tasting ? '가든서비스 테이스팅 노트 저장' : '가든서비스 테이스팅 노트 삭제',
+    body.status !== undefined
+      ? `가든서비스 원두 ${status === 'soldout' ? '소진 처리' : '판매 재개'}`
+      : tasting
+        ? '가든서비스 테이스팅 노트 저장'
+        : '가든서비스 테이스팅 노트 삭제',
     body.bean
   );
   return NextResponse.json({ ok: true });

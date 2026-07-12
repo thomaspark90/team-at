@@ -85,11 +85,14 @@ export interface RecipeStore {
   recipes: DripRecipe[];
 }
 
-// 원두 단위 메타 — ICE/HOT 공통 정보 (테이스팅 노트 등)
+export type BeanStatus = 'active' | 'soldout';
+
+// 원두 단위 메타 — ICE/HOT 공통 정보 (테이스팅 노트·판매 상태)
 export interface BeanMeta {
   beanKey: string; // normalize(원두명) — upsert 키
   bean: string; // 표시용 원두명
   tasting: string; // 테이스팅 노트 (산미·단맛·향 표현)
+  status?: BeanStatus; // 없으면 active (판매 중)
   updatedAt: string;
   updatedBy?: string;
 }
