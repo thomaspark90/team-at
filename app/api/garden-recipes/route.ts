@@ -56,10 +56,12 @@ export async function POST(req: Request) {
     bean: body.bean,
     doseG: body.doseG ?? null,
     waterG: body.waterG ?? null,
+    pours: Array.isArray(body.pours) && body.pours.length > 0 ? body.pours : null,
     tempC: body.tempC ?? null,
     grind: body.grind ?? '',
     totalTime: body.totalTime ?? '',
     notes: body.notes ?? '',
+    presetId: body.presetId ?? null,
     updatedAt: new Date().toISOString(),
     updatedBy: user.email ?? '',
   };

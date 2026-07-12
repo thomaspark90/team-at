@@ -50,16 +50,25 @@ export interface PurchaseStore {
   records: PurchaseRecord[];
 }
 
+// 드립 레시피 푸어링 한 단계 (뜸 포함, 순서대로)
+export interface PourStep {
+  water: number; // 물 투입량(g)
+  at?: string; // 시작 시각 'm:ss' (프리셋에 있을 때만)
+  label?: string; // 표기 (뜸/1차/… 비면 순번으로 표시)
+}
+
 // 원두별 드립 레시피 — 발주 기록의 원두명(normalize 키)에 1:1로 붙는다
 export interface DripRecipe {
   beanKey: string; // normalize(bean) — upsert 키
   bean: string; // 표시용 원두명 (마지막 저장 시점 표기)
   doseG: number | null; // 투입량(g)
-  waterG: number | null; // 총 물량(ml)
+  waterG: number | null; // 총 물량(ml) — 푸어링이 있으면 그 합
+  pours?: PourStep[] | null; // 푸어링 단계 (구 기록엔 없음)
   tempC: number | null; // 물 온도(°C)
   grind: string; // 분쇄도 (예: EK43 9.5, 중간)
   totalTime: string; // 총 추출 시간 (예: 2:30)
   notes: string; // 푸어링/메모
+  presetId?: string | null; // 적용한 프리셋 (lib/drip-presets.ts) — 직접 입력이면 null
   updatedAt: string; // ISO — 대시보드 정렬 기준
   updatedBy?: string; // 저장한 사람 이메일
 }
