@@ -1,6 +1,6 @@
 import { get, put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
-import type { DripRecipe, RecipeStore } from '@/lib/types';
+import type { DripRecipe, DripRecipeSnapshot, RecipeStore } from '@/lib/types';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 
@@ -71,7 +71,15 @@ export async function POST(req: Request) {
     updatedBy: user.email ?? '',
   };
   const same = (r: DripRecipe) => r.beanKey === recipe.beanKey && brewTypeOf(r.brewType) === brewType;
-  const isNew = !store.recipes.some(same);
+  const prev = store.recipes.find(same);
+  const isNew = !prev;
+  // 이전 버전을 이력으로 보관 (최신순, 최대 20개)
+  if (prev) {
+    const { beanKey: _k, brewType: _t, bean: _b, history: _h, ...snap } = prev;
+    recipe.history = [snap as DripRecipeSnapshot, ...(prev.history ?? [])].slice(0, 20);
+  } else {
+    recipe.history = [];
+  }
   store.recipes = [...store.recipes.filter((r) => !same(r)), recipe];
   await writeStore(store);
   await logActivity(

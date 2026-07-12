@@ -75,10 +75,27 @@ export interface DripRecipe {
   presetId?: string | null; // 적용한 프리셋 (lib/drip-presets.ts) — 직접 입력이면 null
   updatedAt: string; // ISO — 대시보드 정렬 기준
   updatedBy?: string; // 저장한 사람 이메일
+  history?: DripRecipeSnapshot[]; // 이전 버전 (최신순, 최대 20개)
 }
+
+// 레시피 이전 버전 스냅샷 — 덮어쓰기 저장 시 직전 값을 보관 (자체 이력은 없음)
+export type DripRecipeSnapshot = Omit<DripRecipe, 'beanKey' | 'brewType' | 'bean' | 'history'>;
 
 export interface RecipeStore {
   recipes: DripRecipe[];
+}
+
+// 원두 단위 메타 — ICE/HOT 공통 정보 (테이스팅 노트 등)
+export interface BeanMeta {
+  beanKey: string; // normalize(원두명) — upsert 키
+  bean: string; // 표시용 원두명
+  tasting: string; // 테이스팅 노트 (산미·단맛·향 표현)
+  updatedAt: string;
+  updatedBy?: string;
+}
+
+export interface BeanMetaStore {
+  beans: BeanMeta[];
 }
 
 // 스탭밀 메뉴 아카이브 한 건 — 스토리 다운로드 시점의 메뉴 스냅샷

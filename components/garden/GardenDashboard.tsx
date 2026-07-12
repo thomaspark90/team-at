@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { BrewType, DripRecipe, PourStep, PurchaseRecord } from '@/lib/types';
+import type { BeanMeta, BrewType, DripRecipe, DripRecipeSnapshot, PourStep, PurchaseRecord } from '@/lib/types';
 import { costPerCup, normalize } from '@/lib/pricing';
 import { applyPreset, presetById } from '@/lib/drip-presets';
 
@@ -128,17 +128,25 @@ interface BeanGroup {
 export default function GardenDashboard() {
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [recipes, setRecipes] = useState<DripRecipe[]>([]);
+  const [beanMetas, setBeanMetas] = useState<BeanMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
+  // 테이스팅 노트 인라인 편집 상태 (원두 단위)
+  const [tastingEdit, setTastingEdit] = useState<{ beanKey: string; bean: string; value: string } | null>(null);
+  const [tastingSaving, setTastingSaving] = useState(false);
+  // 이력 펼침 상태 — `${beanKey}:${brewType}` 키
+  const [openHistory, setOpenHistory] = useState<Set<string>>(new Set());
 
   const refresh = async () => {
-    const [pRes, rRes] = await Promise.all([
+    const [pRes, rRes, bRes] = await Promise.all([
       fetch('/api/purchases', { cache: 'no-store' }),
       fetch('/api/garden-recipes', { cache: 'no-store' }),
+      fetch('/api/garden-beans', { cache: 'no-store' }),
     ]);
     if (pRes.ok) setPurchases(await pRes.json());
     if (rRes.ok) setRecipes(await rRes.json());
+    if (bRes.ok) setBeanMetas(await bRes.json());
     setLoading(false);
   };
   useEffect(() => {
@@ -171,6 +179,11 @@ export default function GardenDashboard() {
     return Array.from(m.values()).sort((a, b) => b.latestUpdate.localeCompare(a.latestUpdate));
   }, [recipes]);
 
+  const tastingByBean = useMemo(
+    () => new Map(beanMetas.map((b) => [b.beanKey, b.tasting])),
+    [beanMetas]
+  );
+
   // 발주 기록엔 있지만 레시피가 하나도 없는 원두
   const unsetBeans = useMemo(() => {
     const has = new Set(recipes.map((r) => r.beanKey));
@@ -185,6 +198,51 @@ export default function GardenDashboard() {
     const existing = recipes.find((r) => r.beanKey === beanKey && btOf(r) === brewType);
     setDraft(existing ? draftFromRecipe(existing) : presetDraft(beanKey, bean, brewType));
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // 이력 스냅샷을 편집 폼에 불러오기 — 저장을 눌러야 실제 복원됨
+  const restoreSnapshot = (beanKey: string, bean: string, brewType: BrewType, s: DripRecipeSnapshot) => {
+    setDraft(
+      draftFromRecipe({
+        beanKey,
+        bean,
+        brewType,
+        doseG: s.doseG,
+        waterG: s.waterG,
+        pours: s.pours,
+        tempC: s.tempC,
+        grind: s.grind,
+        grindMesh: s.grindMesh,
+        totalTime: s.totalTime,
+        notes: s.notes,
+        presetId: s.presetId,
+        updatedAt: s.updatedAt,
+        updatedBy: s.updatedBy,
+      })
+    );
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const toggleHistory = (key: string) =>
+    setOpenHistory((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  // 테이스팅 노트 저장 (비우면 삭제)
+  const saveTasting = async () => {
+    if (!tastingEdit || tastingSaving) return;
+    setTastingSaving(true);
+    await fetch('/api/garden-beans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ beanKey: tastingEdit.beanKey, bean: tastingEdit.bean, tasting: tastingEdit.value }),
+    });
+    await refresh();
+    setTastingEdit(null);
+    setTastingSaving(false);
   };
 
   const saveDraft = async () => {
@@ -420,16 +478,52 @@ export default function GardenDashboard() {
               const latest = latestByBean.get(g.beanKey);
               return (
                 <div key={g.beanKey} className="rounded-md border border-border" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-                  {/* 원두명 헤더 — muted 배경 밴드로 카드 본문과 구분 */}
-                  <div className="bg-muted" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '10px 16px', borderBottom: '1px solid hsl(var(--border))' }}>
-                    <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {g.bean}
-                    </span>
-                    {latest?.chosenPrice != null && (
-                      // 책정 판매가 / 재료비율(잔당 재료비 ÷ 판매가)
-                      <span className="tabular text-[13px] text-muted-foreground" style={{ flexShrink: 0 }}>
-                        {won(latest.chosenPrice)} / {Math.round((latest.costPerCup / latest.chosenPrice) * 100)}%
+                  {/* 원두명 헤더 — muted 배경 밴드로 카드 본문과 구분, 테이스팅 노트 포함 */}
+                  <div className="bg-muted" style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 16px', borderBottom: '1px solid hsl(var(--border))' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                      <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {g.bean}
                       </span>
+                      {latest?.chosenPrice != null && (
+                        // 책정 판매가 / 재료비율(잔당 재료비 ÷ 판매가)
+                        <span className="tabular text-[13px] text-muted-foreground" style={{ flexShrink: 0 }}>
+                          {won(latest.chosenPrice)} / {Math.round((latest.costPerCup / latest.chosenPrice) * 100)}%
+                        </span>
+                      )}
+                    </div>
+                    {/* 테이스팅 노트 — 원두 공통(ICE/HOT), 클릭해서 인라인 편집 */}
+                    {tastingEdit?.beanKey === g.beanKey ? (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          value={tastingEdit.value}
+                          onChange={(e) => setTastingEdit((t) => (t ? { ...t, value: e.target.value } : t))}
+                          onKeyDown={(e) => e.key === 'Enter' && saveTasting()}
+                          placeholder="예: 자두 · 홍차 · 긴 단맛"
+                          className="ta-input w-full"
+                          style={{ height: 30, fontSize: 12.5 }}
+                          autoFocus
+                        />
+                        <button onClick={saveTasting} disabled={tastingSaving} className="ta-btn" style={{ height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 11, flexShrink: 0 }}>
+                          {tastingSaving ? '…' : '저장'}
+                        </button>
+                        <button
+                          onClick={() => setTastingEdit(null)}
+                          className="text-muted-foreground hover:text-foreground"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, flexShrink: 0 }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setTastingEdit({ beanKey: g.beanKey, bean: g.bean, value: tastingByBean.get(g.beanKey) ?? '' })}
+                        className={`text-[11px] ${tastingByBean.get(g.beanKey) ? 'text-muted-foreground hover:text-foreground' : 'text-muted-foreground/60 hover:text-foreground'}`}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+                        title="테이스팅 노트 편집"
+                      >
+                        {tastingByBean.get(g.beanKey) || '+ 테이스팅 노트'}
+                      </button>
                     )}
                   </div>
 
@@ -525,10 +619,52 @@ export default function GardenDashboard() {
                               </p>
                             )}
 
-                            <span className="tabular text-[11px] text-muted-foreground">
-                              {fmtDate(r.updatedAt)}
-                              {r.updatedBy && ` · ${r.updatedBy.split('@')[0]}`}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                              <span className="tabular text-[11px] text-muted-foreground">
+                                {fmtDate(r.updatedAt)}
+                                {r.updatedBy && ` · ${r.updatedBy.split('@')[0]}`}
+                              </span>
+                              {(r.history?.length ?? 0) > 0 && (
+                                <button
+                                  onClick={() => toggleHistory(`${g.beanKey}:${bt}`)}
+                                  className="tabular text-[11px] text-muted-foreground hover:text-foreground"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                                >
+                                  이력 {r.history!.length} {openHistory.has(`${g.beanKey}:${bt}`) ? '▴' : '▾'}
+                                </button>
+                              )}
+                            </div>
+
+                            {/* 이전 버전 목록 — 복원은 편집 폼에 불러온 뒤 저장해야 반영 */}
+                            {openHistory.has(`${g.beanKey}:${bt}`) && (r.history?.length ?? 0) > 0 && (
+                              <div className="rounded-md border border-border" style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {r.history!.map((s, i) => (
+                                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, minWidth: 0 }}>
+                                    <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>{fmtDate(s.updatedAt)}</span>
+                                    <span className="tabular text-foreground" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {[
+                                        s.doseG != null ? `${s.doseG}g` : null,
+                                        s.waterG != null ? `${s.waterG}ml` : null,
+                                        s.tempC != null ? `${s.tempC}°C` : null,
+                                        s.grindMesh != null ? `mesh ${meshFmt(s.grindMesh)}` : null,
+                                        s.totalTime || null,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(' · ')}
+                                    </span>
+                                    <span style={{ flex: 1 }} />
+                                    <button
+                                      onClick={() => restoreSnapshot(g.beanKey, g.bean, bt, s)}
+                                      className="text-[11px] text-muted-foreground hover:text-foreground"
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                                      title="이 버전을 편집 폼에 불러오기 (저장해야 복원됨)"
+                                    >
+                                      복원
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </>
                         )}
                       </div>
