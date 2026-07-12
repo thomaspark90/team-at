@@ -361,8 +361,8 @@ export default function GardenDashboard() {
         </div>
       )}
 
-      {/* 원두 레시피 카드 — 원두 하나에 ICE/HOT 슬롯, 최신 업데이트순 */}
-      <div className="ta-card bg-background min-w-0">
+      {/* 원두 레시피 카드 — 원두 하나에 ICE/HOT 슬롯, 최신 업데이트순. 감싸는 카드 없이 바로 노출 */}
+      <div className="min-w-0">
         <p className="ta-label">원두 레시피</p>
         {beanGroups.length === 0 ? (
           <p className="text-[12px] text-muted-foreground">
@@ -373,7 +373,7 @@ export default function GardenDashboard() {
             {beanGroups.map((g) => {
               const latest = latestByBean.get(g.beanKey);
               return (
-                <div key={g.beanKey} className="rounded-md border border-border bg-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+                <div key={g.beanKey} className="rounded-md border border-border" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
                     <span className="text-[14px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {g.bean}
