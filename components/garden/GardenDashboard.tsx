@@ -426,7 +426,10 @@ export default function GardenDashboard() {
                       {g.bean}
                     </span>
                     {latest?.chosenPrice != null && (
-                      <span className="tabular text-[13px] text-muted-foreground" style={{ flexShrink: 0 }}>{won(latest.chosenPrice)}</span>
+                      // 책정 판매가 / 재료비율(잔당 재료비 ÷ 판매가)
+                      <span className="tabular text-[13px] text-muted-foreground" style={{ flexShrink: 0 }}>
+                        {won(latest.chosenPrice)} / {Math.round((latest.costPerCup / latest.chosenPrice) * 100)}%
+                      </span>
                     )}
                   </div>
 
