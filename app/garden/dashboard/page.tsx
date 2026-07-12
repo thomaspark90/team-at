@@ -2,15 +2,15 @@
 
 import TabNav from '@/components/TabNav';
 import GardenNav from '@/components/garden/GardenNav';
-import GardenService from '@/components/garden/GardenService';
+import GardenDashboard from '@/components/garden/GardenDashboard';
 
-export default function GardenPage() {
+export default function GardenDashboardPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <GardenNav />
       <div className="mx-auto max-w-[1100px] px-6 py-8">
-        <GardenService />
+        <GardenDashboard />
       </div>
     </div>
   );

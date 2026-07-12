@@ -50,6 +50,24 @@ export interface PurchaseStore {
   records: PurchaseRecord[];
 }
 
+// 원두별 드립 레시피 — 발주 기록의 원두명(normalize 키)에 1:1로 붙는다
+export interface DripRecipe {
+  beanKey: string; // normalize(bean) — upsert 키
+  bean: string; // 표시용 원두명 (마지막 저장 시점 표기)
+  doseG: number | null; // 투입량(g)
+  waterG: number | null; // 총 물량(ml)
+  tempC: number | null; // 물 온도(°C)
+  grind: string; // 분쇄도 (예: EK43 9.5, 중간)
+  totalTime: string; // 총 추출 시간 (예: 2:30)
+  notes: string; // 푸어링/메모
+  updatedAt: string; // ISO — 대시보드 정렬 기준
+  updatedBy?: string; // 저장한 사람 이메일
+}
+
+export interface RecipeStore {
+  recipes: DripRecipe[];
+}
+
 // 스탭밀 메뉴 아카이브 한 건 — 스토리 다운로드 시점의 메뉴 스냅샷
 export interface StaffMealRecord {
   id: string;
