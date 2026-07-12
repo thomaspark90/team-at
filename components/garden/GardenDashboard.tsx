@@ -419,8 +419,9 @@ export default function GardenDashboard() {
             {beanGroups.map((g) => {
               const latest = latestByBean.get(g.beanKey);
               return (
-                <div key={g.beanKey} className="rounded-md border border-border" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                <div key={g.beanKey} className="rounded-md border border-border" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+                  {/* 원두명 헤더 — muted 배경 밴드로 카드 본문과 구분 */}
+                  <div className="bg-muted" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '10px 16px', borderBottom: '1px solid hsl(var(--border))' }}>
                     <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {g.bean}
                     </span>
@@ -429,6 +430,7 @@ export default function GardenDashboard() {
                     )}
                   </div>
 
+                  <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {BREW_TYPES.map((bt, idx) => {
                     const r = g[bt];
                     return (
@@ -512,6 +514,7 @@ export default function GardenDashboard() {
                       </div>
                     );
                   })}
+                  </div>
                 </div>
               );
             })}
