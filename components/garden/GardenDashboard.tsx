@@ -406,7 +406,7 @@ export default function GardenDashboard() {
                           style={{ ...ghostBtn, padding: '1px 5px', ...(lv <= 20 ? { color: '#dc2626', borderColor: 'rgba(220, 38, 38, 0.4)' } : {}) }}
                           title={`${s.label} 재고 ${lv}%`}
                         >
-                          {lv}
+                          {lv}%
                         </button>
                       ))}
                       <button
