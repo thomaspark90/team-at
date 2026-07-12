@@ -47,7 +47,7 @@ export const DRIP_PRESETS: DripPreset[] = [
     source: '매장 기준',
     dripper: '',
     defaultDoseG: 18,
-    tempC: null,
+    tempC: 92, // 기본 92°C — 에티오피아·케냐·페루·게이샤는 93으로 조정 (extra 안내)
     grind: 'EK43(양재천) 6.5~7.5',
     totalTime: '3:30',
     steps: [
