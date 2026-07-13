@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-// 알림 수신자 관리 — admin(대표) 전용. 여기 등록된 사람에게 새 송금 요청 알림이 간다.
+// 알림 수신자 관리 — admin(대표) 전용. 여기 등록된 사람에게 송금 요청·원두 재고 알림이 간다.
 export default function NotifyRecipients({ initial }: { initial: string[] }) {
   const [emails, setEmails] = useState<string[]>(initial);
   const [input, setInput] = useState('');
@@ -33,8 +33,8 @@ export default function NotifyRecipients({ initial }: { initial: string[] }) {
     <div className="rounded-2xl border border-border bg-card px-5 py-4">
       <h2 className="m-0 text-[15px] font-medium">알림 수신자 관리</h2>
       <p className="mt-0.5 text-[12px] text-muted-foreground">
-        여기 등록된 사람에게 새 송금 요청 알림이 가요. 각자 이 페이지의 알림 설정에서 이메일·푸시 채널을 켤 수 있어요.
-        (구글 로그인에 쓰는 이메일로 등록해야 푸시알림이 연결돼요)
+        여기 등록된 사람에게 새 송금 요청과 원두 재고(20%·소진) 알림이 함께 가요. 각자 이 페이지의 알림
+        설정에서 이메일·푸시 채널을 켤 수 있어요. (구글 로그인에 쓰는 이메일로 등록해야 푸시알림이 연결돼요)
       </p>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
