@@ -23,11 +23,22 @@ export const fallbackRecipients = () =>
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
 
-// 수신자 목록 — admin이 송금 관리 화면에서 지정(finance.notify_recipients). 비면 env/대표 폴백.
-export async function recipientEmails(supabase: SupabaseClient): Promise<string[]> {
-  const { data } = await supabase.schema('finance').from('notify_recipients').select('email');
-  const fromDb = (data ?? []).map((r) => String(r.email).trim().toLowerCase()).filter(Boolean);
-  return fromDb.length > 0 ? fromDb : fallbackRecipients();
+export type NotifyTopic = 'transfer' | 'stock';
+
+// 수신자 목록 — admin이 송금 관리 화면에서 지정(finance.notify_recipients), 종류(송금/원두)별 토글.
+// 테이블이 아예 비면 env/대표 폴백. 등록은 있는데 해당 종류가 전부 꺼져 있으면 빈 목록(의도 존중).
+export async function recipientEmails(
+  supabase: SupabaseClient,
+  topic: NotifyTopic = 'transfer'
+): Promise<string[]> {
+  const { data } = await supabase.schema('finance').from('notify_recipients').select('*');
+  const rows = data ?? [];
+  if (rows.length === 0) return fallbackRecipients();
+  const col = topic === 'stock' ? 'stock_enabled' : 'transfer_enabled';
+  return rows
+    .filter((r) => (r as Record<string, unknown>)[col] ?? true) // 컬럼 없는 구 스키마 = 전부 수신
+    .map((r) => String(r.email).trim().toLowerCase())
+    .filter(Boolean);
 }
 
 // 이메일 알림을 끈 사용자 제외 (notify_prefs 행 없으면 기본 켜짐)
@@ -109,7 +120,7 @@ export async function notifyBeanStockLow(
     .join(' · ');
   const by = n.byEmail ? n.byEmail.split('@')[0] : '';
   const gardenUrl = 'https://team-at-apps.vercel.app/garden';
-  const recipientsP = recipientEmails(supabase);
+  const recipientsP = recipientEmails(supabase, 'stock');
   const results = await Promise.allSettled([
     recipientsP.then((to) =>
       sendEmailTo(
