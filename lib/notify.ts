@@ -97,6 +97,52 @@ async function sendPushTo(
   );
 }
 
+// 원두 재고 임계 도달(20%/0%) → 지정 수신자에게 이메일+웹푸시. garden-beans API에서 호출.
+// 송금 알림과 같은 수신자 목록(notify_recipients)·푸시 구독을 재사용한다.
+export async function notifyBeanStockLow(
+  supabase: SupabaseClient,
+  n: { bean: string; alerts: { storeLabel: string; level: number }[]; byEmail: string }
+) {
+  if (n.alerts.length === 0) return;
+  const line = n.alerts
+    .map((a) => `${a.storeLabel} ${a.level === 0 ? '소진(0%)' : `재고 ${a.level}%`}`)
+    .join(' · ');
+  const by = n.byEmail ? n.byEmail.split('@')[0] : '';
+  const gardenUrl = 'https://team-at-apps.vercel.app/garden';
+  const recipientsP = recipientEmails(supabase);
+  const results = await Promise.allSettled([
+    recipientsP.then((to) =>
+      sendEmailTo(
+        supabase,
+        to,
+        `[원두 재고] ${n.bean} — ${line}`,
+        `
+        <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
+          <p><strong>${n.bean}</strong></p>
+          <p>${line}</p>
+          <p>${
+            n.alerts.some((a) => a.level === 0)
+              ? '소진 지점은 대시보드에서 빠지고 필터 레시피에서만 보여요. 재발주를 검토해 주세요.'
+              : '재고가 얼마 남지 않았어요. 재발주를 검토해 주세요.'
+          }</p>
+          ${by ? `<p>업데이트: ${by}</p>` : ''}
+          <p><a href="${gardenUrl}">가든 대시보드 열기 →</a></p>
+        </div>`
+      )
+    ),
+    recipientsP.then((to) =>
+      sendPushTo(supabase, to, {
+        title: `원두 재고 · ${n.bean}`,
+        body: `${line}${by ? ` — ${by} 업데이트` : ''}`,
+        url: '/garden',
+      })
+    ),
+  ]);
+  for (const r of results) {
+    if (r.status === 'rejected') console.error('stock notify 실패:', r.reason);
+  }
+}
+
 // 새 송금 요청 → 담당자(수신자 목록)에게. 등록 API 에서 호출 — 어떤 실패도 등록을 막지 않음.
 export async function notifyTransferRequest(supabase: SupabaseClient, n: TransferNotice) {
   const account = [n.bank, n.accountNo, n.accountHolder && `(${n.accountHolder})`]

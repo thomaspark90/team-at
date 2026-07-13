@@ -4,6 +4,7 @@ import type { BeanMeta, BeanMetaStore, StoreId } from '@/lib/types';
 import { STORES, STOCK_LEVELS, stockOf } from '@/lib/types';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
+import { notifyBeanStockLow } from '@/lib/notify';
 
 const DATA_PATH = 'data/garden-beans.json';
 
@@ -61,6 +62,7 @@ export async function POST(req: Request) {
   // 현재 재고(구버전 소진 기록 포함)에서 출발해 요청 값을 지점 단위로 병합
   const stockByStore: Partial<Record<StoreId, number>> = {};
   for (const id of STORE_IDS) stockByStore[id] = stockOf(prev, id);
+  const prevStock = { ...stockByStore }; // 알림용 — 변경 전 재고 스냅샷
   const stockTouched = body.stockByStore != null && typeof body.stockByStore === 'object';
   if (stockTouched) {
     for (const id of STORE_IDS) {
@@ -102,5 +104,20 @@ export async function POST(req: Request) {
         : '가든서비스 테이스팅 노트 삭제',
     stockChanged ? `${body.bean} · ${stockLabel}` : body.bean
   );
+
+  // 재고가 20% 또는 0%로 '내려간' 지점 → 지정 수신자에게 이메일+웹푸시 (실패해도 저장은 유지)
+  const alerts = STORES.filter((s) => {
+    const now = stockByStore[s.id] ?? 100;
+    const before = prevStock[s.id] ?? 100;
+    return (now === 20 || now === 0) && now < before;
+  }).map((s) => ({ storeLabel: s.label, level: stockByStore[s.id]! }));
+  if (alerts.length > 0) {
+    try {
+      await notifyBeanStockLow(supabase, { bean: body.bean, alerts, byEmail: user.email ?? '' });
+    } catch (e) {
+      console.error('원두 재고 알림 실패:', e);
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }
