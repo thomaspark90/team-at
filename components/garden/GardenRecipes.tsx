@@ -196,7 +196,7 @@ export default function GardenRecipes() {
                       <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {g.bean}
                       </span>
-                      {/* 등록 시점부터 경과일 — 등록 당일 D+0, 24일 초과 주황·30일 초과 빨강 */}
+                      {/* 등록 시점부터 경과일 — 등록 당일 D+0, D+25부터 주황·D+31부터 빨강 */}
                       {(() => {
                         const regAt = beanRegisteredAt([g.ice, g.hot]);
                         if (!regAt) return null;
