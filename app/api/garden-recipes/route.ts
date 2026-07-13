@@ -73,6 +73,11 @@ export async function POST(req: Request) {
   const same = (r: DripRecipe) => r.beanKey === recipe.beanKey && brewTypeOf(r.brewType) === brewType;
   const prev = store.recipes.find(same);
   const isNew = !prev;
+  // 최초 등록 시점 보존 — 구 기록(createdAt 없음)은 이력 최초 저장 시각으로 백필
+  recipe.createdAt = prev
+    ? prev.createdAt ??
+      (prev.history?.length ? prev.history[prev.history.length - 1].updatedAt : prev.updatedAt)
+    : recipe.updatedAt;
   // 이전 버전을 이력으로 보관 (최신순, 최대 20개)
   if (prev) {
     const { beanKey: _k, brewType: _t, bean: _b, history: _h, ...snap } = prev;

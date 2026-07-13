@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { BeanMeta, BrewType, DripRecipe, DripRecipeSnapshot, PourStep, PurchaseRecord, StoreId } from '@/lib/types';
-import { STORES, STOCK_LEVELS, stockOf } from '@/lib/types';
+import { STORES, STOCK_LEVELS, stockOf, beanRegisteredAt, daysSince } from '@/lib/types';
 import { costPerCup, normalize } from '@/lib/pricing';
 import { applyPreset, presetById } from '@/lib/drip-presets';
 import { flavorGradient } from '@/lib/flavor-colors';
@@ -369,6 +369,7 @@ export default function GardenDashboard() {
   // 원두 카드 한 장
   const renderBeanCard = (g: BeanGroup) => {
     const latest = latestByBean.get(g.beanKey);
+    const regAt = beanRegisteredAt([g.ice, g.hot]);
     return (
       <div key={g.beanKey} className="rounded-md border border-border" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         {/* 원두명 헤더 — muted 배경 밴드 + 테이스팅 노트 색 그라데이션(카운터컬처 플레이버 휠 차용) */}
@@ -384,8 +385,16 @@ export default function GardenDashboard() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-            <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {g.bean}
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+              <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {g.bean}
+              </span>
+              {/* 등록 시점부터 경과일 — 등록 당일 D+0 */}
+              {regAt && (
+                <span className="tabular text-[11px] text-muted-foreground" style={{ flexShrink: 0 }} title={`등록 ${fmtDate(regAt)}`}>
+                  D+{daysSince(regAt)}
+                </span>
+              )}
             </span>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
               {/* 지점별 재고량 칩 — 누르면 100~0% 선택. 20% 이하 빨간색 */}

@@ -73,6 +73,7 @@ export interface DripRecipe {
   totalTime: string; // 총 추출 시간 (예: 2:30)
   notes: string; // 푸어링/메모
   presetId?: string | null; // 적용한 프리셋 (lib/drip-presets.ts) — 직접 입력이면 null
+  createdAt?: string; // ISO — 최초 등록 시점 (구 기록은 저장 시 이력 최초 시각으로 백필)
   updatedAt: string; // ISO — 대시보드 정렬 기준
   updatedBy?: string; // 저장한 사람 이메일
   history?: DripRecipeSnapshot[]; // 이전 버전 (최신순, 최대 20개)
@@ -83,6 +84,27 @@ export type DripRecipeSnapshot = Omit<DripRecipe, 'beanKey' | 'brewType' | 'bean
 
 export interface RecipeStore {
   recipes: DripRecipe[];
+}
+
+// 원두 등록 시점 — 해당 원두 레시피들의 createdAt(없으면 이력 최초 저장 시각, 그것도 없으면 updatedAt) 중 가장 이른 값
+export function beanRegisteredAt(recipes: (DripRecipe | null | undefined)[]): string | null {
+  let min: string | null = null;
+  for (const r of recipes) {
+    if (!r) continue;
+    const oldest = r.history?.length ? r.history[r.history.length - 1].updatedAt : null;
+    const t = r.createdAt ?? oldest ?? r.updatedAt;
+    if (t && (!min || t.localeCompare(min) < 0)) min = t;
+  }
+  return min;
+}
+
+// 등록 시점부터 지난 일수 (등록 당일 = D+0, 달력일 기준)
+export function daysSince(iso: string): number {
+  const from = new Date(iso);
+  from.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((today.getTime() - from.getTime()) / 86400000));
 }
 
 export type BeanStatus = 'active' | 'soldout';
