@@ -98,6 +98,13 @@ export function beanRegisteredAt(recipes: (DripRecipe | null | undefined)[]): st
   return min;
 }
 
+// D+ 배지 경고색 — 24일 초과 주황, 30일 초과 빨강 (기본은 undefined → muted 색 유지)
+export function dPlusColor(days: number): string | undefined {
+  if (days > 30) return '#dc2626';
+  if (days > 24) return '#ea580c';
+  return undefined;
+}
+
 // 등록 시점부터 지난 일수 (등록 당일 = D+0, 달력일 기준)
 export function daysSince(iso: string): number {
   const from = new Date(iso);

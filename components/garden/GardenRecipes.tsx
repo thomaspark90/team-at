@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { BeanMeta, BrewType, DripRecipe, PourStep, StoreId } from '@/lib/types';
-import { STORES, stockOf, beanRegisteredAt, daysSince } from '@/lib/types';
+import { STORES, stockOf, beanRegisteredAt, daysSince, dPlusColor } from '@/lib/types';
 import { normalize } from '@/lib/pricing';
 import { flavorGradient } from '@/lib/flavor-colors';
 
@@ -196,14 +196,17 @@ export default function GardenRecipes() {
                       <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {g.bean}
                       </span>
-                      {/* 등록 시점부터 경과일 — 등록 당일 D+0 */}
+                      {/* 등록 시점부터 경과일 — 등록 당일 D+0, 24일 초과 주황·30일 초과 빨강 */}
                       {(() => {
                         const regAt = beanRegisteredAt([g.ice, g.hot]);
-                        return regAt ? (
-                          <span className="tabular text-[11px] text-muted-foreground" style={{ flexShrink: 0 }} title={`등록 ${fmtDate(regAt)}`}>
-                            D+{daysSince(regAt)}
+                        if (!regAt) return null;
+                        const n = daysSince(regAt);
+                        const warn = dPlusColor(n);
+                        return (
+                          <span className="tabular text-[11px] text-muted-foreground" style={{ flexShrink: 0, ...(warn ? { color: warn, fontWeight: 500 } : {}) }} title={`등록 ${fmtDate(regAt)}`}>
+                            D+{n}
                           </span>
-                        ) : null;
+                        );
                       })()}
                     </span>
                     {/* 재고 20% 이하 지점 칩 — 0% 칩은 클릭하면 100%로 재입고 */}

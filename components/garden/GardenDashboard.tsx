@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { BeanMeta, BrewType, DripRecipe, DripRecipeSnapshot, PourStep, PurchaseRecord, StoreId } from '@/lib/types';
-import { STORES, STOCK_LEVELS, stockOf, beanRegisteredAt, daysSince } from '@/lib/types';
+import { STORES, STOCK_LEVELS, stockOf, beanRegisteredAt, daysSince, dPlusColor } from '@/lib/types';
 import { costPerCup, normalize } from '@/lib/pricing';
 import { applyPreset, presetById } from '@/lib/drip-presets';
 import { flavorGradient } from '@/lib/flavor-colors';
+import BrewTimer from '@/components/garden/BrewTimer';
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 const fmtDate = (iso: string) => {
@@ -152,6 +153,8 @@ export default function GardenDashboard() {
   const [openHistory, setOpenHistory] = useState<Set<string>>(new Set());
   // 재고량 칩 → 퍼센트 선택 중인 원두·지점
   const [stockPicker, setStockPicker] = useState<{ beanKey: string; store: StoreId } | null>(null);
+  // 추출 타이머 오버레이 — 열려 있는 레시피
+  const [timerFor, setTimerFor] = useState<{ bean: string; brewType: BrewType; recipe: DripRecipe } | null>(null);
 
   const refresh = async () => {
     const [pRes, rRes, bRes] = await Promise.all([
@@ -389,12 +392,16 @@ export default function GardenDashboard() {
               <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {g.bean}
               </span>
-              {/* 등록 시점부터 경과일 — 등록 당일 D+0 */}
-              {regAt && (
-                <span className="tabular text-[11px] text-muted-foreground" style={{ flexShrink: 0 }} title={`등록 ${fmtDate(regAt)}`}>
-                  D+{daysSince(regAt)}
-                </span>
-              )}
+              {/* 등록 시점부터 경과일 — 등록 당일 D+0, 24일 초과 주황·30일 초과 빨강 */}
+              {regAt && (() => {
+                const n = daysSince(regAt);
+                const warn = dPlusColor(n);
+                return (
+                  <span className="tabular text-[11px] text-muted-foreground" style={{ flexShrink: 0, ...(warn ? { color: warn, fontWeight: 500 } : {}) }} title={`등록 ${fmtDate(regAt)}`}>
+                    D+{n}
+                  </span>
+                );
+              })()}
             </span>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
               {/* 지점별 재고량 칩 — 누르면 100~0% 선택. 20% 이하 빨간색 */}
@@ -508,6 +515,14 @@ export default function GardenDashboard() {
                   </span>
                   {r ? (
                     <span style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+                      <button
+                        onClick={() => setTimerFor({ bean: g.bean, brewType: bt, recipe: r })}
+                        className="text-[11px] text-muted-foreground hover:text-foreground"
+                        style={ghostBtn}
+                        title="추출 타이머 열기"
+                      >
+                        ▶ 타이머
+                      </button>
                       <button
                         onClick={() => openEditor(g.beanKey, g.bean, bt)}
                         className="text-[11px] text-muted-foreground hover:text-foreground"
@@ -851,6 +866,16 @@ export default function GardenDashboard() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* 추출 타이머 오버레이 — 카드의 ▶ 타이머로 열기 */}
+      {timerFor && (
+        <BrewTimer
+          bean={timerFor.bean}
+          brewType={timerFor.brewType}
+          recipe={timerFor.recipe}
+          onClose={() => setTimerFor(null)}
+        />
       )}
     </div>
   );
