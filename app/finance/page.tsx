@@ -5,7 +5,7 @@ import { resolveRole } from '@/lib/finance/access';
 import { unwrap } from '@/lib/finance/db';
 import { buildSankey, type SankTx, type SankCat } from '@/lib/finance/sankey';
 import TabNav from '@/components/TabNav';
-import FinanceNav from '@/components/finance/FinanceNav';
+import AccountingNav from '@/components/AccountingNav';
 import UploadPanel from '@/components/finance/UploadPanel';
 import CardReconcile from '@/components/finance/CardReconcile';
 import ReceiptEnrich from '@/components/finance/ReceiptEnrich';
@@ -68,7 +68,7 @@ export default async function FinancePage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
-      <FinanceNav role={role} />
+      <AccountingNav role={role} />
       <div className="mx-auto max-w-[1120px] px-6 py-8">
         {isStaff && overview ? (
           <div className="flex flex-col gap-8">
@@ -102,7 +102,7 @@ function Overview({ o }: { o: OverviewData }) {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between">
-        <h1 className="m-0 text-[22px] tracking-[-0.5px]">재무 현황</h1>
+        <h1 className="m-0 text-[22px] tracking-[-0.5px]">회계 현황</h1>
         {hasData && <span className="text-[13px] text-muted-foreground">{fmtYm(o.latest)} 기준</span>}
       </div>
 
@@ -194,9 +194,9 @@ function NoAccess({ email }: { email: string }) {
   return (
     <div className="ta-card mx-auto mt-[60px] max-w-[480px] text-center">
       <div className="mb-3 text-[32px]">🔒</div>
-      <h2 className="mb-2 mt-0 text-[15px]">재무 접근 권한이 없어요</h2>
+      <h2 className="mb-2 mt-0 text-[15px]">회계·재무 접근 권한이 없어요</h2>
       <p className="m-0 text-[13px] leading-[1.6] text-muted-foreground">
-        재무 데이터는 관리자 승인이 필요해요.
+        회계·재무 데이터는 관리자 승인이 필요해요.
         <br />
         아래 계정으로 <b>대표에게 권한을 요청</b>하세요.
       </p>

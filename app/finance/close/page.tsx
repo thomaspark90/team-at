@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveRole, canConfirm } from '@/lib/finance/access';
 import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
-import FinanceNav from '@/components/finance/FinanceNav';
+import AccountingNav from '@/components/AccountingNav';
 import MonthlyCloseManager, { type MonthRow } from '@/components/finance/MonthlyCloseManager';
 
 export default async function ClosePage() {
@@ -55,7 +55,7 @@ export default async function ClosePage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
-      <FinanceNav role={role} />
+      <AccountingNav role={role} />
       <div className="mx-auto max-w-[1120px] px-6 py-8">
         <div className="mb-4 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">월 확정</h1>

@@ -5,11 +5,17 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
 const TABS = [
-  { href: '/dashboard', label: 'Dash Board' },
   { href: '/studio', label: 'Staff Meal' },
   { href: '/garden', label: 'Garden Service' },
-  { href: '/finance', label: '재무' },
+  { href: '/dashboard', label: '회계' },
+  { href: '/finance/dashboard', label: '재무' },
 ];
+
+// 회계 탭에 속하는 /finance 하위 페이지(기장·결산) — 나머지 /finance 는 재무(분석) 탭.
+const ACCOUNTING_FINANCE = ['/finance', '/finance/classify', '/finance/uploads', '/finance/close', '/finance/categories', '/finance/card'];
+const inAccounting = (p: string) =>
+  p.startsWith('/dashboard') ||
+  ACCOUNTING_FINANCE.some((h) => p === h || (h !== '/finance' && p.startsWith(h + '/')));
 
 export default function TabNav() {
   const pathname = usePathname();
@@ -31,7 +37,13 @@ export default function TabNav() {
 
         <nav className="scrollbar-hide flex flex-1 items-center justify-center gap-1 overflow-x-auto">
           {TABS.map((tab) => {
-            const active = pathname === tab.href || pathname?.startsWith(tab.href + '/');
+            const p = pathname ?? '';
+            const active =
+              tab.href === '/dashboard'
+                ? inAccounting(p)
+                : tab.href === '/finance/dashboard'
+                  ? p.startsWith('/finance') && !inAccounting(p)
+                  : p === tab.href || p.startsWith(tab.href + '/');
             return (
               <Link
                 key={tab.href}

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
-import FinanceNav from '@/components/finance/FinanceNav';
+import AccountingNav from '@/components/AccountingNav';
 import CategoryManager, { type ManagedCat } from '@/components/finance/CategoryManager';
 
 export default async function CategoriesPage() {
@@ -29,7 +29,7 @@ export default async function CategoriesPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
-      <FinanceNav role={role} />
+      <AccountingNav role={role} />
       <div className="mx-auto max-w-[1120px] px-6 py-8">
         <div className="mb-4 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">계정과목 관리</h1>

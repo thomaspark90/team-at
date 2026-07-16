@@ -6,19 +6,14 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { isOwner } from '@/lib/finance/access';
 
-// 재무 하위 내비게이션 — 모든 /finance 하위 페이지 상단에 고정 노출.
+// 재무(분석·보고) 하위 내비게이션 — 기장·결산(분류·월확정 등)은 회계 탭(AccountingNav)으로 이동.
 const LEFT = [
-  { href: '/finance/classify', label: '거래 분류' },
-  { href: '/finance/cashflow', label: '월별 요약' },
   { href: '/finance/dashboard', label: '대시보드' },
-  { href: '/finance/flow', label: '자금 흐름' },
   { href: '/finance/pnl', label: '관리손익' },
-  { href: '/finance/close', label: '월 확정' },
+  { href: '/finance/cashflow', label: '월별 요약' },
+  { href: '/finance/flow', label: '자금 흐름' },
 ];
-const ADMIN = [
-  { href: '/finance/categories', label: '계정과목' },
-  { href: '/finance/members', label: '멤버 관리' },
-];
+const ADMIN = [{ href: '/finance/members', label: '멤버 관리' }];
 // 활동 로그는 대표(OWNER) 계정에만 노출
 const OWNER_ONLY = { href: '/finance/activity', label: '활동 로그' };
 

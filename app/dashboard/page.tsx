@@ -3,11 +3,11 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import { fallbackRecipients } from '@/lib/notify';
 import TabNav from '@/components/TabNav';
-import DashboardNav from '@/components/DashboardNav';
+import AccountingNav from '@/components/AccountingNav';
 import TransferPanel from '@/components/finance/TransferPanel';
 import NotifySettings from '@/components/NotifySettings';
 
-// 전체 대시보드 — 스탭밀·가든서비스 공통. 영수증 사진 업로드 → AI 인식 → 송금 대기 리스트.
+// 회계 홈 = 송금 요청 — 스탭밀·가든서비스 공통. 영수증 사진 업로드 → AI 인식 → 송금 대기 리스트.
 // 업로드는 구글 로그인만 하면 가능, 이체 완료 처리는 admin/classifier 만.
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -32,7 +32,7 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
-      <DashboardNav />
+      <AccountingNav role={role} />
       <div className="mx-auto flex max-w-[720px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
         <TransferPanel role={role} email={user.email ?? ''} mode="dashboard" />
         {!isNotifyRecipient && (

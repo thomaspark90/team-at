@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import { fallbackRecipients } from '@/lib/notify';
 import TabNav from '@/components/TabNav';
-import DashboardNav from '@/components/DashboardNav';
+import AccountingNav from '@/components/AccountingNav';
 import TransferPanel from '@/components/finance/TransferPanel';
 import VendorBook from '@/components/finance/VendorBook';
 import NotifySettings from '@/components/NotifySettings';
@@ -37,7 +37,7 @@ export default async function TransferManagePage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
-      <DashboardNav />
+      <AccountingNav role={role} />
       <div className="mx-auto flex max-w-[720px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
         {(role === 'admin' || isNotifyRecipient) && (
           <div className={`grid gap-4 ${role === 'admin' && isNotifyRecipient ? 'sm:grid-cols-2' : ''}`}>
