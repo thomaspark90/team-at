@@ -19,7 +19,7 @@ export default function PasswordGate() {
     });
     if (res.ok) {
       sessionStorage.setItem('auth', 'ok');
-      router.push('/studio');
+      router.push('/dashboard');
     } else {
       setError(true);
       setLoading(false);

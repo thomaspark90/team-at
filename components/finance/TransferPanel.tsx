@@ -628,7 +628,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
         <div className="flex items-center justify-between">
           <h2 className="m-0 text-[15px] font-medium">{isDashboard ? '송금 대시보드' : '송금 내역'}</h2>
           {isDashboard ? (
-            <Link href="/studio/history" className="text-[13px] text-muted-foreground hover:text-foreground">
+            <Link href="/dashboard/history" className="text-[13px] text-muted-foreground hover:text-foreground">
               전체 내역 →
             </Link>
           ) : (

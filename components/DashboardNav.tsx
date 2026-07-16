@@ -3,14 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-// 스탭밀 하위 내비게이션 — /studio 하위 페이지 상단에 고정 노출.
-// 송금 요청·관리는 전체 대시보드(/dashboard)로 이동.
+// 전체 대시보드 하위 내비게이션 — /dashboard 하위 페이지 상단에 고정 노출.
 const ITEMS = [
-  { href: '/studio/menu', label: 'IG 메뉴 업데이트' },
-  { href: '/studio/meals', label: '메뉴 기록' },
+  { href: '/dashboard', label: '송금 요청' },
+  { href: '/dashboard/history', label: '송금 관리' },
 ];
 
-export default function StudioNav() {
+export default function DashboardNav() {
   const pathname = usePathname();
 
   return (

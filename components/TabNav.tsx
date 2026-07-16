@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
 const TABS = [
+  { href: '/dashboard', label: 'Dash Board' },
   { href: '/studio', label: 'Staff Meal' },
   { href: '/garden', label: 'Garden Service' },
   { href: '/finance', label: '재무' },
@@ -30,7 +31,7 @@ export default function TabNav() {
 
         <nav className="scrollbar-hide flex flex-1 items-center justify-center gap-1 overflow-x-auto">
           {TABS.map((tab) => {
-            const active = pathname === tab.href;
+            const active = pathname === tab.href || pathname?.startsWith(tab.href + '/');
             return (
               <Link
                 key={tab.href}

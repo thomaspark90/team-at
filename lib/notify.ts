@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { OWNER_EMAIL } from '@/lib/finance/access';
 
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
-const APP_URL = 'https://team-at-apps.vercel.app/studio';
+const APP_URL = 'https://team-at-apps.vercel.app/dashboard';
 
 export interface TransferNotice {
   vendorName: string;
@@ -180,7 +180,7 @@ export async function notifyTransferRequest(supabase: SupabaseClient, n: Transfe
       sendPushTo(supabase, to, {
         title: `송금 요청 · ${n.vendorName}`,
         body: `${won(n.amount)} — ${n.requesterEmail.split('@')[0]} 등록`,
-        url: '/studio',
+        url: '/dashboard',
       })
     ),
   ]);
@@ -213,7 +213,7 @@ export async function notifyTransferDone(
     sendPushTo(supabase, [requester], {
       title: `이체 완료 · ${n.vendorName}`,
       body: `${won(n.amount)} — ${doneBy}님이 이체했어요`,
-      url: '/studio',
+      url: '/dashboard',
     }),
   ]);
   for (const r of results) {

@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { isAllowedEmail } from '@/lib/finance/access';
 
 // 로그인 필요한 경로(전체 구글 통일). 재무의 역할 체크는 /finance 페이지에서 추가로 함.
-const PROTECTED = ['/studio', '/garden', '/finance'];
+const PROTECTED = ['/dashboard', '/studio', '/garden', '/finance'];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });

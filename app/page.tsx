@@ -8,7 +8,7 @@ export default async function LandingPage({ searchParams }: { searchParams: { de
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user && isAllowedEmail(user.email)) redirect('/studio');
+  if (user && isAllowedEmail(user.email)) redirect('/dashboard');
   const denied = searchParams.denied === '1' || (!!user && !isAllowedEmail(user.email));
 
   return (
