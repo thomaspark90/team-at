@@ -85,7 +85,9 @@ export default function GrinderCalibration({
               언스페셜티 컴퍼스
             </a>
             에서 각 지점 EK43을 측정해 다이얼별 <span className="tabular">평균 입자(µm)</span>를 지점마다{' '}
-            <strong>2개 이상</strong> 등록하세요. 두 지점 모두 채워지면 레시피 분쇄도가 상대 지점 다이얼로 자동
+            <strong>2개 이상</strong> 등록하세요. 측정 원본(분포도 캡처)은{' '}
+            <a href="/garden/calibration" className="underline hover:text-foreground">분쇄도 측정</a>
+            에 올려두면 산식 고도화에 쓰입니다. 두 지점 모두 채워지면 레시피 분쇄도가 상대 지점 다이얼로 자동
             환산됩니다. (측정은 같은 원두로, 굵기 구간을 벌려서 — 예: 6.0과 8.0)
           </p>
 
