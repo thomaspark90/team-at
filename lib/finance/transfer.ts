@@ -1,7 +1,10 @@
 // 송금 요청 — 영수증/거래명세서 이미지에서 Gemini 로 이체 정보 추출
 
+export type TransferBrand = 'staffmeal' | 'garden';
+
 export interface TransferExtraction {
   rotation: 0 | 90 | 180 | 270; // 글자가 바로 서도록 시계방향으로 돌릴 각도(박스 좌표로 역산)
+  brand: TransferBrand | null; // AI 추정 — 확신 없으면 null, 확인창에서 필수 선택
   vendor_name: string | null;
   doc_date: string | null; // YYYY-MM-DD
   amount: number | null; // 이번 거래 청구액
@@ -15,6 +18,7 @@ export interface TransferExtraction {
 export interface TransferRequestRow {
   id: number;
   created_at: string;
+  brand: TransferBrand | null; // 구분 도입 전 등록 건은 null
   requester_email: string;
   vendor_name: string;
   doc_date: string | null;
@@ -34,6 +38,7 @@ const PROMPT = `이 이미지는 한국의 거래명세서 또는 영수증이�
 
 {
   "title_edge": "top"|"right"|"bottom"|"left", // 이미지 픽셀 그대로 봤을 때(자동 보정 없이) 문서의 제목/머리(거래명세서·상호 등 논리적으로 가장 먼저 오는 부분)가 이미지 프레임의 어느 변에 붙어 있는지. 글자가 정상으로 읽히면 top, 문서 머리가 오른쪽 변이면 right, 아래 변이면 bottom, 왼쪽 변이면 left
+  "brand": "staffmeal"|"garden"|null, // 이 매입이 어느 브랜드 것인지. 구매자·고객명 칸에 '스탭밀'/'스텝밀'/'staff meal'이 보이면 staffmeal, '가든'/'garden'이 보이면 garden. 이름이 없으면 품목으로 추정: 원두·커피·시럽·우유 등 카페 재료면 garden, 식당 식자재(쌀·김치·정육·채소·소스 등)면 staffmeal. 애매하면 반드시 null
   "vendor_name": string|null,   // 돈을 받을 공급자 상호. 문서를 발행한 회사명. '고객명'·'거래처명' 칸(구매자, 예: 스텝밀·판교)이 아님에 주의
   "doc_date": string|null,      // 거래일자 YYYY-MM-DD
   "amount": number|null,        // 이번 거래 청구 금액(합계·청구금액합계). 숫자만
@@ -126,6 +131,7 @@ export async function extractTransferInfo(
   };
   return {
     rotation: inferRotation(raw.title_edge),
+    brand: raw.brand === 'staffmeal' || raw.brand === 'garden' ? raw.brand : null,
     vendor_name: str(raw.vendor_name),
     doc_date: str(raw.doc_date),
     amount: num(raw.amount),

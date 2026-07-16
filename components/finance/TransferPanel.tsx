@@ -11,6 +11,7 @@ interface Props {
 }
 
 interface Draft {
+  brand: '' | 'staffmeal' | 'garden'; // ''=미선택 — 등록 전 필수 선택
   vendor_name: string;
   doc_date: string;
   amount: string;
@@ -28,6 +29,11 @@ interface ParsedItem {
   balanceTotal: number | null;
   accountFromBook: boolean;
 }
+
+const BRAND_LABEL: Record<'staffmeal' | 'garden', string> = {
+  staffmeal: '스탭밀',
+  garden: '가든서비스',
+};
 
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 const fmtDate = (iso: string) => {
@@ -207,6 +213,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
         balanceTotal: ex.balance_total,
         accountFromBook: !!j.savedAccount && !!ex.account_no,
         draft: {
+          brand: ex.brand ?? '', // AI가 확신 못하면 '' — 확인창에서 직접 선택해야 등록됨
           vendor_name: ex.vendor_name ?? '',
           doc_date: ex.doc_date ?? '',
           amount: ex.amount != null ? String(ex.amount) : '',
@@ -272,6 +279,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
   async function submit() {
     if (!draft) return;
     const amount = Number(draft.amount.replace(/[,\s]/g, ''));
+    if (!draft.brand) return setError('스탭밀/가든서비스 중 어느 매입인지 선택하세요.');
     if (!draft.vendor_name.trim()) return setError('거래처명을 입력하세요.');
     if (!Number.isFinite(amount) || amount <= 0) return setError('금액을 확인하세요.');
     setSubmitting(true);
@@ -377,6 +385,15 @@ export default function TransferPanel({ role, email, mode }: Props) {
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <span className="flex items-baseline gap-2 text-[15px] font-medium">
             {r.vendor_name}
+            {r.brand && (
+              <span
+                className={`rounded px-1.5 py-0.5 text-[10px] font-normal ${
+                  r.brand === 'staffmeal' ? 'bg-emerald-500/15 text-emerald-600' : 'bg-foreground/10 text-foreground'
+                }`}
+              >
+                {BRAND_LABEL[r.brand]}
+              </span>
+            )}
             <span
               className={`rounded px-1.5 py-0.5 text-[10px] font-normal ${
                 r.status === 'pending' ? 'bg-amber-500/15 text-amber-600' : 'bg-foreground/10 text-muted-foreground'
@@ -551,6 +568,30 @@ export default function TransferPanel({ role, email, mode }: Props) {
             )}
 
             <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="col-span-2 flex flex-col gap-1">
+                <span className={labelCls}>
+                  브랜드 (필수){!draft.brand && <span className="ml-1 text-amber-600">— 어느 매입인지 선택하세요</span>}
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['staffmeal', 'garden'] as const).map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => setDraft({ ...draft, brand: b })}
+                      aria-pressed={draft.brand === b}
+                      className={`rounded-lg border py-2.5 text-[14px] transition-colors ${
+                        draft.brand === b
+                          ? b === 'staffmeal'
+                            ? 'border-emerald-600 bg-emerald-600 font-medium text-white'
+                            : 'border-foreground bg-foreground font-medium text-background'
+                          : 'border-border bg-background text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {BRAND_LABEL[b]}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="col-span-2 flex flex-col gap-1">
                 <span className={labelCls}>거래처 (돈 받을 곳)</span>
                 <input className={inputCls} value={draft.vendor_name} onChange={(e) => setDraft({ ...draft, vendor_name: e.target.value })} />

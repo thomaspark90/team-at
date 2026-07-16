@@ -11,10 +11,14 @@ export const runtime = 'nodejs';
 export const maxDuration = 30;
 
 // PGRST205 = 테이블이 스키마 캐시에 없음 → 마이그레이션 미실행이 원인
-const friendly = (e: { code?: string; message: string }) =>
-  e.code === 'PGRST205' || e.message.includes('schema cache')
+const friendly = (e: { code?: string; message: string }) => {
+  if (e.message.includes('brand')) {
+    return '브랜드 컬럼이 아직 없어요. 관리자가 supabase/migration_transfer_brand.sql 을 Supabase SQL Editor에서 실행해야 해요.';
+  }
+  return e.code === 'PGRST205' || e.message.includes('schema cache')
     ? '송금 테이블이 아직 생성되지 않았어요. 관리자가 supabase/migration_transfer.sql 을 Supabase SQL Editor에서 실행해야 해요.'
     : e.message;
+};
 
 // 송금 요청 목록 — 로그인한 누구나 열람
 export async function GET(req: Request) {
@@ -29,7 +33,7 @@ export async function GET(req: Request) {
     .schema('finance')
     .from('transfer_requests')
     .select(
-      'id,created_at,requester_email,vendor_name,doc_date,amount,items_summary,bank,account_no,account_holder,memo,image_path,status,done_by_email,done_at'
+      'id,created_at,brand,requester_email,vendor_name,doc_date,amount,items_summary,bank,account_no,account_holder,memo,image_path,status,done_by_email,done_at'
     )
     .order('created_at', { ascending: false })
     .limit(300);
@@ -64,9 +68,13 @@ export async function POST(req: Request) {
   const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
   const vendorName = str(f.vendor_name);
   const amount = Number(f.amount);
+  const brand = f.brand === 'staffmeal' || f.brand === 'garden' ? f.brand : null;
   if (!vendorName) return NextResponse.json({ error: '거래처명을 입력하세요.' }, { status: 400 });
   if (!Number.isFinite(amount) || amount <= 0) {
     return NextResponse.json({ error: '금액을 확인하세요.' }, { status: 400 });
+  }
+  if (!brand) {
+    return NextResponse.json({ error: '스탭밀/가든서비스 중 어느 매입인지 선택하세요.' }, { status: 400 });
   }
 
   // 원본 이미지 보관(비공개 Blob) — 송금 담당자가 대시보드에서 원본 확인용
@@ -83,6 +91,7 @@ export async function POST(req: Request) {
   const row = {
     requester_id: user.id,
     requester_email: user.email ?? '',
+    brand,
     vendor_name: vendorName,
     doc_date: str(f.doc_date),
     amount,
@@ -118,10 +127,12 @@ export async function POST(req: Request) {
       );
   }
 
-  await logActivity(supabase, user, '송금 요청 등록', `${vendorName} ${won(amount)}`);
+  const brandLabel = brand === 'staffmeal' ? '스탭밀' : '가든서비스';
+  await logActivity(supabase, user, '송금 요청 등록', `[${brandLabel}] ${vendorName} ${won(amount)}`);
 
   // 송금 담당자(대표) 알림 — 이메일+웹푸시. 실패해도 등록은 성공 처리
   await notifyTransferRequest(supabase, {
+    brandLabel,
     vendorName: vendorName,
     amount,
     requesterEmail: user.email ?? '',

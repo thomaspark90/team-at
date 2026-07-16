@@ -7,6 +7,7 @@ const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 const APP_URL = 'https://team-at-apps.vercel.app/dashboard';
 
 export interface TransferNotice {
+  brandLabel?: string; // 스탭밀 | 가든서비스 — 구분 도입 전 호출부 호환 위해 선택
   vendorName: string;
   amount: number;
   requesterEmail: string;
@@ -165,10 +166,11 @@ export async function notifyTransferRequest(supabase: SupabaseClient, n: Transfe
       sendEmailTo(
         supabase,
         to,
-        `[송금 요청] ${n.vendorName} ${won(n.amount)}`,
+        `[송금 요청${n.brandLabel ? ` · ${n.brandLabel}` : ''}] ${n.vendorName} ${won(n.amount)}`,
         `
         <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
           <p><strong>${n.vendorName}</strong> — <strong>${won(n.amount)}</strong></p>
+          ${n.brandLabel ? `<p>브랜드: ${n.brandLabel}</p>` : ''}
           <p>계좌: ${account || '미확인 (거래처에 확인 필요)'}</p>
           ${n.itemsSummary ? `<p>품목: ${n.itemsSummary}</p>` : ''}
           <p>요청: ${n.requesterEmail}</p>
@@ -179,7 +181,7 @@ export async function notifyTransferRequest(supabase: SupabaseClient, n: Transfe
     recipientsP.then((to) =>
       sendPushTo(supabase, to, {
         title: `송금 요청 · ${n.vendorName}`,
-        body: `${won(n.amount)} — ${n.requesterEmail.split('@')[0]} 등록`,
+        body: `${n.brandLabel ? `[${n.brandLabel}] ` : ''}${won(n.amount)} — ${n.requesterEmail.split('@')[0]} 등록`,
         url: '/dashboard',
       })
     ),
