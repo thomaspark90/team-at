@@ -10,7 +10,7 @@ import { flavorGradient } from '@/lib/flavor-colors';
 import BrewTimer from '@/components/garden/BrewTimer';
 import GrinderCalibration from '@/components/garden/GrinderCalibration';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
-import { convertDial } from '@/lib/grinder-calibration';
+import { pangyoDialText } from '@/lib/grinder-calibration';
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 const fmtDate = (iso: string) => {
@@ -212,9 +212,13 @@ export default function GardenDashboard() {
   const metaByBean = useMemo(() => new Map(beanMetas.map((b) => [b.beanKey, b])), [beanMetas]);
   const stockOfBean = (beanKey: string, storeId: StoreId) => stockOf(metaByBean.get(beanKey), storeId);
 
-  // 레시피 분쇄도(양재천 EK43 기준) → 판교 EK43 다이얼 환산 — 두 지점 측정점이 모두 있어야 값이 나온다
-  const toPangyo = (mesh: number | null | undefined) =>
-    mesh != null ? convertDial(grinderProfiles, 'yangjae', 'pangyo', mesh) : null;
+  // 레시피 분쇄도(양재천 EK43 기준) → 판교 EK43 표기 — 피팅 준비 시 확정값,
+  // 아니면 2026-07-16 실측 오프셋 기반 잠정 범위(*)로 폴백
+  const pangyoMeshText = (mesh: number | null | undefined) => {
+    if (mesh == null) return null;
+    const p = pangyoDialText(grinderProfiles, mesh);
+    return p ? `${p.text}${p.provisional ? '*' : ''}` : null;
+  };
 
   // 재고 있음 / 전 지점 0% 분리 — 대시보드엔 재고 있는 원두만, 전 지점 0%는 필터 레시피 탭에서만 조회
   const activeGroups = useMemo(
@@ -566,16 +570,14 @@ export default function GardenDashboard() {
                       <SpecRow label="도징량" value={r.doseG != null ? `${r.doseG}g` : null} />
                       <SpecRow label="총 물량" value={r.waterG != null ? `${r.waterG}g` : null} />
                       <SpecRow label="물 온도" value={r.tempC != null ? `${r.tempC}°C` : null} />
-                      <SpecRow
-                        label="분쇄도"
-                        value={
-                          r.grindMesh != null
-                            ? `EK43(양재천) ${meshFmt(r.grindMesh)}${
-                                toPangyo(r.grindMesh) != null ? ` · 판교 ${meshFmt(toPangyo(r.grindMesh)!)}` : ''
-                              }`
-                            : r.grind || null
-                        }
-                      />
+                      {r.grindMesh != null ? (
+                        <>
+                          <SpecRow label="분쇄도 · 양재천 EK43" value={meshFmt(r.grindMesh)} />
+                          <SpecRow label="분쇄도 · 판교 EK43" value={pangyoMeshText(r.grindMesh)} />
+                        </>
+                      ) : (
+                        <SpecRow label="분쇄도" value={r.grind || null} />
+                      )}
                       <SpecRow label="추출 시간(최대)" value={r.totalTime || null} />
                       <SpecRow
                         label="재료비"
@@ -743,9 +745,9 @@ export default function GardenDashboard() {
                   ›
                 </button>
               </div>
-              {draft.grindMesh && toPangyo(Number(draft.grindMesh)) != null && (
+              {draft.grindMesh && pangyoMeshText(Number(draft.grindMesh)) != null && (
                 <span className="tabular text-[11px] text-muted-foreground">
-                  판교점 EK43 환산 ≈ {meshFmt(toPangyo(Number(draft.grindMesh))!)}
+                  판교점 EK43 환산 ≈ {pangyoMeshText(Number(draft.grindMesh))}
                 </span>
               )}
             </div>
