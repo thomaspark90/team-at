@@ -6,6 +6,7 @@ import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import MonthlyUploadBoard from '@/components/finance/MonthlyUploadBoard';
 import ClassifyBoard from '@/components/finance/ClassifyBoard';
+import TaskBoard from '@/components/finance/TaskBoard';
 
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 
@@ -65,6 +66,18 @@ export default async function AccountingDashboardPage() {
         {/* 월별 회계자료 업로드 → 자료 분류 보드 — 기장 권한자만 */}
         {isStaff && <MonthlyUploadBoard />}
         {isStaff && <ClassifyBoard />}
+
+        {/* 기장 업무 칸반 — 은행·카드 업로드, 거래 분류, 기말재고, 월 확정 등 정기 업무 체크 */}
+        {isStaff && (
+          <section className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="m-0 mb-1 text-[15px] font-medium">업무 보드</h2>
+            <p className="mb-4 mt-0 text-[13px] text-muted-foreground">
+              주간·월간 기장 업무가 자동으로 생성돼요. POS·채널수수료·관리손익 검토는{' '}
+              <Link href="/finance/dashboard" className="underline">재무 대시보드</Link>에서 관리해요.
+            </p>
+            <TaskBoard board="accounting" />
+          </section>
+        )}
       </div>
     </div>
   );

@@ -2,15 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { FinanceTask, TaskStatus } from '@/lib/finance/tasks';
+import type { FinanceTask, TaskStatus, TaskBoardId } from '@/lib/finance/tasks';
 import { TASK_COLUMNS, CADENCE_LABEL, ymd } from '@/lib/finance/tasks';
 
-// 재무 업무 칸반 — 주간/월간 정기 업무가 자동 생성되고(GET 시 시딩)
+// 업무 칸반 — 주간/월간 정기 업무가 자동 생성되고(GET 시 시딩)
 // 할 일 → 진행 중 → 완료로 옮기며 관리한다. 단발 업무는 직접 추가.
+// board: accounting = 회계 대시보드(기장) / finance = 리포트 재무 대시보드(보고 준비)
 
 const fmtDue = (due: string) => `${Number(due.slice(5, 7))}/${Number(due.slice(8, 10))}`;
 
-export default function TaskBoard() {
+export default function TaskBoard({ board }: { board: TaskBoardId }) {
   const [tasks, setTasks] = useState<FinanceTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -56,7 +57,7 @@ export default function TaskBoard() {
   const add = async () => {
     const title = newTitle.trim();
     if (!title) return;
-    if (await call('POST', { title, ...(newDue ? { due: newDue } : {}) })) {
+    if (await call('POST', { title, board, ...(newDue ? { due: newDue } : {}) })) {
       setNewTitle('');
       setNewDue('');
     }
@@ -64,15 +65,16 @@ export default function TaskBoard() {
 
   const today = ymd(new Date());
 
-  // 완료는 최근 것만 — 지난 완료가 무한히 쌓여 보이지 않게 최신 12개로 자른다
+  // 이 보드의 카드만 — 완료는 최근 것만(지난 완료가 무한히 쌓여 보이지 않게 최신 12개)
   const visible = useMemo(() => {
-    const open = tasks.filter((t) => t.status !== 'done');
-    const done = tasks
+    const mine = tasks.filter((t) => t.board === board);
+    const open = mine.filter((t) => t.status !== 'done');
+    const done = mine
       .filter((t) => t.status === 'done')
       .sort((a, b) => (b.updatedAt ?? b.createdAt).localeCompare(a.updatedAt ?? a.createdAt))
       .slice(0, 12);
     return [...open, ...done];
-  }, [tasks]);
+  }, [tasks, board]);
 
   const columnTasks = (status: TaskStatus) =>
     visible

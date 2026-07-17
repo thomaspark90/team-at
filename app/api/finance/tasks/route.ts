@@ -1,8 +1,8 @@
 import { get, put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { FinanceTask, TaskStatus } from '@/lib/finance/tasks';
-import { WEEKLY_TEMPLATES, MONTHLY_TEMPLATES, weekPeriodOf, monthPeriodOf } from '@/lib/finance/tasks';
+import type { FinanceTask, TaskStatus, TaskBoardId } from '@/lib/finance/tasks';
+import { WEEKLY_TEMPLATES, MONTHLY_TEMPLATES, weekPeriodOf, monthPeriodOf, boardOfTemplate } from '@/lib/finance/tasks';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import { logActivity } from '@/lib/finance/activity';
@@ -60,11 +60,20 @@ export async function GET() {
   const month = monthPeriodOf(now);
   let seeded = false;
 
+  // 보드 분리 전에 저장된 카드 마이그레이션 — 템플릿은 원본 배정, 수동 카드는 재무 보드로
+  for (const t of data.tasks) {
+    if (!t.board) {
+      t.board = boardOfTemplate(t.templateId);
+      seeded = true;
+    }
+  }
+
   for (const t of WEEKLY_TEMPLATES) {
     if (!data.tasks.some((x) => x.templateId === t.id && x.period === week.key)) {
       data.tasks.push({
         id: crypto.randomUUID(),
         title: t.title,
+        board: t.board,
         cadence: 'weekly',
         period: week.key,
         periodLabel: week.label,
@@ -82,6 +91,7 @@ export async function GET() {
       data.tasks.push({
         id: crypto.randomUUID(),
         title: t.title.replace('{M}', String(month.targetMonth)),
+        board: t.board,
         cadence: 'monthly',
         period: month.key,
         periodLabel: month.label,
@@ -98,7 +108,7 @@ export async function GET() {
   return NextResponse.json(data.tasks.filter((t) => !t.removed));
 }
 
-// 단발 업무 수동 추가: { title, due? }
+// 단발 업무 수동 추가: { title, board, due? }
 export async function POST(req: Request) {
   const auth = await requireStaff();
   if (auth instanceof NextResponse) return auth;
@@ -107,12 +117,14 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const title = String(body?.title ?? '').trim();
   if (!title) return NextResponse.json({ error: '제목을 입력해 주세요.' }, { status: 400 });
+  const board: TaskBoardId = body?.board === 'accounting' ? 'accounting' : 'finance';
   const due = typeof body?.due === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.due) ? body.due : null;
 
   const data = await readStore();
   data.tasks.push({
     id: crypto.randomUUID(),
     title,
+    board,
     cadence: 'once',
     period: '',
     periodLabel: '',

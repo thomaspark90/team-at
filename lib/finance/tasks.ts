@@ -4,10 +4,13 @@
 
 export type TaskStatus = 'todo' | 'doing' | 'done';
 export type TaskCadence = 'weekly' | 'monthly' | 'once';
+// 업무가 속한 보드 — accounting = 회계 대시보드(기장·자료 입력), finance = 리포트 재무 대시보드(보고 준비)
+export type TaskBoardId = 'accounting' | 'finance';
 
 export interface FinanceTask {
   id: string;
   title: string;
+  board: TaskBoardId;
   cadence: TaskCadence;
   period: string; // weekly 'W-2026-07-13'(월요일) / monthly '2026-07' / once ''
   periodLabel: string; // '7/13 주' / '7월' / ''
@@ -63,24 +66,32 @@ export function monthPeriodOf(date: Date): { key: string; label: string; targetM
 interface WeeklyTemplate {
   id: string;
   title: string;
+  board: TaskBoardId;
   href?: string;
 }
 interface MonthlyTemplate extends WeeklyTemplate {
   dueDay: number; // 이번 달 며칠까지
 }
 
+// 회계 = 자료 입력·분류·재고·확정 등 기장 업무 / 재무 = POS·수수료·손익 검토 등 보고 준비
 export const WEEKLY_TEMPLATES: WeeklyTemplate[] = [
-  { id: 'classify', title: '미분류 거래 분류 비우기', href: '/finance/classify' },
-  { id: 'receipts', title: '카드 영수증·증빙 정리', href: '/finance/card' },
+  { id: 'classify', title: '미분류 거래 분류 비우기', board: 'accounting', href: '/finance/classify' },
+  { id: 'receipts', title: '카드 영수증·증빙 정리', board: 'accounting', href: '/finance/card' },
 ];
 
 // {M} = 전월 숫자 (마감 대상 월)
 export const MONTHLY_TEMPLATES: MonthlyTemplate[] = [
-  { id: 'bank-pdf', title: '{M}월 은행 PDF 업로드', href: '/finance', dueDay: 5 },
-  { id: 'card-stmt', title: '{M}월 신한카드 이용내역 업로드', href: '/finance', dueDay: 5 },
-  { id: 'pos', title: '{M}월 POS 매출 업로드', href: '/finance', dueDay: 5 },
-  { id: 'inventory', title: '{M}월 기말재고 입력', href: '/finance/pnl', dueDay: 10 },
-  { id: 'channel-fees', title: '{M}월 채널수수료 입력', href: '/finance/pnl', dueDay: 10 },
-  { id: 'pnl-review', title: '{M}월 관리손익 검토', href: '/finance/pnl', dueDay: 12 },
-  { id: 'close', title: '{M}월 월 확정', href: '/finance/close', dueDay: 15 },
+  { id: 'bank-pdf', title: '{M}월 은행 PDF 업로드', board: 'accounting', href: '/finance', dueDay: 5 },
+  { id: 'card-stmt', title: '{M}월 신한카드 이용내역 업로드', board: 'accounting', href: '/finance', dueDay: 5 },
+  { id: 'pos', title: '{M}월 POS 매출 업로드', board: 'finance', href: '/finance', dueDay: 5 },
+  { id: 'inventory', title: '{M}월 기말재고 입력', board: 'accounting', href: '/finance/pnl', dueDay: 10 },
+  { id: 'channel-fees', title: '{M}월 채널수수료 입력', board: 'finance', href: '/finance/pnl', dueDay: 10 },
+  { id: 'pnl-review', title: '{M}월 관리손익 검토', board: 'finance', href: '/finance/pnl', dueDay: 12 },
+  { id: 'close', title: '{M}월 월 확정', board: 'accounting', href: '/finance/close', dueDay: 15 },
 ];
+
+// 구버전 데이터(board 없이 저장된 카드)의 보드 판정 — 템플릿 카드는 원본 배정, 수동 카드는 재무
+export function boardOfTemplate(templateId?: string): TaskBoardId {
+  const all = [...WEEKLY_TEMPLATES, ...MONTHLY_TEMPLATES];
+  return all.find((t) => t.id === templateId)?.board ?? 'finance';
+}
