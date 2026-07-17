@@ -145,6 +145,46 @@ const toNum = (s: string): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+// 은행 내역의 잔액 연속성 — "이전 잔액 + 입금 − 출금 = 현재 잔액"이 이어지는지.
+// 기간 커버리지로 못 잡는 '중간 행 누락'을 잡는다(끊긴 곳 = 그 사이 거래가 빠졌다는 증거).
+// 파일의 행 순서를 신뢰하되(은행 내려받기 기본 정렬), 내림차순 파일은 뒤집어 검사한다.
+export interface ContinuityReport {
+  checked: number; // 검사한 연결 수
+  breaks: number; // 끊긴 곳 수
+  firstBreak: { date: string; memo: string } | null;
+  reliable: boolean; // 끊김이 아주 많으면(5곳 이상 & 절반 초과) 다계좌 혼합·정렬 문제로 보고 판정 불가 처리
+}
+
+export function checkBalanceContinuity(txns: ParsedTransaction[]): ContinuityReport | null {
+  if (txns.length < 3) return null;
+  const asc = txns[0].txAt <= txns[txns.length - 1].txAt ? txns : [...txns].reverse();
+  let checked = 0;
+  let breaks = 0;
+  let firstBreak: ContinuityReport['firstBreak'] = null;
+  let prev: ParsedTransaction | null = null;
+  let balanceRows = 0;
+  for (const cur of asc) {
+    if (cur.balance === 0) {
+      // 잔액 미기재(0) 행은 판정 불가 — 체인 리셋(이 행을 가로지르는 검사는 하지 않음)
+      prev = null;
+      continue;
+    }
+    balanceRows++;
+    if (prev) {
+      checked++;
+      const expected = prev.balance + cur.amountIn - cur.amountOut;
+      if (Math.abs(expected - cur.balance) > 0.5) {
+        breaks++;
+        if (!firstBreak) firstBreak = { date: cur.txAt.slice(0, 10), memo: cur.memo };
+      }
+    }
+    prev = cur;
+  }
+  // 잔액 열이 사실상 없는 파일(기재 행 부족)은 검사 안 함
+  if (balanceRows < 3 || checked === 0) return null;
+  return { checked, breaks, firstBreak, reliable: !(breaks >= 5 && breaks / checked > 0.5) };
+}
+
 // 매핑에 따라 전 행을 거래로 변환. 날짜 불가/금액 0 행(제목·합계 등)은 스킵.
 export function rowsToTransactions(
   rows: string[][],

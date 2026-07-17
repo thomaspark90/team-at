@@ -16,6 +16,12 @@ interface Preview {
   duplicates: number;
   outOfMonth: number;
   coverage: { full: boolean; label: string | null; pct: number } | null;
+  continuity: {
+    checked: number;
+    breaks: number;
+    firstBreak: { date: string; memo: string } | null;
+    reliable: boolean;
+  } | null;
   sample: ParsedTransaction[];
 }
 
@@ -77,6 +83,7 @@ export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSave
       const fd = new FormData();
       fd.append('file', f);
       fd.append('ym', ym);
+      fd.append('slot', activeSlot); // 은행 슬롯이면 잔액 연속성 검사가 붙음
       const res = await fetch('/api/finance/excel/parse', { method: 'POST', body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '엑셀을 읽지 못했어요.');
@@ -232,6 +239,24 @@ export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSave
               (월 커버리지 {preview.coverage.pct}%). 저장은 되지만 칸은 <b>부분</b>으로 표시되고, 나머지 기간 파일을
               이어서 올리면 완료로 바뀌어요.
             </p>
+          )}
+          {preview.continuity && (
+            preview.continuity.breaks === 0 ? (
+              <p className="mt-2 text-[12px] text-emerald-600">
+                ✓ 잔액 연속성 확인 — 중간 누락 없음 ({preview.continuity.checked}건 연결)
+              </p>
+            ) : preview.continuity.reliable ? (
+              <p className="mt-2 text-[12px] text-red-500">
+                ⚠ 잔액 흐름이 {preview.continuity.breaks}곳에서 끊겨요
+                {preview.continuity.firstBreak &&
+                  ` (첫 지점: ${preview.continuity.firstBreak.date.slice(5).replace('-', '/')} ${preview.continuity.firstBreak.memo})`}
+                — 그 사이 거래가 빠졌을 수 있어요. 은행에서 전체 기간을 다시 내려받아 확인하세요.
+              </p>
+            ) : (
+              <p className="mt-2 text-[12px] text-muted-foreground">
+                잔액 연속성은 판정하지 못했어요 (여러 계좌가 섞였거나 정렬이 다른 파일이에요).
+              </p>
+            )
           )}
           {preview.outOfMonth > 0 && (
             <p className="mt-2 text-[12px] text-amber-600">

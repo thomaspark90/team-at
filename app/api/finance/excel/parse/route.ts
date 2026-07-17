@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import { fetchExistingHashes } from '@/lib/finance/dedup';
 import { dedupe } from '@/lib/finance/parse';
-import { fileToRows, inferMapping, rowsToTransactions } from '@/lib/finance/excel';
+import { checkBalanceContinuity, fileToRows, inferMapping, rowsToTransactions } from '@/lib/finance/excel';
 import { monthCoverage } from '@/lib/finance/coverage';
 
 export const runtime = 'nodejs';
@@ -31,6 +31,7 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const file = form.get('file');
   const ym = typeof form.get('ym') === 'string' ? String(form.get('ym')) : null; // 보드에서 선택한 월
+  const slot = typeof form.get('slot') === 'string' ? String(form.get('slot')) : null; // 잔액 연속성은 은행 슬롯만
   if (!(file instanceof File)) {
     return NextResponse.json({ error: '엑셀 파일을 선택하세요.' }, { status: 400 });
   }
@@ -62,8 +63,15 @@ export async function POST(req: Request) {
         : { full: false, label: null, pct: 0 };
     }
 
+    // 은행 슬롯 + 잔액 열이 있을 때만 — 중간 행 누락(잔액 흐름 끊김) 검사
+    const continuity =
+      slot?.startsWith('bank_') && mapping.balance != null
+        ? checkBalanceContinuity(result.transactions)
+        : null;
+
     return NextResponse.json({
       coverage,
+      continuity,
       mapping,
       totalRows: result.totalRows,
       skipped: result.skipped,
