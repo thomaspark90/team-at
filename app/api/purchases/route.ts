@@ -51,6 +51,7 @@ export async function POST(req: Request) {
     id: `${Date.now()}`,
     createdAt: new Date().toISOString(),
     bean: body.bean,
+    roastery: body.roastery ? String(body.roastery).trim() : undefined,
     purchasePrice: body.purchasePrice,
     settings: body.settings,
     costPerCup: body.costPerCup,

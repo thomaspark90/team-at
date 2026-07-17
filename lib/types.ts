@@ -36,6 +36,7 @@ export interface PurchaseRecord {
   id: string;
   createdAt: string; // ISO
   bean: string;
+  roastery?: string; // 로스팅사 (구 기록엔 없음)
   purchasePrice: number; // 구매가 (구매 용량 기준)
   settings: PricingSettings; // 당시 설정 스냅샷
   costPerCup: number; // 당시 잔당 재료비

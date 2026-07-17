@@ -32,7 +32,11 @@ const SELECT_FILL = 'rgba(132, 204, 22, 0.14)';
 export default function GardenService() {
   const [settings, setSettings] = useState<PricingSettings>(DEFAULT_SETTINGS);
   const [bean, setBean] = useState('');
+  const [roastery, setRoastery] = useState('');
   const [price, setPrice] = useState<number>(0);
+  // 원두봉투 스캔 상태 — 인식 결과로 원두명·로스팅사·용량 자동 기입
+  const [scanning, setScanning] = useState(false);
+  const [scanMsg, setScanMsg] = useState<string | null>(null);
   const [selectedMult, setSelectedMult] = useState<number | null>(null);
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [saving, setSaving] = useState(false);
@@ -68,6 +72,7 @@ export default function GardenService() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         bean: bean.trim(),
+        roastery: roastery.trim() || undefined,
         purchasePrice: price,
         settings,
         costPerCup: result.costPerCup,
@@ -153,12 +158,74 @@ export default function GardenService() {
         </div>
 
         <div className="ta-card bg-background min-w-0">
-          <p className="ta-label">원두 정보 입력</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+            <p className="ta-label">원두 정보 입력</p>
+            {/* 원두봉투 촬영 → AI 인식으로 원두명·로스팅사·용량 자동 기입 (영수증 인식과 동일 패턴) */}
+            <label className="ta-btn" style={{ height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 12, cursor: 'pointer' }}>
+              {scanning ? '인식 중…' : '📷 원두봉투 스캔'}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: 'none' }}
+                disabled={scanning}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!file) return;
+                  setScanning(true);
+                  setScanMsg(null);
+                  try {
+                    const fd = new FormData();
+                    fd.append('file', file);
+                    const res = await fetch('/api/garden-bean-scan', { method: 'POST', body: fd });
+                    const j = await res.json();
+                    if (!res.ok) throw new Error(j.error ?? '인식에 실패했어요.');
+                    const x = j.extraction as {
+                      beanName: string | null;
+                      roastery: string | null;
+                      weightG: number | null;
+                      roastLevel: string | null;
+                      tastingNotes: string | null;
+                    };
+                    if (x.beanName) setBean(x.beanName);
+                    if (x.roastery) setRoastery(x.roastery);
+                    if (x.weightG) setSettings((s) => ({ ...s, capacityG: x.weightG! }));
+                    const got = [
+                      x.beanName && `원두명`,
+                      x.roastery && `로스팅사`,
+                      x.weightG && `용량 ${x.weightG}g`,
+                      x.roastLevel && `배전도 ${x.roastLevel}`,
+                      x.tastingNotes && `노트: ${x.tastingNotes}`,
+                    ].filter(Boolean);
+                    setScanMsg(
+                      got.length
+                        ? `✓ 인식 완료 — ${got.join(' · ')}. 공급가만 입력하면 돼요.`
+                        : '⚠ 봉투에서 정보를 읽지 못했어요. 라벨이 잘 보이게 다시 찍어주세요.'
+                    );
+                  } catch (err) {
+                    setScanMsg(`⚠ ${(err as Error).message}`);
+                  } finally {
+                    setScanning(false);
+                  }
+                }}
+              />
+            </label>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {scanMsg && (
+              <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>{scanMsg}</p>
+            )}
             <input
               value={bean}
               onChange={(e) => setBean(e.target.value)}
               placeholder="원두명 (예: 에티오피아 게뎁)"
+              className="ta-input w-full"
+            />
+            <input
+              value={roastery}
+              onChange={(e) => setRoastery(e.target.value)}
+              placeholder="로스팅사 (예: 언스페셜티)"
               className="ta-input w-full"
             />
             <div style={{ display: 'flex', gap: 8, minWidth: 0 }}>
@@ -280,6 +347,9 @@ export default function GardenService() {
                 <div key={group[0].id}>
                   <p className="text-[13px] text-foreground mb-1.5">
                     {group[0].bean}
+                    {group[0].roastery && (
+                      <span className="text-[11px] text-muted-foreground"> · {group[0].roastery}</span>
+                    )}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {group.map((rec, i) => {
