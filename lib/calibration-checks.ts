@@ -31,7 +31,9 @@ export const DRIFT_TOLERANCE_UM = 30;
 // 300~1500 범위의 첫 숫자를 측정값으로 본다 (다이얼 6.5 같은 소수는 범위 밖).
 export function memoMicron(memo?: string): number | null {
   if (!memo) return null;
-  for (const m of memo.matchAll(/(\d{3,4}(?:\.\d+)?)/g)) {
+  const re = /(\d{3,4}(?:\.\d+)?)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(memo)) !== null) {
     const n = Number(m[1]);
     if (n >= 300 && n <= 1500) return n;
   }
