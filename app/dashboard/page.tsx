@@ -32,7 +32,7 @@ export default async function AccountingDashboardPage() {
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <AccountingNav role={role} />
-      <div className="mx-auto flex max-w-[720px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto flex max-w-[1120px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
         {/* 대기 송금 요약 */}
         <section className="rounded-2xl border border-border bg-card p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">

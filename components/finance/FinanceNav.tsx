@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { isOwner } from '@/lib/finance/access';
 
-// 재무(분석·보고) 하위 내비게이션 — 기장·결산(분류·월확정 등)은 회계 탭(AccountingNav)으로 이동.
+// 리포트(분석·보고) 하위 내비게이션 — 기장·결산(분류·월확정 등)은 회계 탭(AccountingNav)으로 이동.
 const LEFT = [
   { href: '/finance/dashboard', label: '대시보드' },
   { href: '/finance/pnl', label: '관리손익' },

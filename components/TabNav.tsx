@@ -8,10 +8,10 @@ const TABS = [
   { href: '/studio', label: 'Staff Meal' },
   { href: '/garden', label: 'Garden Service' },
   { href: '/dashboard', label: '회계' },
-  { href: '/finance/dashboard', label: '재무' },
+  { href: '/finance/dashboard', label: '리포트' },
 ];
 
-// 회계 탭에 속하는 /finance 하위 페이지(기장·결산) — 나머지 /finance 는 재무(분석) 탭.
+// 회계 탭에 속하는 /finance 하위 페이지(기장·결산) — 나머지 /finance 는 리포트(분석) 탭.
 const ACCOUNTING_FINANCE = ['/finance', '/finance/classify', '/finance/uploads', '/finance/close', '/finance/categories', '/finance/card'];
 const inAccounting = (p: string) =>
   p.startsWith('/dashboard') ||
@@ -20,8 +20,8 @@ const inAccounting = (p: string) =>
 export default function TabNav() {
   const pathname = usePathname();
   const router = useRouter();
-  // 재무 화면에서는 하위 내비(FinanceNav, max-w-1680)와 좌우 끝을 맞춘다
-  const wide = pathname?.startsWith('/finance');
+  // 회계·리포트 화면에서는 하위 내비(max-w-1680)와 좌우 끝을 맞춘다
+  const wide = pathname?.startsWith('/finance') || pathname?.startsWith('/dashboard');
 
   const handleLogout = async () => {
     const supabase = createClient();
