@@ -1,7 +1,7 @@
 // Garden Service 재무 ERP — 코어 타입
 // 설계 스펙: https://claude.ai/code/artifact/6ccab840-3ada-42c3-9cf1-cfaa39ca869a
 
-export type BankSource = 'shinhan' | 'woori' | 'naverpay';
+export type BankSource = 'shinhan' | 'woori' | 'naverpay' | 'excel';
 
 // 계정과목 대분류
 export type CategoryType =

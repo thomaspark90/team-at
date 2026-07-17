@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { OWNER_EMAIL } from '@/lib/finance/access';
 
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
-const APP_URL = 'https://team-at-apps.vercel.app/dashboard';
+const APP_URL = 'https://team-at-apps.vercel.app/dashboard/transfer';
 
 export interface TransferNotice {
   brandLabel?: string; // 스탭밀 | 가든서비스 — 구분 도입 전 호출부 호환 위해 선택
@@ -182,7 +182,7 @@ export async function notifyTransferRequest(supabase: SupabaseClient, n: Transfe
       sendPushTo(supabase, to, {
         title: `송금 요청 · ${n.vendorName}`,
         body: `${n.brandLabel ? `[${n.brandLabel}] ` : ''}${won(n.amount)} — ${n.requesterEmail.split('@')[0]} 등록`,
-        url: '/dashboard',
+        url: '/dashboard/transfer',
       })
     ),
   ]);
@@ -215,7 +215,7 @@ export async function notifyTransferDone(
     sendPushTo(supabase, [requester], {
       title: `이체 완료 · ${n.vendorName}`,
       body: `${won(n.amount)} — ${doneBy}님이 이체했어요`,
-      url: '/dashboard',
+      url: '/dashboard/transfer',
     }),
   ]);
   for (const r of results) {

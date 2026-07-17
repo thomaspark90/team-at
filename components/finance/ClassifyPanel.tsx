@@ -41,7 +41,7 @@ const TYPE_LABEL: Record<string, string> = {
   excluded: '손익 제외',
 };
 const TYPE_ORDER = ['revenue', 'cogs', 'sga', 'non_operating', 'excluded'];
-const BANK_LABEL: Record<string, string> = { shinhan: '신한', woori: '우리', naverpay: '네이버' };
+const BANK_LABEL: Record<string, string> = { shinhan: '신한', woori: '우리', naverpay: '네이버', excel: '엑셀' };
 
 export default function ClassifyPanel({
   txns,

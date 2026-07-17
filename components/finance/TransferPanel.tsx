@@ -667,7 +667,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
       {/* ---------- 리스트 ---------- */}
       <section className="rounded-2xl border border-border bg-card p-5">
         <div className="flex items-center justify-between">
-          <h2 className="m-0 text-[15px] font-medium">{isDashboard ? '송금 대시보드' : '송금 내역'}</h2>
+          <h2 className="m-0 text-[15px] font-medium">{isDashboard ? '송금 현황' : '송금 내역'}</h2>
           {isDashboard ? (
             <Link href="/dashboard/history" className="text-[13px] text-muted-foreground hover:text-foreground">
               전체 내역 →

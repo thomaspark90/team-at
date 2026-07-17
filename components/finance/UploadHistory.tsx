@@ -17,7 +17,7 @@ export interface UploadRow {
   statement_total: number | null;
 }
 
-const BANK_LABEL: Record<string, string> = { shinhan: '신한', woori: '우리' };
+const BANK_LABEL: Record<string, string> = { shinhan: '신한', woori: '우리', naverpay: '네이버', excel: '엑셀' };
 const fmt = (s: string | null) => (s ? s.slice(0, 10) : '');
 
 function kind(u: UploadRow): string {

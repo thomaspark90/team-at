@@ -1,15 +1,15 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
-import { fallbackRecipients } from '@/lib/notify';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
-import TransferPanel from '@/components/finance/TransferPanel';
-import NotifySettings from '@/components/NotifySettings';
+import ExcelUploadCard from '@/components/finance/ExcelUploadCard';
 
-// 회계 홈 = 송금 요청 — 스탭밀·가든서비스 공통. 영수증 사진 업로드 → AI 인식 → 송금 대기 리스트.
-// 업로드는 구글 로그인만 하면 가능, 이체 완료 처리는 admin/classifier 만.
-export default async function DashboardPage() {
+const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
+
+// 회계 대시보드 — 대기 송금 요약 + 회계자료 엑셀 업로드(스태프).
+export default async function AccountingDashboardPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -17,29 +17,52 @@ export default async function DashboardPage() {
   if (!user) redirect('/');
 
   const role = await resolveRole(supabase, user);
+  const isStaff = ['admin', 'classifier'].includes(role ?? '');
 
-  // 담당자(알림 수신자)는 송금 관리에서 알림을 관리하므로, 여기선 직원용(내 요청 완료 푸시)만 노출
-  const { data: recipientRows } = await supabase
+  // 대기 송금 요약 — 로그인한 누구나 열람 가능(RLS 동일)
+  const { data: pending } = await supabase
     .schema('finance')
-    .from('notify_recipients')
-    .select('email');
-  const recipients =
-    recipientRows && recipientRows.length > 0
-      ? recipientRows.map((r) => String(r.email).toLowerCase())
-      : fallbackRecipients();
-  const isNotifyRecipient = recipients.includes((user.email ?? '').toLowerCase());
+    .from('transfer_requests')
+    .select('amount')
+    .eq('status', 'pending');
+  const pendingCount = pending?.length ?? 0;
+  const pendingSum = (pending ?? []).reduce((s, r) => s + Number(r.amount), 0);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <AccountingNav role={role} />
       <div className="mx-auto flex max-w-[720px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
-        <TransferPanel role={role} email={user.email ?? ''} mode="dashboard" />
-        {!isNotifyRecipient && (
-          <div id="notify-optin" className="scroll-mt-20">
-            <NotifySettings variant="requester" />
+        {/* 대기 송금 요약 */}
+        <section className="rounded-2xl border border-border bg-card p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="m-0 text-[15px] font-medium">송금 대기</h2>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                {pendingCount > 0 ? (
+                  <>
+                    <span className="font-medium text-foreground">{pendingCount}건</span> ·{' '}
+                    <span className="font-medium" style={{ color: 'hsl(var(--number-colored))' }}>
+                      {won(pendingSum)}
+                    </span>{' '}
+                    이체 대기 중
+                  </>
+                ) : (
+                  '대기 중인 송금이 없어요.'
+                )}
+              </p>
+            </div>
+            <Link
+              href="/dashboard/transfer"
+              className="rounded-lg bg-foreground px-3 py-1.5 text-[12px] font-medium text-background"
+            >
+              송금 요청 →
+            </Link>
           </div>
-        )}
+        </section>
+
+        {/* 회계자료 엑셀 업로드 — 기장 권한자만 */}
+        {isStaff && <ExcelUploadCard />}
       </div>
     </div>
   );

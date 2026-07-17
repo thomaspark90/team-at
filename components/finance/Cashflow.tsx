@@ -1,7 +1,7 @@
 import type { MonthCash } from '@/lib/finance/cashflow';
 import { wonNum as won, fmtYm } from '@/lib/finance/format';
 
-const BANK: Record<string, string> = { shinhan: '신한은행', woori: '우리은행' };
+const BANK: Record<string, string> = { shinhan: '신한은행', woori: '우리은행', naverpay: '네이버페이', excel: '엑셀 업로드' };
 
 export default function Cashflow({ months }: { months: MonthCash[] }) {
   if (months.length === 0) {

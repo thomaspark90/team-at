@@ -9,7 +9,7 @@ import VendorBook from '@/components/finance/VendorBook';
 import NotifySettings from '@/components/NotifySettings';
 import NotifyRecipients from '@/components/NotifyRecipients';
 
-// 송금 관리 — 대기/완료 전체 내역(월별) + 알림 설정 + 수신자 관리(admin)
+// 송금 설정 — 알림 설정 + 수신자 관리(admin) + 대기/완료 전체 내역(월별)
 export default async function TransferManagePage() {
   const supabase = await createClient();
   const {
