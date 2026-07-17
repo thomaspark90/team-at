@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { BeanMeta, BrewType, DripRecipe, PourStep, StoreId } from '@/lib/types';
 import { STORES, stockOf, beanRegisteredAt, daysSince, dPlusColor } from '@/lib/types';
+import type { GrinderProfiles } from '@/lib/grinder-calibration';
+import { pangyoDialText } from '@/lib/grinder-calibration';
 import { normalize } from '@/lib/pricing';
 import { flavorGradient } from '@/lib/flavor-colors';
 
@@ -66,13 +68,18 @@ export default function GardenRecipes() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string>('전체');
 
+  // 지점 간 분쇄도 환산용 그라인더 프로파일 — 피팅 미확보 시 잠정(실측 오프셋) 환산 사용
+  const [grinderProfiles, setGrinderProfiles] = useState<GrinderProfiles>({});
+
   const refresh = async () => {
-    const [rRes, bRes] = await Promise.all([
+    const [rRes, bRes, gRes] = await Promise.all([
       fetch('/api/garden-recipes', { cache: 'no-store' }),
       fetch('/api/garden-beans', { cache: 'no-store' }),
+      fetch('/api/garden-grinders', { cache: 'no-store' }),
     ]);
     if (rRes.ok) setRecipes(await rRes.json());
     if (bRes.ok) setBeanMetas(await bRes.json());
+    if (gRes.ok) setGrinderProfiles(await gRes.json());
     setLoading(false);
   };
   useEffect(() => {
@@ -173,6 +180,16 @@ export default function GardenRecipes() {
         </p>
       )}
 
+      {!loading && sections.length > 0 && (
+        <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>
+          판교 분쇄도는 2026-07-16 지점 캘리브레이션 실측(동일 다이얼에서 판교가 약 187µm 가늘게 분쇄)
+          기반 환산값입니다. <strong>*</strong>는 잠정 범위(기울기 실측 전) —{' '}
+          <Link href="/garden/calibration/report" className="underline hover:text-foreground">
+            리포트 보기
+          </Link>
+        </p>
+      )}
+
       {visible.map(({ country, groups }) => (
         <div key={country} className="min-w-0">
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, borderBottom: '1px solid hsl(var(--border))', paddingBottom: 6, marginBottom: 12 }}>
@@ -257,10 +274,21 @@ export default function GardenRecipes() {
                           <SpecRow label="도징량" value={r.doseG != null ? `${r.doseG}g` : null} />
                           <SpecRow label="총 물량" value={r.waterG != null ? `${r.waterG}g` : null} />
                           <SpecRow label="물 온도" value={r.tempC != null ? `${r.tempC}°C` : null} />
-                          <SpecRow
-                            label="분쇄도"
-                            value={r.grindMesh != null ? `EK43(양재천) ${r.grindMesh.toFixed(1)}` : r.grind || null}
-                          />
+                          {r.grindMesh != null ? (
+                            // 분쇄도는 양재천 EK43 기준으로 저장 — 판교는 지점 캘리브레이션(2026-07-16 실측)으로 환산 표기
+                            <>
+                              <SpecRow label="분쇄도 · 양재천 EK43" value={r.grindMesh.toFixed(1)} />
+                              <SpecRow
+                                label="분쇄도 · 판교 EK43"
+                                value={(() => {
+                                  const p = pangyoDialText(grinderProfiles, r.grindMesh!);
+                                  return p ? `${p.text}${p.provisional ? '*' : ''}` : null;
+                                })()}
+                              />
+                            </>
+                          ) : (
+                            <SpecRow label="분쇄도" value={r.grind || null} />
+                          )}
                           <SpecRow label="추출 시간(최대)" value={r.totalTime || null} />
                         </div>
                         {r.pours && r.pours.length > 0 && (
