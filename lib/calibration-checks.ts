@@ -22,6 +22,22 @@ export const CHECK_COLUMNS: { status: CheckStatus; label: string }[] = [
   { status: 'done', label: '완료' },
 ];
 
+// 2026-07-16 캘리브레이션 기준선 (다이얼 6.5, 배전도 3종 × 3샷 = 9샷 평균) — 드리프트 판정용
+export const BASELINE_UM: Record<StoreId, number> = { yangjae: 915.1, pangyo: 728.5 };
+// 샷 간 반복성(SD 8~15µm) 기준 정상 오차 한계 — 초과 시 드리프트 경고
+export const DRIFT_TOLERANCE_UM = 30;
+
+// 체크 메모에서 측정 평균(µm) 추출 — 예: '6.5 → 918µm, 기준선 유지' → 918.
+// 300~1500 범위의 첫 숫자를 측정값으로 본다 (다이얼 6.5 같은 소수는 범위 밖).
+export function memoMicron(memo?: string): number | null {
+  if (!memo) return null;
+  for (const m of memo.matchAll(/(\d{3,4}(?:\.\d+)?)/g)) {
+    const n = Number(m[1]);
+    if (n >= 300 && n <= 1500) return n;
+  }
+  return null;
+}
+
 export function periodOf(date: Date): { key: string; label: string } {
   const y = date.getFullYear();
   const m = date.getMonth() + 1;

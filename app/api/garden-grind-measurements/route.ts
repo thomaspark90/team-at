@@ -6,6 +6,8 @@ import type { GrindMeasurement, RoastLevel } from '@/lib/grind-measurements';
 import { ROAST_LEVELS } from '@/lib/grind-measurements';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
+import { notifyGardenEvent } from '@/lib/notify';
+import { topicEmails } from '@/lib/garden-notify-topics-server';
 
 const DATA_PATH = 'data/garden-grind-measurements.json';
 const STORE_IDS = STORES.map((s) => s.id);
@@ -91,14 +93,37 @@ export async function POST(req: Request) {
   await writeStore(data);
 
   const label = STORES.find((s) => s.id === storeId)?.label ?? storeId;
-  await logActivity(
-    supabase,
-    user,
-    '가든서비스 분쇄도 측정 업로드',
+  const summary =
     `${label} · ${bean} · 다이얼 ${dial}` +
-      (measurement.mean ? ` · 평균 ${measurement.mean}µm` : '') +
-      ` · 이미지 ${imageUrls.length}장`
-  );
+    (measurement.mean ? ` · 평균 ${measurement.mean}µm` : '') +
+    ` · 이미지 ${imageUrls.length}장`;
+  await logActivity(supabase, user, '가든서비스 분쇄도 측정 업로드', summary);
+
+  // 측정 업로드 완료 → 캘리브레이션 담당자에게 알림(업로더 본인 제외) — 요청→수행→확인 루프 닫기.
+  // 실패해도 업로드는 유지.
+  try {
+    const me = (user.email ?? '').toLowerCase();
+    const emails = (await topicEmails(supabase, 'calibration')).filter((e) => e !== me);
+    const by = me.split('@')[0];
+    await notifyGardenEvent(supabase, {
+      emails,
+      subject: `[분쇄도 업로드] ${label} · ${bean} · 다이얼 ${dial}`,
+      html: `
+      <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
+        <p><strong>분쇄도 측정이 업로드됐어요</strong></p>
+        <p>${summary}</p>
+        ${by ? `<p>업로드: ${by}</p>` : ''}
+        <p><a href="https://team-at-apps.vercel.app/garden/calibration">분쇄도 측정 열기 →</a></p>
+      </div>`,
+      push: {
+        title: `분쇄도 업로드 · ${label}`,
+        body: `${bean} · 다이얼 ${dial}${measurement.mean ? ` · 평균 ${measurement.mean}µm` : ''}${by ? ` — ${by}` : ''}`,
+        url: '/garden/calibration',
+      },
+    });
+  } catch (e) {
+    console.error('측정 업로드 알림 실패:', e);
+  }
   return NextResponse.json(data.measurements);
 }
 
