@@ -8,8 +8,6 @@ import { costPerCup, normalize } from '@/lib/pricing';
 import { applyPreset, presetById } from '@/lib/drip-presets';
 import { flavorGradient } from '@/lib/flavor-colors';
 import BrewTimer from '@/components/garden/BrewTimer';
-import GrinderCalibration from '@/components/garden/GrinderCalibration';
-import CalibrationKanban from '@/components/garden/CalibrationKanban';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import { pangyoDialText } from '@/lib/grinder-calibration';
 
@@ -134,6 +132,18 @@ const presetDraft = (beanKey: string, bean: string, brewType: BrewType): Draft =
   };
 };
 
+// 원두명에서 국가 추출 — 필터 레시피 화면의 국가별 그룹핑용 (구 GardenRecipes에서 이식)
+const COUNTRIES = [
+  '에티오피아', '케냐', '콜롬비아', '브라질', '과테말라', '온두라스', '파나마', '페루',
+  '코스타리카', '엘살바도르', '니카라과', '볼리비아', '에콰도르', '르완다', '부룬디',
+  '인도네시아', '예멘', '멕시코', '인도', '베트남', '탄자니아', '우간다', '파푸아뉴기니', '중국',
+];
+const ETC = '기타';
+const countryOf = (bean: string) => {
+  const b = normalize(bean);
+  return COUNTRIES.find((c) => b.includes(normalize(c))) ?? ETC;
+};
+
 // 원두 하나 = ICE/HOT 레시피 슬롯 한 쌍
 interface BeanGroup {
   beanKey: string;
@@ -143,7 +153,9 @@ interface BeanGroup {
   latestUpdate: string;
 }
 
-export default function GardenDashboard() {
+// section: 'unset' = 가든 대시보드(미설정 원두만) / 'recipes' = 필터 레시피 탭(카드 전체, 국가별)
+// 편집기·타이머 오버레이는 두 모드 공통.
+export default function GardenDashboard({ section = 'recipes' }: { section?: 'unset' | 'recipes' }) {
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [recipes, setRecipes] = useState<DripRecipe[]>([]);
   const [beanMetas, setBeanMetas] = useState<BeanMeta[]>([]);
@@ -161,6 +173,10 @@ export default function GardenDashboard() {
   const [timerFor, setTimerFor] = useState<{ bean: string; brewType: BrewType; recipe: DripRecipe } | null>(null);
   // 지점별 그라인더 측정 프로파일 (분쇄도 지점 간 환산용)
   const [grinderProfiles, setGrinderProfiles] = useState<GrinderProfiles>({});
+  // 미설정 원두 삭제 진행 중인 beanKey
+  const [deletingBean, setDeletingBean] = useState<string | null>(null);
+  // 국가 필터 칩 (recipes 모드)
+  const [selectedCountry, setSelectedCountry] = useState('전체');
 
   const refresh = async () => {
     const [pRes, rRes, bRes, gRes] = await Promise.all([
@@ -221,15 +237,20 @@ export default function GardenDashboard() {
     return p ? `${p.text}${p.provisional ? '*' : ''}` : null;
   };
 
-  // 재고 있음 / 전 지점 0% 분리 — 대시보드엔 재고 있는 원두만, 전 지점 0%는 필터 레시피 탭에서만 조회
-  const activeGroups = useMemo(
-    () => beanGroups.filter((g) => STORES.some((s) => stockOf(metaByBean.get(g.beanKey), s.id) > 0)),
-    [beanGroups, metaByBean]
-  );
-  const soldGroups = useMemo(
-    () => beanGroups.filter((g) => STORES.every((s) => stockOf(metaByBean.get(g.beanKey), s.id) === 0)),
-    [beanGroups, metaByBean]
-  );
+  // 국가별 섹션 (recipes 모드) — 모든 레시피 원두(재고 유무 무관), 국가 가나다순 · '기타' 맨 뒤,
+  // 국가 안에서는 beanGroups의 최신 업데이트순 유지
+  const countrySections = useMemo(() => {
+    const byCountry = new Map<string, BeanGroup[]>();
+    for (const g of beanGroups) {
+      const c = countryOf(g.bean);
+      byCountry.set(c, [...(byCountry.get(c) ?? []), g]);
+    }
+    const list = Array.from(byCountry.entries()).map(([country, groups]) => ({ country, groups }));
+    list.sort((a, b) =>
+      a.country === ETC ? 1 : b.country === ETC ? -1 : a.country.localeCompare(b.country, 'ko')
+    );
+    return list;
+  }, [beanGroups]);
 
   // 발주 기록엔 있지만 레시피가 하나도 없는 원두
   const unsetBeans = useMemo(() => {
@@ -239,6 +260,27 @@ export default function GardenDashboard() {
       .map(([, rec]) => rec)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [latestByBean, recipes]);
+
+  // 미설정 원두 목록에서 제거 — 최신 건만 지우면 이전 발주가 다시 노출되므로 해당 원두 기록 전체 삭제
+  const deleteUnsetBean = async (rec: PurchaseRecord) => {
+    const k = normalize(rec.bean);
+    const targets = purchases.filter((r) => normalize(r.bean) === k);
+    if (!window.confirm(`'${rec.bean}' 발주 기록 ${targets.length}건을 삭제할까요?`)) return;
+    setDeletingBean(k);
+    try {
+      // 서버가 blob 전체를 읽고 다시 쓰는 구조라 병렬 삭제는 유실 위험 — 순차 실행
+      for (const r of targets) {
+        await fetch('/api/purchases', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: r.id }),
+        });
+      }
+      await refresh();
+    } finally {
+      setDeletingBean(null);
+    }
+  };
 
   // 편집 열기 — 기존 레시피가 있으면 불러오고, 없으면 매장 기준 프리셋으로 시작
   const openEditor = (beanKey: string, bean: string, brewType: BrewType) => {
@@ -837,36 +879,81 @@ export default function GardenDashboard() {
         </div>
       )}
 
-      {/* 원두 레시피 카드 — 재고 있는 원두만, 최신 업데이트순 */}
-      <div className="min-w-0">
-        <p className="ta-label">원두 레시피</p>
-        {activeGroups.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground">
-            {loading
-              ? '불러오는 중…'
-              : soldGroups.length > 0
-                ? '재고가 남은 원두가 없어요. 재고 0% 원두는 필터 레시피 탭에서 볼 수 있어요.'
-                : '아직 레시피가 설정된 원두가 없어요. 아래 원두에서 레시피를 설정해 보세요.'}
-          </p>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-            {activeGroups.map(renderBeanCard)}
-          </div>
-        )}
-        {/* 두 지점 모두 재고 0%면 대시보드에서 제외 — 필터 레시피 탭에서 조회·재입고 */}
-        {soldGroups.length > 0 && (
-          <p className="text-[11px] text-muted-foreground" style={{ marginTop: 10 }}>
-            재고 0% 원두 {soldGroups.length}종은{' '}
-            <Link href="/garden/recipes" className="underline hover:text-foreground">
-              필터 레시피
-            </Link>
-            에서 볼 수 있어요.
-          </p>
-        )}
-      </div>
+      {/* 필터 레시피 — 모든 레시피 원두를 국가별 그룹으로, 카드 전체 기능(수정·타이머·이력·재고칩) */}
+      {section === 'recipes' && (
+        <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {loading && <p className="text-[13px] text-muted-foreground">불러오는 중…</p>}
+          {!loading && beanGroups.length === 0 && (
+            <p className="text-[13px] text-muted-foreground">
+              아직 레시피가 설정된 원두가 없어요.{' '}
+              <Link href="/garden" className="underline hover:text-foreground">대시보드</Link>의 미설정
+              원두에서 레시피를 만들어 보세요.
+            </p>
+          )}
 
-      {/* 레시피 미설정 원두 — 가격 세팅에서 저장한 원두 목록 */}
-      {unsetBeans.length > 0 && (
+          {/* 국가 필터 칩 */}
+          {countrySections.length > 1 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {['전체', ...countrySections.map((s) => s.country)].map((c) => {
+                const on = selectedCountry === c;
+                return (
+                  <button
+                    key={c}
+                    onClick={() => setSelectedCountry(c)}
+                    className={`rounded-md border px-2.5 py-1 text-[12px] transition-colors ${
+                      on
+                        ? 'border-foreground bg-foreground text-background'
+                        : 'border-border text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {c}
+                    {c !== '전체' && (
+                      <span style={{ marginLeft: 4, opacity: 0.7 }}>
+                        {countrySections.find((s) => s.country === c)?.groups.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {(selectedCountry === '전체'
+            ? countrySections
+            : countrySections.filter((s) => s.country === selectedCountry)
+          ).map(({ country, groups }) => (
+            <div key={country} className="min-w-0">
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, borderBottom: '1px solid hsl(var(--border))', paddingBottom: 6, marginBottom: 12 }}>
+                <h3 className="text-[14px] text-foreground" style={{ margin: 0, fontWeight: 500 }}>{country}</h3>
+                <span className="text-[11px] text-muted-foreground">{groups.length}종</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+                {groups.map(renderBeanCard)}
+              </div>
+            </div>
+          ))}
+
+          {!loading && beanGroups.length > 0 && (
+            <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>
+              판교 분쇄도는 2026-07-16 지점 캘리브레이션 실측(동일 다이얼에서 판교가 약 187µm 가늘게 분쇄)
+              기반 환산값입니다. <strong>*</strong>는 잠정 범위(기울기 실측 전) —{' '}
+              <Link href="/garden/calibration/report" className="underline hover:text-foreground">
+                리포트 보기
+              </Link>
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* 레시피 미설정 원두 — 가격 세팅에서 저장한 원두 목록 (대시보드 전용) */}
+      {section === 'unset' && unsetBeans.length === 0 && !loading && (
+        <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+          레시피 미설정 원두가 없어요. 레시피 카드는{' '}
+          <Link href="/garden/recipes" className="underline hover:text-foreground">필터 레시피</Link>
+          에서 관리합니다.
+        </p>
+      )}
+      {section === 'unset' && unsetBeans.length > 0 && (
         <div className="ta-card bg-background min-w-0">
           <p className="ta-label">레시피 미설정 원두</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -890,17 +977,20 @@ export default function GardenDashboard() {
                     {btLabel(bt)} 설정
                   </button>
                 ))}
+                <button
+                  onClick={() => deleteUnsetBean(rec)}
+                  disabled={deletingBean === normalize(rec.bean)}
+                  title="발주 기록 삭제"
+                  className="text-muted-foreground hover:text-foreground"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>
         </div>
       )}
-
-      {/* 그라인더 캘리브레이션 — 지점 간 분쇄도 환산 (측정점 입력·환산 미리보기) */}
-      <GrinderCalibration profiles={grinderProfiles} onSaved={refresh} />
-
-      {/* 드리프트 체크 칸반 — 월 2회(전반/후반) 지점별 캘리브레이션 확인 */}
-      <CalibrationKanban />
 
       {/* 추출 타이머 오버레이 — 카드의 ▶ 타이머로 열기 */}
       {timerFor && (
