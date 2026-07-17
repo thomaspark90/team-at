@@ -154,7 +154,7 @@ export default function MonthlyUploadBoard() {
       </div>
       <p className="mt-1 text-[13px] text-muted-foreground">
         매월 올려야 할 자료예요. 칸을 눌러 엑셀(.xlsx/.csv)을 올리면 AI가 양식과 무관하게 읽어 거래로
-        넣고, 올린 칸은 체크돼요. 저장된 거래는 <Link href="/finance/classify" className="underline">거래 분류</Link>에서 계정을 지정해요.
+        넣고, 올린 칸은 체크돼요. 저장된 거래는 <Link href="/finance/classify" className="underline">자료 분류</Link>에서 계정을 지정해요.
       </p>
 
       <input ref={fileInput} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />

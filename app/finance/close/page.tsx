@@ -64,7 +64,7 @@ export default async function ClosePage() {
           </Link>
         </div>
         <p className="mb-5 mt-0 text-[13px] leading-[1.6] text-muted-foreground">
-          미분류가 0건인 달만 확정할 수 있어요. 확정하면 그 달의 거래 분류가 잠기고 대시보드 집계에 반영돼요.
+          미분류가 0건인 달만 확정할 수 있어요. 확정하면 그 달의 자료 분류가 잠기고 대시보드 집계에 반영돼요.
           {allowConfirm ? '' : ' (확정 권한은 관리자에게 요청하세요.)'}
         </p>
         <MonthlyCloseManager months={months} canConfirm={allowConfirm} />

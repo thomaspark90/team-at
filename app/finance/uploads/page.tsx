@@ -63,7 +63,7 @@ export default async function UploadsPage() {
         <div className="mb-1 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">자료 이력</h1>
           <Link href="/finance/classify" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-            ← 거래 분류
+            ← 자료 분류
           </Link>
         </div>
         <p className="mb-5 text-[13px] text-muted-foreground">그동안 올린 은행·신한카드·쿠팡 영수증 자료의 이력이에요.</p>

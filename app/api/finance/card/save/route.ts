@@ -65,7 +65,7 @@ export async function POST(req: Request) {
   }
 
   // 1) 카드 건 저장 먼저(업로드 기록 → 거래). 카드는 자동 확정 안 함 — 전부 미분류로 저장.
-  //    (학습된 가맹점은 거래 분류 화면에서 '추천'으로 미리 선택돼 보임)
+  //    (학습된 가맹점은 자료 분류 화면에서 '추천'으로 미리 선택돼 보임)
   let uploadId: number | null = null;
   if (fresh.length > 0) {
     const dates = fresh.map((t) => t.txAt).sort();
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
       dedup_hash: t.dedupHash,
       normalized_key: t.normalizedKey,
       approval_no: t.approvalNo ?? null,
-      category_id: null, // 카드는 자동 확정 안 함 — 거래 분류에서 직접 선택
+      category_id: null, // 카드는 자동 확정 안 함 — 자료 분류에서 직접 선택
       classified_by: null,
       classified_at: null,
       upload_id: up.id,

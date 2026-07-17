@@ -71,7 +71,7 @@ export default function ReceiptEnrich() {
       if (!res.ok) throw new Error(j.error || '적용에 실패했어요.');
       setDone(j as ApplyResult);
       setPreview(null);
-      router.refresh(); // 거래 분류 목록에 나뉜 품목 반영
+      router.refresh(); // 자료 분류 목록에 나뉜 품목 반영
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -108,7 +108,7 @@ export default function ReceiptEnrich() {
           <div className="text-muted-foreground">
             카드 {done.matchedGroups}건을 품목으로 나눔 · 품목 {done.inserted}건 추가{done.duplicates ? ` · 중복 ${done.duplicates}건 건너뜀` : ''}
             {done.note && ` · ${done.note}`} ·{' '}
-            <a href="/finance/classify?source=card" className="text-foreground underline">거래 분류에서 지정 →</a>
+            <a href="/finance/classify?source=card" className="text-foreground underline">자료 분류에서 지정 →</a>
           </div>
         </div>
       )}

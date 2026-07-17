@@ -207,7 +207,7 @@ export default function UploadPanel() {
               <div className="mb-1 text-foreground">✓ 이미 모두 저장된 거래예요</div>
               <div className="text-[13px] text-muted-foreground">
                 이 파일의 {won(preview.totalRows)}건은 전부 중복(이미 저장됨)이라 새로 저장할 게 없어요. 분류는{' '}
-                <a href="/finance/classify" className="text-foreground underline">거래 분류 →</a> 에서 하세요.
+                <a href="/finance/classify" className="text-foreground underline">자료 분류 →</a> 에서 하세요.
               </div>
             </div>
           )}
