@@ -29,8 +29,9 @@ const fmtDay = (iso: string) => {
 // 월별 회계자료 업로드 보드 — 매월 올려야 할 자료를 슬롯(To-do)로 보여주고,
 // 올린 슬롯은 체크·비활성 처리해 남은 일이 한눈에 보이게 한다.
 // 은행 PDF·카드명세·네이버 자동수집 등 기존 경로로 들어온 것도 자동 감지해 체크한다.
-// 기준 월(ym)은 대시보드 상단 공용 월 선택(AccountingBoards)에서 내려받는다.
-export default function MonthlyUploadBoard({ ym }: { ym: string }) {
+// 기준 월(ym)은 대시보드 상단 공용 월 선택(AccountingBoards)에서 내려받고,
+// 저장 성공 시 onSaved 로 알려 월 스트립 배지를 갱신하게 한다.
+export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSaved?: () => void }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const fileRef = useRef<File | null>(null);
   const [slots, setSlots] = useState<Record<string, SlotStatus> | null>(null);
@@ -111,6 +112,7 @@ export default function MonthlyUploadBoard({ ym }: { ym: string }) {
       fileRef.current = null;
       setActiveSlot(null);
       loadStatus(ym);
+      onSaved?.();
     } catch (e) {
       setError((e as Error).message);
     } finally {
