@@ -32,6 +32,8 @@ export async function POST(req: Request) {
   const ymRaw = form.get('ym');
   const slot = typeof slotRaw === 'string' && SLOT_KEYS.includes(slotRaw) ? slotRaw : null;
   const slotYm = typeof ymRaw === 'string' && /^\d{4}-\d{2}$/.test(ymRaw) ? ymRaw : null;
+  // 슬롯별 거래 출처 — 카드·쿠팡은 'card'(현금 집계 제외), 네이버는 'naverpay', 그 외 'bank'
+  const source = UPLOAD_SLOTS.find((s) => s.key === slot)?.source ?? 'bank';
   if (!(file instanceof File) || typeof mappingRaw !== 'string') {
     return NextResponse.json({ error: '파일과 매핑 정보가 필요해요. 미리보기부터 다시 해주세요.' }, { status: 400 });
   }
@@ -64,7 +66,7 @@ export async function POST(req: Request) {
       await supabase
         .schema('finance')
         .from('uploads')
-        .insert({ bank: 'excel', row_count: 0, uploaded_by: user.id, slot, slot_ym: slotYm });
+        .insert({ bank: 'excel', source, row_count: 0, uploaded_by: user.id, slot, slot_ym: slotYm });
     }
     return NextResponse.json({ saved: 0, duplicates, autoClassified: 0 });
   }
@@ -90,6 +92,7 @@ export async function POST(req: Request) {
     .from('uploads')
     .insert({
       bank: 'excel',
+      source,
       row_count: fresh.length,
       uploaded_by: user.id,
       period_start: dates[0]?.slice(0, 10),
@@ -113,6 +116,7 @@ export async function POST(req: Request) {
     const cat = keyToCat.get(t.normalizedKey) ?? null;
     return {
       bank: 'excel',
+      source,
       tx_at: t.txAt,
       ym: t.ym,
       channel: t.channel,

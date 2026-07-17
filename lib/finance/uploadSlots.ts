@@ -7,14 +7,17 @@ export interface UploadSlot {
   key: string;
   label: string;
   group: SlotGroup;
+  // 저장될 거래의 출처 — 자료 분류 타일 매칭 + 현금 집계(source='bank'만) 규칙에 쓰인다.
+  // 지출 세부(카드·쿠팡)는 'card' 로 넣어 통장의 카드대금 결제 건과 이중계산을 막는다.
+  source: 'bank' | 'card' | 'naverpay';
 }
 
 export const UPLOAD_SLOTS: UploadSlot[] = [
-  { key: 'bank_shinhan', label: '신한은행', group: '입출금 내역' },
-  { key: 'bank_woori', label: '우리은행', group: '입출금 내역' },
-  { key: 'coupang', label: '쿠팡', group: '지출 세부 내역' },
-  { key: 'naverpay', label: '네이버', group: '지출 세부 내역' },
-  { key: 'card_main', label: '주지출 카드', group: '지출 세부 내역' },
+  { key: 'bank_shinhan', label: '신한은행', group: '입출금 내역', source: 'bank' },
+  { key: 'bank_woori', label: '우리은행', group: '입출금 내역', source: 'bank' },
+  { key: 'coupang', label: '쿠팡', group: '지출 세부 내역', source: 'card' },
+  { key: 'naverpay', label: '네이버', group: '지출 세부 내역', source: 'naverpay' },
+  { key: 'card_main', label: '주지출 카드', group: '지출 세부 내역', source: 'card' },
 ];
 
 export const SLOT_KEYS = UPLOAD_SLOTS.map((s) => s.key);

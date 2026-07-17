@@ -61,11 +61,13 @@ export async function GET(req: Request) {
     };
   }
 
-  // 2) 기존 경로 자동 감지 — 은행 PDF·카드명세(기간이 해당 월과 겹치는 업로드)
+  // 2) 기존 경로 자동 감지 — 은행 PDF·카드명세(기간이 해당 월과 겹치는 업로드).
+  //    보드에서 올린 것(slot 있음)은 1)에서 이미 처리 — 쿠팡(card) 업로드가 카드 슬롯을 켜는 오인 방지.
   const { data: periodRows } = await supabase
     .schema('finance')
     .from('uploads')
     .select('bank,source,row_count,uploaded_at,period_start,period_end')
+    .is('slot', null)
     .lte('period_start', monthEnd)
     .gte('period_end', monthStart)
     .order('uploaded_at');
