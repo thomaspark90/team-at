@@ -155,6 +155,46 @@ export async function notifyBeanStockLow(
   }
 }
 
+// 분쇄도 측정 요청 → 지정 담당자(기본: 원두 수신자 전체)에게 이메일+웹푸시.
+// 가든 설정(/garden/settings)에서 호출 — 실패해도 요청 UI는 막지 않는다.
+export async function notifyGrindRequest(
+  supabase: SupabaseClient,
+  n: { storeLabel: string; detail: string; note?: string; byEmail: string; emails?: string[] }
+) {
+  const by = n.byEmail ? n.byEmail.split('@')[0] : '';
+  const calUrl = 'https://team-at-apps.vercel.app/garden/calibration';
+  const recipientsP = n.emails?.length
+    ? Promise.resolve(n.emails)
+    : recipientEmails(supabase, 'stock');
+  const results = await Promise.allSettled([
+    recipientsP.then((to) =>
+      sendEmailTo(
+        supabase,
+        to,
+        `[분쇄도 요청] ${n.storeLabel} — ${n.detail}`,
+        `
+        <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
+          <p><strong>${n.storeLabel} EK43 분쇄도 측정 요청</strong></p>
+          <p>${n.detail}</p>
+          ${n.note ? `<p>메모: ${n.note}</p>` : ''}
+          ${by ? `<p>요청: ${by}</p>` : ''}
+          <p>측정 후 컴퍼스 결과를 올려주세요: <a href="${calUrl}">분쇄도 측정 열기 →</a></p>
+        </div>`
+      )
+    ),
+    recipientsP.then((to) =>
+      sendPushTo(supabase, to, {
+        title: `분쇄도 측정 요청 · ${n.storeLabel}`,
+        body: `${n.detail}${by ? ` — ${by} 요청` : ''}`,
+        url: '/garden/calibration',
+      })
+    ),
+  ]);
+  for (const r of results) {
+    if (r.status === 'rejected') console.error('grind request notify 실패:', r.reason);
+  }
+}
+
 // 새 송금 요청 → 담당자(수신자 목록)에게. 등록 API 에서 호출 — 어떤 실패도 등록을 막지 않음.
 export async function notifyTransferRequest(supabase: SupabaseClient, n: TransferNotice) {
   const account = [n.bank, n.accountNo, n.accountHolder && `(${n.accountHolder})`]

@@ -10,6 +10,7 @@ const TABS = [
   { href: '/garden/recommended', label: '필터 레시피 추천' },
   { href: '/garden/pricing', label: '필터커피 가격 세팅' },
   { href: '/garden/calibration', label: '분쇄도 측정' },
+  { href: '/garden/settings', label: '설정' },
 ];
 
 export default function GardenNav() {
