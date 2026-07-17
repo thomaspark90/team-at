@@ -1025,6 +1025,117 @@ function BrewBadge({ bt }: { bt: BrewType }) {
   );
 }
 
+// 판교 EK43 분쇄도 행 — 산식 자동값 표시 + 지점 수동 보정(물 pH·미네랄 차이 대응) + 보정 이력.
+// 수동값이 있으면 '(보정)' 표기, 자동값은 잠정이면 * 유지. 양재천 값 변경 시 서버가 자동값으로 복귀시킨다.
+function PangyoMeshRow({
+  recipe,
+  autoText,
+  onSaved,
+}: {
+  recipe: DripRecipe;
+  autoText: string | null;
+  onSaved: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  const manual = recipe.pangyoMesh != null;
+  const history = recipe.pangyoMeshHistory ?? [];
+
+  const save = async (mesh: number | null) => {
+    if (saving) return;
+    setSaving(true);
+    const res = await fetch('/api/garden-recipes/pangyo-mesh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ beanKey: recipe.beanKey, brewType: recipe.brewType ?? 'ice', mesh }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      setEditing(false);
+      onSaved();
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 13 }}>
+        <span className="text-muted-foreground">분쇄도 · 판교 EK43</span>
+        {editing ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={value}
+              onChange={(e) => setValue(e.target.value.replace(/[^\d.]/g, ''))}
+              placeholder={recipe.pangyoMesh != null ? meshFmt(recipe.pangyoMesh) : '8.3'}
+              className="ta-input tabular"
+              style={{ width: 64, height: 26, fontSize: 12 }}
+              autoFocus
+            />
+            <button onClick={() => save(Number(value))} disabled={saving || value.trim() === ''} className="ta-btn-primary" style={{ height: 26, paddingLeft: 8, paddingRight: 8, fontSize: 11 }}>
+              저장
+            </button>
+            {manual && (
+              <button onClick={() => save(null)} disabled={saving} className="ta-btn" style={{ height: 26, paddingLeft: 8, paddingRight: 8, fontSize: 11 }} title="산식 자동값으로 복귀">
+                자동으로
+              </button>
+            )}
+            <button onClick={() => setEditing(false)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }}>
+              취소
+            </button>
+          </span>
+        ) : (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span className="tabular text-foreground">
+              {manual ? `${meshFmt(recipe.pangyoMesh!)} (보정)` : autoText ?? '—'}
+            </span>
+            <button
+              onClick={() => {
+                setValue(recipe.pangyoMesh != null ? meshFmt(recipe.pangyoMesh) : '');
+                setEditing(true);
+              }}
+              className="text-muted-foreground hover:text-foreground"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, textDecoration: 'underline', padding: 0 }}
+              title="판교 물 성질에 맞춰 분쇄도 보정"
+            >
+              수정
+            </button>
+            {history.length > 0 && (
+              <button
+                onClick={() => setHistoryOpen((o) => !o)}
+                className="text-muted-foreground hover:text-foreground"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, padding: 0 }}
+                title="보정 이력"
+              >
+                이력 {history.length}{historyOpen ? '▴' : '▾'}
+              </button>
+            )}
+          </span>
+        )}
+      </div>
+      {historyOpen && history.length > 0 && (
+        <div className="rounded-md border border-border" style={{ padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {history.map((h, i) => (
+            <div key={i} className="tabular text-[11px] text-muted-foreground" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {h.mesh != null ? `판교 ${h.mesh.toFixed(1)}` : '산식 자동값 복귀'}
+                {h.reason ? ` — ${h.reason}` : ''}
+              </span>
+              <span style={{ flexShrink: 0 }}>
+                {h.updatedAt.slice(2, 10).replace(/-/g, '.')}
+                {h.updatedBy ? ` · ${h.updatedBy.split('@')[0]}` : ''}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SpecRow({ label, value }: { label: string; value: string | null }) {
   if (!value) return null;
   return (
