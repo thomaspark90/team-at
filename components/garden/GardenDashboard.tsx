@@ -9,6 +9,7 @@ import { applyPreset, presetById } from '@/lib/drip-presets';
 import { flavorGradient } from '@/lib/flavor-colors';
 import BrewTimer from '@/components/garden/BrewTimer';
 import GrinderCalibration from '@/components/garden/GrinderCalibration';
+import CalibrationKanban from '@/components/garden/CalibrationKanban';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import { pangyoDialText } from '@/lib/grinder-calibration';
 
@@ -897,6 +898,9 @@ export default function GardenDashboard() {
 
       {/* 그라인더 캘리브레이션 — 지점 간 분쇄도 환산 (측정점 입력·환산 미리보기) */}
       <GrinderCalibration profiles={grinderProfiles} onSaved={refresh} />
+
+      {/* 드리프트 체크 칸반 — 월 2회(전반/후반) 지점별 캘리브레이션 확인 */}
+      <CalibrationKanban />
 
       {/* 추출 타이머 오버레이 — 카드의 ▶ 타이머로 열기 */}
       {timerFor && (
