@@ -4,8 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
-import MonthlyUploadBoard from '@/components/finance/MonthlyUploadBoard';
-import ClassifyBoard from '@/components/finance/ClassifyBoard';
+import AccountingBoards from '@/components/finance/AccountingBoards';
 import TaskBoard from '@/components/finance/TaskBoard';
 
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
@@ -63,9 +62,8 @@ export default async function AccountingDashboardPage() {
           </div>
         </section>
 
-        {/* 월별 회계자료 업로드 → 자료 분류 보드 — 기장 권한자만 */}
-        {isStaff && <MonthlyUploadBoard />}
-        {isStaff && <ClassifyBoard />}
+        {/* 월별 회계자료 업로드 → 자료 분류 보드 (상단 공용 월 선택) — 기장 권한자만 */}
+        {isStaff && <AccountingBoards />}
 
         {/* 기장 업무 칸반 — 은행·카드 업로드, 거래 분류, 기말재고, 월 확정 등 정기 업무 체크 */}
         {isStaff && (

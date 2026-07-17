@@ -25,21 +25,14 @@ const fmtDay = (iso: string) => {
   const d = new Date(iso);
   return `${d.getMonth() + 1}/${d.getDate()}`;
 };
-const shiftYm = (ym: string, diff: number) => {
-  const [y, m] = ym.split('-').map(Number);
-  const d = new Date(y, m - 1 + diff, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-};
-// 회계자료는 보통 전월 마감분 — 기본 선택은 지난달
-const defaultYm = () => shiftYm(new Date().toISOString().slice(0, 7), -1);
 
 // 월별 회계자료 업로드 보드 — 매월 올려야 할 자료를 슬롯(To-do)로 보여주고,
 // 올린 슬롯은 체크·비활성 처리해 남은 일이 한눈에 보이게 한다.
 // 은행 PDF·카드명세·네이버 자동수집 등 기존 경로로 들어온 것도 자동 감지해 체크한다.
-export default function MonthlyUploadBoard() {
+// 기준 월(ym)은 대시보드 상단 공용 월 선택(AccountingBoards)에서 내려받는다.
+export default function MonthlyUploadBoard({ ym }: { ym: string }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const fileRef = useRef<File | null>(null);
-  const [ym, setYm] = useState(defaultYm);
   const [slots, setSlots] = useState<Record<string, SlotStatus> | null>(null);
   const [activeSlot, setActiveSlot] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
@@ -146,11 +139,6 @@ export default function MonthlyUploadBoard() {
             </span>
           )}
         </h2>
-        <div className="flex items-center gap-1 text-[13px]">
-          <button onClick={() => setYm(shiftYm(ym, -1))} className="rounded-md border border-border px-2 py-0.5 text-muted-foreground hover:text-foreground">‹</button>
-          <span className="min-w-[86px] text-center font-medium">{fmtYm(ym)}</span>
-          <button onClick={() => setYm(shiftYm(ym, 1))} className="rounded-md border border-border px-2 py-0.5 text-muted-foreground hover:text-foreground">›</button>
-        </div>
       </div>
       <p className="mt-1 text-[13px] text-muted-foreground">
         매월 올려야 할 자료예요. 칸을 눌러 엑셀(.xlsx/.csv)을 올리면 AI가 양식과 무관하게 읽어 거래로

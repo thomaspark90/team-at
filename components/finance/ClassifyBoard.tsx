@@ -22,17 +22,11 @@ const TILES: { key: 'bank' | 'card' | 'naverpay'; label: string }[] = [
 const BANK_LABEL: Record<string, string> = { shinhan: '신한', woori: '우리', naverpay: '네이버', excel: '엑셀' };
 
 const fmtYm = (ym: string) => `${ym.split('-')[0]}년 ${Number(ym.split('-')[1])}월`;
-const shiftYm = (ym: string, diff: number) => {
-  const [y, m] = ym.split('-').map(Number);
-  const d = new Date(y, m - 1 + diff, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-};
-const defaultYm = () => shiftYm(new Date().toISOString().slice(0, 7), -1);
 
 // 자료 분류 보드 — 월별로 출처별 미분류가 얼마나 남았는지 To-do 로 보여주고,
 // 타일 클릭 시 자료 분류 화면을 해당 월·출처·미분류만으로 필터해 연다. 끝은 월 확정.
-export default function ClassifyBoard() {
-  const [ym, setYm] = useState(defaultYm);
+// 기준 월(ym)은 대시보드 상단 공용 월 선택(AccountingBoards)에서 내려받는다.
+export default function ClassifyBoard({ ym }: { ym: string }) {
   const [status, setStatus] = useState<Status | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,11 +66,6 @@ export default function ClassifyBoard() {
             </span>
           )}
         </h2>
-        <div className="flex items-center gap-1 text-[13px]">
-          <button onClick={() => setYm(shiftYm(ym, -1))} className="rounded-md border border-border px-2 py-0.5 text-muted-foreground hover:text-foreground">‹</button>
-          <span className="min-w-[86px] text-center font-medium">{fmtYm(ym)}</span>
-          <button onClick={() => setYm(shiftYm(ym, 1))} className="rounded-md border border-border px-2 py-0.5 text-muted-foreground hover:text-foreground">›</button>
-        </div>
       </div>
       <p className="mt-1 text-[13px] text-muted-foreground">
         올린 자료의 거래마다 계정을 지정하는 작업이에요. 칸을 누르면 그 출처의 미분류만 모아서 열려요.
