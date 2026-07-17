@@ -53,7 +53,7 @@ export default function CalibrationKanban() {
     <div className="min-w-0">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="ta-label"
+        className="mb-3 block text-[13px] text-muted-foreground hover:text-foreground"
         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: open ? undefined : 0 }}
       >
         그라인더 드리프트 체크 (월 2회 · 전반/후반) {open ? '▴' : '▾'}

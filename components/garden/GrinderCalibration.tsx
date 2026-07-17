@@ -72,7 +72,7 @@ export default function GrinderCalibration({
     <div className="min-w-0">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="ta-label"
+        className="mb-3 block text-[13px] text-muted-foreground hover:text-foreground"
         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: open ? undefined : 0 }}
       >
         그라인더 캘리브레이션 (EK43 지점 연동) {open ? '▴' : '▾'}
