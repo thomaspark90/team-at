@@ -15,6 +15,7 @@ interface Preview {
   fresh: number;
   duplicates: number;
   outOfMonth: number;
+  coverage: { full: boolean; label: string | null; pct: number } | null;
   sample: ParsedTransaction[];
 }
 
@@ -127,7 +128,8 @@ export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSave
     setError(null);
   }
 
-  const doneCount = slots ? UPLOAD_SLOTS.filter((s) => slots[s.key]?.done).length : 0;
+  const doneCount = slots ? UPLOAD_SLOTS.filter((s) => slots[s.key]?.done && slots[s.key]?.full).length : 0;
+  const partialCount = slots ? UPLOAD_SLOTS.filter((s) => slots[s.key]?.done && !slots[s.key]?.full).length : 0;
   const activeLabel = UPLOAD_SLOTS.find((s) => s.key === activeSlot)?.label ?? '';
 
   return (
@@ -137,7 +139,7 @@ export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSave
           월별 회계자료 업로드
           {slots && (
             <span className={`ml-2 text-[12px] font-normal ${doneCount === UPLOAD_SLOTS.length ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-              {doneCount}/{UPLOAD_SLOTS.length} 완료
+              {doneCount}/{UPLOAD_SLOTS.length} 완료{partialCount > 0 && <span className="text-amber-600"> · 부분 {partialCount}</span>}
             </span>
           )}
         </h2>
@@ -157,7 +159,7 @@ export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSave
               {UPLOAD_SLOTS.filter((s) => s.group === group).map((s) => {
                 const st = slots?.[s.key];
                 const busy = parsing && activeSlot === s.key;
-                if (st?.done) {
+                if (st?.done && st.full) {
                   return (
                     <div key={s.key} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 opacity-70">
                       <span className="flex items-center gap-2 text-[13px]">
@@ -172,6 +174,26 @@ export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSave
                         </button>
                       </span>
                     </div>
+                  );
+                }
+                if (st?.done && !st.full) {
+                  // 부분 업로드 — 월 일부 구간만 덮음. 이어서 올리면 합집합으로 재판정.
+                  return (
+                    <button
+                      key={s.key}
+                      onClick={() => pickSlot(s.key)}
+                      disabled={parsing}
+                      className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-amber-500/60 bg-amber-500/5 px-3.5 py-2.5 text-left transition-colors hover:border-amber-600 disabled:opacity-60"
+                    >
+                      <span className="flex items-center gap-2 text-[13px] font-medium">
+                        <span className="text-amber-600">◐</span>
+                        {s.label}
+                      </span>
+                      <span className="text-right text-[12px]">
+                        <span className="font-medium text-amber-600">{st.range ?? '일부'}만 올라옴</span>
+                        <span className="block text-[11px] text-muted-foreground">{busy ? '읽는 중…' : '이어서 업로드 →'}</span>
+                      </span>
+                    </button>
                   );
                 }
                 return (
@@ -204,6 +226,13 @@ export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSave
             <span>입금 {won(preview.sumIn)}</span>
             <span>출금 {won(preview.sumOut)}</span>
           </div>
+          {preview.coverage && !preview.coverage.full && (
+            <p className="mt-2 text-[12px] text-amber-600">
+              ◐ 이 파일은 {preview.coverage.label ? `${preview.coverage.label} 구간만` : `${fmtYm(ym)} 거래 없이`} 포함해요
+              (월 커버리지 {preview.coverage.pct}%). 저장은 되지만 칸은 <b>부분</b>으로 표시되고, 나머지 기간 파일을
+              이어서 올리면 완료로 바뀌어요.
+            </p>
+          )}
           {preview.outOfMonth > 0 && (
             <p className="mt-2 text-[12px] text-amber-600">
               ⚠ {fmtYm(ym)} 밖의 거래가 {preview.outOfMonth}건 있어요. 다른 달 파일이 아닌지 확인하세요. (거래는 각자 실제 날짜의 달로 들어가요)

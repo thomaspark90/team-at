@@ -59,14 +59,25 @@ export async function POST(req: Request) {
     supabase,
     result.transactions.map((t) => t.dedupHash)
   );
+  // 기간은 신규가 아닌 '파일 전체' 기준 — 커버리지(부분 업로드) 판정이 정확해야 해서.
+  const allDates = result.transactions.map((t) => t.txAt).sort();
+  const periodStart = allDates[0]?.slice(0, 10);
+  const periodEnd = allDates[allDates.length - 1]?.slice(0, 10);
+
   const { fresh, duplicates } = dedupe(result.transactions, existing);
   if (fresh.length === 0) {
-    // 전부 중복이어도 보드 슬롯은 '올렸음'으로 기록해 완료 체크가 남게 한다
+    // 전부 중복이어도 보드 슬롯은 '올렸음'으로 기록해 완료·커버리지 체크가 남게 한다
     if (slot && slotYm) {
-      await supabase
-        .schema('finance')
-        .from('uploads')
-        .insert({ bank: 'excel', source, row_count: 0, uploaded_by: user.id, slot, slot_ym: slotYm });
+      await supabase.schema('finance').from('uploads').insert({
+        bank: 'excel',
+        source,
+        row_count: 0,
+        uploaded_by: user.id,
+        period_start: periodStart,
+        period_end: periodEnd,
+        slot,
+        slot_ym: slotYm,
+      });
     }
     return NextResponse.json({ saved: 0, duplicates, autoClassified: 0 });
   }
@@ -86,7 +97,6 @@ export async function POST(req: Request) {
   }
 
   // 업로드 기록
-  const dates = fresh.map((t) => t.txAt).sort();
   const { data: up, error: upErr } = await supabase
     .schema('finance')
     .from('uploads')
@@ -95,8 +105,8 @@ export async function POST(req: Request) {
       source,
       row_count: fresh.length,
       uploaded_by: user.id,
-      period_start: dates[0]?.slice(0, 10),
-      period_end: dates[dates.length - 1]?.slice(0, 10),
+      period_start: periodStart,
+      period_end: periodEnd,
       ...(slot && slotYm ? { slot, slot_ym: slotYm } : {}),
     })
     .select('id')

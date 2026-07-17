@@ -24,7 +24,9 @@ export const SLOT_KEYS = UPLOAD_SLOTS.map((s) => s.key);
 
 // 슬롯별 완료 상태 (상태 API 응답)
 export interface SlotStatus {
-  done: boolean;
+  done: boolean; // 뭐라도 올라감
+  full: boolean; // 기간 합집합이 월 전체를 덮음 — done && !full 이면 '부분(◐)'
+  range: string | null; // 덮인 구간 표기, 예: '6/5~15' (부분일 때 안내용)
   count: number; // 저장된 거래 행 수(파악 가능할 때)
   at: string | null; // 마지막 업로드 시각
   via: 'slot' | 'auto' | null; // slot=이 보드에서 업로드, auto=기존 경로(은행 PDF·카드명세·자동수집)로 감지

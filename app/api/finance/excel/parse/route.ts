@@ -4,6 +4,7 @@ import { resolveRole } from '@/lib/finance/access';
 import { fetchExistingHashes } from '@/lib/finance/dedup';
 import { dedupe } from '@/lib/finance/parse';
 import { fileToRows, inferMapping, rowsToTransactions } from '@/lib/finance/excel';
+import { monthCoverage } from '@/lib/finance/coverage';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -51,7 +52,18 @@ export async function POST(req: Request) {
     );
     const { fresh, duplicates } = dedupe(result.transactions, existing);
 
+    // 이 파일이 선택한 월을 얼마나 덮는지 — 부분 업로드(예: 5~15일치만) 경고용.
+    // 중복 포함 전체 행 기준(재업로드로 채우는 경우도 커버리지는 인정).
+    let coverage = null;
+    if (ym) {
+      const inMonth = result.transactions.filter((t) => t.ym === ym).map((t) => t.txAt.slice(0, 10)).sort();
+      coverage = inMonth.length
+        ? monthCoverage(ym, [{ start: inMonth[0], end: inMonth[inMonth.length - 1] }])
+        : { full: false, label: null, pct: 0 };
+    }
+
     return NextResponse.json({
+      coverage,
       mapping,
       totalRows: result.totalRows,
       skipped: result.skipped,
