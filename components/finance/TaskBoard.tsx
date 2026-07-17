@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { FinanceTask, TaskStatus, TaskBoardId } from '@/lib/finance/tasks';
 import { TASK_COLUMNS, CADENCE_LABEL, ymd } from '@/lib/finance/tasks';
 
@@ -12,6 +13,7 @@ import { TASK_COLUMNS, CADENCE_LABEL, ymd } from '@/lib/finance/tasks';
 const fmtDue = (due: string) => `${Number(due.slice(5, 7))}/${Number(due.slice(8, 10))}`;
 
 export default function TaskBoard({ board }: { board: TaskBoardId }) {
+  const router = useRouter();
   const [tasks, setTasks] = useState<FinanceTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -20,12 +22,20 @@ export default function TaskBoard({ board }: { board: TaskBoardId }) {
   const [newTitle, setNewTitle] = useState('');
   const [newDue, setNewDue] = useState('');
 
-  useEffect(() => {
+  const load = useCallback(() => {
     fetch('/api/finance/tasks', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => setTasks(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    load();
+    // 입력 화면에 다녀오면 데이터 확인 배지가 갱신되도록 탭 복귀 시 재조회
+    const onVisible = () => document.visibilityState === 'visible' && load();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [load]);
 
   const call = async (method: string, body: object): Promise<boolean> => {
     if (busy) return false;
@@ -49,7 +59,18 @@ export default function TaskBoard({ board }: { board: TaskBoardId }) {
     }
   };
 
-  const move = (t: FinanceTask, status: TaskStatus) => call('PATCH', { id: t.id, status });
+  // 진행 → 으로 옮기면 해당 입력 화면으로 바로 이동, 완료는 데이터 확인 안 됐으면 한 번 되묻는다
+  const move = async (t: FinanceTask, status: TaskStatus) => {
+    if (
+      status === 'done' &&
+      t.check &&
+      !t.check.done &&
+      !window.confirm(`'${t.title}' — 아직 ${t.check.label} 상태예요. 그래도 완료 처리할까요?`)
+    )
+      return;
+    const ok = await call('PATCH', { id: t.id, status });
+    if (ok && status === 'doing' && t.href) router.push(t.href);
+  };
   const remove = (t: FinanceTask) => {
     if (!window.confirm(`'${t.title}' 카드를 삭제할까요?${t.templateId ? ' (이번 기간에는 다시 생성되지 않아요)' : ''}`)) return;
     call('DELETE', { id: t.id });
@@ -162,6 +183,11 @@ export default function TaskBoard({ board }: { board: TaskBoardId }) {
                           ~{fmtDue(t.due)}{overdue ? ' 지연' : ''}
                         </span>
                       )}
+                      {t.status !== 'done' && t.check && (
+                        <span className={`text-[11px] ${t.check.done ? 'text-positive' : 'text-amber-600 dark:text-amber-500'}`}>
+                          {t.check.done ? '✓' : '●'} {t.check.label}
+                        </span>
+                      )}
                       {t.status === 'done' && t.updatedAt && (
                         <span className="tabular text-[11px] text-muted-foreground">
                           {t.updatedAt.slice(5, 10).replace('-', '.')}
@@ -181,12 +207,22 @@ export default function TaskBoard({ board }: { board: TaskBoardId }) {
                           ← 되돌리기
                         </button>
                       )}
+                      {t.status === 'doing' && t.href && (
+                        <Link
+                          href={t.href}
+                          className="ta-btn"
+                          style={{ height: 26, paddingLeft: 8, paddingRight: 8, fontSize: 12, display: 'inline-flex', alignItems: 'center' }}
+                        >
+                          입력하러 가기 →
+                        </Link>
+                      )}
                       {t.status !== 'done' && (
                         <button
                           onClick={() => move(t, t.status === 'todo' ? 'doing' : 'done')}
                           disabled={busy}
                           className="ta-btn-primary"
                           style={{ height: 26, paddingLeft: 8, paddingRight: 8, fontSize: 12 }}
+                          title={t.status === 'todo' && t.href ? '진행으로 옮기고 입력 화면으로 이동' : undefined}
                         >
                           {t.status === 'todo' ? '진행 →' : '완료 ✓'}
                         </button>

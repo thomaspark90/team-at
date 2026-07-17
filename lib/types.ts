@@ -78,6 +78,18 @@ export interface DripRecipe {
   updatedAt: string; // ISO — 대시보드 정렬 기준
   updatedBy?: string; // 저장한 사람 이메일
   history?: DripRecipeSnapshot[]; // 이전 버전 (최신순, 최대 20개)
+  // 판교 EK43 수동 보정 — 물 pH·미네랄 차이로 산식이 절대적이지 않아 지점에서 직접 조정.
+  // null/없음 = 산식 자동 환산 사용. 양재천 grindMesh가 바뀌면 자동값으로 복귀(이력 기록).
+  pangyoMesh?: number | null;
+  pangyoMeshHistory?: PangyoMeshChange[]; // 보정 이력 (최신순, 최대 20개)
+}
+
+// 판교 분쇄도 보정 이력 한 건 — mesh null = 산식 자동값으로 복귀
+export interface PangyoMeshChange {
+  mesh: number | null;
+  updatedAt: string;
+  updatedBy?: string;
+  reason?: string;
 }
 
 // 레시피 이전 버전 스냅샷 — 덮어쓰기 저장 시 직전 값을 보관 (자체 이력은 없음)

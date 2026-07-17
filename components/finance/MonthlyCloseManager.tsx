@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { wonNum as won, fmtYm } from '@/lib/finance/format';
+import { UPLOAD_SLOTS, type SlotStatus } from '@/lib/finance/uploadSlots';
 
 export interface MonthRow {
   ym: string;
@@ -24,6 +25,33 @@ export default function MonthlyCloseManager({
   const [rows, setRows] = useState<MonthRow[]>(months);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 확정 게이트 — 업로드가 덜 된 달을 확정하려 하면 체크리스트로 한 번 더 확인
+  const [gate, setGate] = useState<{ ym: string; issues: string[] } | null>(null);
+
+  // 확정 전 커버리지 점검 — 슬롯별 업로드 상태를 확인해 빠진/부분 슬롯을 나열
+  async function requestConfirm(ym: string) {
+    setBusy(ym);
+    setError(null);
+    try {
+      const res = await fetch(`/api/finance/excel/status?ym=${ym}`);
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || '업로드 현황 확인 실패');
+      const slots = j.slots as Record<string, SlotStatus>;
+      const issues = UPLOAD_SLOTS.flatMap((s) => {
+        const st = slots[s.key];
+        if (!st?.done) return [`${s.label} — 업로드 안 됨`];
+        if (!st.full) return [`${s.label} — ${st.range ?? '일부'} 구간만 올라옴 (부분)`];
+        return [];
+      });
+      setBusy(null);
+      if (issues.length === 0) return act(ym, 'confirm');
+      setGate({ ym, issues });
+    } catch {
+      // 점검 실패가 확정을 영영 막으면 안 됨 — 재래식 확인으로 폴백
+      setBusy(null);
+      if (window.confirm(`${fmtYm(ym)} 업로드 현황을 확인하지 못했어요. 그래도 확정할까요?`)) act(ym, 'confirm');
+    }
+  }
 
   async function act(ym: string, action: 'confirm' | 'reopen') {
     if (action === 'reopen' && !window.confirm(`${fmtYm(ym)}을 다시 열까요? 확정이 해제되고 분류를 수정할 수 있어요.`)) return;
@@ -117,7 +145,7 @@ export default function MonthlyCloseManager({
                           미분류 분류 →
                         </Link>
                       ) : canConfirm ? (
-                        <button onClick={() => act(r.ym, 'confirm')} className="ta-btn-primary text-[13px]">
+                        <button onClick={() => requestConfirm(r.ym)} className="ta-btn-primary text-[13px]">
                           확정
                         </button>
                       ) : (
@@ -131,6 +159,44 @@ export default function MonthlyCloseManager({
           </table>
         </div>
       </div>
+
+      {/* 확정 게이트 — 빠졌거나 부분인 업로드가 있는 달을 확정하기 전 마지막 확인 */}
+      {gate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setGate(null)}>
+          <div className="w-full max-w-[440px] rounded-2xl border border-border bg-card p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="m-0 text-[15px] font-medium">⚠ {fmtYm(gate.ym)} 자료가 아직 덜 올라왔어요</h3>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              지금 확정하면 아래 자료가 빠진 채로 그 달 손익이 잠겨요. 회계 대시보드에서 마저 올린 뒤
+              확정하는 걸 권해요.
+            </p>
+            <ul className="mt-3 flex list-none flex-col gap-1.5 p-0">
+              {gate.issues.map((msg) => (
+                <li key={msg} className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[13px]">
+                  {msg}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 flex gap-2">
+              <Link
+                href="/dashboard"
+                className="flex-[2] rounded-xl bg-foreground py-2.5 text-center text-[14px] font-medium text-background"
+              >
+                업로드 보드로 가기
+              </Link>
+              <button
+                onClick={() => {
+                  const ym = gate.ym;
+                  setGate(null);
+                  act(ym, 'confirm');
+                }}
+                className="flex-1 rounded-xl border border-border py-2.5 text-[14px] text-muted-foreground hover:text-foreground"
+              >
+                그래도 확정
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

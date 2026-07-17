@@ -3,6 +3,16 @@
 
 export type BankSource = 'shinhan' | 'woori' | 'naverpay' | 'excel';
 
+// 브랜드 — 통장·카드·POS가 브랜드별로 분리 운영된다 (transfer_requests.brand 와 동일 표기).
+// DB 기본값 'garden': 기존 수집 경로(신한·우리·신한카드·쿠팡·네이버)는 모두 가든 귀속.
+export type Brand = 'staffmeal' | 'garden';
+export const BRANDS: { id: Brand; label: string }[] = [
+  { id: 'garden', label: '가든서비스' },
+  { id: 'staffmeal', label: '스탭밀' },
+];
+export const brandLabel = (b: string | null | undefined) =>
+  BRANDS.find((x) => x.id === b)?.label ?? '미지정';
+
 // 계정과목 대분류
 export type CategoryType =
   | 'revenue' // 매출

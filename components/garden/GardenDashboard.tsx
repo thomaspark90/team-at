@@ -616,7 +616,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                       {r.grindMesh != null ? (
                         <>
                           <SpecRow label="분쇄도 · 양재천 EK43" value={meshFmt(r.grindMesh)} />
-                          <SpecRow label="분쇄도 · 판교 EK43" value={pangyoMeshText(r.grindMesh)} />
+                          <PangyoMeshRow recipe={r} autoText={pangyoMeshText(r.grindMesh)} onSaved={refresh} />
                         </>
                       ) : (
                         <SpecRow label="분쇄도" value={r.grind || null} />

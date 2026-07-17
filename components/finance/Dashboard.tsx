@@ -17,6 +17,7 @@ import {
 } from 'recharts';
 import { aggregate, capexDepreciation, UNCLASSIFIED, type AggTx, type AggCat, type Unit } from '@/lib/finance/aggregate';
 import { wonNum as won } from '@/lib/finance/format';
+import { BRANDS } from '@/lib/finance/types';
 
 const manwon = (v: number) => (Math.abs(v) >= 10000 ? `${Math.round(v / 10000).toLocaleString()}만` : String(v));
 
@@ -83,19 +84,40 @@ export default function Dashboard({
 }: {
   txns: AggTx[];
   cats: AggCat[];
-  posSales?: { saleDate: string; supply: number }[];
+  posSales?: { saleDate: string; supply: number; brand?: string | null }[];
 }) {
   const [unit, setUnit] = useState<Unit>('month');
   const [netVat, setNetVat] = useState(true);
-  const { months, expenseKeys } = useMemo(
-    () => aggregate(txns, cats, unit, netVat, posSales),
-    [txns, cats, unit, netVat, posSales],
-  );
+  // 브랜드 필터 — 'all'=두 브랜드 합산. brand 없는 구 데이터는 garden 취급.
+  const [brand, setBrand] = useState<'all' | 'garden' | 'staffmeal'>('all');
+  const { months, expenseKeys } = useMemo(() => {
+    const tx = brand === 'all' ? txns : txns.filter((t) => (t.brand ?? 'garden') === brand);
+    const pos = brand === 'all' ? posSales : posSales.filter((p) => (p.brand ?? 'garden') === brand);
+    return aggregate(tx, cats, unit, netVat, pos);
+  }, [txns, cats, unit, netVat, posSales, brand]);
 
   const fmtP = (key: string) => (unit === 'month' ? key.slice(2).replace('-', '.') : key.slice(5).replace('-', '/'));
 
   const toggle = (
     <div className="flex flex-wrap items-center gap-2">
+      <div className="inline-flex gap-1 rounded-md border border-border p-1">
+        {([{ id: 'all', label: '전체' }, ...BRANDS] as { id: 'all' | 'garden' | 'staffmeal'; label: string }[]).map(
+          (b) => {
+            const on = brand === b.id;
+            return (
+              <button
+                key={b.id}
+                onClick={() => setBrand(b.id)}
+                className={`rounded-sm px-3 py-1 text-[13px] transition-colors ${
+                  on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {b.label}
+              </button>
+            );
+          },
+        )}
+      </div>
       <div className="inline-flex gap-1 rounded-md border border-border p-1">
         {(['month', 'week'] as Unit[]).map((u) => {
           const on = unit === u;

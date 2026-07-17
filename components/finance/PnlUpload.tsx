@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { won, fmtYm } from '@/lib/finance/format';
+import { BRANDS, type Brand } from '@/lib/finance/types';
 
 interface CatAgg {
   category: string;
@@ -30,6 +31,8 @@ export default function PnlUpload() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState('0000');
+  // 파일 하나 = 한 브랜드 (브랜드별 POS 분리 운영)
+  const [brand, setBrand] = useState<Brand>('garden');
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -64,6 +67,7 @@ export default function PnlUpload() {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('password', password);
+      fd.append('brand', brand);
       const res = await fetch('/api/finance/pos/apply', { method: 'POST', body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '저장에 실패했어요.');
@@ -100,6 +104,20 @@ export default function PnlUpload() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
+        {/* 브랜드 선택 — 어느 브랜드의 POS 파일인지 (같은 달이라도 브랜드별로 따로 저장·교체) */}
+        <div className="flex overflow-hidden rounded-md border border-border">
+          {BRANDS.map((b) => (
+            <button
+              key={b.id}
+              onClick={() => setBrand(b.id)}
+              className={`px-3 py-1.5 text-[13px] transition-colors ${
+                brand === b.id ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
         <input
           type="file"
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -165,7 +183,9 @@ export default function PnlUpload() {
           </div>
 
           <button onClick={apply} disabled={applying} className="ta-btn-primary self-start">
-            {applying ? '저장 중…' : `${preview.yms.map(fmtYm).join(', ')} 매출 저장`}
+            {applying
+              ? '저장 중…'
+              : `${BRANDS.find((b) => b.id === brand)?.label} ${preview.yms.map(fmtYm).join(', ')} 매출 저장`}
           </button>
         </>
       )}

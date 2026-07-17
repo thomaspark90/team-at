@@ -17,6 +17,8 @@ type IngestRow = {
   product?: string;
   amount: number;
   pay_status?: string;
+  brand?: string;    // 배송지 기반 자동 판정: 'staffmeal' | 'garden' (없으면 DB 기본 garden)
+  ship_to?: string;  // 배송지명 — channel 뒤에 붙여 분류 화면 참고 표시
 };
 
 const toKstIso = (s: string) => {
@@ -52,12 +54,18 @@ export async function POST(req: Request) {
     const merchant = (r.merchant || '네이버페이').trim();
     const isRefund = /취소|환불/.test(r.pay_status || '');
     const txAt = toKstIso(r.paid_at);
+    // 수집기가 배송지로 판정한 브랜드 — 값이 유효할 때만 신뢰, 아니면 DB 기본(garden)
+    const brand = r.brand === 'staffmeal' || r.brand === 'garden' ? r.brand : null;
+    const shipTo = typeof r.ship_to === 'string' && r.ship_to.trim() ? r.ship_to.trim().slice(0, 40) : null;
+    const product = (r.product || '').trim();
     return {
+      _explicit_brand: brand, // insert 전에 제거 — dedup 시 기존 행 brand 갱신용
+      brand: brand ?? 'garden',
       bank: 'naverpay',
       source: 'naverpay',
       tx_at: txAt,
       ym: txAt.slice(0, 7),
-      channel: (r.product || '').trim() || null, // 상품명(참고 표시)
+      channel: [product, shipTo ? `@${shipTo}` : ''].filter(Boolean).join(' ') || null, // 상품명+배송지명(참고 표시)
       memo: merchant,                            // 분류 단서 = 가맹점명
       amount_out: isRefund ? 0 : Math.round(Number(r.amount)),
       amount_in: isRefund ? Math.round(Number(r.amount)) : 0,
@@ -87,8 +95,27 @@ export async function POST(req: Request) {
     seen.add(m.dedup_hash);
     return true;
   });
+
+  // 이미 적재된 건도 브랜드는 소급 갱신 — brand 도입 이전 적재분(전부 garden) 백필.
+  // 수집기가 배송지로 명시 판정한 건(_explicit_brand)만 갱신한다.
+  let brandUpdated = 0;
+  for (const b of ['staffmeal', 'garden'] as const) {
+    const hs = Array.from(new Set(
+      mapped.filter((m) => existing.has(m.dedup_hash) && m._explicit_brand === b).map((m) => m.dedup_hash),
+    ));
+    for (let i = 0; i < hs.length; i += 100) {
+      const { data } = await supabase
+        .from('transactions')
+        .update({ brand: b })
+        .in('dedup_hash', hs.slice(i, i + 100))
+        .neq('brand', b)
+        .select('id');
+      brandUpdated += data?.length ?? 0;
+    }
+  }
+
   if (fresh.length === 0) {
-    return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0 });
+    return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0, brandUpdated });
   }
 
   // 학습 규칙(normalized_key → category_id)으로 자동 분류
@@ -127,11 +154,12 @@ export async function POST(req: Request) {
   }
   fresh.forEach((m) => { m.upload_id = up.id; });
 
-  const { error: insErr } = await supabase.from('transactions').insert(fresh);
+  const insertRows = fresh.map(({ _explicit_brand, ...rest }) => rest);
+  const { error: insErr } = await supabase.from('transactions').insert(insertRows);
   if (insErr) {
     await supabase.from('uploads').delete().eq('id', up.id);
     return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
   }
 
-  return NextResponse.json({ saved: fresh.length, duplicates: mapped.length - fresh.length, autoClassified });
+  return NextResponse.json({ saved: fresh.length, duplicates: mapped.length - fresh.length, autoClassified, brandUpdated });
 }

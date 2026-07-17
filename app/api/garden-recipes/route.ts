@@ -80,12 +80,31 @@ export async function POST(req: Request) {
     ? prev.createdAt ??
       (prev.history?.length ? prev.history[prev.history.length - 1].updatedAt : prev.updatedAt)
     : recipe.updatedAt;
-  // 이전 버전을 이력으로 보관 (최신순, 최대 20개)
+  // 이전 버전을 이력으로 보관 (최신순, 최대 20개) — 판교 보정 이력은 스냅샷에서 제외
   if (prev) {
-    const { beanKey: _k, brewType: _t, bean: _b, history: _h, ...snap } = prev;
+    const { beanKey: _k, brewType: _t, bean: _b, history: _h, pangyoMeshHistory: _ph, ...snap } = prev;
     recipe.history = [snap as DripRecipeSnapshot, ...(prev.history ?? [])].slice(0, 20);
   } else {
     recipe.history = [];
+  }
+  // 판교 수동 보정 유지 — 단, 양재천 기준 분쇄도가 바뀌면 보정이 낡은 값이 되므로 자동값으로 복귀
+  if (prev) {
+    const baseChanged = (prev.grindMesh ?? null) !== (recipe.grindMesh ?? null);
+    if (baseChanged && prev.pangyoMesh != null) {
+      recipe.pangyoMesh = null;
+      recipe.pangyoMeshHistory = [
+        {
+          mesh: null,
+          updatedAt: recipe.updatedAt,
+          updatedBy: user.email ?? '',
+          reason: `양재천 분쇄도 변경(${prev.grindMesh ?? '—'} → ${recipe.grindMesh ?? '—'})으로 자동값 복귀`,
+        },
+        ...(prev.pangyoMeshHistory ?? []),
+      ].slice(0, 20);
+    } else {
+      recipe.pangyoMesh = prev.pangyoMesh ?? null;
+      recipe.pangyoMeshHistory = prev.pangyoMeshHistory;
+    }
   }
   store.recipes = [...store.recipes.filter((r) => !same(r)), recipe];
   await writeStore(store);

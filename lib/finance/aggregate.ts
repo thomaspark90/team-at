@@ -18,6 +18,7 @@ export interface AggTx {
   amount_in: number;
   amount_out: number;
   category_id: number | null;
+  brand?: string | null; // 'garden' | 'staffmeal' — 대시보드 브랜드 필터용(집계 자체는 사용 안 함)
 }
 export type Unit = 'month' | 'week';
 

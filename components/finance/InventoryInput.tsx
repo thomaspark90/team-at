@@ -10,13 +10,14 @@ interface KindVals {
 }
 interface Props {
   ym: string;
+  brand: 'garden' | 'staffmeal'; // 브랜드별 별도 재고
   initial: KindVals;
   prevMonth: KindVals;
 }
 
 const KINDS: ('식자재' | '포장소모품')[] = ['식자재', '포장소모품'];
 
-export default function InventoryInput({ ym, initial, prevMonth }: Props) {
+export default function InventoryInput({ ym, brand, initial, prevMonth }: Props) {
   const router = useRouter();
   const [vals, setVals] = useState<Record<string, string>>({
     식자재: initial.식자재 != null ? String(initial.식자재) : '',
@@ -34,7 +35,7 @@ export default function InventoryInput({ ym, initial, prevMonth }: Props) {
       const res = await fetch('/api/finance/inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ym, kind, amount }),
+        body: JSON.stringify({ ym, kind, amount, brand }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '저장 실패');

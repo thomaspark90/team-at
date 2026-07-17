@@ -7,10 +7,12 @@ import { won } from '@/lib/finance/format';
 // 월별 채널수수료(정산서 실제 금액) 입력. 미입력이면 관리손익에서 공급가액×기본율로 추정.
 export default function ChannelFeeInput({
   ym,
+  brand,
   initial,
   estimate,
 }: {
   ym: string;
+  brand: 'garden' | 'staffmeal'; // 브랜드별 별도 정산
   initial: number | null; // 실제 입력값(없으면 null=추정)
   estimate: number; // 추정 금액(참고 표시)
 }) {
@@ -28,7 +30,7 @@ export default function ChannelFeeInput({
       const res = await fetch('/api/finance/channel-fees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ym, amount }),
+        body: JSON.stringify({ ym, amount, brand }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '저장 실패');

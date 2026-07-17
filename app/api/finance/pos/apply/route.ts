@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { parsePosXlsx } from '@/lib/finance/pos';
+import { brandLabel, type Brand } from '@/lib/finance/types';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
@@ -28,6 +29,12 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const file = form.get('file');
   const password = String(form.get('password') ?? '0000') || '0000';
+  // 브랜드별 별도 POS 파일 — 파일 하나 = 한 브랜드. 미지정은 garden(기존 동작 유지).
+  const rawBrand = String(form.get('brand') ?? 'garden');
+  if (rawBrand !== 'garden' && rawBrand !== 'staffmeal') {
+    return NextResponse.json({ error: '브랜드가 올바르지 않습니다.' }, { status: 400 });
+  }
+  const brand: Brand = rawBrand;
   if (!(file instanceof File)) return NextResponse.json({ error: '엑셀 파일을 선택하세요.' }, { status: 400 });
 
   let r;
@@ -62,6 +69,7 @@ export async function POST(req: Request) {
     ym: d.ym,
     sale_date: d.saleDate,
     category: d.category,
+    brand,
     qty: d.qty,
     gross: d.gross,
     vat: d.vat,
@@ -75,21 +83,23 @@ export async function POST(req: Request) {
   const { error: upErr } = await supabase
     .schema('finance')
     .from('pos_sales')
-    .upsert(rows, { onConflict: 'sale_date,category' });
+    .upsert(rows, { onConflict: 'sale_date,category,brand' });
   if (upErr) {
     if (isMissingTable(upErr)) return NextResponse.json({ error: MIGRATION_HINT }, { status: 400 });
     return NextResponse.json({ error: `매출 저장 실패: ${upErr.message}` }, { status: 500 });
   }
 
-  // 잔여 정리(비치명적): 같은 달인데 이번 파일엔 없는 (일×카테고리) 옛 행 제거
+  // 잔여 정리(비치명적): 같은 달·같은 브랜드인데 이번 파일엔 없는 (일×카테고리) 옛 행 제거.
+  // brand 조건 필수 — 없으면 한 브랜드 업로드가 다른 브랜드의 같은 달 매출을 지운다.
   const { error: delErr } = await supabase
     .schema('finance')
     .from('pos_sales')
     .delete()
     .in('ym', r.yms)
+    .eq('brand', brand)
     .lt('uploaded_at', now);
 
-  await logActivity(supabase, user, 'POS 매출 업로드', `${r.ym} ${rows.length}행`);
+  await logActivity(supabase, user, 'POS 매출 업로드', `${brandLabel(brand)} · ${r.ym} ${rows.length}행`);
 
   return NextResponse.json({
     ym: r.ym,

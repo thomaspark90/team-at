@@ -4,7 +4,7 @@ import { resolveRole } from '@/lib/finance/access';
 
 export const runtime = 'nodejs';
 
-// 월별 채널수수료 저장. { ym, amount }. amount=null 이면 삭제(추정으로 되돌림).
+// 월별·브랜드별 채널수수료 저장. { ym, amount, brand? }. amount=null 이면 삭제(추정으로 되돌림).
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -18,6 +18,8 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
   const ym = String(body?.ym ?? '');
+  const brand = String(body?.brand ?? 'garden');
+  if (!['garden', 'staffmeal'].includes(brand)) return NextResponse.json({ error: '브랜드가 올바르지 않습니다.' }, { status: 400 });
   if (!/^\d{4}-\d{2}$/.test(ym)) return NextResponse.json({ error: '월(ym)이 올바르지 않습니다.' }, { status: 400 });
 
   // 확정된 달은 변경 불가(다른 재무 라우트와 동일 규칙)
@@ -33,9 +35,9 @@ export async function POST(req: Request) {
 
   // amount 미지정/null → 삭제(추정으로 복귀)
   if (body?.amount == null || body?.amount === '') {
-    const { error } = await supabase.schema('finance').from('channel_fees').delete().eq('ym', ym);
+    const { error } = await supabase.schema('finance').from('channel_fees').delete().eq('ym', ym).eq('brand', brand);
     if (error) return NextResponse.json({ error: `삭제 실패: ${error.message}` }, { status: 500 });
-    return NextResponse.json({ ok: true, ym, amount: null });
+    return NextResponse.json({ ok: true, ym, brand, amount: null });
   }
 
   const amount = Math.round(Number(body.amount));
@@ -44,8 +46,8 @@ export async function POST(req: Request) {
   const { error } = await supabase
     .schema('finance')
     .from('channel_fees')
-    .upsert({ ym, amount, entered_by: user.id, updated_at: new Date().toISOString() }, { onConflict: 'ym' });
+    .upsert({ ym, brand, amount, entered_by: user.id, updated_at: new Date().toISOString() }, { onConflict: 'ym,brand' });
   if (error) return NextResponse.json({ error: `저장 실패: ${error.message}` }, { status: 500 });
 
-  return NextResponse.json({ ok: true, ym, amount });
+  return NextResponse.json({ ok: true, ym, brand, amount });
 }

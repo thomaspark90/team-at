@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
+import { brandLabel } from '@/lib/finance/types';
 
 export const runtime = 'nodejs';
 
-// 월별 기말재고 저장(upsert). { ym, kind: '식자재'|'포장소모품', amount }
+// 월별·브랜드별 기말재고 저장(upsert). { ym, kind: '식자재'|'포장소모품', amount, brand? }
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -21,6 +22,8 @@ export async function POST(req: Request) {
   const ym = String(body?.ym ?? '');
   const kind = String(body?.kind ?? '');
   const amount = Math.round(Number(body?.amount));
+  const brand = String(body?.brand ?? 'garden');
+  if (!['garden', 'staffmeal'].includes(brand)) return NextResponse.json({ error: '브랜드가 올바르지 않습니다.' }, { status: 400 });
   if (!/^\d{4}-\d{2}$/.test(ym)) return NextResponse.json({ error: '월(ym)이 올바르지 않습니다.' }, { status: 400 });
   if (!['식자재', '포장소모품'].includes(kind)) return NextResponse.json({ error: '구분이 올바르지 않습니다.' }, { status: 400 });
   if (!Number.isFinite(amount) || amount < 0) return NextResponse.json({ error: '금액이 올바르지 않습니다.' }, { status: 400 });
@@ -40,11 +43,11 @@ export async function POST(req: Request) {
     .schema('finance')
     .from('inventory')
     .upsert(
-      { ym, kind, amount, entered_by: user.id, updated_at: new Date().toISOString() },
-      { onConflict: 'ym,kind' },
+      { ym, kind, brand, amount, entered_by: user.id, updated_at: new Date().toISOString() },
+      { onConflict: 'ym,kind,brand' },
     );
   if (error) return NextResponse.json({ error: `저장 실패: ${error.message}` }, { status: 500 });
 
-  await logActivity(supabase, user, '기말재고 입력', `${ym} ${kind} ${amount.toLocaleString('ko-KR')}원`);
-  return NextResponse.json({ ok: true, ym, kind, amount });
+  await logActivity(supabase, user, '기말재고 입력', `${brandLabel(brand)} · ${ym} ${kind} ${amount.toLocaleString('ko-KR')}원`);
+  return NextResponse.json({ ok: true, ym, kind, brand, amount });
 }

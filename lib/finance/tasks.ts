@@ -22,6 +22,13 @@ export interface FinanceTask {
   createdAt: string;
   updatedAt?: string;
   updatedBy?: string;
+  check?: TaskCheck; // 데이터 연동 확인 — GET 시 계산되는 일시 필드(저장 안 함)
+}
+
+// 실제 데이터 입력 여부 확인 결과 (예: 채널수수료 입력됨, POS 업로드됨, 월 확정됨)
+export interface TaskCheck {
+  done: boolean;
+  label: string;
 }
 
 export const TASK_COLUMNS: { status: TaskStatus; label: string }[] = [
@@ -83,9 +90,11 @@ export const WEEKLY_TEMPLATES: WeeklyTemplate[] = [
 export const MONTHLY_TEMPLATES: MonthlyTemplate[] = [
   { id: 'bank-pdf', title: '{M}월 은행 PDF 업로드', board: 'accounting', href: '/finance', dueDay: 5 },
   { id: 'card-stmt', title: '{M}월 신한카드 이용내역 업로드', board: 'accounting', href: '/finance', dueDay: 5 },
-  { id: 'pos', title: '{M}월 POS 매출 업로드', board: 'finance', href: '/finance', dueDay: 5 },
+  { id: 'pos', title: '{M}월 가든 POS 매출 업로드', board: 'finance', href: '/finance/pnl', dueDay: 5 },
+  { id: 'pos-staffmeal', title: '{M}월 스탭밀 POS 매출 업로드', board: 'finance', href: '/finance/pnl?brand=staffmeal', dueDay: 5 },
   { id: 'inventory', title: '{M}월 기말재고 입력', board: 'accounting', href: '/finance/pnl', dueDay: 10 },
-  { id: 'channel-fees', title: '{M}월 채널수수료 입력', board: 'finance', href: '/finance/pnl', dueDay: 10 },
+  { id: 'channel-fees', title: '{M}월 가든 채널수수료 입력', board: 'finance', href: '/finance/pnl', dueDay: 10 },
+  { id: 'channel-fees-staffmeal', title: '{M}월 스탭밀 채널수수료 입력', board: 'finance', href: '/finance/pnl?brand=staffmeal', dueDay: 10 },
   { id: 'pnl-review', title: '{M}월 관리손익 검토', board: 'finance', href: '/finance/pnl', dueDay: 12 },
   { id: 'close', title: '{M}월 월 확정', board: 'accounting', href: '/finance/close', dueDay: 15 },
 ];
@@ -94,4 +103,13 @@ export const MONTHLY_TEMPLATES: MonthlyTemplate[] = [
 export function boardOfTemplate(templateId?: string): TaskBoardId {
   const all = [...WEEKLY_TEMPLATES, ...MONTHLY_TEMPLATES];
   return all.find((t) => t.id === templateId)?.board ?? 'finance';
+}
+
+// 월간 카드의 마감 대상 월 — 카드는 period(이번 달)에 생성되지만 작업 대상은 전월분
+export function targetYmOf(period: string): string | null {
+  const m = period.match(/^(\d{4})-(\d{2})$/);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  return mo === 1 ? `${y - 1}-12` : `${m[1]}-${String(mo - 1).padStart(2, '0')}`;
 }
