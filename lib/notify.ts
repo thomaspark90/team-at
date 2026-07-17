@@ -155,6 +155,22 @@ export async function notifyBeanStockLow(
   }
 }
 
+// 가든 공통 알림 — 지정 이메일들에게 이메일+웹푸시 동시 발송. 레시피 등록/수정,
+// 원두카드 요청 등 토픽별 담당자 알림에서 사용. 어떤 실패도 호출부를 막지 않는다.
+export async function notifyGardenEvent(
+  supabase: SupabaseClient,
+  n: { emails: string[]; subject: string; html: string; push: { title: string; body: string; url: string } }
+) {
+  if (n.emails.length === 0) return;
+  const results = await Promise.allSettled([
+    sendEmailTo(supabase, n.emails, n.subject, n.html),
+    sendPushTo(supabase, n.emails, n.push),
+  ]);
+  for (const r of results) {
+    if (r.status === 'rejected') console.error('garden notify 실패:', r.reason);
+  }
+}
+
 // 분쇄도 측정 요청 → 지정 담당자(기본: 원두 수신자 전체)에게 이메일+웹푸시.
 // 가든 설정(/garden/settings)에서 호출 — 실패해도 요청 UI는 막지 않는다.
 export async function notifyGrindRequest(

@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import type { DripRecipe, DripRecipeSnapshot, RecipeStore } from '@/lib/types';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
+import { notifyGardenEvent } from '@/lib/notify';
+import { readGardenTopics } from '@/lib/garden-notify-topics-server';
 
 const DATA_PATH = 'data/garden-recipes.json';
 
@@ -96,6 +98,37 @@ export async function POST(req: Request) {
         ? ` · ${recipe.doseG}g : ${recipe.waterG}ml`
         : '')
   );
+
+  // 토픽 담당자 알림 (신규/수정) — 담당자 미지정 토픽은 발송 없음(옵트인). 실패해도 저장은 유지.
+  try {
+    const topics = await readGardenTopics();
+    const emails = isNew ? topics.recipeNew : topics.recipeEdit;
+    if (emails.length > 0) {
+      const by = (user.email ?? '').split('@')[0];
+      const summary =
+        `${recipe.bean} ${brewType.toUpperCase()}` +
+        (recipe.doseG != null && recipe.waterG != null ? ` · ${recipe.doseG}g : ${recipe.waterG}ml` : '') +
+        (recipe.grindMesh != null ? ` · 분쇄도 ${recipe.grindMesh}` : '');
+      await notifyGardenEvent(supabase, {
+        emails,
+        subject: `[레시피 ${isNew ? '등록' : '수정'}] ${recipe.bean} ${brewType.toUpperCase()}`,
+        html: `
+        <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
+          <p><strong>${isNew ? '신규 레시피가 등록됐어요' : '레시피가 수정됐어요'}</strong></p>
+          <p>${summary}</p>
+          ${by ? `<p>저장: ${by}</p>` : ''}
+          <p><a href="https://team-at-apps.vercel.app/garden/recipes">필터 레시피 열기 →</a></p>
+        </div>`,
+        push: {
+          title: `레시피 ${isNew ? '등록' : '수정'} · ${recipe.bean}`,
+          body: `${summary}${by ? ` — ${by}` : ''}`,
+          url: '/garden/recipes',
+        },
+      });
+    }
+  } catch (e) {
+    console.error('레시피 알림 실패:', e);
+  }
   return NextResponse.json(recipe);
 }
 
