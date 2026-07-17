@@ -9,6 +9,7 @@ import { isOwner } from '@/lib/finance/access';
 // 리포트(분석·보고) 하위 내비게이션 — 기장·결산(분류·월확정 등)은 회계 탭(AccountingNav)으로 이동.
 const LEFT = [
   { href: '/finance/dashboard', label: '대시보드' },
+  { href: '/finance/metrics', label: '지표' },
   { href: '/finance/pnl', label: '관리손익' },
   { href: '/finance/cashflow', label: '월별 요약' },
   { href: '/finance/flow', label: '자금 흐름' },
@@ -29,8 +30,8 @@ export default function FinanceNav({ role }: { role: string | null }) {
   if (!role) return null;
   const isStaff = ['admin', 'classifier'].includes(role);
   const isAdmin = role === 'admin';
-  // viewer(팀원)는 대시보드만 노출 (원본·분류·업로드 등은 접근 불가)
-  const leftItems = isStaff ? LEFT : [{ href: '/finance/dashboard', label: '대시보드' }];
+  // viewer(팀원)는 지표만 노출 (업무 보드·원본·분류·업로드 등은 접근 불가)
+  const leftItems = isStaff ? LEFT : [{ href: '/finance/metrics', label: '지표' }];
 
   const item = ({ href, label }: { href: string; label: string }) => {
     const active = pathname === href;

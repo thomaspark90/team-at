@@ -36,7 +36,7 @@ export default async function FinancePage() {
   if (!user) redirect('/');
 
   const role = await resolveRole(supabase, user);
-  if (role === 'viewer') redirect('/finance/dashboard'); // 팀원은 대시보드가 홈
+  if (role === 'viewer') redirect('/finance/metrics'); // 팀원은 지표가 홈
   const isStaff = ['admin', 'classifier'].includes(role ?? '');
 
   // 현황 계산(스태프만)
@@ -147,6 +147,7 @@ function Overview({ o }: { o: OverviewData }) {
               { href: '/finance/classify', label: '자료 분류' },
               { href: '/finance/flow', label: '자금 흐름' },
               { href: '/finance/dashboard', label: '대시보드' },
+              { href: '/finance/metrics', label: '지표' },
               { href: '/finance/cashflow', label: '월별 요약' },
               { href: '/finance/uploads', label: '자료 이력' },
             ].map((l) => (
