@@ -5,6 +5,7 @@ import { resolveRole } from '@/lib/finance/access';
 import { fetchExistingHashes } from '@/lib/finance/dedup';
 import { dedupe } from '@/lib/finance/parse';
 import { fileToRows, rowsToTransactions, type ExcelMapping } from '@/lib/finance/excel';
+import { SLOT_KEYS, UPLOAD_SLOTS } from '@/lib/finance/uploadSlots';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -26,6 +27,11 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const file = form.get('file');
   const mappingRaw = form.get('mapping');
+  // 월별 보드에서 올릴 때 어느 월·슬롯 몫인지(선택) — 보드 완료 체크에 사용
+  const slotRaw = form.get('slot');
+  const ymRaw = form.get('ym');
+  const slot = typeof slotRaw === 'string' && SLOT_KEYS.includes(slotRaw) ? slotRaw : null;
+  const slotYm = typeof ymRaw === 'string' && /^\d{4}-\d{2}$/.test(ymRaw) ? ymRaw : null;
   if (!(file instanceof File) || typeof mappingRaw !== 'string') {
     return NextResponse.json({ error: '파일과 매핑 정보가 필요해요. 미리보기부터 다시 해주세요.' }, { status: 400 });
   }
@@ -53,6 +59,13 @@ export async function POST(req: Request) {
   );
   const { fresh, duplicates } = dedupe(result.transactions, existing);
   if (fresh.length === 0) {
+    // 전부 중복이어도 보드 슬롯은 '올렸음'으로 기록해 완료 체크가 남게 한다
+    if (slot && slotYm) {
+      await supabase
+        .schema('finance')
+        .from('uploads')
+        .insert({ bank: 'excel', row_count: 0, uploaded_by: user.id, slot, slot_ym: slotYm });
+    }
     return NextResponse.json({ saved: 0, duplicates, autoClassified: 0 });
   }
 
@@ -81,19 +94,18 @@ export async function POST(req: Request) {
       uploaded_by: user.id,
       period_start: dates[0]?.slice(0, 10),
       period_end: dates[dates.length - 1]?.slice(0, 10),
+      ...(slot && slotYm ? { slot, slot_ym: slotYm } : {}),
     })
     .select('id')
     .single();
   if (upErr || !up) {
     const msg = upErr?.message ?? '';
-    return NextResponse.json(
-      {
-        error: /invalid input value.*bank_source/i.test(msg)
-          ? "bank_source 에 'excel' 이 아직 없어요. 관리자가 supabase/migration_excel_source.sql 을 실행해야 해요."
-          : `업로드 기록 실패: ${msg}`,
-      },
-      { status: 500 }
-    );
+    const friendly = /invalid input value.*bank_source/i.test(msg)
+      ? "bank_source 에 'excel' 이 아직 없어요. 관리자가 supabase/migration_excel_source.sql 을 실행해야 해요."
+      : /slot/.test(msg)
+        ? '업로드 보드 컬럼이 아직 없어요. 관리자가 supabase/migration_upload_slots.sql 을 실행해야 해요.'
+        : `업로드 기록 실패: ${msg}`;
+    return NextResponse.json({ error: friendly }, { status: 500 });
   }
 
   const now = new Date().toISOString();
@@ -124,7 +136,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
   }
 
-  await logActivity(supabase, user, '엑셀 내역 저장', `${file.name} ${fresh.length}건(중복 ${duplicates})`);
+  const slotLabel = slot ? UPLOAD_SLOTS.find((s) => s.key === slot)?.label : null;
+  await logActivity(
+    supabase,
+    user,
+    '엑셀 내역 저장',
+    `${slotLabel ? `[${slotYm} ${slotLabel}] ` : ''}${file.name} ${fresh.length}건(중복 ${duplicates})`
+  );
 
   return NextResponse.json({
     saved: fresh.length,

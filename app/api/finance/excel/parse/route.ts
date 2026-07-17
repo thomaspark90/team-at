@@ -29,6 +29,7 @@ export async function POST(req: Request) {
 
   const form = await req.formData();
   const file = form.get('file');
+  const ym = typeof form.get('ym') === 'string' ? String(form.get('ym')) : null; // 보드에서 선택한 월
   if (!(file instanceof File)) {
     return NextResponse.json({ error: '엑셀 파일을 선택하세요.' }, { status: 400 });
   }
@@ -58,6 +59,8 @@ export async function POST(req: Request) {
       sumOut: result.sumOut,
       fresh: fresh.length,
       duplicates,
+      // 선택한 월 밖의 거래 수 — 다른 달 파일을 잘못 올린 경우 경고용
+      outOfMonth: ym ? fresh.filter((t) => t.ym !== ym).length : 0,
       sample: fresh.slice(0, 200),
     });
   } catch (e) {
