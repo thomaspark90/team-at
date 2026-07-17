@@ -9,6 +9,7 @@ import AccountingNav from '@/components/AccountingNav';
 import UploadPanel from '@/components/finance/UploadPanel';
 import CardReconcile from '@/components/finance/CardReconcile';
 import ReceiptEnrich from '@/components/finance/ReceiptEnrich';
+import NaverpayConfig from '@/components/finance/NaverpayConfig';
 import RequestAccessButton from '@/components/finance/RequestAccessButton';
 
 interface OverviewData {
@@ -87,6 +88,8 @@ export default async function FinancePage() {
               <CardReconcile />
               {/* 3) 쿠팡 영수증(품목 분해) */}
               <ReceiptEnrich />
+              {/* 4) 네이버페이 자동 수집 설정 */}
+              <NaverpayConfig />
             </section>
           </div>
         ) : (

@@ -84,9 +84,12 @@ export interface DripRecipe {
   pangyoMeshHistory?: PangyoMeshChange[]; // 보정 이력 (최신순, 최대 20개)
 }
 
-// 판교 분쇄도 보정 이력 한 건 — mesh null = 산식 자동값으로 복귀
+// 판교 분쇄도 보정 이력 한 건 — mesh null = 산식 자동값으로 복귀.
+// baseMesh(보정 당시 양재천 기준값)가 있어야 나중에 Δ = mesh - 산식(baseMesh)를 복원해
+// '판교 물 보정 상수'로 캘리브레이션에 환류할 수 있다.
 export interface PangyoMeshChange {
   mesh: number | null;
+  baseMesh?: number | null; // 보정 당시 양재천 EK43 기준 분쇄도
   updatedAt: string;
   updatedBy?: string;
   reason?: string;

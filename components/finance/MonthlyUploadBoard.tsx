@@ -166,6 +166,47 @@ export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSave
               {UPLOAD_SLOTS.filter((s) => s.group === group).map((s) => {
                 const st = slots?.[s.key];
                 const busy = parsing && activeSlot === s.key;
+                if (s.source === 'naverpay') {
+                  // 네이버 — 매일 자동수집 소스: 칸 클릭은 업로드가 아니라 자료 분류(네이버 필터)로
+                  // 이동한다. 이 달 수집 건수를 숫자로 표기하고, 엑셀 추가 업로드는 보조(+)로만 남긴다.
+                  return (
+                    <Link
+                      key={s.key}
+                      href={`/finance/classify?ym=${ym}&source=naverpay`}
+                      className={`flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 transition-colors hover:border-foreground/40 ${
+                        st?.done ? 'border-border bg-muted/40' : 'border-dashed border-border bg-background'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2 text-[13px] font-medium">
+                        {st?.done && <span className="text-emerald-600">✓</span>}
+                        {s.label}
+                      </span>
+                      <span className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                        {!slots ? (
+                          '확인 중…'
+                        ) : busy ? (
+                          '읽는 중…'
+                        ) : (
+                          <>
+                            <b className="tabular-nums text-foreground">{st?.count ?? 0}건</b>
+                            {st?.done ? ' 자동 수집' : ' 수집 전'} · 분류 보기 →
+                          </>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            pickSlot(s.key);
+                          }}
+                          className="rounded border border-border px-1.5 py-0.5 hover:text-foreground"
+                          title="엑셀 파일 추가 업로드"
+                        >
+                          +
+                        </button>
+                      </span>
+                    </Link>
+                  );
+                }
                 if (st?.done && st.full) {
                   return (
                     <div key={s.key} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 opacity-70">

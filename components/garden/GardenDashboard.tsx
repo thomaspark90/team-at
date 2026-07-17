@@ -1122,6 +1122,7 @@ function PangyoMeshRow({
             <div key={i} className="tabular text-[11px] text-muted-foreground" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
               <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {h.mesh != null ? `판교 ${h.mesh.toFixed(1)}` : '산식 자동값 복귀'}
+                {h.baseMesh != null && h.mesh != null ? ` (양재천 ${h.baseMesh.toFixed(1)} 기준)` : ''}
                 {h.reason ? ` — ${h.reason}` : ''}
               </span>
               <span style={{ flexShrink: 0 }}>

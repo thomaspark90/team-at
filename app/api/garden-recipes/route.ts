@@ -95,6 +95,7 @@ export async function POST(req: Request) {
       recipe.pangyoMeshHistory = [
         {
           mesh: null,
+          baseMesh: recipe.grindMesh ?? null,
           updatedAt: recipe.updatedAt,
           updatedBy: user.email ?? '',
           reason: `양재천 분쇄도 변경(${prev.grindMesh ?? '—'} → ${recipe.grindMesh ?? '—'})으로 자동값 복귀`,

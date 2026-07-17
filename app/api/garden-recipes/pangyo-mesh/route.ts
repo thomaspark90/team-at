@@ -54,7 +54,12 @@ export async function POST(req: Request) {
   const rounded = mesh === null ? null : Math.round(mesh * 10) / 10;
   recipe.pangyoMesh = rounded;
   recipe.pangyoMeshHistory = [
-    { mesh: rounded, updatedAt: new Date().toISOString(), updatedBy: user.email ?? '' },
+    {
+      mesh: rounded,
+      baseMesh: recipe.grindMesh ?? null, // 보정 당시 양재천 기준값 — Δ 복원용
+      updatedAt: new Date().toISOString(),
+      updatedBy: user.email ?? '',
+    },
     ...(recipe.pangyoMeshHistory ?? []),
   ].slice(0, 20);
   await writeStore(store);
