@@ -18,8 +18,11 @@ type IngestRow = {
   amount: number;
   pay_status?: string;
   brand?: string;    // 배송지 기반 자동 판정: 'staffmeal' | 'garden' (없으면 DB 기본 garden)
+  branch?: string;   // 지점(1차 분류): '판교' | '양재천' | '스탭밀' — transactions.branch에 저장
   ship_to?: string;  // 배송지명 — channel 뒤에 붙여 분류 화면 참고 표시
 };
+
+const BRANCHES = ['판교', '양재천', '스탭밀'];
 
 const toKstIso = (s: string) => {
   const t = s.trim().replace(' ', 'T');
@@ -54,12 +57,13 @@ export async function POST(req: Request) {
     const merchant = (r.merchant || '네이버페이').trim();
     const isRefund = /취소|환불/.test(r.pay_status || '');
     const txAt = toKstIso(r.paid_at);
-    // 수집기가 배송지로 판정한 브랜드 — 값이 유효할 때만 신뢰, 아니면 DB 기본(garden)
+    // 수집기가 배송지로 판정한 브랜드·지점 — 값이 유효할 때만 신뢰, 아니면 DB 기본(garden)/null
     const brand = r.brand === 'staffmeal' || r.brand === 'garden' ? r.brand : null;
+    const branch = BRANCHES.includes(String(r.branch)) ? String(r.branch) : null;
     const shipTo = typeof r.ship_to === 'string' && r.ship_to.trim() ? r.ship_to.trim().slice(0, 40) : null;
     const product = (r.product || '').trim();
     return {
-      _explicit_brand: brand, // insert 전에 제거 — dedup 시 기존 행 brand 갱신용
+      _explicit_brand: brand, // insert 전에 제거 — dedup 시 기존 행 brand·branch 갱신용
       brand: brand ?? 'garden',
       bank: 'naverpay',
       source: 'naverpay',
@@ -70,7 +74,7 @@ export async function POST(req: Request) {
       amount_out: isRefund ? 0 : Math.round(Number(r.amount)),
       amount_in: isRefund ? Math.round(Number(r.amount)) : 0,
       balance: 0,
-      branch: null,
+      branch,
       dedup_hash: r.external_id
         ? hash('naverpay', r.external_id)
         : hash('naverpay', r.paid_at, merchant, r.product ?? '', r.amount),
@@ -96,20 +100,28 @@ export async function POST(req: Request) {
     return true;
   });
 
-  // 이미 적재된 건도 브랜드는 소급 갱신 — brand 도입 이전 적재분(전부 garden) 백필.
-  // 수집기가 배송지로 명시 판정한 건(_explicit_brand)만 갱신한다.
+  // 이미 적재된 건도 브랜드·지점은 소급 갱신 — 도입 이전 적재분 백필.
+  // 수집기가 배송지로 명시 판정한 건(_explicit_brand)만, 값이 다른 행만 갱신한다.
   let brandUpdated = 0;
-  for (const b of ['staffmeal', 'garden'] as const) {
-    const hs = Array.from(new Set(
-      mapped.filter((m) => existing.has(m.dedup_hash) && m._explicit_brand === b).map((m) => m.dedup_hash),
-    ));
+  const dupGroups = new Map<string, { brand: string; branch: string | null; hashes: string[] }>();
+  mapped.forEach((m) => {
+    if (!existing.has(m.dedup_hash) || !m._explicit_brand) return;
+    const key = `${m._explicit_brand}|${m.branch ?? ''}`;
+    const g = dupGroups.get(key) ?? { brand: m._explicit_brand, branch: m.branch, hashes: [] };
+    g.hashes.push(m.dedup_hash);
+    dupGroups.set(key, g);
+  });
+  for (const g of Array.from(dupGroups.values())) {
+    const hs = Array.from(new Set(g.hashes));
     for (let i = 0; i < hs.length; i += 100) {
-      const { data } = await supabase
+      let q = supabase
         .from('transactions')
-        .update({ brand: b })
-        .in('dedup_hash', hs.slice(i, i + 100))
-        .neq('brand', b)
-        .select('id');
+        .update({ brand: g.brand, branch: g.branch })
+        .in('dedup_hash', hs.slice(i, i + 100));
+      q = g.branch
+        ? q.or(`brand.neq.${g.brand},branch.neq.${g.branch},branch.is.null`)
+        : q.neq('brand', g.brand);
+      const { data } = await q.select('id');
       brandUpdated += data?.length ?? 0;
     }
   }

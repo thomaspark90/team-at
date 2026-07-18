@@ -16,6 +16,7 @@ export interface TxRow {
   bank: string;
   source?: string;
   is_installment?: boolean;
+  branch?: string | null; // naverpay: 배송지 기반 지점(1차 분류) — '판교' | '양재천' | '스탭밀'
 }
 export interface Cat {
   id: number;
@@ -87,6 +88,7 @@ export default function ClassifyPanel({
     cat: initialFilter?.cat,
   });
   const [srcFilter, setSrcFilter] = useState<string>(initialFilter?.source ?? 'all'); // all | bank | card | naverpay
+  const [destFilter, setDestFilter] = useState('all'); // 네이버 지점(1차 분류): all | 판교 | 양재천 | 스탭밀 | 기타
   const [unclOnly, setUnclOnly] = useState(!!initialFilter?.unclassified); // 미분류만 보기
   const [search, setSearch] = useState(''); // 가맹점/내용 검색
   const [selected, setSelected] = useState<Set<number>>(new Set()); // 다중 선택
@@ -133,6 +135,8 @@ export default function ClassifyPanel({
       (filterYm === 'all' || r.tx_at.slice(0, 7) === filterYm) &&
       (filterBank === 'all' || r.bank === filterBank) &&
       (srcFilter === 'all' || (r.source ?? 'bank') === srcFilter) &&
+      (srcFilter !== 'naverpay' || destFilter === 'all' ||
+        (destFilter === '기타' ? !r.branch : r.branch === destFilter)) &&
       (!unclOnly || r.category_id == null) &&
       (!q || r.memo.toLowerCase().includes(q) || r.normalized_key.toLowerCase().includes(q) || (r.channel ?? '').toLowerCase().includes(q)) &&
       matchesCat(r)
@@ -370,6 +374,26 @@ export default function ClassifyPanel({
             <span className="text-[15px] leading-none">×</span>
           </button>
         )}
+        {srcFilter === 'naverpay' && (
+          // 네이버 지점(배송지 기반 1차 분류) 필터 — 지점별로 모아 2차(계정) 분류하기 편하게
+          <div className="inline-flex gap-1 rounded-md border border-border p-1">
+            {[
+              { v: 'all', label: '전체 지점' },
+              { v: '판교', label: '가든 판교' },
+              { v: '양재천', label: '가든 양재천' },
+              { v: '스탭밀', label: '스탭밀' },
+              { v: '기타', label: '기타' },
+            ].map(({ v, label }) => (
+              <button
+                key={v}
+                onClick={() => setDestFilter(v)}
+                className={`rounded-sm px-3 py-1 text-[13px] ${destFilter === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -492,6 +516,9 @@ export default function ClassifyPanel({
                       <div className="flex max-w-[380px] items-center gap-1.5">
                         {tx.source === 'card' && <span title="신한카드 이용내역" className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">💳</span>}
                         {tx.source === 'naverpay' && <span title="네이버페이 결제내역" className="shrink-0 rounded bg-positive/10 px-1.5 py-0.5 text-[11px] font-medium text-positive">N</span>}
+                        {tx.source === 'naverpay' && tx.branch && (
+                          <span title="배송지 기반 지점(1차 분류)" className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">{tx.branch}</span>
+                        )}
                         <span className="line-clamp-2 min-w-0 break-all" title={tx.memo}>
                           {tx.memo || <span className="text-muted-foreground">(빈 내용)</span>}
                           {tx.source === 'naverpay' && tx.channel && (

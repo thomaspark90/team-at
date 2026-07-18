@@ -25,7 +25,7 @@ export default async function ClassifyPage({
     await supabase
       .schema('finance')
       .from('transactions')
-      .select('id,memo,channel,normalized_key,amount_in,amount_out,category_id,tx_at,bank,source,is_installment')
+      .select('id,memo,channel,normalized_key,amount_in,amount_out,category_id,tx_at,bank,source,is_installment,branch')
       .order('tx_at', { ascending: false }),
     '거래',
   );
