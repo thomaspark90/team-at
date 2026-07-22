@@ -90,6 +90,7 @@ export async function POST(req: Request) {
       .schema('finance')
       .from('rules')
       .select('normalized_key,category_id')
+      .eq('brand', 'garden') // 카드·엑셀 거래는 garden 고정(migration_brand) — 규칙도 garden 것만
       .in('normalized_key', keys.slice(i, i + 100));
     (rules ?? []).forEach((r: { normalized_key: string; category_id: number }) =>
       keyToCat.set(r.normalized_key, r.category_id)

@@ -25,7 +25,7 @@ export default async function ClassifyPage({
   let txQuery = supabase
     .schema('finance')
     .from('transactions')
-    .select('id,memo,channel,normalized_key,amount_in,amount_out,category_id,tx_at,bank,source,is_installment,branch')
+    .select('id,memo,channel,normalized_key,amount_in,amount_out,category_id,tx_at,bank,source,is_installment,branch,brand')
     .order('tx_at', { ascending: false });
   if (brandScope) txQuery = txQuery.eq('brand', brandScope);
   const txns = unwrap(await txQuery, '거래');
@@ -49,10 +49,10 @@ export default async function ClassifyPage({
 
   // 학습된 규칙(정규화키→계정) — 미분류 행에 '추천'으로 미리 선택
   const ruleRows = unwrap(
-    await supabase.schema('finance').from('rules').select('normalized_key,category_id'),
+    await supabase.schema('finance').from('rules').select('normalized_key,category_id,brand'),
     '학습 규칙',
   );
-  const rules = (ruleRows as { normalized_key: string; category_id: number }[] | null) ?? [];
+  const rules = (ruleRows as { normalized_key: string; category_id: number; brand: string }[] | null) ?? [];
 
   return (
     <div className="min-h-screen bg-background text-foreground">

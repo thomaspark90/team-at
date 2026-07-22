@@ -17,6 +17,7 @@ export interface TxRow {
   source?: string;
   is_installment?: boolean;
   branch?: string | null; // naverpay: 배송지 기반 지점(1차 분류) — '판교' | '양재천' | '스탭밀'
+  brand: string; // 'staffmeal' | 'garden' — 규칙 학습·키 일괄분류의 경계
 }
 export interface Cat {
   id: number;
@@ -57,11 +58,13 @@ export default function ClassifyPanel({
   cats: Cat[];
   userId: string;
   confirmedYms?: string[];
-  rules?: { normalized_key: string; category_id: number }[];
+  rules?: { normalized_key: string; category_id: number; brand: string }[];
   initialFilter?: { ym?: string; type?: string; cat?: string; unclassified?: boolean; source?: string; brand?: string };
   lockedBrand?: 'staffmeal' | 'garden' | null; // 브랜드 스코프 멤버 — 서버에서 해당 브랜드만 내려옴, 브랜드 탭 숨김
 }) {
-  const ruleMap = new Map(rules.map((r) => [r.normalized_key, r.category_id]));
+  // 규칙은 브랜드별 — 같은 가맹점이라도 스탭밀/가든이 다른 계정을 쓸 수 있다
+  const ruleMap = new Map(rules.map((r) => [`${r.brand}|${r.normalized_key}`, r.category_id]));
+  const ruleFor = (t: TxRow) => (t.normalized_key ? ruleMap.get(`${t.brand}|${t.normalized_key}`) : undefined);
   const confirmedSet = new Set(confirmedYms);
   const isLocked = (tx: TxRow) => confirmedSet.has(tx.tx_at.slice(0, 7));
   const sortTxns = (arr: TxRow[]) =>
@@ -204,7 +207,8 @@ export default function ClassifyPanel({
       .schema('finance')
       .from('transactions')
       .update({ category_id: categoryId, classified_by: userId, classified_at: now });
-    q = key ? q.eq('normalized_key', key) : q.eq('id', tx.id);
+    // 키 기반 일괄 분류는 같은 브랜드 안에서만 — 브랜드가 다르면 계정도 다를 수 있다
+    q = key ? q.eq('normalized_key', key).eq('brand', tx.brand) : q.eq('id', tx.id);
     // 확정된 달의 거래는 건드리지 않음(키 기반 분류가 여러 달에 걸칠 수 있음)
     if (confirmedYms.length) q = q.not('ym', 'in', `(${confirmedYms.join(',')})`);
     const { error: e1 } = await q;
@@ -217,11 +221,11 @@ export default function ClassifyPanel({
       await supabase
         .schema('finance')
         .from('rules')
-        .upsert({ normalized_key: key, category_id: categoryId, created_by: userId }, { onConflict: 'normalized_key' });
+        .upsert({ normalized_key: key, brand: tx.brand, category_id: categoryId, created_by: userId }, { onConflict: 'normalized_key,brand' });
     }
     setRows((list) =>
       list.map((r) =>
-        (key ? r.normalized_key === key : r.id === tx.id) && !isLocked(r) ? { ...r, category_id: categoryId } : r
+        (key ? r.normalized_key === key && r.brand === tx.brand : r.id === tx.id) && !isLocked(r) ? { ...r, category_id: categoryId } : r
       )
     );
     setBusy(null);
@@ -296,17 +300,17 @@ export default function ClassifyPanel({
   // 학습된 규칙으로 미리 선택된(미분류) 그룹 — 사람이 '적용'하면 확정
   const ruleKeys = new Set<string>();
   for (const r of rows) {
-    if (r.category_id == null && r.normalized_key && !suggestions[r.normalized_key] && !isLocked(r) && ruleMap.has(r.normalized_key))
-      ruleKeys.add(r.normalized_key);
+    if (r.category_id == null && r.normalized_key && !suggestions[r.normalized_key] && !isLocked(r) && ruleFor(r) != null)
+      ruleKeys.add(`${r.brand}|${r.normalized_key}`);
   }
   async function applyRules() {
     setAiApplying(true);
     const seen = new Set<string>();
     for (const tx of rows) {
-      if (tx.category_id != null || !tx.normalized_key || isLocked(tx) || seen.has(tx.normalized_key)) continue;
-      const cat = ruleMap.get(tx.normalized_key);
+      if (tx.category_id != null || !tx.normalized_key || isLocked(tx) || seen.has(`${tx.brand}|${tx.normalized_key}`)) continue;
+      const cat = ruleFor(tx);
       if (!cat) continue;
-      seen.add(tx.normalized_key);
+      seen.add(`${tx.brand}|${tx.normalized_key}`);
       await classify(tx, cat);
     }
     setAiApplying(false);
@@ -528,7 +532,7 @@ export default function ClassifyPanel({
                 const pending = tx.category_id == null;
                 const sug = pending && tx.normalized_key ? suggestions[tx.normalized_key] : undefined;
                 // 학습된 규칙 추천(미분류 + AI추천 없을 때) — 미리 선택돼 보이지만 확정은 사람이
-                const ruleSug = pending && !sug && tx.normalized_key ? ruleMap.get(tx.normalized_key) : undefined;
+                const ruleSug = pending && !sug ? ruleFor(tx) : undefined;
                 const isInflow = tx.amount_in >= tx.amount_out;
                 const allowed = isInflow
                   ? ['revenue', 'non_operating', 'excluded']

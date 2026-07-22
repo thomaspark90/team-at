@@ -132,15 +132,16 @@ export async function POST(req: Request) {
 
   // 학습 규칙(normalized_key → category_id)으로 자동 분류
   const keys = Array.from(new Set(fresh.map((m) => m.normalized_key)));
+  // 규칙은 브랜드별 — 행의 brand 와 일치하는 규칙만 적용
   const keyToCat = new Map<string, number>();
   for (let i = 0; i < keys.length; i += 100) {
-    const { data: rules } = await supabase.from('rules').select('normalized_key,category_id').in('normalized_key', keys.slice(i, i + 100));
-    (rules ?? []).forEach((r: { normalized_key: string; category_id: number }) => keyToCat.set(r.normalized_key, r.category_id));
+    const { data: rules } = await supabase.from('rules').select('normalized_key,category_id,brand').in('normalized_key', keys.slice(i, i + 100));
+    (rules ?? []).forEach((r: { normalized_key: string; category_id: number; brand: string }) => keyToCat.set(`${r.brand}|${r.normalized_key}`, r.category_id));
   }
   const now = new Date().toISOString();
   let autoClassified = 0;
   fresh.forEach((m) => {
-    const cat = keyToCat.get(m.normalized_key);
+    const cat = keyToCat.get(`${m.brand}|${m.normalized_key}`);
     if (cat != null) {
       m.category_id = cat;
       m.classified_at = now as never;
