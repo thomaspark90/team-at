@@ -21,7 +21,7 @@ export default async function MembersPage() {
     await supabase
       .schema('finance')
       .from('members')
-      .select('id,email,role,can_confirm')
+      .select('id,email,role,can_confirm,brand_scope')
       .order('created_at', { ascending: true }),
     '멤버',
   );

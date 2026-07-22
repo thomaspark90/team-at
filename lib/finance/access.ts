@@ -32,6 +32,28 @@ export async function resolveRole(
   return ((data?.role as Role | undefined) ?? null) || null;
 }
 
+// 브랜드 스코프 — null = 전체, 'staffmeal'|'garden' = 해당 브랜드 거래만.
+// ⚠️ RLS 헬퍼 finance.my_brand_scope() 의 판정과 동일하게 유지할 것.
+export type BrandScope = 'staffmeal' | 'garden' | null;
+
+// 역할+브랜드 스코프 일괄 조회. OWNER 는 항상 admin·전체.
+export async function resolveMember(
+  supabase: SupabaseClient,
+  user: { id: string; email?: string | null }
+): Promise<{ role: Role | null; brandScope: BrandScope }> {
+  if (isOwner(user.email)) return { role: 'admin', brandScope: null };
+  const { data } = await supabase
+    .schema('finance')
+    .from('members')
+    .select('role,brand_scope')
+    .eq('id', user.id)
+    .maybeSingle();
+  return {
+    role: ((data?.role as Role | undefined) ?? null) || null,
+    brandScope: ((data?.brand_scope as BrandScope | undefined) ?? null) || null,
+  };
+}
+
 // 월 확정 권한. OWNER 는 항상 true, 그 외엔 finance.members.can_confirm.
 // ⚠️ RLS 정책 finance.can_confirm() 의 판정과 동일하게 유지할 것.
 export async function canConfirm(

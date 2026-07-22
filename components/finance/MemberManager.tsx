@@ -8,6 +8,7 @@ export interface Member {
   email: string;
   role: string | null;
   can_confirm: boolean;
+  brand_scope: string | null; // null = 전체 | 'staffmeal' | 'garden'
 }
 
 const ROLES = [
@@ -15,6 +16,13 @@ const ROLES = [
   { value: 'viewer', label: '조회 (집계만)' },
   { value: 'classifier', label: '분류 (업로드·분류)' },
   { value: 'admin', label: '관리자 (전체)' },
+];
+
+// 브랜드 스코프 — RLS 로 강제되는 데이터 범위. admin 은 항상 전체.
+const SCOPES = [
+  { value: '', label: '전체 브랜드' },
+  { value: 'staffmeal', label: '스탭밀만' },
+  { value: 'garden', label: '가든서비스만' },
 ];
 
 export default function MemberManager({ initial }: { initial: Member[] }) {
@@ -101,12 +109,30 @@ function Row({
       <select
         value={m.role ?? ''}
         disabled={saving}
-        onChange={(e) => onPatch(m.id, { role: e.target.value || null })}
+        onChange={(e) => {
+          const role = e.target.value || null;
+          // admin 은 항상 전체 브랜드 — 스코프가 남아 있으면 함께 해제
+          onPatch(m.id, role === 'admin' && m.brand_scope ? { role, brand_scope: null } : { role });
+        }}
         className="ta-input text-[13px]"
       >
         {ROLES.map((r) => (
           <option key={r.value} value={r.value}>
             {r.label}
+          </option>
+        ))}
+      </select>
+
+      <select
+        value={m.brand_scope ?? ''}
+        disabled={saving || !m.role || m.role === 'admin'}
+        onChange={(e) => onPatch(m.id, { brand_scope: e.target.value || null })}
+        className="ta-input text-[13px]"
+        title="데이터 범위 — 스코프를 두면 해당 브랜드 거래만 보이고 분류할 수 있어요 (RLS 강제)"
+      >
+        {SCOPES.map((s) => (
+          <option key={s.value} value={s.value}>
+            {s.label}
           </option>
         ))}
       </select>

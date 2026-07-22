@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { resolveRole } from '@/lib/finance/access';
+import { resolveMember } from '@/lib/finance/access';
 import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
@@ -18,17 +18,17 @@ export default async function ClassifyPage({
   } = await supabase.auth.getUser();
   if (!user) redirect('/');
 
-  const role = await resolveRole(supabase, user);
+  const { role, brandScope } = await resolveMember(supabase, user);
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
-  const txns = unwrap(
-    await supabase
-      .schema('finance')
-      .from('transactions')
-      .select('id,memo,channel,normalized_key,amount_in,amount_out,category_id,tx_at,bank,source,is_installment,branch')
-      .order('tx_at', { ascending: false }),
-    '거래',
-  );
+  // 브랜드 스코프 멤버는 해당 브랜드 거래만 — RLS 로도 강제되지만 서버 쿼리에서도 명시.
+  let txQuery = supabase
+    .schema('finance')
+    .from('transactions')
+    .select('id,memo,channel,normalized_key,amount_in,amount_out,category_id,tx_at,bank,source,is_installment,branch')
+    .order('tx_at', { ascending: false });
+  if (brandScope) txQuery = txQuery.eq('brand', brandScope);
+  const txns = unwrap(await txQuery, '거래');
 
   const cats = unwrap(
     await supabase
@@ -78,6 +78,7 @@ export default async function ClassifyPage({
           userId={user.id}
           confirmedYms={confirmedYms}
           rules={rules}
+          lockedBrand={brandScope}
           initialFilter={{
             ym: searchParams.ym,
             type: searchParams.type,

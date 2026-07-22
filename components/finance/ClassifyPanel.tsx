@@ -51,6 +51,7 @@ export default function ClassifyPanel({
   confirmedYms = [],
   rules = [],
   initialFilter,
+  lockedBrand = null,
 }: {
   txns: TxRow[];
   cats: Cat[];
@@ -58,6 +59,7 @@ export default function ClassifyPanel({
   confirmedYms?: string[];
   rules?: { normalized_key: string; category_id: number }[];
   initialFilter?: { ym?: string; type?: string; cat?: string; unclassified?: boolean; source?: string; brand?: string };
+  lockedBrand?: 'staffmeal' | 'garden' | null; // 브랜드 스코프 멤버 — 서버에서 해당 브랜드만 내려옴, 브랜드 탭 숨김
 }) {
   const ruleMap = new Map(rules.map((r) => [r.normalized_key, r.category_id]));
   const confirmedSet = new Set(confirmedYms);
@@ -90,7 +92,7 @@ export default function ClassifyPanel({
   const [srcFilter, setSrcFilter] = useState<string>(initialFilter?.source ?? 'all'); // all | bank | card | naverpay
   // 네이버 브랜드(1차 분류): all | 스탭밀 | 가든서비스 | 기타 — 스탭밀 담당자는 brand URL 파라미터로 진입
   const [brandFilter, setBrandFilter] = useState<string>(
-    ['스탭밀', '가든서비스', '기타'].includes(initialFilter?.brand ?? '') ? initialFilter!.brand! : 'all'
+    !lockedBrand && ['스탭밀', '가든서비스', '기타'].includes(initialFilter?.brand ?? '') ? initialFilter!.brand! : 'all'
   );
   const [gardenBranch, setGardenBranch] = useState('all'); // 가든서비스 하위 지점: all | 판교 | 양재천
   const [unclOnly, setUnclOnly] = useState(!!initialFilter?.unclassified); // 미분류만 보기
@@ -145,6 +147,8 @@ export default function ClassifyPanel({
           : brandFilter === '가든서비스'
             ? (r.branch === '판교' || r.branch === '양재천') && (gardenBranch === 'all' || r.branch === gardenBranch)
             : !r.branch)) &&
+      // 가든 스코프 잠금 시 브랜드 탭 없이 지점 하위 필터만 노출되므로 별도 적용
+      (lockedBrand !== 'garden' || srcFilter !== 'naverpay' || gardenBranch === 'all' || r.branch === gardenBranch) &&
       (!unclOnly || r.category_id == null) &&
       (!q || r.memo.toLowerCase().includes(q) || r.normalized_key.toLowerCase().includes(q) || (r.channel ?? '').toLowerCase().includes(q)) &&
       matchesCat(r)
@@ -382,7 +386,13 @@ export default function ClassifyPanel({
             <span className="text-[15px] leading-none">×</span>
           </button>
         )}
-        {srcFilter === 'naverpay' && (
+        {lockedBrand && (
+          // 브랜드 스코프 멤버 — 서버·RLS에서 이미 해당 브랜드만 내려옴
+          <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-[13px] text-muted-foreground">
+            {lockedBrand === 'staffmeal' ? '스탭밀 담당' : '가든서비스 담당'} · 해당 브랜드 거래만 표시
+          </span>
+        )}
+        {srcFilter === 'naverpay' && !lockedBrand && (
           // 네이버 브랜드(배송지 기반 1차 분류) 필터 — 스탭밀은 스탭밀 담당자가 따로 분류
           <div className="inline-flex gap-1 rounded-md border border-border p-1">
             {[
@@ -404,7 +414,7 @@ export default function ClassifyPanel({
             ))}
           </div>
         )}
-        {srcFilter === 'naverpay' && brandFilter === '가든서비스' && (
+        {srcFilter === 'naverpay' && (brandFilter === '가든서비스' || lockedBrand === 'garden') && (
           // 가든서비스 하위 지점 필터
           <div className="inline-flex gap-1 rounded-md border border-border p-1">
             {[
