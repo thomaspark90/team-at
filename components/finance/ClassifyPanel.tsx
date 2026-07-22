@@ -57,7 +57,7 @@ export default function ClassifyPanel({
   userId: string;
   confirmedYms?: string[];
   rules?: { normalized_key: string; category_id: number }[];
-  initialFilter?: { ym?: string; type?: string; cat?: string; unclassified?: boolean; source?: string };
+  initialFilter?: { ym?: string; type?: string; cat?: string; unclassified?: boolean; source?: string; brand?: string };
 }) {
   const ruleMap = new Map(rules.map((r) => [r.normalized_key, r.category_id]));
   const confirmedSet = new Set(confirmedYms);
@@ -88,7 +88,11 @@ export default function ClassifyPanel({
     cat: initialFilter?.cat,
   });
   const [srcFilter, setSrcFilter] = useState<string>(initialFilter?.source ?? 'all'); // all | bank | card | naverpay
-  const [destFilter, setDestFilter] = useState('all'); // 네이버 지점(1차 분류): all | 판교 | 양재천 | 스탭밀 | 기타
+  // 네이버 브랜드(1차 분류): all | 스탭밀 | 가든서비스 | 기타 — 스탭밀 담당자는 brand URL 파라미터로 진입
+  const [brandFilter, setBrandFilter] = useState<string>(
+    ['스탭밀', '가든서비스', '기타'].includes(initialFilter?.brand ?? '') ? initialFilter!.brand! : 'all'
+  );
+  const [gardenBranch, setGardenBranch] = useState('all'); // 가든서비스 하위 지점: all | 판교 | 양재천
   const [unclOnly, setUnclOnly] = useState(!!initialFilter?.unclassified); // 미분류만 보기
   const [search, setSearch] = useState(''); // 가맹점/내용 검색
   const [selected, setSelected] = useState<Set<number>>(new Set()); // 다중 선택
@@ -135,8 +139,12 @@ export default function ClassifyPanel({
       (filterYm === 'all' || r.tx_at.slice(0, 7) === filterYm) &&
       (filterBank === 'all' || r.bank === filterBank) &&
       (srcFilter === 'all' || (r.source ?? 'bank') === srcFilter) &&
-      (srcFilter !== 'naverpay' || destFilter === 'all' ||
-        (destFilter === '기타' ? !r.branch : r.branch === destFilter)) &&
+      (srcFilter !== 'naverpay' || brandFilter === 'all' ||
+        (brandFilter === '스탭밀'
+          ? r.branch === '스탭밀'
+          : brandFilter === '가든서비스'
+            ? (r.branch === '판교' || r.branch === '양재천') && (gardenBranch === 'all' || r.branch === gardenBranch)
+            : !r.branch)) &&
       (!unclOnly || r.category_id == null) &&
       (!q || r.memo.toLowerCase().includes(q) || r.normalized_key.toLowerCase().includes(q) || (r.channel ?? '').toLowerCase().includes(q)) &&
       matchesCat(r)
@@ -375,19 +383,39 @@ export default function ClassifyPanel({
           </button>
         )}
         {srcFilter === 'naverpay' && (
-          // 네이버 지점(배송지 기반 1차 분류) 필터 — 지점별로 모아 2차(계정) 분류하기 편하게
+          // 네이버 브랜드(배송지 기반 1차 분류) 필터 — 스탭밀은 스탭밀 담당자가 따로 분류
           <div className="inline-flex gap-1 rounded-md border border-border p-1">
             {[
-              { v: 'all', label: '전체 지점' },
-              { v: '판교', label: '가든 판교' },
-              { v: '양재천', label: '가든 양재천' },
+              { v: 'all', label: '전체' },
               { v: '스탭밀', label: '스탭밀' },
+              { v: '가든서비스', label: '가든서비스' },
               { v: '기타', label: '기타' },
             ].map(({ v, label }) => (
               <button
                 key={v}
-                onClick={() => setDestFilter(v)}
-                className={`rounded-sm px-3 py-1 text-[13px] ${destFilter === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                onClick={() => {
+                  setBrandFilter(v);
+                  setGardenBranch('all');
+                }}
+                className={`rounded-sm px-3 py-1 text-[13px] ${brandFilter === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+        {srcFilter === 'naverpay' && brandFilter === '가든서비스' && (
+          // 가든서비스 하위 지점 필터
+          <div className="inline-flex gap-1 rounded-md border border-border p-1">
+            {[
+              { v: 'all', label: '전체 지점' },
+              { v: '판교', label: '판교' },
+              { v: '양재천', label: '양재천' },
+            ].map(({ v, label }) => (
+              <button
+                key={v}
+                onClick={() => setGardenBranch(v)}
+                className={`rounded-sm px-3 py-1 text-[13px] ${gardenBranch === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 {label}
               </button>

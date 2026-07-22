@@ -10,7 +10,7 @@ import ClassifyPanel, { type TxRow, type Cat } from '@/components/finance/Classi
 export default async function ClassifyPage({
   searchParams,
 }: {
-  searchParams: { ym?: string; type?: string; cat?: string; unclassified?: string; source?: string };
+  searchParams: { ym?: string; type?: string; cat?: string; unclassified?: string; source?: string; brand?: string };
 }) {
   const supabase = await createClient();
   const {
@@ -84,6 +84,7 @@ export default async function ClassifyPage({
             cat: searchParams.cat,
             unclassified: searchParams.unclassified === '1',
             source: searchParams.source,
+            brand: searchParams.brand,
           }}
         />
       </div>
