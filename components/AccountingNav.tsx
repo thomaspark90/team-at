@@ -18,14 +18,17 @@ const BOOKKEEPING = [
 const CLOSING = [{ href: '/finance/close', label: '월 확정' }];
 const ADMIN = [{ href: '/finance/categories', label: '계정과목' }];
 
-export default function AccountingNav({ role }: { role: string | null }) {
+export default function AccountingNav({ role, scoped = false }: { role: string | null; scoped?: boolean }) {
   const pathname = usePathname();
   const isStaff = ['admin', 'classifier'].includes(role ?? '');
-  const groups = [
-    HOME,
-    TRANSFER,
-    ...(isStaff ? [BOOKKEEPING, [...CLOSING, ...(role === 'admin' ? ADMIN : [])]] : []),
-  ];
+  // 브랜드 스코프 멤버(예: 스탭밀 담당자)는 분류가 홈 — 가든 운영 메뉴는 숨김, 송금은 전 직원 기능이라 유지
+  const groups = scoped
+    ? [[{ href: '/finance/classify', label: '자료 분류' }], TRANSFER]
+    : [
+        HOME,
+        TRANSFER,
+        ...(isStaff ? [BOOKKEEPING, [...CLOSING, ...(role === 'admin' ? ADMIN : [])]] : []),
+      ];
 
   return (
     <nav className="border-b border-border bg-card/40">

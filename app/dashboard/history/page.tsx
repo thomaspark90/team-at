@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { resolveRole } from '@/lib/finance/access';
+import { resolveMember } from '@/lib/finance/access';
 import { fallbackRecipients } from '@/lib/notify';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
@@ -17,7 +17,7 @@ export default async function TransferManagePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/');
 
-  const role = await resolveRole(supabase, user);
+  const { role, brandScope } = await resolveMember(supabase, user);
 
   // 알림 수신자 — admin이 지정한 목록(비었거나 테이블 없으면 env/대표 폴백). 종류별 토글 포함.
   const { data: recipientRows } = await supabase
@@ -37,7 +37,7 @@ export default async function TransferManagePage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
-      <AccountingNav role={role} />
+      <AccountingNav role={role} scoped={!!brandScope} />
       <div className="mx-auto flex max-w-[1120px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
         {(role === 'admin' || isNotifyRecipient) && (
           <div className={`grid gap-4 ${role === 'admin' && isNotifyRecipient ? 'sm:grid-cols-2' : ''}`}>

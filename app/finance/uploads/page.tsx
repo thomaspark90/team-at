@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { resolveRole } from '@/lib/finance/access';
+import { resolveMember } from '@/lib/finance/access';
 import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
@@ -14,7 +14,9 @@ export default async function UploadsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/');
 
-  const role = await resolveRole(supabase, user);
+  const { role, brandScope } = await resolveMember(supabase, user);
+  // 브랜드 스코프 멤버는 분류 화면이 홈
+  if (brandScope) redirect('/finance/classify');
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
   const data = unwrap(

@@ -57,7 +57,7 @@ export default async function ClassifyPage({
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
-      <AccountingNav role={role} />
+      <AccountingNav role={role} scoped={!!brandScope} />
       <div className="mx-auto max-w-[1120px] px-6 py-8">
         <div className="mb-4 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">자료 분류</h1>

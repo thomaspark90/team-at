@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { resolveRole } from '@/lib/finance/access';
+import { resolveMember } from '@/lib/finance/access';
 import { unwrap } from '@/lib/finance/db';
 import { buildSankey, type SankTx, type SankCat } from '@/lib/finance/sankey';
 import TabNav from '@/components/TabNav';
@@ -36,7 +36,9 @@ export default async function FinancePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/');
 
-  const role = await resolveRole(supabase, user);
+  const { role, brandScope } = await resolveMember(supabase, user);
+  // 브랜드 스코프 멤버는 분류 화면이 홈
+  if (brandScope) redirect('/finance/classify');
   if (role === 'viewer') redirect('/finance/metrics'); // 팀원은 지표가 홈
   const isStaff = ['admin', 'classifier'].includes(role ?? '');
 
