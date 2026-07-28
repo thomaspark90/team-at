@@ -18,9 +18,11 @@ const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10) : '');
 export default function MonthlyCloseManager({
   months,
   canConfirm,
+  brand = 'garden',
 }: {
   months: MonthRow[];
   canConfirm: boolean;
+  brand?: 'garden' | 'staffmeal'; // 확정은 (ym, brand) 단위 — 페이지의 브랜드 탭이 내려줌
 }) {
   const [rows, setRows] = useState<MonthRow[]>(months);
   const [busy, setBusy] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export default function MonthlyCloseManager({
     setBusy(ym);
     setError(null);
     try {
-      const res = await fetch(`/api/finance/excel/status?ym=${ym}`);
+      const res = await fetch(`/api/finance/excel/status?ym=${ym}&brand=${brand}`);
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '업로드 현황 확인 실패');
       const slots = j.slots as Record<string, SlotStatus>;
@@ -61,7 +63,7 @@ export default function MonthlyCloseManager({
       const res = await fetch('/api/finance/close', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ym, action }),
+        body: JSON.stringify({ ym, action, brand }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '처리에 실패했어요.');

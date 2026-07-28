@@ -6,8 +6,9 @@ import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import MonthlyCloseManager, { type MonthRow } from '@/components/finance/MonthlyCloseManager';
+import { brandLabel, BRANDS } from '@/lib/finance/types';
 
-export default async function ClosePage() {
+export default async function ClosePage({ searchParams }: { searchParams: { brand?: string } }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -19,15 +20,21 @@ export default async function ClosePage() {
   if (brandScope) redirect('/finance/classify');
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
   const allowConfirm = await canConfirm(supabase, user);
+  // 확정은 브랜드별 — 한쪽 미분류가 다른 쪽 마감을 막지 않는다
+  const brand = searchParams.brand === 'staffmeal' ? ('staffmeal' as const) : ('garden' as const);
 
-  // 월별 거래수·미분류수 집계 (데이터량이 작아 JS 집계)
+  // 월별 거래수·미분류수 집계 (데이터량이 작아 JS 집계) — 선택된 브랜드만
   const txns = unwrap(
-    await supabase.schema('finance').from('transactions').select('ym,category_id'),
+    await supabase.schema('finance').from('transactions').select('ym,category_id').eq('brand', brand),
     '거래',
   );
 
   const closes = unwrap(
-    await supabase.schema('finance').from('monthly_close').select('ym,status,confirmed_at'),
+    await supabase
+      .schema('finance')
+      .from('monthly_close')
+      .select('ym,status,confirmed_at,brand')
+      .eq('brand', brand),
     '월 확정',
   );
 
@@ -65,11 +72,26 @@ export default async function ClosePage() {
             ← 재무 홈
           </Link>
         </div>
-        <p className="mb-5 mt-0 text-[13px] leading-[1.6] text-muted-foreground">
-          미분류가 0건인 달만 확정할 수 있어요. 확정하면 그 달의 자료 분류가 잠기고 대시보드 집계에 반영돼요.
-          {allowConfirm ? '' : ' (확정 권한은 관리자에게 요청하세요.)'}
+        <p className="mb-4 mt-0 text-[13px] leading-[1.6] text-muted-foreground">
+          확정은 <b>브랜드별</b>로 해요 — {brandLabel(brand)}의 미분류가 0건인 달만 확정할 수 있고, 확정하면 그 달·그 브랜드의
+          자료 분류가 잠겨요. {allowConfirm ? '' : '(확정 권한은 관리자에게 요청하세요.)'}
         </p>
-        <MonthlyCloseManager months={months} canConfirm={allowConfirm} />
+        {/* 브랜드 탭 */}
+        <div className="mb-5 flex overflow-hidden self-start rounded-md border border-border" style={{ width: 'fit-content' }}>
+          {BRANDS.map((b) => (
+            <Link
+              key={b.id}
+              href={`/finance/close?brand=${b.id}`}
+              aria-current={b.id === brand ? 'page' : undefined}
+              className={`px-3 py-1.5 text-[13px] transition-colors ${
+                b.id === brand ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {b.label}
+            </Link>
+          ))}
+        </div>
+        <MonthlyCloseManager key={brand} months={months} canConfirm={allowConfirm} brand={brand} />
       </div>
     </div>
   );

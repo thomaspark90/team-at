@@ -92,11 +92,13 @@ export const MONTHLY_TEMPLATES: MonthlyTemplate[] = [
   { id: 'card-stmt', title: '{M}월 신한카드 이용내역 업로드', board: 'accounting', href: '/finance', dueDay: 5 },
   { id: 'pos', title: '{M}월 가든 POS 매출 업로드', board: 'finance', href: '/finance/pnl', dueDay: 5 },
   { id: 'pos-staffmeal', title: '{M}월 스탭밀 POS 매출 업로드', board: 'finance', href: '/finance/pnl?brand=staffmeal', dueDay: 5 },
-  { id: 'inventory', title: '{M}월 기말재고 입력', board: 'accounting', href: '/finance/pnl', dueDay: 10 },
+  { id: 'inventory', title: '{M}월 가든 기말재고 입력', board: 'accounting', href: '/finance/pnl', dueDay: 10 },
+  { id: 'inventory-staffmeal', title: '{M}월 스탭밀 기말재고 입력', board: 'accounting', href: '/finance/pnl?brand=staffmeal', dueDay: 10 },
   { id: 'channel-fees', title: '{M}월 가든 채널수수료 입력', board: 'finance', href: '/finance/pnl', dueDay: 10 },
   { id: 'channel-fees-staffmeal', title: '{M}월 스탭밀 채널수수료 입력', board: 'finance', href: '/finance/pnl?brand=staffmeal', dueDay: 10 },
   { id: 'pnl-review', title: '{M}월 관리손익 검토', board: 'finance', href: '/finance/pnl', dueDay: 12 },
-  { id: 'close', title: '{M}월 월 확정', board: 'accounting', href: '/finance/close', dueDay: 15 },
+  { id: 'close', title: '{M}월 가든 월 확정', board: 'accounting', href: '/finance/close?brand=garden', dueDay: 15 },
+  { id: 'close-staffmeal', title: '{M}월 스탭밀 월 확정', board: 'accounting', href: '/finance/close?brand=staffmeal', dueDay: 15 },
 ];
 
 // 구버전 데이터(board 없이 저장된 카드)의 보드 판정 — 템플릿 카드는 원본 배정, 수동 카드는 재무

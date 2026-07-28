@@ -13,6 +13,22 @@ export const BRANDS: { id: Brand; label: string }[] = [
 export const brandLabel = (b: string | null | undefined) =>
   BRANDS.find((x) => x.id === b)?.label ?? '미지정';
 
+// 매장 지점 — 가든서비스에만 의미(스탭밀=단일 매장, store null/'').
+// transactions.branch(은행 거래점명·배송지명 혼재)와 별개인 깨끗한 차원.
+export type Store = 'pangyo' | 'yangjae';
+export const STORES: { id: Store; label: string }[] = [
+  { id: 'pangyo', label: '판교' },
+  { id: 'yangjae', label: '양재천' },
+];
+export const storeLabel = (s: string | null | undefined) =>
+  STORES.find((x) => x.id === s)?.label ?? '미지정';
+
+// 회계 단위(손익 리포트 축): 스탭밀 / 가든-판교 / 가든-양재천
+export interface AccountingUnit {
+  brand: Brand;
+  store: Store | null; // 가든만 지점 구분
+}
+
 // 계정과목 대분류
 export type CategoryType =
   | 'revenue' // 매출

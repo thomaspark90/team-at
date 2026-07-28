@@ -27,6 +27,11 @@ export async function POST(req: Request) {
   const settledRaw = form.get('settledTxId');
   const settledTxId = settledRaw ? Number(settledRaw) : null;
   if (!(file instanceof File)) return NextResponse.json({ error: '엑셀 파일을 선택하세요.' }, { status: 400 });
+  // 카드도 브랜드별 분리 — 브랜드별 업로드 페이지가 명시(미지정=garden, 기존 동작 유지)
+  const brand = String(form.get('brand') ?? 'garden');
+  if (brand !== 'garden' && brand !== 'staffmeal') {
+    return NextResponse.json({ error: '브랜드가 올바르지 않습니다.' }, { status: 400 });
+  }
 
   let result;
   try {
@@ -76,6 +81,7 @@ export async function POST(req: Request) {
         bank: 'shinhan',
         source: 'card',
         card_issuer: '신한',
+        brand,
         row_count: fresh.length,
         uploaded_by: user.id,
         period_start: dates[0]?.slice(0, 10),
@@ -94,6 +100,7 @@ export async function POST(req: Request) {
       bank: 'shinhan',
       source: 'card',
       card_issuer: '신한',
+      brand,
       is_installment: !!t.isInstallment,
       tx_at: t.txAt,
       ym: t.ym,
@@ -141,6 +148,6 @@ export async function POST(req: Request) {
     linked = true;
   }
 
-  await logActivity(supabase, user, '카드 내역 저장', `${fresh.length}건(중복 ${duplicates})`);
+  await logActivity(supabase, user, '카드 내역 저장', `[${brand}] ${fresh.length}건(중복 ${duplicates})`);
   return NextResponse.json({ saved: fresh.length, duplicates, autoClassified: 0, linked });
 }

@@ -5,7 +5,7 @@ import { resolveMember } from '@/lib/finance/access';
 import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
-import ClassifyPanel, { type TxRow, type Cat } from '@/components/finance/ClassifyPanel';
+import ClassifyPanel, { type TxRow, type Cat, type SplitRule } from '@/components/finance/ClassifyPanel';
 
 export default async function ClassifyPage({
   searchParams,
@@ -25,7 +25,7 @@ export default async function ClassifyPage({
   let txQuery = supabase
     .schema('finance')
     .from('transactions')
-    .select('id,memo,channel,normalized_key,amount_in,amount_out,category_id,tx_at,bank,source,is_installment,branch,brand')
+    .select('id,memo,channel,normalized_key,amount_in,amount_out,category_id,tx_at,bank,source,is_installment,branch,brand,store,split_parent_id')
     .order('tx_at', { ascending: false });
   if (brandScope) txQuery = txQuery.eq('brand', brandScope);
   const txns = unwrap(await txQuery, '거래');
@@ -40,12 +40,13 @@ export default async function ClassifyPage({
     '계정과목',
   );
 
-  // 확정된 달은 분류 잠금
+  // 확정된 달은 분류 잠금 — 확정은 (ym, brand) 단위(브랜드별 회계 분리)
   const closed = unwrap(
-    await supabase.schema('finance').from('monthly_close').select('ym').eq('status', 'confirmed'),
+    await supabase.schema('finance').from('monthly_close').select('ym,brand').eq('status', 'confirmed'),
     '월 확정',
   );
-  const confirmedYms = (closed as { ym: string }[] | null)?.map((c) => c.ym) ?? [];
+  const confirmed =
+    (closed as { ym: string; brand?: string }[] | null)?.map((c) => ({ ym: c.ym, brand: c.brand ?? 'garden' })) ?? [];
 
   // 학습된 규칙(정규화키→계정) — 미분류 행에 '추천'으로 미리 선택
   const ruleRows = unwrap(
@@ -53,6 +54,13 @@ export default async function ClassifyPage({
     '학습 규칙',
   );
   const rules = (ruleRows as { normalized_key: string; category_id: number; brand: string }[] | null) ?? [];
+
+  // 건별 분할 비율 규칙 — 같은 가맹점은 '분할 추천'으로 강조 (테이블 미생성 시 조용히 빈 목록)
+  const { data: splitRuleRows } = await supabase
+    .schema('finance')
+    .from('split_rules')
+    .select('normalized_key,brand,allocations');
+  const splitRules = (splitRuleRows as SplitRule[] | null) ?? [];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -76,8 +84,9 @@ export default async function ClassifyPage({
           txns={(txns as TxRow[]) ?? []}
           cats={(cats as Cat[]) ?? []}
           userId={user.id}
-          confirmedYms={confirmedYms}
+          confirmed={confirmed}
           rules={rules}
+          splitRules={splitRules}
           lockedBrand={brandScope}
           initialFilter={{
             ym: searchParams.ym,

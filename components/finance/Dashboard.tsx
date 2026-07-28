@@ -84,17 +84,23 @@ export default function Dashboard({
 }: {
   txns: AggTx[];
   cats: AggCat[];
-  posSales?: { saleDate: string; supply: number; brand?: string | null }[];
+  posSales?: { saleDate: string; supply: number; brand?: string | null; store?: string | null }[];
 }) {
   const [unit, setUnit] = useState<Unit>('month');
   const [netVat, setNetVat] = useState(true);
   // 브랜드 필터 — 'all'=두 브랜드 합산. brand 없는 구 데이터는 garden 취급.
   const [brand, setBrand] = useState<'all' | 'garden' | 'staffmeal'>('all');
+  // 가든 지점 필터 — 지점 손익 확정(2026-07-28) 후속. 지점 미지정 행은 '전체 지점'에서만 보임.
+  const [store, setStore] = useState<'all' | 'pangyo' | 'yangjae'>('all');
   const { months, expenseKeys } = useMemo(() => {
-    const tx = brand === 'all' ? txns : txns.filter((t) => (t.brand ?? 'garden') === brand);
-    const pos = brand === 'all' ? posSales : posSales.filter((p) => (p.brand ?? 'garden') === brand);
+    let tx = brand === 'all' ? txns : txns.filter((t) => (t.brand ?? 'garden') === brand);
+    let pos = brand === 'all' ? posSales : posSales.filter((p) => (p.brand ?? 'garden') === brand);
+    if (brand === 'garden' && store !== 'all') {
+      tx = tx.filter((t) => t.store === store);
+      pos = pos.filter((p) => (p.store ?? '') === store);
+    }
     return aggregate(tx, cats, unit, netVat, pos);
-  }, [txns, cats, unit, netVat, posSales, brand]);
+  }, [txns, cats, unit, netVat, posSales, brand, store]);
 
   const fmtP = (key: string) => (unit === 'month' ? key.slice(2).replace('-', '.') : key.slice(5).replace('-', '/'));
 
@@ -107,7 +113,10 @@ export default function Dashboard({
             return (
               <button
                 key={b.id}
-                onClick={() => setBrand(b.id)}
+                onClick={() => {
+                  setBrand(b.id);
+                  setStore('all');
+                }}
                 className={`rounded-sm px-3 py-1 text-[13px] transition-colors ${
                   on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                 }`}
@@ -118,6 +127,30 @@ export default function Dashboard({
           },
         )}
       </div>
+      {brand === 'garden' && (
+        <div className="inline-flex gap-1 rounded-md border border-border p-1">
+          {(
+            [
+              { id: 'all', label: '전체 지점' },
+              { id: 'pangyo', label: '판교' },
+              { id: 'yangjae', label: '양재천' },
+            ] as { id: 'all' | 'pangyo' | 'yangjae'; label: string }[]
+          ).map((s) => {
+            const on = store === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setStore(s.id)}
+                className={`rounded-sm px-3 py-1 text-[13px] transition-colors ${
+                  on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="inline-flex gap-1 rounded-md border border-border p-1">
         {(['month', 'week'] as Unit[]).map((u) => {
           const on = unit === u;

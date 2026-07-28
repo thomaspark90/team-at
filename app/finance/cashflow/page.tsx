@@ -7,6 +7,7 @@ import { cashflow } from '@/lib/finance/cashflow';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import Cashflow from '@/components/finance/Cashflow';
+import BrandSegments, { parseBrandSeg } from '@/components/finance/BrandSegments';
 
 interface CashTx {
   ym: string;
@@ -17,7 +18,7 @@ interface CashTx {
   balance: number;
 }
 
-export default async function CashflowPage() {
+export default async function CashflowPage({ searchParams }: { searchParams: { brand?: string } }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -27,15 +28,17 @@ export default async function CashflowPage() {
   const role = await resolveRole(supabase, user);
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
+  // 계좌가 브랜드별로 분리 — 통장 현황도 브랜드로 필터('전체'는 두 브랜드 합)
+  const seg = parseBrandSeg(searchParams.brand);
+
   // 통장 현황(현금)은 은행 거래만 — 카드 이용내역(source='card')은 제외해 현금 중복 방지
-  const txns = unwrap(
-    await supabase
-      .schema('finance')
-      .from('transactions')
-      .select('ym,bank,tx_at,amount_in,amount_out,balance')
-      .eq('source', 'bank'),
-    '통장 거래',
-  );
+  let txQ = supabase
+    .schema('finance')
+    .from('transactions')
+    .select('ym,bank,tx_at,amount_in,amount_out,balance')
+    .eq('source', 'bank');
+  if (seg !== 'all') txQ = txQ.eq('brand', seg);
+  const txns = unwrap(await txQ, '통장 거래');
 
   const months = cashflow((txns as CashTx[]) ?? []);
 
@@ -50,9 +53,12 @@ export default async function CashflowPage() {
             ← 업로드로
           </Link>
         </div>
-        <p className="mb-6 mt-0 text-[13px] text-muted-foreground">
-          월별로 은행별 입금·출금과 월말 잔액, 두 통장 합계를 집계해요. (분류와 무관하게 통장 자체의 인/아웃)
+        <p className="mb-4 mt-0 text-[13px] text-muted-foreground">
+          월별로 은행별 입금·출금과 월말 잔액, 통장 합계를 집계해요. (분류와 무관하게 통장 자체의 인/아웃)
         </p>
+        <div className="mb-5">
+          <BrandSegments basePath="/finance/cashflow" seg={seg} />
+        </div>
         <Cashflow months={months} />
       </div>
     </div>

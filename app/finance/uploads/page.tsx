@@ -23,7 +23,7 @@ export default async function UploadsPage() {
     await supabase
       .schema('finance')
       .from('uploads')
-      .select('id,source,bank,card_issuer,period_start,period_end,row_count,uploaded_at,settled_tx_id,statement_total')
+      .select('id,source,bank,card_issuer,brand,period_start,period_end,row_count,uploaded_at,settled_tx_id,statement_total')
       .order('uploaded_at', { ascending: false }),
     '자료 이력',
   );
@@ -47,6 +47,7 @@ export default async function UploadsPage() {
       id: -1, // 합산 행(기록 없음) 표식
       source: 'receipt',
       bank: 'shinhan',
+      brand: 'garden',
       card_issuer: '쿠팡',
       period_start: dates[0] ?? null,
       period_end: dates[dates.length - 1] ?? null,

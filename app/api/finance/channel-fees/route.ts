@@ -22,12 +22,13 @@ export async function POST(req: Request) {
   if (!['garden', 'staffmeal'].includes(brand)) return NextResponse.json({ error: '브랜드가 올바르지 않습니다.' }, { status: 400 });
   if (!/^\d{4}-\d{2}$/.test(ym)) return NextResponse.json({ error: '월(ym)이 올바르지 않습니다.' }, { status: 400 });
 
-  // 확정된 달은 변경 불가(다른 재무 라우트와 동일 규칙)
+  // 확정된 달·브랜드는 변경 불가(다른 재무 라우트와 동일 규칙) — brand 조건 필수((ym,brand) 단위 확정)
   const { data: close } = await supabase
     .schema('finance')
     .from('monthly_close')
     .select('status')
     .eq('ym', ym)
+    .eq('brand', brand)
     .maybeSingle();
   if (close?.status === 'confirmed') {
     return NextResponse.json({ error: `${ym}은 이미 확정된 달이라 채널수수료를 바꿀 수 없어요.` }, { status: 409 });

@@ -8,6 +8,7 @@ export interface UploadRow {
   id: number;
   source: string; // bank | card | receipt
   bank: string;
+  brand: string | null;
   card_issuer: string | null;
   period_start: string | null;
   period_end: string | null;
@@ -76,6 +77,7 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
           <table className="w-full min-w-[760px] border-collapse text-[13px]">
             <thead>
               <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+                <Th>브랜드</Th>
                 <Th>구분</Th>
                 <Th>업로드</Th>
                 <Th>기간</Th>
@@ -88,6 +90,7 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
             <tbody>
               {uploads.map((u) => (
                 <tr key={u.id} className="border-t border-border hover:bg-accent">
+                  <Td muted={u.brand !== 'staffmeal'}>{u.brand === 'staffmeal' ? '스탭밀' : '가든'}</Td>
                   <Td>{kind(u)}{u.id < 0 && <span className="ml-1.5 text-[11px] text-muted-foreground">(이전 방식)</span>}</Td>
                   <Td mono muted={u.id < 0}>{u.id < 0 ? '기록 없음' : fmt(u.uploaded_at)}</Td>
                   <Td mono muted>

@@ -7,13 +7,14 @@ import { buildSankey, type SankTx, type SankCat, type SankeyData } from '@/lib/f
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import SankeyFlow, { type Period } from '@/components/finance/SankeyFlow';
+import BrandSegments, { parseBrandSeg } from '@/components/finance/BrandSegments';
 
 const fmtYm = (ym: string) => {
   const [y, mo] = ym.split('-');
   return `${y}년 ${Number(mo)}월`;
 };
 
-export default async function FlowPage() {
+export default async function FlowPage({ searchParams }: { searchParams: { brand?: string } }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -23,10 +24,11 @@ export default async function FlowPage() {
   const role = await resolveRole(supabase, user);
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
-  const txnsRaw = unwrap(
-    await supabase.schema('finance').from('transactions').select('ym,category_id,amount_in,amount_out'),
-    '거래',
-  );
+  // 브랜드별 회계 분리 — 자금 흐름도 브랜드로 필터('전체'는 합산)
+  const seg = parseBrandSeg(searchParams.brand);
+  let txQ = supabase.schema('finance').from('transactions').select('ym,category_id,amount_in,amount_out');
+  if (seg !== 'all') txQ = txQ.eq('brand', seg);
+  const txnsRaw = unwrap(await txQ, '거래');
   const catsRaw = unwrap(
     await supabase.schema('finance').from('categories').select('id,type,name,parent_id'),
     '계정과목',
@@ -54,9 +56,12 @@ export default async function FlowPage() {
             ← 재무 홈
           </Link>
         </div>
-        <p className="mb-5 text-[13px] text-muted-foreground">
+        <p className="mb-4 text-[13px] text-muted-foreground">
           통장 현금 기준으로 매출·지출을 카테고리·품목별로 보여줘요(미분류 포함, 카드는 품목까지). 현금 입출금·잔액 합계는 <Link href="/finance/cashflow" className="underline">월별 요약</Link>, 발생주의 손익은 <Link href="/finance/pnl" className="underline">관리손익</Link>에서 봐요.
         </p>
+        <div className="mb-5">
+          <BrandSegments basePath="/finance/flow" seg={seg} />
+        </div>
         {yms.length === 0 ? (
           <div className="mx-auto my-[60px] text-center text-muted-foreground">
             <div className="mb-2.5 text-[32px]">📭</div>

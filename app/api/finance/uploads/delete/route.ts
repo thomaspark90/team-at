@@ -34,13 +34,14 @@ export async function POST(req: Request) {
     const { data: items } = await supabase
       .schema('finance')
       .from('transactions')
-      .select('id,ym,approval_no')
+      .select('id,ym,approval_no,brand')
       .eq('source', 'card')
       .eq('channel', '쿠팡영수증')
       .is('upload_id', null);
-    const its = (items as { id: number; ym: string; approval_no: string | null }[] | null) ?? [];
+    const its = (items as { id: number; ym: string; approval_no: string | null; brand?: string }[] | null) ?? [];
     if (its.length === 0) return NextResponse.json({ deleted: 0, unlocked: 0 });
-    const affectedYms = new Set<string>(its.map((t) => t.ym));
+    // 확정은 (ym, brand) 단위 — 걸린 브랜드의 확정월만 막는다
+    const affectedPairs = new Set<string>(its.map((t) => `${t.ym}|${t.brand ?? 'garden'}`));
     const approvals = Array.from(new Set(its.map((t) => t.approval_no).filter(Boolean))) as string[];
     const { data: splitCat } = await supabase.schema('finance').from('categories').select('id').eq('type', 'excluded').eq('name', '영수증분해').maybeSingle();
     let parentIds: number[] = [];
@@ -48,17 +49,19 @@ export async function POST(req: Request) {
       const { data: parents } = await supabase
         .schema('finance')
         .from('transactions')
-        .select('id,ym')
+        .select('id,ym,brand')
         .eq('source', 'card')
         .eq('category_id', splitCat.id)
         .in('approval_no', approvals);
-      const ps = (parents as { id: number; ym: string }[] | null) ?? [];
+      const ps = (parents as { id: number; ym: string; brand?: string }[] | null) ?? [];
       parentIds = ps.map((p) => p.id);
-      ps.forEach((p) => affectedYms.add(p.ym));
+      ps.forEach((p) => affectedPairs.add(`${p.ym}|${p.brand ?? 'garden'}`));
     }
-    const { data: closed } = await supabase.schema('finance').from('monthly_close').select('ym').eq('status', 'confirmed').in('ym', Array.from(affectedYms));
-    if ((closed ?? []).length > 0) {
-      const yms = (closed as { ym: string }[]).map((c) => c.ym).join(', ');
+    const affectedYms = Array.from(new Set(Array.from(affectedPairs).map((k) => k.split('|')[0])));
+    const { data: closed } = await supabase.schema('finance').from('monthly_close').select('ym,brand').eq('status', 'confirmed').in('ym', affectedYms);
+    const blocked = ((closed as { ym: string; brand?: string }[] | null) ?? []).filter((c) => affectedPairs.has(`${c.ym}|${c.brand ?? 'garden'}`));
+    if (blocked.length > 0) {
+      const yms = blocked.map((c) => c.ym).join(', ');
       return NextResponse.json({ error: `확정된 달(${yms})이 포함돼 삭제할 수 없습니다. 먼저 월 확정을 재오픈하세요.` }, { status: 409 });
     }
     if (parentIds.length > 0) {
@@ -81,19 +84,20 @@ export async function POST(req: Request) {
   const { data: txns } = await supabase
     .schema('finance')
     .from('transactions')
-    .select('id,ym,approval_no')
+    .select('id,ym,approval_no,brand')
     .eq('upload_id', uploadId);
-  const batch = (txns as { id: number; ym: string; approval_no: string | null }[] | null) ?? [];
+  const batch = (txns as { id: number; ym: string; approval_no: string | null; brand?: string }[] | null) ?? [];
 
-  const affectedYms = new Set<string>(batch.map((t) => t.ym));
+  // 확정은 (ym, brand) 단위 — 이 배치가 걸친 브랜드의 확정월만 막는다
+  const affectedPairs = new Set<string>(batch.map((t) => `${t.ym}|${t.brand ?? 'garden'}`));
 
   // 부수효과 대상 수집
   let settledId: number | null = null;
   if (up.source === 'card' && up.settled_tx_id) {
-    const { data } = await supabase.schema('finance').from('transactions').select('id,ym').eq('id', up.settled_tx_id).maybeSingle();
+    const { data } = await supabase.schema('finance').from('transactions').select('id,ym,brand').eq('id', up.settled_tx_id).maybeSingle();
     if (data) {
       settledId = data.id;
-      affectedYms.add(data.ym);
+      affectedPairs.add(`${data.ym}|${(data as { brand?: string }).brand ?? 'garden'}`);
     }
   }
   let parentIds: number[] = [];
@@ -104,26 +108,30 @@ export async function POST(req: Request) {
       const { data: parents } = await supabase
         .schema('finance')
         .from('transactions')
-        .select('id,ym')
+        .select('id,ym,brand')
         .eq('source', 'card')
         .eq('category_id', splitCat.id)
         .in('approval_no', approvals);
-      const ps = (parents as { id: number; ym: string }[] | null) ?? [];
+      const ps = (parents as { id: number; ym: string; brand?: string }[] | null) ?? [];
       parentIds = ps.map((p) => p.id);
-      ps.forEach((p) => affectedYms.add(p.ym));
+      ps.forEach((p) => affectedPairs.add(`${p.ym}|${p.brand ?? 'garden'}`));
     }
   }
 
   // 확정월 가드
-  if (affectedYms.size > 0) {
+  if (affectedPairs.size > 0) {
+    const affectedYms = Array.from(new Set(Array.from(affectedPairs).map((k) => k.split('|')[0])));
     const { data: closed } = await supabase
       .schema('finance')
       .from('monthly_close')
-      .select('ym')
+      .select('ym,brand')
       .eq('status', 'confirmed')
-      .in('ym', Array.from(affectedYms));
-    if ((closed ?? []).length > 0) {
-      const yms = (closed as { ym: string }[]).map((c) => c.ym).join(', ');
+      .in('ym', affectedYms);
+    const blocked = ((closed as { ym: string; brand?: string }[] | null) ?? []).filter((c) =>
+      affectedPairs.has(`${c.ym}|${c.brand ?? 'garden'}`),
+    );
+    if (blocked.length > 0) {
+      const yms = blocked.map((c) => c.ym).join(', ');
       return NextResponse.json({ error: `확정된 달(${yms})이 포함돼 삭제할 수 없습니다. 먼저 월 확정을 재오픈하세요.` }, { status: 409 });
     }
   }

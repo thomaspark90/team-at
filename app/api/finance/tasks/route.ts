@@ -47,8 +47,8 @@ async function computeChecks(supabase: SupabaseClient, tasks: FinanceTask[]): Pr
       ? await Promise.all([
           fin.from('pos_sales').select('ym,brand').in('ym', yms),
           fin.from('channel_fees').select('ym,brand').in('ym', yms),
-          fin.from('inventory').select('ym').in('ym', yms),
-          fin.from('monthly_close').select('ym,status').in('ym', yms),
+          fin.from('inventory').select('ym,brand').in('ym', yms),
+          fin.from('monthly_close').select('ym,status,brand').in('ym', yms),
         ])
       : [null, null, null, null];
     const posSet = posRes && !posRes.error
@@ -58,10 +58,14 @@ async function computeChecks(supabase: SupabaseClient, tasks: FinanceTask[]): Pr
       ? new Set((feeRes.data as { ym: string; brand?: string }[]).map((r) => `${r.ym}|${r.brand ?? 'garden'}`))
       : null;
     const invSet = invRes && !invRes.error
-      ? new Set((invRes.data as { ym: string }[]).map((r) => r.ym))
+      ? new Set((invRes.data as { ym: string; brand?: string }[]).map((r) => `${r.ym}|${r.brand ?? 'garden'}`))
       : null;
     const closedSet = closeRes && !closeRes.error
-      ? new Set((closeRes.data as { ym: string; status: string }[]).filter((r) => r.status === 'confirmed').map((r) => r.ym))
+      ? new Set(
+          (closeRes.data as { ym: string; status: string; brand?: string }[])
+            .filter((r) => r.status === 'confirmed')
+            .map((r) => `${r.ym}|${r.brand ?? 'garden'}`),
+        )
       : null;
 
     // 월별 은행/카드 거래 존재 여부 (대상 월이 보통 1개라 순차 조회로 충분)
@@ -107,10 +111,16 @@ async function computeChecks(supabase: SupabaseClient, tasks: FinanceTask[]): Pr
           if (ym && feeSet) out.set(t.id, chk(feeSet.has(`${ym}|staffmeal`), '입력 확인됨', '아직 미입력'));
           break;
         case 'inventory':
-          if (ym && invSet) out.set(t.id, chk(invSet.has(ym), '입력 확인됨', '아직 미입력'));
+          if (ym && invSet) out.set(t.id, chk(invSet.has(`${ym}|garden`), '입력 확인됨', '아직 미입력'));
+          break;
+        case 'inventory-staffmeal':
+          if (ym && invSet) out.set(t.id, chk(invSet.has(`${ym}|staffmeal`), '입력 확인됨', '아직 미입력'));
           break;
         case 'close':
-          if (ym && closedSet) out.set(t.id, chk(closedSet.has(ym), '확정됨', '아직 미확정'));
+          if (ym && closedSet) out.set(t.id, chk(closedSet.has(`${ym}|garden`), '확정됨', '아직 미확정'));
+          break;
+        case 'close-staffmeal':
+          if (ym && closedSet) out.set(t.id, chk(closedSet.has(`${ym}|staffmeal`), '확정됨', '아직 미확정'));
           break;
         case 'bank-pdf':
           if (ym && txHas.has(`${ym}|bank`)) out.set(t.id, chk(!!txHas.get(`${ym}|bank`), '업로드 확인됨', '아직 미업로드'));

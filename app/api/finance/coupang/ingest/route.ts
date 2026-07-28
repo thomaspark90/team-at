@@ -63,9 +63,12 @@ export async function POST(req: Request) {
     const branch = BRANCHES.includes(String(r.branch)) ? String(r.branch) : null;
     const shipTo = typeof r.ship_to === 'string' && r.ship_to.trim() ? r.ship_to.trim().slice(0, 40) : null;
     const product = (r.product || '').trim();
+    // 매장 지점 차원(store) — 배송지 판정 지점명을 깨끗한 코드로 (판교/양재천 외는 null)
+    const store = branch === '판교' ? 'pangyo' : branch === '양재천' ? 'yangjae' : null;
     return {
       _explicit_brand: brand, // insert 전에 제거 — dedup 시 기존 행 brand·branch 갱신용
       brand: brand ?? 'garden',
+      store,
       bank: 'coupang',
       source: 'coupang',
       tx_at: txAt,
@@ -115,9 +118,10 @@ export async function POST(req: Request) {
   for (const g of Array.from(dupGroups.values())) {
     const hs = Array.from(new Set(g.hashes));
     for (let i = 0; i < hs.length; i += 100) {
+      const store = g.branch === '판교' ? 'pangyo' : g.branch === '양재천' ? 'yangjae' : null;
       let q = supabase
         .from('transactions')
-        .update({ brand: g.brand, branch: g.branch })
+        .update({ brand: g.brand, branch: g.branch, store })
         .in('dedup_hash', hs.slice(i, i + 100));
       q = g.branch
         ? q.or(`brand.neq.${g.brand},branch.neq.${g.branch},branch.is.null`)

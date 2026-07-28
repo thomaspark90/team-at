@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { wonNum as won, fmtYm as fmtYmLabel } from '@/lib/finance/format';
+import SplitModal, { type SplitTarget, type SplitRuleSuggestion } from './SplitModal';
+import { storeLabel, type Brand, type Store } from '@/lib/finance/types';
 
 export interface TxRow {
   id: number;
@@ -18,6 +21,14 @@ export interface TxRow {
   is_installment?: boolean;
   branch?: string | null; // naverpay: 배송지 기반 지점(1차 분류) — '판교' | '양재천' | '스탭밀'
   brand: string; // 'staffmeal' | 'garden' — 규칙 학습·키 일괄분류의 경계
+  store?: string | null; // 매장 지점: 'pangyo' | 'yangjae' | null(스탭밀·미지정)
+  split_parent_id?: number | null; // 건별 분할로 생긴 행이면 원거래 id
+}
+
+export interface SplitRule {
+  normalized_key: string;
+  brand: string;
+  allocations: { brand: Brand; store: Store | null; ratio: number }[];
 }
 export interface Cat {
   id: number;
@@ -49,24 +60,34 @@ export default function ClassifyPanel({
   txns,
   cats,
   userId,
-  confirmedYms = [],
+  confirmed = [],
   rules = [],
+  splitRules = [],
   initialFilter,
   lockedBrand = null,
 }: {
   txns: TxRow[];
   cats: Cat[];
   userId: string;
-  confirmedYms?: string[];
+  confirmed?: { ym: string; brand: string }[]; // 확정은 브랜드별 — (ym, brand) 쌍
   rules?: { normalized_key: string; category_id: number; brand: string }[];
+  splitRules?: SplitRule[];
   initialFilter?: { ym?: string; type?: string; cat?: string; unclassified?: boolean; source?: string; brand?: string };
   lockedBrand?: 'staffmeal' | 'garden' | null; // 브랜드 스코프 멤버 — 서버에서 해당 브랜드만 내려옴, 브랜드 탭 숨김
 }) {
+  const router = useRouter();
   // 규칙은 브랜드별 — 같은 가맹점이라도 스탭밀/가든이 다른 계정을 쓸 수 있다
   const ruleMap = new Map(rules.map((r) => [`${r.brand}|${r.normalized_key}`, r.category_id]));
   const ruleFor = (t: TxRow) => (t.normalized_key ? ruleMap.get(`${t.brand}|${t.normalized_key}`) : undefined);
-  const confirmedSet = new Set(confirmedYms);
-  const isLocked = (tx: TxRow) => confirmedSet.has(tx.tx_at.slice(0, 7));
+  const splitRuleMap = new Map(splitRules.map((r) => [`${r.brand}|${r.normalized_key}`, r]));
+  const splitRuleFor = (t: TxRow) => (t.normalized_key ? splitRuleMap.get(`${t.brand}|${t.normalized_key}`) : undefined);
+  // 확정 잠금은 (ym, brand) 단위 — 한쪽 브랜드 확정이 다른 브랜드 분류를 막지 않는다
+  const confirmedSet = new Set(confirmed.map((c) => `${c.ym}|${c.brand}`));
+  const confirmedYmsFor = (brand: string) => confirmed.filter((c) => c.brand === brand).map((c) => c.ym);
+  const confirmedYmsAll = Array.from(new Set(confirmed.map((c) => c.ym)));
+  const isLocked = (tx: TxRow) => confirmedSet.has(`${tx.tx_at.slice(0, 7)}|${tx.brand}`);
+  // 건별분할 잠금 계정(원거래 표식)
+  const splitCatId = cats.find((c) => c.type === 'excluded' && c.name === '건별분할')?.id;
   const sortTxns = (arr: TxRow[]) =>
     [...arr].sort((a, b) => {
       const au = a.category_id == null ? 0 : 1;
@@ -93,15 +114,28 @@ export default function ClassifyPanel({
     cat: initialFilter?.cat,
   });
   const [srcFilter, setSrcFilter] = useState<string>(initialFilter?.source ?? 'all'); // all | bank | card | naverpay
-  // 네이버 브랜드(1차 분류): all | 스탭밀 | 가든서비스 | 기타 — 스탭밀 담당자는 brand URL 파라미터로 진입
+  // 브랜드 필터(실제 brand 컬럼 기준): all | garden | staffmeal — 구 링크의 한글 값도 수용
+  const legacyBrand: Record<string, string> = { 스탭밀: 'staffmeal', 가든서비스: 'garden' };
+  const initBrand = initialFilter?.brand ?? '';
   const [brandFilter, setBrandFilter] = useState<string>(
-    !lockedBrand && ['스탭밀', '가든서비스', '기타'].includes(initialFilter?.brand ?? '') ? initialFilter!.brand! : 'all'
+    !lockedBrand && ['garden', 'staffmeal'].includes(legacyBrand[initBrand] ?? initBrand)
+      ? (legacyBrand[initBrand] ?? initBrand)
+      : 'all'
   );
-  const [gardenBranch, setGardenBranch] = useState('all'); // 가든서비스 하위 지점: all | 판교 | 양재천
+  const [storeFilter, setStoreFilter] = useState('all'); // 가든 지점: all | pangyo | yangjae | none(미지정)
   const [unclOnly, setUnclOnly] = useState(!!initialFilter?.unclassified); // 미분류만 보기
   const [search, setSearch] = useState(''); // 가맹점/내용 검색
   const [selected, setSelected] = useState<Set<number>>(new Set()); // 다중 선택
   const [bulkCat, setBulkCat] = useState<number | ''>(''); // 일괄 분류 카테고리
+  // 건별 분할 모달
+  const [splitTarget, setSplitTarget] = useState<SplitTarget | null>(null);
+  const [splitSug, setSplitSug] = useState<SplitRuleSuggestion | null>(null);
+  // 브랜드·지점 일괄 이동(재분류 소급 도구)
+  const [moveBrand, setMoveBrand] = useState<'garden' | 'staffmeal' | ''>('');
+  const [moveStore, setMoveStore] = useState<'pangyo' | 'yangjae' | ''>('');
+  const [moveScope, setMoveScope] = useState<'selected' | 'key'>('selected');
+  const [moving, setMoving] = useState(false);
+  const [moveNotice, setMoveNotice] = useState<string | null>(null);
 
   const catById = new Map(cats.map((c) => [c.id, c]));
   const leafNameOf = (c: Cat) => {
@@ -139,19 +173,16 @@ export default function ClassifyPanel({
   const catFilterLabel = catFilter.cat ? catFilter.cat : TYPE_LABEL[catFilter.type ?? ''] ?? catFilter.type ?? '';
 
   const q = search.trim().toLowerCase();
+  const storeMatches = (r: TxRow) =>
+    storeFilter === 'all' || (storeFilter === 'none' ? r.store == null : r.store === storeFilter);
   const filtered = rows.filter(
     (r) =>
       (filterYm === 'all' || r.tx_at.slice(0, 7) === filterYm) &&
       (filterBank === 'all' || r.bank === filterBank) &&
       (srcFilter === 'all' || (r.source ?? 'bank') === srcFilter) &&
-      (srcFilter !== 'naverpay' || brandFilter === 'all' ||
-        (brandFilter === '스탭밀'
-          ? r.branch === '스탭밀'
-          : brandFilter === '가든서비스'
-            ? (r.branch === '판교' || r.branch === '양재천') && (gardenBranch === 'all' || r.branch === gardenBranch)
-            : !r.branch)) &&
-      // 가든 스코프 잠금 시 브랜드 탭 없이 지점 하위 필터만 노출되므로 별도 적용
-      (lockedBrand !== 'garden' || srcFilter !== 'naverpay' || gardenBranch === 'all' || r.branch === gardenBranch) &&
+      // 브랜드 필터 — 실제 brand 컬럼 기준(전 소스). 가든이면 지점(store) 하위 필터까지.
+      (brandFilter === 'all' || r.brand === brandFilter) &&
+      ((brandFilter !== 'garden' && lockedBrand !== 'garden') || storeMatches(r)) &&
       (!unclOnly || r.category_id == null) &&
       (!q || r.memo.toLowerCase().includes(q) || r.normalized_key.toLowerCase().includes(q) || (r.channel ?? '').toLowerCase().includes(q)) &&
       matchesCat(r)
@@ -196,6 +227,67 @@ export default function ClassifyPanel({
     setAiApplying(false);
   }
 
+  function openSplit(tx: TxRow) {
+    const amount = tx.amount_out > 0 ? tx.amount_out : tx.amount_in;
+    setSplitSug(splitRuleFor(tx) ?? null);
+    setSplitTarget({ id: tx.id, memo: tx.memo, amount, brand: tx.brand, store: tx.store ?? null });
+  }
+
+  async function undoSplit(tx: TxRow) {
+    if (!window.confirm(`'${tx.memo}' 분할을 해제할까요? 나눠진 행이 삭제되고 원거래는 미분류로 돌아가요.`)) return;
+    setBusy(tx.id);
+    setError(null);
+    try {
+      const res = await fetch('/api/finance/split', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ txId: tx.id }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || '분할 해제에 실패했어요.');
+      router.refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function moveBrandStore() {
+    if (!moveBrand) return;
+    const ids = Array.from(selected).filter((id) => {
+      const r = rows.find((x) => x.id === id);
+      return r && !isLocked(r);
+    });
+    if (!ids.length) return;
+    setMoving(true);
+    setError(null);
+    setMoveNotice(null);
+    try {
+      const res = await fetch('/api/finance/reclassify-brand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids,
+          brand: moveBrand,
+          store: moveBrand === 'garden' && moveStore ? moveStore : null,
+          scope: moveScope,
+        }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || '이동에 실패했어요.');
+      setMoveNotice(`${j.moved}건 이동 완료${j.skipped ? ` · 확정월 ${j.skipped}건 제외` : ''}`);
+      setSelected(new Set());
+      setMoveBrand('');
+      setMoveStore('');
+      router.refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setMoving(false);
+    }
+  }
+
   async function classify(tx: TxRow, categoryId: number) {
     setBusy(tx.id);
     setError(null);
@@ -209,8 +301,9 @@ export default function ClassifyPanel({
       .update({ category_id: categoryId, classified_by: userId, classified_at: now });
     // 키 기반 일괄 분류는 같은 브랜드 안에서만 — 브랜드가 다르면 계정도 다를 수 있다
     q = key ? q.eq('normalized_key', key).eq('brand', tx.brand) : q.eq('id', tx.id);
-    // 확정된 달의 거래는 건드리지 않음(키 기반 분류가 여러 달에 걸칠 수 있음)
-    if (confirmedYms.length) q = q.not('ym', 'in', `(${confirmedYms.join(',')})`);
+    // 이 브랜드의 확정된 달은 건드리지 않음(키 기반 분류가 여러 달에 걸칠 수 있음)
+    const lockedYms = confirmedYmsFor(tx.brand);
+    if (lockedYms.length) q = q.not('ym', 'in', `(${lockedYms.join(',')})`);
     const { error: e1 } = await q;
     if (e1) {
       setError(e1.message);
@@ -276,8 +369,8 @@ export default function ClassifyPanel({
       .from('transactions')
       .update({ category_id: null, classified_by: null, classified_at: null })
       .gte('id', 0);
-    // 확정된 달은 초기화에서 제외
-    if (confirmedYms.length) uq = uq.not('ym', 'in', `(${confirmedYms.join(',')})`);
+    // 확정된 달은 초기화에서 제외(어느 브랜드든 확정이면 보수적으로 그 달 전체 제외)
+    if (confirmedYmsAll.length) uq = uq.not('ym', 'in', `(${confirmedYmsAll.join(',')})`);
     const { error: e1 } = await uq;
     if (e1) {
       setError(e1.message);
@@ -396,20 +489,19 @@ export default function ClassifyPanel({
             {lockedBrand === 'staffmeal' ? '스탭밀 담당' : '가든서비스 담당'} · 해당 브랜드 거래만 표시
           </span>
         )}
-        {srcFilter === 'naverpay' && !lockedBrand && (
-          // 네이버 브랜드(배송지 기반 1차 분류) 필터 — 스탭밀은 스탭밀 담당자가 따로 분류
+        {!lockedBrand && (
+          // 브랜드 필터 — 실제 brand 컬럼 기준(전 소스). 회계가 브랜드별로 분리돼 있다.
           <div className="inline-flex gap-1 rounded-md border border-border p-1">
             {[
-              { v: 'all', label: '전체' },
-              { v: '스탭밀', label: '스탭밀' },
-              { v: '가든서비스', label: '가든서비스' },
-              { v: '기타', label: '기타' },
+              { v: 'all', label: '전체 브랜드' },
+              { v: 'garden', label: '가든서비스' },
+              { v: 'staffmeal', label: '스탭밀' },
             ].map(({ v, label }) => (
               <button
                 key={v}
                 onClick={() => {
                   setBrandFilter(v);
-                  setGardenBranch('all');
+                  setStoreFilter('all');
                 }}
                 className={`rounded-sm px-3 py-1 text-[13px] ${brandFilter === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
@@ -418,18 +510,19 @@ export default function ClassifyPanel({
             ))}
           </div>
         )}
-        {srcFilter === 'naverpay' && (brandFilter === '가든서비스' || lockedBrand === 'garden') && (
-          // 가든서비스 하위 지점 필터
+        {(brandFilter === 'garden' || lockedBrand === 'garden') && (
+          // 가든서비스 지점(store) 필터 — 지점별 손익 분류용. '미지정'이 남지 않게 하는 게 목표.
           <div className="inline-flex gap-1 rounded-md border border-border p-1">
             {[
               { v: 'all', label: '전체 지점' },
-              { v: '판교', label: '판교' },
-              { v: '양재천', label: '양재천' },
+              { v: 'pangyo', label: '판교' },
+              { v: 'yangjae', label: '양재천' },
+              { v: 'none', label: '미지정' },
             ].map(({ v, label }) => (
               <button
                 key={v}
-                onClick={() => setGardenBranch(v)}
-                className={`rounded-sm px-3 py-1 text-[13px] ${gardenBranch === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                onClick={() => setStoreFilter(v)}
+                className={`rounded-sm px-3 py-1 text-[13px] ${storeFilter === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 {label}
               </button>
@@ -507,8 +600,42 @@ export default function ClassifyPanel({
           <button onClick={() => setSelected(new Set())} className="ta-btn text-[13px]">
             선택 해제
           </button>
+          {/* 브랜드·지점 이동 — 잘못 귀속된 거래를 소급 재분류하는 도구 */}
+          <div className="flex w-full flex-wrap items-center gap-2 border-t border-primary/20 pt-3">
+            <span className="text-[13px] text-muted-foreground">브랜드·지점 이동:</span>
+            <select
+              value={moveBrand}
+              onChange={(e) => {
+                setMoveBrand(e.target.value as 'garden' | 'staffmeal' | '');
+                setMoveStore('');
+              }}
+              className="ta-input text-[13px]"
+            >
+              <option value="">브랜드 선택…</option>
+              <option value="garden">가든서비스</option>
+              <option value="staffmeal">스탭밀</option>
+            </select>
+            {moveBrand === 'garden' && (
+              <select value={moveStore} onChange={(e) => setMoveStore(e.target.value as 'pangyo' | 'yangjae' | '')} className="ta-input text-[13px]">
+                <option value="">지점 미지정</option>
+                <option value="pangyo">판교</option>
+                <option value="yangjae">양재천</option>
+              </select>
+            )}
+            <select value={moveScope} onChange={(e) => setMoveScope(e.target.value as 'selected' | 'key')} className="ta-input text-[13px]">
+              <option value="selected">선택한 건만</option>
+              <option value="key">같은 가맹점 전체 소급</option>
+            </select>
+            <button onClick={moveBrandStore} disabled={!moveBrand || moving} className="ta-btn-primary text-[13px]">
+              {moving ? '이동 중…' : '이동'}
+            </button>
+            {moveScope === 'key' && (
+              <span className="text-[11px] text-amber-600">선택한 거래의 가맹점 전체가 과거까지 소급 이동돼요 (확정월 제외)</span>
+            )}
+          </div>
         </div>
       )}
+      {moveNotice && <p className="text-[13px]" style={{ color: 'hsl(var(--number-colored))' }}>{moveNotice}</p>}
 
       <div className="overflow-hidden rounded-md border border-border bg-background">
         <div className="overflow-x-auto">
@@ -558,8 +685,14 @@ export default function ClassifyPanel({
                       <div className="flex max-w-[380px] items-center gap-1.5">
                         {tx.source === 'card' && <span title="신한카드 이용내역" className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">💳</span>}
                         {tx.source === 'naverpay' && <span title="네이버페이 결제내역" className="shrink-0 rounded bg-positive/10 px-1.5 py-0.5 text-[11px] font-medium text-positive">N</span>}
-                        {tx.source === 'naverpay' && tx.branch && (
-                          <span title="배송지 기반 지점(1차 분류)" className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">{tx.branch}</span>
+                        <span
+                          title="브랜드·지점 — 이 거래가 귀속된 회계 단위"
+                          className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground"
+                        >
+                          {tx.brand === 'staffmeal' ? '스탭밀' : `가든${tx.store ? `·${storeLabel(tx.store)}` : ''}`}
+                        </span>
+                        {tx.split_parent_id != null && (
+                          <span title="건별 분할로 생긴 행" className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">🔀</span>
                         )}
                         <span className="line-clamp-2 min-w-0 break-all" title={tx.memo}>
                           {tx.memo || <span className="text-muted-foreground">(빈 내용)</span>}
@@ -575,6 +708,18 @@ export default function ClassifyPanel({
                         <span className="inline-flex items-center gap-[6px] text-foreground">
                           🔒 {tx.category_id ? catName(tx.category_id) : '미분류'}
                           <span className="text-[11px] text-muted-foreground">확정됨</span>
+                        </span>
+                      ) : splitCatId != null && tx.category_id === splitCatId ? (
+                        // 건별 분할된 원거래 — 손익 제외, 자식 행들이 각자 회계에 잡힘
+                        <span className="inline-flex items-center gap-2">
+                          <span className="text-[13px] text-muted-foreground">🔀 분할됨 (손익 제외)</span>
+                          <button
+                            onClick={() => undoSplit(tx)}
+                            disabled={busy === tx.id}
+                            className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:text-destructive"
+                          >
+                            {busy === tx.id ? '해제 중…' : '분할 해제'}
+                          </button>
                         </span>
                       ) : (
                       <div className="flex items-center gap-2">
@@ -629,6 +774,20 @@ export default function ClassifyPanel({
                             학습 · {catName(ruleSug)} 적용
                           </button>
                         )}
+                        {tx.split_parent_id == null && busy !== tx.id && (
+                          // 공동구매를 브랜드·지점별로 쪼개기 — 비율 학습된 가맹점은 '분할 추천'으로 강조
+                          <button
+                            onClick={() => openSplit(tx)}
+                            title="한 지점 매입으로 잡힌 공동구매를 브랜드·지점별 금액으로 나눠요"
+                            className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                              splitRuleFor(tx)
+                                ? 'border-primary/40 bg-primary/10 text-primary'
+                                : 'border-border text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            {splitRuleFor(tx) ? '🔀 분할 추천' : '분할'}
+                          </button>
+                        )}
                       </div>
                       )}
                     </Td>
@@ -646,6 +805,18 @@ export default function ClassifyPanel({
           </table>
         </div>
       </div>
+
+      {splitTarget && (
+        <SplitModal
+          target={splitTarget}
+          suggestion={splitSug}
+          onClose={() => setSplitTarget(null)}
+          onDone={() => {
+            setSplitTarget(null);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

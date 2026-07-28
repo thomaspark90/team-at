@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import type { BankSource, ParsedTransaction } from '@/lib/finance/types';
+import type { BankSource, Brand, ParsedTransaction } from '@/lib/finance/types';
+import { brandLabel } from '@/lib/finance/types';
 import { wonNum as won } from '@/lib/finance/format';
 
 interface Preview {
@@ -24,7 +25,7 @@ const BANKS: { value: BankSource; label: string }[] = [
   { value: 'woori', label: '우리은행' },
 ];
 
-export default function UploadPanel() {
+export default function UploadPanel({ brand = 'garden' }: { brand?: Brand }) {
   const [bank, setBank] = useState<BankSource>('shinhan');
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState('');
@@ -38,6 +39,7 @@ export default function UploadPanel() {
     const fd = new FormData();
     fd.append('file', file as File);
     fd.append('bank', bank);
+    fd.append('brand', brand);
     if (password) fd.append('password', password);
     return fd;
   }
@@ -81,10 +83,11 @@ export default function UploadPanel() {
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="mb-1 text-[22px] tracking-[-0.5px] text-foreground">
-          재무 · 거래내역 업로드
+          {brandLabel(brand)} · 거래내역 업로드
         </h1>
         <p className="text-[13px] text-muted-foreground">
-          은행 거래내역 PDF를 올려 파싱·미리보기 후 저장해요. 같은 거래는 자동으로 중복 제거돼요.
+          {brandLabel(brand)} 명의 통장의 거래내역 PDF를 올려 파싱·미리보기 후 저장해요. 같은 거래는 자동으로 중복 제거되고,
+          거래는 전부 <b>{brandLabel(brand)}</b> 회계로 들어가요.
         </p>
       </div>
 

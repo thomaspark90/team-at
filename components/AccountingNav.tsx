@@ -12,6 +12,8 @@ const TRANSFER = [
 ];
 const BOOKKEEPING = [
   { href: '/finance', label: '자료 입력' },
+  { href: '/finance/upload/garden', label: '가든 업로드' },
+  { href: '/finance/upload/staffmeal', label: '스탭밀 업로드' },
   { href: '/finance/classify', label: '자료 분류' },
   { href: '/finance/uploads', label: '자료 이력' },
 ];

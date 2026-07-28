@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MonthlyUploadBoard from './MonthlyUploadBoard';
 import ClassifyBoard from './ClassifyBoard';
+import { BRANDS, type Brand } from '@/lib/finance/types';
 
 const toYm = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 // 회계자료는 보통 전월 마감분 — 기본 선택은 지난달
@@ -17,6 +18,8 @@ const defaultYm = () => {
 // 칩 옆 배지 = 그 달의 남은 업무 수(미완료 업로드 슬롯 + 미분류 출처 + 월 확정).
 export default function AccountingBoards() {
   const [ym, setYm] = useState(defaultYm);
+  // 회계가 브랜드별로 분리 — 업로드 보드는 선택된 브랜드 회계로만 저장·판정된다.
+  const [brand, setBrand] = useState<Brand>('garden');
   const [todos, setTodos] = useState<Record<string, number>>({});
   const selectedRef = useRef<HTMLButtonElement>(null);
 
@@ -49,6 +52,24 @@ export default function AccountingBoards() {
   return (
     <>
       <div className="rounded-2xl border border-border bg-card px-3 py-2">
+        <div className="flex items-center gap-1 px-1 pt-1.5">
+          {BRANDS.map((b) => {
+            const on = brand === b.id;
+            return (
+              <button
+                key={b.id}
+                onClick={() => setBrand(b.id)}
+                aria-pressed={on}
+                className={`rounded-lg px-3 py-1 text-[13px] transition-colors ${
+                  on ? 'bg-foreground font-medium text-background' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {b.label}
+              </button>
+            );
+          })}
+          <span className="ml-2 text-[11px] text-muted-foreground">브랜드별로 회계가 분리돼요 — 올린 자료는 선택된 브랜드로 들어가요</span>
+        </div>
         <div className="flex overflow-x-auto pb-1 pt-1.5 [scrollbar-width:thin]">
           {months.map((m) => {
             const selected = m === ym;
@@ -79,7 +100,7 @@ export default function AccountingBoards() {
         </div>
       </div>
 
-      <MonthlyUploadBoard ym={ym} onSaved={loadTodos} />
+      <MonthlyUploadBoard ym={ym} brand={brand} onSaved={loadTodos} />
       <ClassifyBoard ym={ym} />
     </>
   );

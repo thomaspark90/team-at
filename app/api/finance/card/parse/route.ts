@@ -44,12 +44,14 @@ export async function POST(req: Request) {
   const yms = Array.from(new Set(result.transactions.map((t) => t.ym))).sort();
   const usageYm = yms[yms.length - 1] ?? null;
 
-  // 매칭 후보: 은행 '신한카드' 결제 출금 (source=bank)
+  // 매칭 후보: 은행 '신한카드' 결제 출금 (source=bank) — 같은 브랜드 통장의 결제 건만
+  const brand = String(form.get('brand') ?? 'garden');
   const { data: cand } = await supabase
     .schema('finance')
     .from('transactions')
     .select('id,tx_at,memo,amount_out,ym,category_id')
     .eq('source', 'bank')
+    .eq('brand', brand === 'staffmeal' ? 'staffmeal' : 'garden')
     .gt('amount_out', 0)
     .ilike('memo', '%신한카드%')
     .order('tx_at', { ascending: false })

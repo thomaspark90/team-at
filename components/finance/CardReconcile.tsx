@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { ParsedTransaction } from '@/lib/finance/types';
+import type { Brand, ParsedTransaction } from '@/lib/finance/types';
 import { won, fmtYm } from '@/lib/finance/format';
 
 interface Candidate {
@@ -32,7 +32,7 @@ interface SaveResult {
 }
 
 
-export default function CardReconcile() {
+export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -51,6 +51,7 @@ export default function CardReconcile() {
     try {
       const fd = new FormData();
       fd.append('file', file);
+      fd.append('brand', brand);
       const res = await fetch('/api/finance/card/parse', { method: 'POST', body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '입력에 실패했어요.');
@@ -73,6 +74,7 @@ export default function CardReconcile() {
     try {
       const fd = new FormData();
       fd.append('file', file);
+      fd.append('brand', brand);
       if (sel !== 'none') fd.append('settledTxId', String(sel));
       const res = await fetch('/api/finance/card/save', { method: 'POST', body: fd });
       const j = await res.json();

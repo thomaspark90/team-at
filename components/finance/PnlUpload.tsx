@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { won, fmtYm } from '@/lib/finance/format';
-import { BRANDS, type Brand } from '@/lib/finance/types';
+import type { Brand, Store } from '@/lib/finance/types';
 
 interface CatAgg {
   category: string;
@@ -26,13 +26,27 @@ interface ApplyResult {
   excludedRows: number;
 }
 
+// POS 단위 — 파일 하나 = 한 (브랜드, 지점). 지점마다 POS가 다르다:
+// 양재천=토스(암호화 0000), 판교·스탭밀=페이히어.
+interface PosUnit {
+  key: string;
+  brand: Brand;
+  store: Store | '';
+  posType: 'toss' | 'payhere';
+  label: string;
+}
+const POS_UNITS: PosUnit[] = [
+  { key: 'garden-yangjae', brand: 'garden', store: 'yangjae', posType: 'toss', label: '가든 · 양재천 (토스)' },
+  { key: 'garden-pangyo', brand: 'garden', store: 'pangyo', posType: 'payhere', label: '가든 · 판교 (페이히어)' },
+  { key: 'staffmeal', brand: 'staffmeal', store: '', posType: 'payhere', label: '스탭밀 (페이히어)' },
+];
 
 export default function PnlUpload() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState('0000');
-  // 파일 하나 = 한 브랜드 (브랜드별 POS 분리 운영)
-  const [brand, setBrand] = useState<Brand>('garden');
+  const [unit, setUnit] = useState<PosUnit>(POS_UNITS[0]);
+  const [mapping, setMapping] = useState<{ sheet: string; header: Record<string, string> } | null>(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -40,7 +54,7 @@ export default function PnlUpload() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [done, setDone] = useState<ApplyResult | null>(null);
 
-  const reset = () => { setPreview(null); setDone(null); setError(null); };
+  const reset = () => { setPreview(null); setDone(null); setError(null); setMapping(null); };
 
   async function analyze() {
     if (!file) return;
@@ -49,10 +63,12 @@ export default function PnlUpload() {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('password', password);
+      fd.append('posType', unit.posType);
       const res = await fetch('/api/finance/pos/parse', { method: 'POST', body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '읽기에 실패했어요.');
       setPreview(j as Preview);
+      setMapping((j.mapping as { sheet: string; header: Record<string, string> } | null) ?? null);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -67,7 +83,9 @@ export default function PnlUpload() {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('password', password);
-      fd.append('brand', brand);
+      fd.append('brand', unit.brand);
+      fd.append('store', unit.store);
+      fd.append('posType', unit.posType);
       const res = await fetch('/api/finance/pos/apply', { method: 'POST', body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '저장에 실패했어요.');
@@ -97,24 +115,25 @@ export default function PnlUpload() {
         <div>
           <h2 className="text-[15px] text-foreground">POS 매출 올리기</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            토스 매출리포트 엑셀(<b>상품 주문 상세내역</b>)을 올리면 <b>공급가액 매출</b>이 월별로 반영돼요. 같은 달을 다시 올리면 교체돼요. (상품권은 매출에서 제외)
+            지점의 POS 매출리포트 엑셀을 올리면 <b>공급가액 매출</b>이 월별로 반영돼요. 같은 달·같은 지점을 다시 올리면 교체돼요.
+            양재천=토스(비번 0000), 판교·스탭밀=페이히어. (상품권은 매출에서 제외)
           </p>
         </div>
         <button onClick={() => { setOpen(false); reset(); }} className="text-[13px] text-muted-foreground hover:text-foreground">닫기</button>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        {/* 브랜드 선택 — 어느 브랜드의 POS 파일인지 (같은 달이라도 브랜드별로 따로 저장·교체) */}
+        {/* POS 단위 선택 — 어느 브랜드·지점의 파일인지 (같은 달이라도 지점별로 따로 저장·교체) */}
         <div className="flex overflow-hidden rounded-md border border-border">
-          {BRANDS.map((b) => (
+          {POS_UNITS.map((u) => (
             <button
-              key={b.id}
-              onClick={() => setBrand(b.id)}
+              key={u.key}
+              onClick={() => { setUnit(u); setPassword(u.posType === 'toss' ? '0000' : ''); reset(); }}
               className={`px-3 py-1.5 text-[13px] transition-colors ${
-                brand === b.id ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+                unit.key === u.key ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {b.label}
+              {u.label}
             </button>
           ))}
         </div>
@@ -182,10 +201,20 @@ export default function PnlUpload() {
             </table>
           </div>
 
+          {mapping && (
+            <p className="text-[12px] text-amber-600">
+              ⚠ 페이히어 파서는 헤더 자동탐지(잠정)로 읽었어요 — 시트 &lsquo;{mapping.sheet}&rsquo;,{' '}
+              {Object.entries(mapping.header)
+                .map(([k, v]) => `${k}=${v}`)
+                .join(' · ')}
+              . 합계가 페이히어 관리자 화면과 맞는지 꼭 확인해주세요.
+            </p>
+          )}
+
           <button onClick={apply} disabled={applying} className="ta-btn-primary self-start">
             {applying
               ? '저장 중…'
-              : `${BRANDS.find((b) => b.id === brand)?.label} ${preview.yms.map(fmtYm).join(', ')} 매출 저장`}
+              : `${unit.label} ${preview.yms.map(fmtYm).join(', ')} 매출 저장`}
           </button>
         </>
       )}

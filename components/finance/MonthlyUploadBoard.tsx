@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ParsedTransaction } from '@/lib/finance/types';
+import { brandLabel, type Brand, type ParsedTransaction } from '@/lib/finance/types';
 import type { ExcelMapping } from '@/lib/finance/excel';
 import { UPLOAD_SLOTS, type SlotGroup, type SlotStatus } from '@/lib/finance/uploadSlots';
 
@@ -38,7 +38,15 @@ const fmtDay = (iso: string) => {
 // 은행 PDF·카드명세·네이버 자동수집 등 기존 경로로 들어온 것도 자동 감지해 체크한다.
 // 기준 월(ym)은 대시보드 상단 공용 월 선택(AccountingBoards)에서 내려받고,
 // 저장 성공 시 onSaved 로 알려 월 스트립 배지를 갱신하게 한다.
-export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSaved?: () => void }) {
+export default function MonthlyUploadBoard({
+  ym,
+  brand = 'garden',
+  onSaved,
+}: {
+  ym: string;
+  brand?: Brand;
+  onSaved?: () => void;
+}) {
   const fileInput = useRef<HTMLInputElement>(null);
   const fileRef = useRef<File | null>(null);
   const [slots, setSlots] = useState<Record<string, SlotStatus> | null>(null);
@@ -51,7 +59,7 @@ export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSave
 
   const loadStatus = useCallback(async (target: string) => {
     try {
-      const res = await fetch(`/api/finance/excel/status?ym=${target}`);
+      const res = await fetch(`/api/finance/excel/status?ym=${target}&brand=${brand}`);
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '상태를 불러오지 못했어요.');
       setSlots(j.slots as Record<string, SlotStatus>);
@@ -60,12 +68,12 @@ export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSave
       setSlots(null);
       setError((e as Error).message);
     }
-  }, []);
+  }, [brand]);
 
   useEffect(() => {
     setSlots(null);
     loadStatus(ym);
-  }, [ym, loadStatus]);
+  }, [ym, brand, loadStatus]);
 
   function pickSlot(key: string) {
     setActiveSlot(key);
@@ -107,6 +115,7 @@ export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSave
       fd.append('mapping', JSON.stringify(preview.mapping));
       fd.append('slot', activeSlot);
       fd.append('ym', ym);
+      fd.append('brand', brand);
       const res = await fetch('/api/finance/excel/save', { method: 'POST', body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '저장에 실패했어요.');
@@ -143,7 +152,7 @@ export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSave
     <section className="rounded-2xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="m-0 text-[15px] font-medium">
-          월별 회계자료 업로드
+          {brandLabel(brand)} · 월별 회계자료 업로드
           {slots && (
             <span className={`ml-2 text-[12px] font-normal ${doneCount === UPLOAD_SLOTS.length ? 'text-emerald-600' : 'text-muted-foreground'}`}>
               {doneCount}/{UPLOAD_SLOTS.length} 완료{partialCount > 0 && <span className="text-amber-600"> · 부분 {partialCount}</span>}
@@ -172,7 +181,7 @@ export default function MonthlyUploadBoard({ ym, onSaved }: { ym: string; onSave
                   return (
                     <Link
                       key={s.key}
-                      href={`/finance/classify?ym=${ym}&source=naverpay`}
+                      href={`/finance/classify?ym=${ym}&source=naverpay&brand=${brand}`}
                       className={`flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 transition-colors hover:border-foreground/40 ${
                         st?.done ? 'border-border bg-muted/40' : 'border-dashed border-border bg-background'
                       }`}

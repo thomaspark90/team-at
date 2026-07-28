@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
 import { fetchExistingHashes } from '@/lib/finance/dedup';
-import type { BankSource } from '@/lib/finance/types';
+import type { BankSource, Brand } from '@/lib/finance/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -30,6 +30,12 @@ export async function POST(req: Request) {
   if (!(file instanceof File) || (bank !== 'shinhan' && bank !== 'woori')) {
     return NextResponse.json({ error: '파일과 은행을 선택하세요.' }, { status: 400 });
   }
+  // 계좌가 브랜드별로 분리 — 브랜드별 업로드 페이지가 자기 브랜드를 명시한다(미지정=garden, 기존 동작 유지)
+  const rawBrand = String(form.get('brand') ?? 'garden');
+  if (rawBrand !== 'garden' && rawBrand !== 'staffmeal') {
+    return NextResponse.json({ error: '브랜드가 올바르지 않습니다.' }, { status: 400 });
+  }
+  const brand: Brand = rawBrand;
 
   const data = new Uint8Array(await file.arrayBuffer());
   let text: string;
@@ -61,7 +67,7 @@ export async function POST(req: Request) {
       .schema('finance')
       .from('rules')
       .select('normalized_key,category_id')
-      .eq('brand', 'garden') // 은행 거래는 garden 고정(migration_brand) — 규칙도 garden 것만
+      .eq('brand', brand) // 규칙은 업로드 브랜드 것만 — 브랜드 경계 밖 학습 오염 방지
       .in('normalized_key', keys.slice(i, i + 100));
     (rules ?? []).forEach((r: { normalized_key: string; category_id: number }) =>
       keyToCat.set(r.normalized_key, r.category_id)
@@ -75,6 +81,7 @@ export async function POST(req: Request) {
     .from('uploads')
     .insert({
       bank,
+      brand,
       row_count: fresh.length,
       uploaded_by: user.id,
       period_start: dates[0]?.slice(0, 10),
@@ -91,6 +98,7 @@ export async function POST(req: Request) {
     const cat = keyToCat.get(t.normalizedKey) ?? null;
     return {
       bank: t.bank,
+      brand,
       tx_at: t.txAt,
       ym: t.ym,
       channel: t.channel,
@@ -115,7 +123,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
   }
 
-  await logActivity(supabase, user, '은행 내역 저장', `${bank} ${fresh.length}건(중복 ${duplicates})`);
+  await logActivity(supabase, user, '은행 내역 저장', `[${brand}] ${bank} ${fresh.length}건(중복 ${duplicates})`);
 
   return NextResponse.json({
     saved: fresh.length,

@@ -6,11 +6,9 @@ import { unwrap } from '@/lib/finance/db';
 import { buildSankey, type SankTx, type SankCat } from '@/lib/finance/sankey';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
-import UploadPanel from '@/components/finance/UploadPanel';
-import CardReconcile from '@/components/finance/CardReconcile';
-import ReceiptEnrich from '@/components/finance/ReceiptEnrich';
 import NaverpayConfig from '@/components/finance/NaverpayConfig';
 import RequestAccessButton from '@/components/finance/RequestAccessButton';
+import BrandSegments, { parseBrandSeg, type BrandSeg } from '@/components/finance/BrandSegments';
 
 interface OverviewData {
   latest: string;
@@ -29,7 +27,7 @@ const fmtYm = (ym: string) => {
   return `${y}년 ${Number(mo)}월`;
 };
 
-export default async function FinancePage() {
+export default async function FinancePage({ searchParams }: { searchParams: { brand?: string } }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -41,22 +39,34 @@ export default async function FinancePage() {
   if (brandScope) redirect('/finance/classify');
   if (role === 'viewer') redirect('/finance/metrics'); // 팀원은 지표가 홈
   const isStaff = ['admin', 'classifier'].includes(role ?? '');
+  const seg: BrandSeg = parseBrandSeg(searchParams.brand);
 
-  // 현황 계산(스태프만)
+  // 현황 계산(스태프만) — 브랜드 세그먼트 적용('전체'는 합산)
   let overview: OverviewData | null = null;
   if (isStaff) {
-    const txnsRaw = unwrap(await supabase.schema('finance').from('transactions').select('ym,category_id,amount_in,amount_out'), '거래');
+    let txQ = supabase.schema('finance').from('transactions').select('ym,category_id,amount_in,amount_out,brand');
+    if (seg !== 'all') txQ = txQ.eq('brand', seg);
+    const txnsRaw = unwrap(await txQ, '거래');
     const catsRaw = unwrap(await supabase.schema('finance').from('categories').select('id,type,name,parent_id'), '계정과목');
-    const closesRaw = unwrap(await supabase.schema('finance').from('monthly_close').select('ym,status'), '월 확정');
-    const txns = (txnsRaw as SankTx[] | null) ?? [];
+    const closesRaw = unwrap(await supabase.schema('finance').from('monthly_close').select('ym,status,brand'), '월 확정');
+    const txns = (txnsRaw as (SankTx & { brand?: string })[] | null) ?? [];
     const cats = (catsRaw as SankCat[] | null) ?? [];
-    const closes = (closesRaw as { ym: string; status: string }[] | null) ?? [];
+    const closes = (closesRaw as { ym: string; status: string; brand?: string }[] | null) ?? [];
     const yms = Array.from(new Set(txns.map((t) => t.ym))).sort((a, b) => b.localeCompare(a));
     const latest = yms[0] ?? '';
     const s = buildSankey(
       txns.filter((t) => t.ym === latest),
       cats
     );
+    // 확정은 (ym, brand) 단위 — '전체' 뷰는 그 달 거래가 있는 모든 브랜드가 확정돼야 확정
+    const confirmedBrands = new Set(
+      closes.filter((c) => c.ym === latest && c.status === 'confirmed').map((c) => c.brand ?? 'garden'),
+    );
+    const latestBrands = Array.from(new Set(txns.filter((t) => t.ym === latest).map((t) => t.brand ?? 'garden')));
+    const latestConfirmed =
+      seg === 'all'
+        ? latestBrands.length > 0 && latestBrands.every((b) => confirmedBrands.has(b))
+        : confirmedBrands.has(seg);
     overview = {
       latest,
       totalRevenue: s.totalRevenue,
@@ -64,7 +74,7 @@ export default async function FinancePage() {
       surplus: s.totalRevenue - s.totalExpense,
       unclassifiedTotal: txns.filter((t) => t.category_id == null).length,
       unclassifiedLatest: txns.filter((t) => t.ym === latest && t.category_id == null).length,
-      latestConfirmed: closes.some((c) => c.ym === latest && c.status === 'confirmed'),
+      latestConfirmed,
     };
   }
 
@@ -75,22 +85,38 @@ export default async function FinancePage() {
       <div className="mx-auto max-w-[1120px] px-6 py-8">
         {isStaff && overview ? (
           <div className="flex flex-col gap-8">
+            <BrandSegments basePath="/finance" seg={seg} />
             <Overview o={overview} />
             <section className="flex flex-col gap-4">
               <div>
                 <h2 className="m-0 text-[15px] text-foreground">자료 입력</h2>
                 <p className="mt-1 text-[13px] text-muted-foreground">
-                  은행 거래내역(PDF)·신한카드·쿠팡 자료를 여기서 올려요. 올린 뒤{' '}
-                  <Link href="/finance/classify" className="underline">자료 분류</Link>에서 계정을 지정해요.
+                  회계가 브랜드별로 분리돼 있어요. <b>브랜드 페이지에서 올려야</b> 그 브랜드 회계로 정확히 들어가요.
+                  올린 뒤 <Link href="/finance/classify" className="underline">자료 분류</Link>에서 계정을 지정해요.
                 </p>
               </div>
-              {/* 1) 은행 거래내역 */}
-              <UploadPanel />
-              {/* 2) 신한카드 이용내역(통장 카드결제와 정산) */}
-              <CardReconcile />
-              {/* 3) 쿠팡 영수증(품목 분해) */}
-              <ReceiptEnrich />
-              {/* 4) 네이버페이 자동 수집 설정 */}
+              {/* 브랜드별 업로드 페이지 진입 */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Link
+                  href="/finance/upload/garden"
+                  className="ta-card flex flex-col gap-1 p-5 transition-colors hover:border-foreground/40"
+                >
+                  <span className="text-[15px] font-medium">가든서비스 자료 입력 →</span>
+                  <span className="text-[13px] text-muted-foreground">
+                    가든 명의 통장 PDF · 신한카드 · 쿠팡 영수증 (판교·양재천)
+                  </span>
+                </Link>
+                <Link
+                  href="/finance/upload/staffmeal"
+                  className="ta-card flex flex-col gap-1 p-5 transition-colors hover:border-foreground/40"
+                >
+                  <span className="text-[15px] font-medium">스탭밀 자료 입력 →</span>
+                  <span className="text-[13px] text-muted-foreground">
+                    스탭밀 명의 통장 PDF · 신한카드 · 쿠팡 영수증
+                  </span>
+                </Link>
+              </div>
+              {/* 네이버페이 자동 수집 설정 — 배송지로 브랜드를 자동 판정하는 공용 설정 */}
               <NaverpayConfig />
             </section>
           </div>

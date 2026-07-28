@@ -32,6 +32,11 @@ export async function POST(req: Request) {
   const ymRaw = form.get('ym');
   const slot = typeof slotRaw === 'string' && SLOT_KEYS.includes(slotRaw) ? slotRaw : null;
   const slotYm = typeof ymRaw === 'string' && /^\d{4}-\d{2}$/.test(ymRaw) ? ymRaw : null;
+  // 브랜드별 업로드 보드가 자기 브랜드를 명시(미지정=garden, 기존 동작 유지)
+  const brand = String(form.get('brand') ?? 'garden');
+  if (brand !== 'garden' && brand !== 'staffmeal') {
+    return NextResponse.json({ error: '브랜드가 올바르지 않습니다.' }, { status: 400 });
+  }
   // 슬롯별 거래 출처 — 카드·쿠팡은 'card'(현금 집계 제외), 네이버는 'naverpay', 그 외 'bank'
   const source = UPLOAD_SLOTS.find((s) => s.key === slot)?.source ?? 'bank';
   if (!(file instanceof File) || typeof mappingRaw !== 'string') {
@@ -71,6 +76,7 @@ export async function POST(req: Request) {
       await supabase.schema('finance').from('uploads').insert({
         bank: 'excel',
         source,
+        brand,
         row_count: 0,
         uploaded_by: user.id,
         period_start: periodStart,
@@ -90,7 +96,7 @@ export async function POST(req: Request) {
       .schema('finance')
       .from('rules')
       .select('normalized_key,category_id')
-      .eq('brand', 'garden') // 카드·엑셀 거래는 garden 고정(migration_brand) — 규칙도 garden 것만
+      .eq('brand', brand) // 규칙은 업로드 브랜드 것만
       .in('normalized_key', keys.slice(i, i + 100));
     (rules ?? []).forEach((r: { normalized_key: string; category_id: number }) =>
       keyToCat.set(r.normalized_key, r.category_id)
@@ -104,6 +110,7 @@ export async function POST(req: Request) {
     .insert({
       bank: 'excel',
       source,
+      brand,
       row_count: fresh.length,
       uploaded_by: user.id,
       period_start: periodStart,
@@ -128,6 +135,7 @@ export async function POST(req: Request) {
     return {
       bank: 'excel',
       source,
+      brand,
       tx_at: t.txAt,
       ym: t.ym,
       channel: t.channel,
@@ -156,7 +164,7 @@ export async function POST(req: Request) {
     supabase,
     user,
     '엑셀 내역 저장',
-    `${slotLabel ? `[${slotYm} ${slotLabel}] ` : ''}${file.name} ${fresh.length}건(중복 ${duplicates})`
+    `[${brand}] ${slotLabel ? `[${slotYm} ${slotLabel}] ` : ''}${file.name} ${fresh.length}건(중복 ${duplicates})`
   );
 
   return NextResponse.json({

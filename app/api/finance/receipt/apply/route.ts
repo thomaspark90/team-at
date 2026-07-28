@@ -48,12 +48,12 @@ export async function POST(req: Request) {
   const { data: cardRows } = await supabase
     .schema('finance')
     .from('transactions')
-    .select('id,tx_at,ym,amount_out,memo,category_id,approval_no,card_issuer')
+    .select('id,tx_at,ym,amount_out,memo,category_id,approval_no,card_issuer,brand,store')
     .eq('source', 'card')
     .gt('amount_out', 0)
     .ilike('memo', '%쿠팡%')
     .limit(3000);
-  type CardRow = { id: number; tx_at: string; ym: string; amount_out: number; memo: string; category_id: number | null; approval_no: string | null; card_issuer: string | null };
+  type CardRow = { id: number; tx_at: string; ym: string; amount_out: number; memo: string; category_id: number | null; approval_no: string | null; card_issuer: string | null; brand: string; store: string | null };
   const usable = (cardRows ?? []).filter((r: CardRow) => r.category_id !== splitId && !r.memo.startsWith('쿠팡 · '));
   const match = (appr: string, sum: number, ymd: string): CardRow | null => {
     let m = usable.find((r: CardRow) => r.approval_no && r.approval_no === appr);
@@ -79,6 +79,9 @@ export async function POST(req: Request) {
         bank: 'shinhan',
         source: 'card',
         card_issuer: parent.card_issuer ?? '신한',
+        // 분해 품목은 원본 카드 건의 브랜드·지점을 그대로 상속(유실 시 전부 garden으로 새는 버그 방지)
+        brand: parent.brand,
+        store: parent.store,
         is_installment: it.installment,
         tx_at: it.txAt,
         ym: it.txAt.slice(0, 7),
@@ -120,6 +123,8 @@ export async function POST(req: Request) {
         bank: 'shinhan',
         source: 'receipt',
         card_issuer: '쿠팡',
+        // 배치가 여러 브랜드에 걸칠 수 있어 첫 품목 기준(이력 표기용 — 거래 행에는 각자 정확한 brand가 있다)
+        brand: (freshRows[0]?.brand as string) ?? 'garden',
         row_count: freshRows.length,
         uploaded_by: user.id,
         period_start: dates[0]?.slice(0, 10),

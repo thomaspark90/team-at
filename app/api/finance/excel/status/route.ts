@@ -23,10 +23,14 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: '회계 입력 권한이 없습니다.' }, { status: 403 });
   }
 
-  const ym = new URL(req.url).searchParams.get('ym') ?? '';
+  const params = new URL(req.url).searchParams;
+  const ym = params.get('ym') ?? '';
   if (!/^\d{4}-\d{2}$/.test(ym)) {
     return NextResponse.json({ error: '월(ym)을 YYYY-MM 형식으로 주세요.' }, { status: 400 });
   }
+  // 브랜드별 보드 — 상태도 그 브랜드 업로드·거래만 본다(미지정=garden, 기존 동작 유지)
+  const brandRaw = params.get('brand') ?? 'garden';
+  const brand = brandRaw === 'staffmeal' ? 'staffmeal' : 'garden';
   const [y, m] = ym.split('-').map(Number);
   const monthStart = `${ym}-01`;
   const monthEnd = `${ym}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
@@ -53,6 +57,7 @@ export async function GET(req: Request) {
     .from('uploads')
     .select('slot,row_count,uploaded_at,period_start,period_end')
     .eq('slot_ym', ym)
+    .eq('brand', brand)
     .not('slot', 'is', null)
     .order('uploaded_at');
   if (slotErr) {
@@ -73,6 +78,7 @@ export async function GET(req: Request) {
     .schema('finance')
     .from('uploads')
     .select('bank,source,row_count,uploaded_at,period_start,period_end')
+    .eq('brand', brand)
     .is('slot', null)
     .lte('period_start', monthEnd)
     .gte('period_end', monthStart)
@@ -97,6 +103,7 @@ export async function GET(req: Request) {
       .from('transactions')
       .select('id', { count: 'exact', head: true })
       .eq('bank', 'naverpay')
+      .eq('brand', brand)
       .eq('ym', ym);
     acc.naverpay.count = count ?? 0;
     if ((count ?? 0) > 0 && acc.naverpay.via === null) {

@@ -28,12 +28,14 @@ export async function POST(req: Request) {
   if (!['식자재', '포장소모품'].includes(kind)) return NextResponse.json({ error: '구분이 올바르지 않습니다.' }, { status: 400 });
   if (!Number.isFinite(amount) || amount < 0) return NextResponse.json({ error: '금액이 올바르지 않습니다.' }, { status: 400 });
 
-  // 확정된 달은 기말재고를 바꿀 수 없음(확정 후 원가 변동 방지) — pos/save·uploads/delete와 동일 규칙
+  // 확정된 달·브랜드는 기말재고를 바꿀 수 없음(확정 후 원가 변동 방지) — pos/save·uploads/delete와 동일 규칙
+  // brand 조건 필수: 확정이 (ym, brand) 단위가 되면서 같은 ym 행이 브랜드별로 존재한다
   const { data: close } = await supabase
     .schema('finance')
     .from('monthly_close')
     .select('status')
     .eq('ym', ym)
+    .eq('brand', brand)
     .maybeSingle();
   if (close?.status === 'confirmed') {
     return NextResponse.json({ error: `${ym}은 이미 확정된 달이라 기말재고를 바꿀 수 없어요.` }, { status: 409 });
