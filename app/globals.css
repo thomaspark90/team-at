@@ -25,6 +25,10 @@
  */
 @layer base {
   :root {
+    /* 앱은 클래스 기반 다크모드(기본 라이트) — 네이티브 폼 컨트롤(select 팝업·스크롤바)도
+       OS 설정이 아니라 앱 테마를 따르게 강제한다. 미설정 시 macOS 다크모드에서 select 팝업이
+       다크로 렌더돼 optgroup 회색 라벨이 저대비로 안 보이는 문제가 생긴다. */
+    color-scheme: light;
     --background: 0 0% 100%;
     --foreground: 0 0% 7%;
     --card: 45 18% 96%;
@@ -75,6 +79,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     --background: 0 0% 5%;
     --foreground: 0 0% 98%;
     --card: 0 0% 7%;
@@ -170,6 +175,16 @@
   .ta-btn-primary {
     @apply inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-[13px] text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50;
   }
+}
+
+/* 네이티브 드롭다운 대비 개선 — optgroup 그룹 헤더(재료비(원가) 등)가 기본 흐린 회색이라
+   다크 팝업에서 잘 안 보인다. 전경색으로 올려 라이트/다크 모두에서 뚜렷하게(흰색·검정에 가깝게) */
+select optgroup {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+}
+select option {
+  color: hsl(var(--foreground));
 }
 
 /* iOS Safari는 폰트 16px 미만 입력에 포커스하면 화면을 자동 확대하고 되돌리지 않는다 —
