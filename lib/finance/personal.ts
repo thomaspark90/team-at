@@ -24,25 +24,30 @@ export async function resolvePersonalCat(supabase: AnyClient): Promise<PersonalC
 
 // 주어진 dedup_hash 들 중 개인 거래의 카테고리를 '개인지출'로 정리한다.
 // 미분류(null)이거나 손익 제외 계정이 아닌(=사업 계정) 건만 갱신 → 이미 손익 제외인 건은 보존.
+// PostgREST or/in 중첩 필터의 모호함을 피하려, 먼저 현재 카테고리를 읽어 JS에서 대상만 추린다.
 export async function applyPersonalCategory(
   supabase: AnyClient,
   dedupHashes: string[],
   { personalCatId, excludedIds }: PersonalCat,
 ): Promise<number> {
   if (personalCatId == null || dedupHashes.length === 0) return 0;
-  // 개인지출 자신은 보존 목록에서 빼도 무방(같은 값이라 갱신돼도 결과 동일)하나, or 필터 단순화를 위해 유지.
+  const excluded = new Set(excludedIds);
   let updated = 0;
   for (let i = 0; i < dedupHashes.length; i += 100) {
-    let q = supabase
-      .from('transactions')
-      .update({ category_id: personalCatId })
-      .in('dedup_hash', dedupHashes.slice(i, i + 100));
-    // 미분류 or 손익 제외가 아닌(사업) 계정만 — 의도적 손익 제외 세부분류는 보존
-    q = excludedIds.length
-      ? q.or(`category_id.is.null,category_id.not.in.(${excludedIds.join(',')})`)
-      : q; // 손익 제외 계정이 하나도 없으면(비정상) 전부 개인지출로
-    const { data } = await q.select('id');
-    updated += data?.length ?? 0;
+    const chunk = dedupHashes.slice(i, i + 100);
+    // 현재 카테고리 조회 → 미분류 또는 사업(비-excluded) 계정인 건만 대상
+    const { data: cur } = await supabase.from('transactions').select('id,category_id,dedup_hash').in('dedup_hash', chunk);
+    const targetHashes = ((cur as { category_id: number | null; dedup_hash: string }[] | null) ?? [])
+      .filter((r) => r.category_id == null || !excluded.has(r.category_id))
+      .map((r) => r.dedup_hash);
+    for (let j = 0; j < targetHashes.length; j += 100) {
+      const { data } = await supabase
+        .from('transactions')
+        .update({ category_id: personalCatId })
+        .in('dedup_hash', targetHashes.slice(j, j + 100))
+        .select('id');
+      updated += data?.length ?? 0;
+    }
   }
   return updated;
 }

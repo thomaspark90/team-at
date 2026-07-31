@@ -138,15 +138,16 @@ export async function POST(req: Request) {
   }
 
   // 개인 브랜드 기존 거래를 '개인지출'로 소급 분류 — 미분류·사업계정만(손익 제외 세부분류는 보존).
+  let personalCategorized = 0;
   if (personalCat.personalCatId != null) {
     const personalHashes = Array.from(
       new Set(mapped.filter((m) => m.brand === 'personal').map((m) => m.dedup_hash)),
     );
-    await applyPersonalCategory(supabase, personalHashes, personalCat);
+    personalCategorized = await applyPersonalCategory(supabase, personalHashes, personalCat);
   }
 
   if (fresh.length === 0) {
-    return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0, brandUpdated });
+    return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0, brandUpdated, personalCategorized });
   }
 
   // 학습 규칙(normalized_key → category_id)으로 자동 분류 — 규칙은 브랜드별
@@ -197,5 +198,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
   }
 
-  return NextResponse.json({ saved: fresh.length, duplicates: mapped.length - fresh.length, autoClassified, brandUpdated });
+  return NextResponse.json({ saved: fresh.length, duplicates: mapped.length - fresh.length, autoClassified, brandUpdated, personalCategorized });
 }
