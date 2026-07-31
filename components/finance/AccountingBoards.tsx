@@ -105,7 +105,10 @@ export default function AccountingBoards({
           >
             ‹
           </button>
-          <div ref={stripRef} className="flex flex-1 overflow-x-auto [scrollbar-width:thin]">
+          <div
+            ref={stripRef}
+            className="flex flex-1 overflow-x-auto pb-1.5 [scrollbar-width:thin] [scrollbar-color:hsl(var(--border))_transparent] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
+          >
           {months.map((m) => {
             const selected = m === ym;
             const [y, mo] = m.split('-');
