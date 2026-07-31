@@ -15,7 +15,7 @@ const defaultYm = () => {
 
 // 회계 월별 업무 묶음 — 상단 월 스트립에서 한 번만 고르면
 // 업로드 보드·지출 자료 분류 보드가 같은 월로 함께 움직인다.
-// 스트립은 과거 24개월~다음 달까지, 화면 폭만큼(약 7개) 보이고 좌우 스크롤로 나머지 확인.
+// 스트립은 과거 24개월~다음 달까지, 화면 폭만큼(약 7개) 보이고 좌우 ‹ › 버튼(또는 가로 스크롤)로 나머지 확인.
 // 칩 옆 배지 = 그 달의 남은 업무 수(미완료 업로드 슬롯 + 미분류 출처 + 월 확정).
 export default function AccountingBoards({
   fixedBrand,
@@ -41,6 +41,11 @@ export default function AccountingBoards({
   const brand = fixedBrand ?? brandState;
   const [todos, setTodos] = useState<Record<string, number>>(initialTodos ?? {});
   const selectedRef = useRef<HTMLButtonElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  // 트랙패드 없이도 과거 달로 갈 수 있게 — 한 번에 보이는 폭의 80%씩 이동
+  const scrollStrip = (dir: -1 | 1) => {
+    stripRef.current?.scrollBy({ left: dir * stripRef.current.clientWidth * 0.8, behavior: 'smooth' });
+  };
 
   const months = useMemo(() => {
     const now = new Date();
@@ -92,7 +97,15 @@ export default function AccountingBoards({
             <span className="ml-2 text-[11px] text-muted-foreground">브랜드별로 회계가 분리돼요 — 올린 자료는 선택된 브랜드로 들어가요</span>
           </div>
         )}
-        <div className="flex overflow-x-auto pb-1 pt-1.5 [scrollbar-width:thin]">
+        <div className="flex items-center gap-1 pb-1 pt-1.5">
+          <button
+            onClick={() => scrollStrip(-1)}
+            aria-label="이전 달들 보기"
+            className="shrink-0 self-stretch rounded-lg px-2 text-[18px] leading-none text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          >
+            ‹
+          </button>
+          <div ref={stripRef} className="flex flex-1 overflow-x-auto [scrollbar-width:thin]">
           {months.map((m) => {
             const selected = m === ym;
             const [y, mo] = m.split('-');
@@ -119,6 +132,14 @@ export default function AccountingBoards({
               </button>
             );
           })}
+          </div>
+          <button
+            onClick={() => scrollStrip(1)}
+            aria-label="다음 달들 보기"
+            className="shrink-0 self-stretch rounded-lg px-2 text-[18px] leading-none text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          >
+            ›
+          </button>
         </div>
       </div>
 
