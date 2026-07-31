@@ -16,15 +16,24 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#000000',
+  // 시스템 라이트/다크에 맞춰 브라우저 상단 바 색도 배경 토큰과 일치시킨다
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
+    { media: '(prefers-color-scheme: dark)', color: '#0D0D0D' },
+  ],
   width: 'device-width',
   initialScale: 1,
 };
 
+// 시스템 다크모드를 따라 <html>에 .dark 를 붙인다(tailwind darkMode:'class').
+// 첫 페인트 전에 실행돼야 라이트로 번쩍이는 현상(FOUC)이 없어 인라인 스크립트로 넣는다.
+const themeScript = `(function(){try{var m=window.matchMedia('(prefers-color-scheme: dark)');var a=function(){document.documentElement.classList.toggle('dark',m.matches)};a();m.addEventListener('change',a);}catch(e){}})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <link
           rel="preload"
           href="/fonts/Freesentation-4Regular.woff2"
