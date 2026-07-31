@@ -16,13 +16,20 @@ const defaultYm = () => {
 // 업로드 보드·지출 자료 분류 보드가 같은 월로 함께 움직인다.
 // 스트립은 과거 24개월~다음 달까지, 화면 폭만큼(약 7개) 보이고 좌우 스크롤로 나머지 확인.
 // 칩 옆 배지 = 그 달의 남은 업무 수(미완료 업로드 슬롯 + 미분류 출처 + 월 확정).
-export default function AccountingBoards({ fixedBrand }: { fixedBrand?: Brand }) {
+export default function AccountingBoards({
+  fixedBrand,
+  initialTodos,
+}: {
+  fixedBrand?: Brand;
+  // 서버 컴포넌트가 미리 집계한 월 배지 — 있으면 첫 진입 시 클라이언트 재조회를 생략한다.
+  initialTodos?: Record<string, number>;
+}) {
   const [ym, setYm] = useState(defaultYm);
   // 회계가 브랜드별로 분리 — 업로드 보드는 선택된 브랜드 회계로만 저장·판정된다.
   // 내비 2단(단위) 구조에서는 상단 단위가 브랜드를 고정(fixedBrand)하고 자체 탭은 숨긴다.
   const [brandState, setBrand] = useState<Brand>('garden');
   const brand = fixedBrand ?? brandState;
-  const [todos, setTodos] = useState<Record<string, number>>({});
+  const [todos, setTodos] = useState<Record<string, number>>(initialTodos ?? {});
   const selectedRef = useRef<HTMLButtonElement>(null);
 
   const months = useMemo(() => {
@@ -42,9 +49,10 @@ export default function AccountingBoards({ fixedBrand }: { fixedBrand?: Brand })
     }
   }, []);
 
+  const hasInitial = initialTodos !== undefined;
   useEffect(() => {
-    loadTodos();
-  }, [loadTodos]);
+    if (!hasInitial) loadTodos();
+  }, [loadTodos, hasInitial]);
 
   // 선택된 월이 항상 보이도록 스트립을 맞춰 스크롤 (첫 진입 포함)
   useEffect(() => {

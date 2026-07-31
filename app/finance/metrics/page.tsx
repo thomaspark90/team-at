@@ -6,7 +6,12 @@ import { unwrap } from '@/lib/finance/db';
 import type { AggTx, AggCat } from '@/lib/finance/aggregate';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
-import Dashboard from '@/components/finance/Dashboard';
+import dynamic from 'next/dynamic';
+
+// recharts 포함 차트 번들은 별도 청크로 지연 로드 — 페이지 뼈대가 먼저 그려진다
+const Dashboard = dynamic(() => import('@/components/finance/Dashboard'), {
+  loading: () => <p className="px-6 py-8 text-[13px] text-muted-foreground">차트 불러오는 중…</p>,
+});
 
 // 지표 — 매출·이익·비율 추이 차트 (구 재무 대시보드). 대시보드는 업무 보드로 개편.
 export default async function MetricsPage() {

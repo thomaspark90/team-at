@@ -2,7 +2,13 @@
 
 import TabNav from '@/components/TabNav';
 import GardenNav from '@/components/garden/GardenNav';
-import GrindCalibrationReport from '@/components/garden/GrindCalibrationReport';
+import dynamic from 'next/dynamic';
+
+// recharts 포함 리포트 번들은 별도 청크로 지연 로드 — 페이지 뼈대가 먼저 그려진다
+const GrindCalibrationReport = dynamic(() => import('@/components/garden/GrindCalibrationReport'), {
+  ssr: false,
+  loading: () => <p className="text-[13px] text-muted-foreground">리포트 불러오는 중…</p>,
+});
 
 export default function GrindCalibrationReportPage() {
   return (
