@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { STORES } from '@/lib/types';
 import type { CalibrationCheck, CheckStatus } from '@/lib/calibration-checks';
 import { CHECK_COLUMNS, periodOf } from '@/lib/calibration-checks';
+import { toast } from '@/components/Toast';
 
 // 그라인더 드리프트 체크 칸반 — 월 2회(전반/후반) 지점별 카드가 자동 생성되고
 // 할 일 → 진행 중 → 완료로 옮기며 관리한다. 완료 시 측정 메모를 남긴다.
@@ -18,7 +19,8 @@ export default function CalibrationKanban() {
   useEffect(() => {
     fetch('/api/garden-calibration-checks', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : []))
-      .then((d) => setChecks(Array.isArray(d) ? d : []));
+      .then((d) => setChecks(Array.isArray(d) ? d : []))
+      .catch(() => toast('체크 목록을 불러오지 못했어요. 새로고침해 주세요.', 'error'));
   }, []);
 
   const currentKey = periodOf(new Date()).key;
@@ -44,8 +46,9 @@ export default function CalibrationKanban() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: check.id, status, ...(memo !== undefined ? { memo } : {}) }),
-    });
-    if (res.ok) setChecks(await res.json());
+    }).catch(() => null);
+    if (res?.ok) setChecks(await res.json());
+    else toast('카드 이동에 실패했어요. 다시 시도해 주세요.', 'error');
     setBusy(null);
   };
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { wonNum as won, fmtYm as fmtYmLabel } from '@/lib/finance/format';
 import SplitModal, { type SplitTarget, type SplitRuleSuggestion } from './SplitModal';
@@ -80,6 +80,8 @@ export default function ClassifyPanel({
   fixedUnit?: { brand: 'staffmeal' | 'garden' | 'personal'; store: 'pangyo' | 'yangjae' | null } | null;
 }) {
   const router = useRouter();
+  // URL 쿼리 — 서버가 initialFilter로 안 내려주는 필터(은행·검색어·페이지)의 복원용
+  const sp = useSearchParams();
   // 규칙은 브랜드별 — 같은 가맹점이라도 스탭밀/가든이 다른 계정을 쓸 수 있다
   const ruleMap = new Map(rules.map((r) => [`${r.brand}|${r.normalized_key}`, r.category_id]));
   const ruleFor = (t: TxRow) => (t.normalized_key ? ruleMap.get(`${t.brand}|${t.normalized_key}`) : undefined);
@@ -118,7 +120,7 @@ export default function ClassifyPanel({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiApplying, setAiApplying] = useState(false);
   const [filterYm, setFilterYm] = useState(initialFilter?.ym ?? 'all');
-  const [filterBank, setFilterBank] = useState('all');
+  const [filterBank, setFilterBank] = useState(sp.get('bank') ?? 'all');
   // 자금 흐름에서 넘어온 계정 필터(type/세부계정)
   const [catFilter, setCatFilter] = useState<{ type?: string; cat?: string }>({
     type: initialFilter?.type,
@@ -137,10 +139,10 @@ export default function ClassifyPanel({
     ['pangyo', 'yangjae', 'none'].includes(initialFilter?.store ?? '') ? initialFilter!.store! : 'all'
   ); // 가든 지점: all | pangyo | yangjae | none(미지정)
   const [unclOnly, setUnclOnly] = useState(!!initialFilter?.unclassified); // 미분류만 보기
-  const [search, setSearch] = useState(''); // 가맹점/내용 검색
+  const [search, setSearch] = useState(sp.get('q') ?? ''); // 가맹점/내용 검색
   const [selected, setSelected] = useState<Set<number>>(new Set()); // 다중 선택
   const [bulkCat, setBulkCat] = useState<number | ''>(''); // 일괄 분류 카테고리
-  const [page, setPage] = useState(1); // 100건 단위 페이지
+  const [page, setPage] = useState(() => Math.max(1, Number(sp.get('page')) || 1)); // 100건 단위 페이지
   // 건별 분할 모달
   const [splitTarget, setSplitTarget] = useState<SplitTarget | null>(null);
   const [splitSug, setSplitSug] = useState<SplitRuleSuggestion | null>(null);
@@ -214,10 +216,35 @@ export default function ClassifyPanel({
   const curPage = Math.min(page, totalPages);
   const pageStart = (curPage - 1) * PAGE_SIZE;
   const pageRows = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const filtersMounted = useRef(false);
   useEffect(() => {
+    // 첫 렌더는 건너뛴다 — URL(?page=)에서 복원한 페이지가 리셋되지 않게
+    if (!filtersMounted.current) {
+      filtersMounted.current = true;
+      return;
+    }
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterYm, filterBank, srcFilter, brandFilter, storeFilter, unclOnly, q, catFilter.type, catFilter.cat]);
+
+  // 필터·페이지를 URL에 반영(얕은 갱신, 서버 재조회 없음) — 새로고침·뒤로가기에도 작업 위치 유지
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const p = url.searchParams;
+    const put = (k: string, v: string, empty: boolean) => (empty ? p.delete(k) : p.set(k, v));
+    put('ym', filterYm, filterYm === 'all');
+    put('bank', filterBank, filterBank === 'all');
+    put('source', srcFilter, srcFilter === 'all');
+    put('brand', brandFilter, brandFilter === 'all');
+    put('store', storeFilter, storeFilter === 'all');
+    put('type', catFilter.type ?? '', !catFilter.type);
+    put('cat', catFilter.cat ?? '', !catFilter.cat);
+    put('unclassified', '1', !unclOnly);
+    put('q', search, !search.trim());
+    put('page', String(curPage), curPage <= 1);
+    window.history.replaceState(null, '', url);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterYm, filterBank, srcFilter, brandFilter, storeFilter, catFilter.type, catFilter.cat, unclOnly, search, curPage]);
 
   // 다중 선택(현재 필터·미확정 대상) — 헤더 체크박스는 현재 페이지만 선택
   const selectableIds = filtered.filter((r) => !isLocked(r)).map((r) => r.id);

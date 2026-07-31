@@ -17,7 +17,8 @@ export default function GardenNav() {
   const pathname = usePathname();
   return (
     <nav className="border-b border-border bg-card/40">
-      <div className="mx-auto flex max-w-[1100px] items-center justify-center gap-x-5 px-6 py-3">
+      {/* 모바일에선 항목이 뷰포트보다 넓어 페이지가 가로로 밀렸음 — 줄바꿈 허용 */}
+      <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-center gap-x-5 gap-y-1.5 px-4 py-3 sm:px-6">
         {TABS.map(({ href, label }) => {
           const active = pathname === href;
           return (

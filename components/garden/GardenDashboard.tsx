@@ -8,6 +8,7 @@ import { costPerCup, normalize } from '@/lib/pricing';
 import { applyPreset, presetById } from '@/lib/drip-presets';
 import { flavorGradient } from '@/lib/flavor-colors';
 import BrewTimer from '@/components/garden/BrewTimer';
+import { toast } from '@/components/Toast';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import { pangyoDialText } from '@/lib/grinder-calibration';
 
@@ -179,16 +180,22 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   const [selectedCountry, setSelectedCountry] = useState('전체');
 
   const refresh = async () => {
-    const [pRes, rRes, bRes, gRes] = await Promise.all([
-      fetch('/api/purchases', { cache: 'no-store' }),
-      fetch('/api/garden-recipes', { cache: 'no-store' }),
-      fetch('/api/garden-beans', { cache: 'no-store' }),
-      fetch('/api/garden-grinders', { cache: 'no-store' }),
-    ]);
-    if (pRes.ok) setPurchases(await pRes.json());
-    if (rRes.ok) setRecipes(await rRes.json());
-    if (bRes.ok) setBeanMetas(await bRes.json());
-    if (gRes.ok) setGrinderProfiles(await gRes.json());
+    try {
+      const [pRes, rRes, bRes, gRes] = await Promise.all([
+        fetch('/api/purchases', { cache: 'no-store' }),
+        fetch('/api/garden-recipes', { cache: 'no-store' }),
+        fetch('/api/garden-beans', { cache: 'no-store' }),
+        fetch('/api/garden-grinders', { cache: 'no-store' }),
+      ]);
+      if (pRes.ok) setPurchases(await pRes.json());
+      if (rRes.ok) setRecipes(await rRes.json());
+      if (bRes.ok) setBeanMetas(await bRes.json());
+      if (gRes.ok) setGrinderProfiles(await gRes.json());
+      // 조회 실패 시 빈 화면이 "레시피 없음"으로 오해되지 않게 알린다
+      if (![pRes, rRes, bRes, gRes].every((r) => r.ok)) toast('일부 데이터를 불러오지 못했어요. 새로고침해 주세요.', 'error');
+    } catch {
+      toast('데이터를 불러오지 못했어요. 네트워크를 확인해 주세요.', 'error');
+    }
     setLoading(false);
   };
   useEffect(() => {
@@ -324,11 +331,17 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   const saveTasting = async () => {
     if (!tastingEdit || tastingSaving) return;
     setTastingSaving(true);
-    await fetch('/api/garden-beans', {
+    const res = await fetch('/api/garden-beans', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ beanKey: tastingEdit.beanKey, bean: tastingEdit.bean, tasting: tastingEdit.value }),
-    });
+    }).catch(() => null);
+    if (!res?.ok) {
+      // 실패 시 편집창을 닫지 않는다 — 입력값 유실 방지
+      toast('테이스팅 노트 저장에 실패했어요. 다시 시도해 주세요.', 'error');
+      setTastingSaving(false);
+      return;
+    }
     await refresh();
     setTastingEdit(null);
     setTastingSaving(false);
@@ -337,11 +350,15 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   // 지점 재고량 저장 — 한 지점만 병합 업데이트
   const setStock = async (beanKey: string, bean: string, storeId: StoreId, pct: number) => {
     setStockPicker(null);
-    await fetch('/api/garden-beans', {
+    const res = await fetch('/api/garden-beans', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ beanKey, bean, stockByStore: { [storeId]: pct } }),
-    });
+    }).catch(() => null);
+    if (!res?.ok) {
+      toast('재고량 저장에 실패했어요. 다시 시도해 주세요.', 'error');
+      return;
+    }
     refresh();
   };
 
@@ -353,7 +370,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       return s && Number.isFinite(n) && n > 0 ? n : null;
     };
     const waterG = draft.pours.reduce((a, s) => a + s.water, 0);
-    await fetch('/api/garden-recipes', {
+    const saveRes = await fetch('/api/garden-recipes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -370,26 +387,38 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
         notes: draft.notes.trim(),
         presetId: draft.presetId || null,
       }),
-    });
+    }).catch(() => null);
+    // 저장 실패 시 편집창을 닫지 않는다 — 입력값 유실 방지
+    if (!saveRes?.ok) {
+      toast('레시피 저장에 실패했어요. 다시 시도해 주세요.', 'error');
+      setSaving(false);
+      return;
+    }
     // 테이스팅 노트는 원두 공통 — 값이 바뀐 경우에만 별도 업서트
     if (draft.tasting.trim() !== (tastingByBean.get(draft.beanKey) ?? '')) {
-      await fetch('/api/garden-beans', {
+      const tRes = await fetch('/api/garden-beans', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ beanKey: draft.beanKey, bean: draft.bean, tasting: draft.tasting }),
-      });
+      }).catch(() => null);
+      if (!tRes?.ok) toast('레시피는 저장됐지만 테이스팅 노트 저장에 실패했어요.', 'error');
     }
     await refresh();
     setDraft(null);
     setSaving(false);
+    toast('레시피를 저장했어요.');
   };
 
   const deleteRecipe = async (beanKey: string, brewType: BrewType) => {
-    await fetch('/api/garden-recipes', {
+    const res = await fetch('/api/garden-recipes', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ beanKey, brewType }),
-    });
+    }).catch(() => null);
+    if (!res?.ok) {
+      toast('레시피 삭제에 실패했어요. 다시 시도해 주세요.', 'error');
+      return;
+    }
     refresh();
   };
 

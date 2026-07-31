@@ -172,6 +172,15 @@
   }
 }
 
+/* iOS Safari는 폰트 16px 미만 입력에 포커스하면 화면을 자동 확대하고 되돌리지 않는다 —
+   모바일에서만 입력·셀렉트 폰트를 16px로 올려 확대를 막는다 */
+@media (max-width: 640px) {
+  .ta-input,
+  select.ta-input {
+    font-size: 16px;
+  }
+}
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }

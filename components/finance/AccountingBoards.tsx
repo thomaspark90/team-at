@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import MonthlyUploadBoard from './MonthlyUploadBoard';
 import ClassifyBoard from './ClassifyBoard';
 import { BRANDS, type Brand } from '@/lib/finance/types';
@@ -24,7 +25,16 @@ export default function AccountingBoards({
   // 서버 컴포넌트가 미리 집계한 월 배지 — 있으면 첫 진입 시 클라이언트 재조회를 생략한다.
   initialTodos?: Record<string, number>;
 }) {
-  const [ym, setYm] = useState(defaultYm);
+  // 선택 월을 URL(?ym=)에 반영 — 분류 화면에 다녀오거나 새로고침해도 보던 달 유지.
+  // replaceState(얕은 갱신)라 서버 재조회 없이 주소만 바뀐다.
+  const urlYm = useSearchParams().get('ym');
+  const [ym, setYmState] = useState(() => (urlYm && /^\d{4}-\d{2}$/.test(urlYm) ? urlYm : defaultYm()));
+  const setYm = (m: string) => {
+    setYmState(m);
+    const url = new URL(window.location.href);
+    url.searchParams.set('ym', m);
+    window.history.replaceState(null, '', url);
+  };
   // 회계가 브랜드별로 분리 — 업로드 보드는 선택된 브랜드 회계로만 저장·판정된다.
   // 내비 2단(단위) 구조에서는 상단 단위가 브랜드를 고정(fixedBrand)하고 자체 탭은 숨긴다.
   const [brandState, setBrand] = useState<Brand>('garden');

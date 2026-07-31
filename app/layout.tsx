@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Toaster } from '@/components/Toast';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -37,7 +38,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           crossOrigin="anonymous"
         />
       </head>
-      <body className="bg-bg text-fg">{children}</body>
+      <body className="bg-bg text-fg">
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }

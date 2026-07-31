@@ -167,7 +167,8 @@ export default function TaskBoard({ board }: { board: TaskBoardId }) {
                         disabled={busy}
                         title="카드 삭제"
                         className="text-muted-foreground hover:text-foreground"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, flexShrink: 0, padding: 0 }}
+                        // 터치 타깃 확보 — 패딩으로 히트 영역을 키우고 네거티브 마진으로 레이아웃은 유지
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, flexShrink: 0, padding: '6px 10px', margin: '-6px -10px' }}
                       >
                         ×
                       </button>
