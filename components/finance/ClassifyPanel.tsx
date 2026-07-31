@@ -201,17 +201,34 @@ export default function ClassifyPanel({
   const classifiedCount = filtered.filter((r) => r.category_id != null).length;
   const progress = filtered.length ? Math.round((classifiedCount / filtered.length) * 100) : 0;
 
-  // 다중 선택(현재 필터·미확정 대상)
+  // 페이지네이션 — 100건 단위, 필터가 바뀌면 1페이지로
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const curPage = Math.min(page, totalPages);
+  const pageStart = (curPage - 1) * PAGE_SIZE;
+  const pageRows = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  useEffect(() => {
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterYm, filterBank, srcFilter, brandFilter, storeFilter, unclOnly, q, catFilter.type, catFilter.cat]);
+
+  // 다중 선택(현재 필터·미확정 대상) — 헤더 체크박스는 현재 페이지만 선택
   const selectableIds = filtered.filter((r) => !isLocked(r)).map((r) => r.id);
   const selCount = selectableIds.filter((id) => selected.has(id)).length;
-  const allSelected = selectableIds.length > 0 && selCount === selectableIds.length;
+  const pageSelectableIds = pageRows.filter((r) => !isLocked(r)).map((r) => r.id);
+  const allSelected = pageSelectableIds.length > 0 && pageSelectableIds.every((id) => selected.has(id));
   const toggleSel = (id: number) =>
     setSelected((s) => {
       const n = new Set(s);
       n.has(id) ? n.delete(id) : n.add(id);
       return n;
     });
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(selectableIds));
+  const toggleAll = () =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (allSelected) pageSelectableIds.forEach((id) => n.delete(id));
+      else pageSelectableIds.forEach((id) => n.add(id));
+      return n;
+    });
 
   async function bulkClassify(catId: number) {
     const targets = rows.filter((r) => selected.has(r.id) && !isLocked(r));
@@ -654,8 +671,9 @@ export default function ClassifyPanel({
             <thead>
               <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
                 <th className="w-[36px] px-3 py-2 text-left">
-                  <input type="checkbox" checked={allSelected} onChange={toggleAll} title="전체 선택" aria-label="전체 선택" />
+                  <input type="checkbox" checked={allSelected} onChange={toggleAll} title="현재 페이지 전체 선택" aria-label="현재 페이지 전체 선택" />
                 </th>
+                <Th right>#</Th>
                 <Th>은행</Th>
                 <Th>거래일자</Th>
                 <Th>거래시간</Th>
@@ -665,7 +683,7 @@ export default function ClassifyPanel({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((tx) => {
+              {pageRows.map((tx, rowIdx) => {
                 const locked = isLocked(tx);
                 const pending = tx.category_id == null;
                 const sug = pending && tx.normalized_key ? suggestions[tx.normalized_key] : undefined;
@@ -683,6 +701,9 @@ export default function ClassifyPanel({
                       {!locked && (
                         <input type="checkbox" checked={selected.has(tx.id)} onChange={() => toggleSel(tx.id)} aria-label="선택" />
                       )}
+                    </td>
+                    <td className="px-2 py-2 text-right align-middle text-[12px] tabular-nums text-muted-foreground">
+                      {pageStart + rowIdx + 1}
                     </td>
                     <Td>{BANK_LABEL[tx.bank] ?? tx.bank}</Td>
                     <Td mono>{date}</Td>
@@ -807,7 +828,7 @@ export default function ClassifyPanel({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-[13px] text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-6 text-center text-[13px] text-muted-foreground">
                     선택한 월·은행에 거래가 없어요.
                   </td>
                 </tr>
@@ -815,6 +836,42 @@ export default function ClassifyPanel({
             </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div className="flex flex-wrap items-center justify-center gap-1.5 border-t border-border px-3 py-3 text-[13px]">
+            <button
+              disabled={curPage === 1}
+              onClick={() => setPage(curPage - 1)}
+              className="rounded-sm px-2.5 py-1 text-muted-foreground transition-colors enabled:hover:text-foreground disabled:opacity-40"
+            >
+              ← 이전
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((p) => totalPages <= 9 || p === 1 || p === totalPages || Math.abs(p - curPage) <= 2)
+              .map((p, i, arr) => (
+                <span key={p} className="flex items-center gap-1.5">
+                  {i > 0 && arr[i - 1] !== p - 1 && <span className="text-muted-foreground">…</span>}
+                  <button
+                    onClick={() => setPage(p)}
+                    className={`min-w-[30px] rounded-sm px-2 py-1 tabular-nums ${
+                      p === curPage ? 'bg-primary font-medium text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                </span>
+              ))}
+            <button
+              disabled={curPage === totalPages}
+              onClick={() => setPage(curPage + 1)}
+              className="rounded-sm px-2.5 py-1 text-muted-foreground transition-colors enabled:hover:text-foreground disabled:opacity-40"
+            >
+              다음 →
+            </button>
+            <span className="ml-2 text-[12px] text-muted-foreground">
+              {won(pageStart + 1)}–{won(Math.min(pageStart + PAGE_SIZE, filtered.length))} / {won(filtered.length)}건
+            </span>
+          </div>
+        )}
       </div>
 
       {splitTarget && (
