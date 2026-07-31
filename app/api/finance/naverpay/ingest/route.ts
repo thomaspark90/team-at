@@ -22,7 +22,7 @@ type IngestRow = {
   ship_to?: string;  // 배송지명 — channel 뒤에 붙여 분류 화면 참고 표시
 };
 
-const BRANCHES = ['판교', '양재천', '스탭밀'];
+const BRANCHES = ['판교', '양재천', '스탭밀', '개인'];
 
 const toKstIso = (s: string) => {
   const t = s.trim().replace(' ', 'T');
@@ -58,7 +58,8 @@ export async function POST(req: Request) {
     const isRefund = /취소|환불/.test(r.pay_status || '');
     const txAt = toKstIso(r.paid_at);
     // 수집기가 배송지로 판정한 브랜드·지점 — 값이 유효할 때만 신뢰, 아니면 DB 기본(garden)/null
-    const brand = r.brand === 'staffmeal' || r.brand === 'garden' ? r.brand : null;
+    // personal = 개인(자택 배송 등 사적 지출, 2026-07-31) — migration_personal_brand.sql 선행 필요
+    const brand = r.brand === 'staffmeal' || r.brand === 'garden' || r.brand === 'personal' ? r.brand : null;
     const branch = BRANCHES.includes(String(r.branch)) ? String(r.branch) : null;
     const shipTo = typeof r.ship_to === 'string' && r.ship_to.trim() ? r.ship_to.trim().slice(0, 40) : null;
     const product = (r.product || '').trim();
