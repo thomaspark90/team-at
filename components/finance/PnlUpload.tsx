@@ -208,12 +208,11 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
           </div>
 
           {mapping && (
-            <p className="text-[12px] text-amber-600">
-              ⚠ 페이히어 파서는 헤더 자동탐지(잠정)로 읽었어요 — 시트 &lsquo;{mapping.sheet}&rsquo;,{' '}
+            <p className="text-[12px] text-muted-foreground">
+              페이히어 읽기 — 시트 &lsquo;{mapping.sheet}&rsquo;,{' '}
               {Object.entries(mapping.header)
                 .map(([k, v]) => `${k}=${v}`)
                 .join(' · ')}
-              . 합계가 페이히어 관리자 화면과 맞는지 꼭 확인해주세요.
             </p>
           )}
 
