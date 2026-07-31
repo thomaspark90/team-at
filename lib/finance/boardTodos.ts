@@ -27,7 +27,8 @@ export async function computeBoardTodos(supabase: SupabaseClient): Promise<Recor
     (closesQ.data ?? []).filter((c) => c.status === 'confirmed').map((c) => String(c.ym))
   );
 
-  // 월·슬롯별 수집 — 보드 업로드(slot 기록) + 기존 경로 자동 감지(기간 겹침).
+  // 월·슬롯별 수집 — 보드 업로드(slot 기록)는 slot_ym 달 + 파일 기간이 겹치는 모든 달에,
+  // 기존 경로(slot 없음)는 기간 겹침으로 자동 감지해 반영한다.
   // 기간 구간을 모아 커버리지(부분 업로드는 미완료로 집계)까지 판정한다.
   const slotAcc = new Map<string, Map<string, { intervals: DayInterval[]; periodless: boolean }>>();
   const mark = (ym: string, key: string, iv: DayInterval | null) => {
@@ -40,8 +41,14 @@ export async function computeBoardTodos(supabase: SupabaseClient): Promise<Recor
   for (const u of uploadsQ.data ?? []) {
     const iv =
       u.period_start && u.period_end ? { start: String(u.period_start), end: String(u.period_end) } : null;
-    if (u.slot && u.slot_ym) {
-      mark(String(u.slot_ym), String(u.slot), iv);
+    if (u.slot) {
+      const slotYm = u.slot_ym ? String(u.slot_ym) : null;
+      if (slotYm) mark(slotYm, String(u.slot), iv);
+      if (iv) {
+        for (const ym of months) {
+          if (ym !== slotYm && iv.start.slice(0, 7) <= ym && ym <= iv.end.slice(0, 7)) mark(ym, String(u.slot), iv);
+        }
+      }
       continue;
     }
     const key =
