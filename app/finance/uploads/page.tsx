@@ -6,8 +6,9 @@ import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import UploadHistory, { type UploadRow } from '@/components/finance/UploadHistory';
+import { UNITS, unitOf } from '@/lib/finance/types';
 
-export default async function UploadsPage() {
+export default async function UploadsPage({ searchParams }: { searchParams: { unit?: string } }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -19,14 +20,15 @@ export default async function UploadsPage() {
   if (brandScope) redirect('/finance/classify');
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
-  const data = unwrap(
-    await supabase
-      .schema('finance')
-      .from('uploads')
-      .select('id,source,bank,card_issuer,brand,period_start,period_end,row_count,uploaded_at,settled_tx_id,statement_total')
-      .order('uploaded_at', { ascending: false }),
-    '자료 이력',
-  );
+  // 단위 탭 — 스탭밀은 스탭밀 업로드만, 가든 지점은 가든(공용) 업로드를 보여준다
+  const unit = unitOf(searchParams.unit);
+  let upQ = supabase
+    .schema('finance')
+    .from('uploads')
+    .select('id,source,bank,card_issuer,brand,period_start,period_end,row_count,uploaded_at,settled_tx_id,statement_total')
+    .order('uploaded_at', { ascending: false });
+  if (unit) upQ = upQ.eq('brand', unit.brand);
+  const data = unwrap(await upQ, '자료 이력');
   const list: UploadRow[] = (data as UploadRow[] | null) ?? [];
 
   // 이력(uploads) 기록 없이 들어온 쿠팡 영수증 품목(과거 적용분)도 합산 행으로 보여줌
@@ -41,7 +43,7 @@ export default async function UploadsPage() {
     '쿠팡 영수증 품목',
   );
   const orphans = (orphan as { amount_out: number; tx_at: string }[] | null) ?? [];
-  if (orphans.length > 0) {
+  if (orphans.length > 0 && (!unit || unit.brand === 'garden')) {
     const dates = orphans.map((r) => r.tx_at).sort();
     list.push({
       id: -1, // 합산 행(기록 없음) 표식
@@ -69,7 +71,34 @@ export default async function UploadsPage() {
             ← 자료 분류
           </Link>
         </div>
-        <p className="mb-5 text-[13px] text-muted-foreground">그동안 올린 은행·신한카드·쿠팡 영수증 자료의 이력이에요.</p>
+        <p className="mb-4 text-[13px] text-muted-foreground">
+          그동안 올린 은행·신한카드·쿠팡 영수증 자료의 이력이에요.
+          {unit?.store && ' 통장·카드는 가든 공용 자료라 양재천·판교 탭에 같이 보여요.'}
+        </p>
+        {/* 단위 탭 */}
+        <div className="mb-5 flex overflow-hidden rounded-md border border-border" style={{ width: 'fit-content' }}>
+          <Link
+            href="/finance/uploads"
+            aria-current={!unit ? 'page' : undefined}
+            className={`px-3 py-1.5 text-[13px] transition-colors ${
+              !unit ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            전체
+          </Link>
+          {UNITS.map((u) => (
+            <Link
+              key={u.id}
+              href={`/finance/uploads?unit=${u.id}`}
+              aria-current={unit?.id === u.id ? 'page' : undefined}
+              className={`px-3 py-1.5 text-[13px] transition-colors ${
+                unit?.id === u.id ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {u.label}
+            </Link>
+          ))}
+        </div>
         <UploadHistory uploads={list} />
       </div>
     </div>

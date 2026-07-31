@@ -29,6 +29,25 @@ export interface AccountingUnit {
   store: Store | null; // 가든만 지점 구분
 }
 
+// 회계 하위 내비의 3단위 — 자료 입력·분류·이력·월 확정이 이 단위로 구분된다 (2026-07-31 대표 지시).
+// 은행·카드 계좌는 가든 공용이라, 가든 지점 페이지의 은행·카드 업로드는 store 없이(brand=garden) 들어가고
+// 지점 귀속은 분류 화면(지정·분할)에서 확정한다. POS·월확정은 지점 단위 그대로.
+export type UnitId = 'staffmeal' | 'yangjae' | 'pangyo';
+export interface UnitDef {
+  id: UnitId;
+  brand: Brand;
+  store: Store | null; // 스탭밀=단일 매장(null)
+  label: string;
+}
+export const UNITS: UnitDef[] = [
+  { id: 'staffmeal', brand: 'staffmeal', store: null, label: '스탭밀' },
+  { id: 'yangjae', brand: 'garden', store: 'yangjae', label: '가든서비스 양재천점' },
+  { id: 'pangyo', brand: 'garden', store: 'pangyo', label: '가든서비스 판교점' },
+];
+export const unitOf = (id: string | null | undefined): UnitDef | null =>
+  UNITS.find((u) => u.id === id) ?? null;
+export const unitLabel = (id: string | null | undefined) => unitOf(id)?.label ?? '미지정';
+
 // 계정과목 대분류
 export type CategoryType =
   | 'revenue' // 매출

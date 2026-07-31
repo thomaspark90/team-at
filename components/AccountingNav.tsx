@@ -10,10 +10,12 @@ const TRANSFER = [
   { href: '/dashboard/transfer', label: '송금 요청' },
   { href: '/dashboard/history', label: '송금 설정' },
 ];
+// 회계 단위 3개(스탭밀/양재천/판교)별로 자료 입력이 분리 — 분류·이력·확정은 페이지 안 단위 탭으로 전환
 const BOOKKEEPING = [
   { href: '/finance', label: '자료 입력' },
-  { href: '/finance/upload/garden', label: '가든 업로드' },
-  { href: '/finance/upload/staffmeal', label: '스탭밀 업로드' },
+  { href: '/finance/upload/staffmeal', label: '스탭밀' },
+  { href: '/finance/upload/yangjae', label: '양재천점' },
+  { href: '/finance/upload/pangyo', label: '판교점' },
   { href: '/finance/classify', label: '자료 분류' },
   { href: '/finance/uploads', label: '자료 이력' },
 ];

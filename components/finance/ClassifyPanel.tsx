@@ -44,6 +44,7 @@ interface Suggestion {
 }
 
 const CONF = 0.6;
+const PAGE_SIZE = 100; // 자료 분류 표 페이지 크기
 // Gemini billing(유료 Tier 1) 연결 확인(2026-07) → AI 추천 부활.
 const AI_ENABLED = true;
 const TYPE_LABEL: Record<string, string> = {
@@ -69,10 +70,10 @@ export default function ClassifyPanel({
   txns: TxRow[];
   cats: Cat[];
   userId: string;
-  confirmed?: { ym: string; brand: string }[]; // 확정은 브랜드별 — (ym, brand) 쌍
+  confirmed?: { ym: string; brand: string; store?: string | null }[]; // 확정은 3단위 — (ym, brand, store)
   rules?: { normalized_key: string; category_id: number; brand: string }[];
   splitRules?: SplitRule[];
-  initialFilter?: { ym?: string; type?: string; cat?: string; unclassified?: boolean; source?: string; brand?: string };
+  initialFilter?: { ym?: string; type?: string; cat?: string; unclassified?: boolean; source?: string; brand?: string; store?: string };
   lockedBrand?: 'staffmeal' | 'garden' | null; // 브랜드 스코프 멤버 — 서버에서 해당 브랜드만 내려옴, 브랜드 탭 숨김
 }) {
   const router = useRouter();
@@ -81,11 +82,18 @@ export default function ClassifyPanel({
   const ruleFor = (t: TxRow) => (t.normalized_key ? ruleMap.get(`${t.brand}|${t.normalized_key}`) : undefined);
   const splitRuleMap = new Map(splitRules.map((r) => [`${r.brand}|${r.normalized_key}`, r]));
   const splitRuleFor = (t: TxRow) => (t.normalized_key ? splitRuleMap.get(`${t.brand}|${t.normalized_key}`) : undefined);
-  // 확정 잠금은 (ym, brand) 단위 — 한쪽 브랜드 확정이 다른 브랜드 분류를 막지 않는다
-  const confirmedSet = new Set(confirmed.map((c) => `${c.ym}|${c.brand}`));
-  const confirmedYmsFor = (brand: string) => confirmed.filter((c) => c.brand === brand).map((c) => c.ym);
+  // 확정 잠금은 3단위(ym, brand, store) — 한 단위 확정이 다른 단위 분류를 막지 않는다.
+  // 가든의 지점 미지정(store null) 행은 두 지점 모두 확정된 달에만 잠근다(확정 시 미지정 0건이 강제되므로 사후 유입분 보호용).
+  const confirmedSet = new Set(confirmed.map((c) => `${c.ym}|${c.brand}|${c.store ?? ''}`));
+  const confirmedYmsFor = (brand: string) =>
+    Array.from(new Set(confirmed.filter((c) => c.brand === brand).map((c) => c.ym)));
   const confirmedYmsAll = Array.from(new Set(confirmed.map((c) => c.ym)));
-  const isLocked = (tx: TxRow) => confirmedSet.has(`${tx.tx_at.slice(0, 7)}|${tx.brand}`);
+  const isLocked = (tx: TxRow) => {
+    const ym = tx.tx_at.slice(0, 7);
+    if (tx.brand !== 'garden') return confirmedSet.has(`${ym}|${tx.brand}|`);
+    if (tx.store) return confirmedSet.has(`${ym}|garden|${tx.store}`);
+    return confirmedSet.has(`${ym}|garden|yangjae`) && confirmedSet.has(`${ym}|garden|pangyo`);
+  };
   // 건별분할 잠금 계정(원거래 표식)
   const splitCatId = cats.find((c) => c.type === 'excluded' && c.name === '건별분할')?.id;
   const sortTxns = (arr: TxRow[]) =>
@@ -122,11 +130,14 @@ export default function ClassifyPanel({
       ? (legacyBrand[initBrand] ?? initBrand)
       : 'all'
   );
-  const [storeFilter, setStoreFilter] = useState('all'); // 가든 지점: all | pangyo | yangjae | none(미지정)
+  const [storeFilter, setStoreFilter] = useState(
+    ['pangyo', 'yangjae', 'none'].includes(initialFilter?.store ?? '') ? initialFilter!.store! : 'all'
+  ); // 가든 지점: all | pangyo | yangjae | none(미지정)
   const [unclOnly, setUnclOnly] = useState(!!initialFilter?.unclassified); // 미분류만 보기
   const [search, setSearch] = useState(''); // 가맹점/내용 검색
   const [selected, setSelected] = useState<Set<number>>(new Set()); // 다중 선택
   const [bulkCat, setBulkCat] = useState<number | ''>(''); // 일괄 분류 카테고리
+  const [page, setPage] = useState(1); // 100건 단위 페이지
   // 건별 분할 모달
   const [splitTarget, setSplitTarget] = useState<SplitTarget | null>(null);
   const [splitSug, setSplitSug] = useState<SplitRuleSuggestion | null>(null);

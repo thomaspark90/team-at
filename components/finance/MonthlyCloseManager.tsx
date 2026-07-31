@@ -9,6 +9,7 @@ export interface MonthRow {
   ym: string;
   total: number;
   unclassified: number;
+  unassigned?: number; // 가든 지점 단위 전용 — 지점 미지정 가든 거래 수(0이어야 확정 가능)
   status: 'open' | 'submitted' | 'confirmed';
   confirmedAt: string | null;
 }
@@ -18,11 +19,13 @@ const fmtDate = (iso: string | null) => (iso ? iso.slice(0, 10) : '');
 export default function MonthlyCloseManager({
   months,
   canConfirm,
+  unit = 'yangjae',
   brand = 'garden',
 }: {
   months: MonthRow[];
   canConfirm: boolean;
-  brand?: 'garden' | 'staffmeal'; // 확정은 (ym, brand) 단위 — 페이지의 브랜드 탭이 내려줌
+  unit?: 'staffmeal' | 'yangjae' | 'pangyo'; // 확정 3단위 — 페이지의 단위 탭이 내려줌
+  brand?: 'garden' | 'staffmeal'; // 업로드 현황 점검용(은행·카드는 브랜드 공용)
 }) {
   const [rows, setRows] = useState<MonthRow[]>(months);
   const [busy, setBusy] = useState<string | null>(null);
@@ -63,7 +66,7 @@ export default function MonthlyCloseManager({
       const res = await fetch('/api/finance/close', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ym, action, brand }),
+        body: JSON.stringify({ ym, action, unit }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '처리에 실패했어요.');
@@ -108,7 +111,8 @@ export default function MonthlyCloseManager({
             <tbody>
               {rows.map((r) => {
                 const confirmed = r.status === 'confirmed';
-                const ready = r.unclassified === 0;
+                const unassigned = r.unassigned ?? 0;
+                const ready = r.unclassified === 0 && unassigned === 0;
                 return (
                   <tr key={r.ym} className={`border-t border-border hover:bg-accent ${confirmed ? 'bg-muted' : ''}`}>
                     <Td>{fmtYm(r.ym)}</Td>
@@ -128,7 +132,11 @@ export default function MonthlyCloseManager({
                       ) : ready ? (
                         <span className="text-muted-foreground">확정 대기</span>
                       ) : (
-                        <span className="text-foreground">미분류 {won(r.unclassified)}건</span>
+                        <span className="text-foreground">
+                          {r.unclassified > 0 && `미분류 ${won(r.unclassified)}건`}
+                          {r.unclassified > 0 && unassigned > 0 && ' · '}
+                          {unassigned > 0 && `지점 미지정 ${won(unassigned)}건`}
+                        </span>
                       )}
                     </Td>
                     <Td right>
@@ -143,8 +151,15 @@ export default function MonthlyCloseManager({
                           <span className="text-[11px] text-muted-foreground">—</span>
                         )
                       ) : !ready ? (
-                        <Link href={`/finance/classify?ym=${r.ym}&unclassified=1`} className="ta-btn text-[13px]">
-                          미분류 분류 →
+                        <Link
+                          href={
+                            r.unclassified > 0
+                              ? `/finance/classify?ym=${r.ym}&unclassified=1`
+                              : `/finance/classify?ym=${r.ym}&brand=garden&store=none`
+                          }
+                          className="ta-btn text-[13px]"
+                        >
+                          {r.unclassified > 0 ? '미분류 분류 →' : '지점 지정 →'}
                         </Link>
                       ) : canConfirm ? (
                         <button onClick={() => requestConfirm(r.ym)} className="ta-btn-primary text-[13px]">

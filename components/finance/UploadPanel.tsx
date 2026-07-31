@@ -25,7 +25,13 @@ const BANKS: { value: BankSource; label: string }[] = [
   { value: 'woori', label: '우리은행' },
 ];
 
-export default function UploadPanel({ brand = 'garden' }: { brand?: Brand }) {
+export default function UploadPanel({
+  brand = 'garden',
+  sharedGardenNote = false,
+}: {
+  brand?: Brand;
+  sharedGardenNote?: boolean; // 가든 지점 페이지에서 — 통장이 공용임을 안내
+}) {
   const [bank, setBank] = useState<BankSource>('shinhan');
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState('');
@@ -88,6 +94,14 @@ export default function UploadPanel({ brand = 'garden' }: { brand?: Brand }) {
         <p className="text-[13px] text-muted-foreground">
           {brandLabel(brand)} 명의 통장의 거래내역 PDF를 올려 파싱·미리보기 후 저장해요. 같은 거래는 자동으로 중복 제거되고,
           거래는 전부 <b>{brandLabel(brand)}</b> 회계로 들어가요.
+          {sharedGardenNote && (
+            <>
+              {' '}
+              <span className="text-amber-600 dark:text-amber-500">
+                통장은 가든 공용이라 지점이 자동으로 찍히지 않아요 — 자료 분류에서 지점 지정·분할로 나눠주세요.
+              </span>
+            </>
+          )}
         </p>
       </div>
 

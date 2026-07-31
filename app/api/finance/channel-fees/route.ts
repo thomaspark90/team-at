@@ -22,16 +22,17 @@ export async function POST(req: Request) {
   if (!['garden', 'staffmeal'].includes(brand)) return NextResponse.json({ error: '브랜드가 올바르지 않습니다.' }, { status: 400 });
   if (!/^\d{4}-\d{2}$/.test(ym)) return NextResponse.json({ error: '월(ym)이 올바르지 않습니다.' }, { status: 400 });
 
-  // 확정된 달·브랜드는 변경 불가(다른 재무 라우트와 동일 규칙) — brand 조건 필수((ym,brand) 단위 확정)
-  const { data: close } = await supabase
+  // 확정된 달은 변경 불가 — 수수료는 브랜드 단위 입력인데 확정은 지점 단위라,
+  // 그 브랜드의 어느 한 단위라도 확정이면 잠근다(지점 안분 숫자 보호).
+  const { data: closeRows } = await supabase
     .schema('finance')
     .from('monthly_close')
     .select('status')
     .eq('ym', ym)
     .eq('brand', brand)
-    .maybeSingle();
-  if (close?.status === 'confirmed') {
-    return NextResponse.json({ error: `${ym}은 이미 확정된 달이라 채널수수료를 바꿀 수 없어요.` }, { status: 409 });
+    .eq('status', 'confirmed');
+  if ((closeRows ?? []).length > 0) {
+    return NextResponse.json({ error: `${ym}은 이미 확정된 단위가 있어 채널수수료를 바꿀 수 없어요.` }, { status: 409 });
   }
 
   // amount 미지정/null → 삭제(추정으로 복귀)

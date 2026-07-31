@@ -28,17 +28,18 @@ export async function POST(req: Request) {
   if (!['식자재', '포장소모품'].includes(kind)) return NextResponse.json({ error: '구분이 올바르지 않습니다.' }, { status: 400 });
   if (!Number.isFinite(amount) || amount < 0) return NextResponse.json({ error: '금액이 올바르지 않습니다.' }, { status: 400 });
 
-  // 확정된 달·브랜드는 기말재고를 바꿀 수 없음(확정 후 원가 변동 방지) — pos/save·uploads/delete와 동일 규칙
-  // brand 조건 필수: 확정이 (ym, brand) 단위가 되면서 같은 ym 행이 브랜드별로 존재한다
-  const { data: close } = await supabase
+  // 확정된 달은 기말재고를 바꿀 수 없음(확정 후 원가 변동 방지).
+  // 재고는 브랜드 단위 입력인데 확정은 지점 단위 — 그 브랜드의 어느 한 단위라도 확정이면 잠근다
+  // (지점 손익이 재고를 매출비율로 안분하므로, 한 지점 확정 후 재고가 바뀌면 확정 숫자가 흔들린다).
+  const { data: closeRows } = await supabase
     .schema('finance')
     .from('monthly_close')
     .select('status')
     .eq('ym', ym)
     .eq('brand', brand)
-    .maybeSingle();
-  if (close?.status === 'confirmed') {
-    return NextResponse.json({ error: `${ym}은 이미 확정된 달이라 기말재고를 바꿀 수 없어요.` }, { status: 409 });
+    .eq('status', 'confirmed');
+  if ((closeRows ?? []).length > 0) {
+    return NextResponse.json({ error: `${ym}은 이미 확정된 단위가 있어 기말재고를 바꿀 수 없어요.` }, { status: 409 });
   }
 
   const { error } = await supabase

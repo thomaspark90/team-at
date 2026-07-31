@@ -48,25 +48,31 @@ export default async function FinancePage({ searchParams }: { searchParams: { br
     if (seg !== 'all') txQ = txQ.eq('brand', seg);
     const txnsRaw = unwrap(await txQ, '거래');
     const catsRaw = unwrap(await supabase.schema('finance').from('categories').select('id,type,name,parent_id'), '계정과목');
-    const closesRaw = unwrap(await supabase.schema('finance').from('monthly_close').select('ym,status,brand'), '월 확정');
+    const closesRaw = unwrap(await supabase.schema('finance').from('monthly_close').select('ym,status,brand,store'), '월 확정');
     const txns = (txnsRaw as (SankTx & { brand?: string })[] | null) ?? [];
     const cats = (catsRaw as SankCat[] | null) ?? [];
-    const closes = (closesRaw as { ym: string; status: string; brand?: string }[] | null) ?? [];
+    const closes = (closesRaw as { ym: string; status: string; brand?: string; store?: string | null }[] | null) ?? [];
     const yms = Array.from(new Set(txns.map((t) => t.ym))).sort((a, b) => b.localeCompare(a));
     const latest = yms[0] ?? '';
     const s = buildSankey(
       txns.filter((t) => t.ym === latest),
       cats
     );
-    // 확정은 (ym, brand) 단위 — '전체' 뷰는 그 달 거래가 있는 모든 브랜드가 확정돼야 확정
-    const confirmedBrands = new Set(
-      closes.filter((c) => c.ym === latest && c.status === 'confirmed').map((c) => c.brand ?? 'garden'),
+    // 확정은 3단위(ym, brand, store) — 브랜드가 '확정'이려면 가든은 양재천·판교 둘 다, 스탭밀은 자기 단위
+    const confirmedUnits = new Set(
+      closes
+        .filter((c) => c.ym === latest && c.status === 'confirmed')
+        .map((c) => `${c.brand ?? 'garden'}|${c.store || ''}`),
     );
+    const brandConfirmed = (b: string) =>
+      b === 'garden'
+        ? confirmedUnits.has('garden|yangjae') && confirmedUnits.has('garden|pangyo')
+        : confirmedUnits.has(`${b}|`);
     const latestBrands = Array.from(new Set(txns.filter((t) => t.ym === latest).map((t) => t.brand ?? 'garden')));
     const latestConfirmed =
       seg === 'all'
-        ? latestBrands.length > 0 && latestBrands.every((b) => confirmedBrands.has(b))
-        : confirmedBrands.has(seg);
+        ? latestBrands.length > 0 && latestBrands.every((b) => brandConfirmed(b))
+        : brandConfirmed(seg);
     overview = {
       latest,
       totalRevenue: s.totalRevenue,
@@ -95,25 +101,28 @@ export default async function FinancePage({ searchParams }: { searchParams: { br
                   올린 뒤 <Link href="/finance/classify" className="underline">자료 분류</Link>에서 계정을 지정해요.
                 </p>
               </div>
-              {/* 브랜드별 업로드 페이지 진입 */}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Link
-                  href="/finance/upload/garden"
-                  className="ta-card flex flex-col gap-1 p-5 transition-colors hover:border-foreground/40"
-                >
-                  <span className="text-[15px] font-medium">가든서비스 자료 입력 →</span>
-                  <span className="text-[13px] text-muted-foreground">
-                    가든 명의 통장 PDF · 신한카드 · 쿠팡 영수증 (판교·양재천)
-                  </span>
-                </Link>
+              {/* 단위별 업로드 페이지 진입 — 스탭밀 / 가든 양재천점 / 가든 판교점 */}
+              <div className="grid gap-3 sm:grid-cols-3">
                 <Link
                   href="/finance/upload/staffmeal"
                   className="ta-card flex flex-col gap-1 p-5 transition-colors hover:border-foreground/40"
                 >
-                  <span className="text-[15px] font-medium">스탭밀 자료 입력 →</span>
-                  <span className="text-[13px] text-muted-foreground">
-                    스탭밀 명의 통장 PDF · 신한카드 · 쿠팡 영수증
-                  </span>
+                  <span className="text-[15px] font-medium">스탭밀 →</span>
+                  <span className="text-[13px] text-muted-foreground">통장 PDF · 신한카드 · POS(페이히어)</span>
+                </Link>
+                <Link
+                  href="/finance/upload/yangjae"
+                  className="ta-card flex flex-col gap-1 p-5 transition-colors hover:border-foreground/40"
+                >
+                  <span className="text-[15px] font-medium">가든서비스 양재천점 →</span>
+                  <span className="text-[13px] text-muted-foreground">POS(토스) · 가든 공용 통장·카드</span>
+                </Link>
+                <Link
+                  href="/finance/upload/pangyo"
+                  className="ta-card flex flex-col gap-1 p-5 transition-colors hover:border-foreground/40"
+                >
+                  <span className="text-[15px] font-medium">가든서비스 판교점 →</span>
+                  <span className="text-[13px] text-muted-foreground">POS(페이히어) · 가든 공용 통장·카드</span>
                 </Link>
               </div>
               {/* 네이버페이 자동 수집 설정 — 배송지로 브랜드를 자동 판정하는 공용 설정 */}

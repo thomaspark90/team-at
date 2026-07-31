@@ -6,11 +6,12 @@ import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import ClassifyPanel, { type TxRow, type Cat, type SplitRule } from '@/components/finance/ClassifyPanel';
+import { unitOf } from '@/lib/finance/types';
 
 export default async function ClassifyPage({
   searchParams,
 }: {
-  searchParams: { ym?: string; type?: string; cat?: string; unclassified?: string; source?: string; brand?: string };
+  searchParams: { ym?: string; type?: string; cat?: string; unclassified?: string; source?: string; brand?: string; store?: string; unit?: string };
 }) {
   const supabase = await createClient();
   const {
@@ -40,13 +41,22 @@ export default async function ClassifyPage({
     '계정과목',
   );
 
-  // 확정된 달은 분류 잠금 — 확정은 (ym, brand) 단위(브랜드별 회계 분리)
+  // 확정된 달은 분류 잠금 — 확정은 3단위 (ym, brand, store)
   const closed = unwrap(
-    await supabase.schema('finance').from('monthly_close').select('ym,brand').eq('status', 'confirmed'),
+    await supabase.schema('finance').from('monthly_close').select('ym,brand,store').eq('status', 'confirmed'),
     '월 확정',
   );
   const confirmed =
-    (closed as { ym: string; brand?: string }[] | null)?.map((c) => ({ ym: c.ym, brand: c.brand ?? 'garden' })) ?? [];
+    (closed as { ym: string; brand?: string; store?: string | null }[] | null)?.map((c) => ({
+      ym: c.ym,
+      brand: c.brand ?? 'garden',
+      store: c.store || null,
+    })) ?? [];
+
+  // 단위(unit) 파라미터 → 브랜드/지점 필터 프리셋 (내비 3단위 진입용)
+  const unit = unitOf(searchParams.unit);
+  const presetBrand = unit ? unit.brand : searchParams.brand;
+  const presetStore = unit ? (unit.store ?? undefined) : searchParams.store;
 
   // 학습된 규칙(정규화키→계정) — 미분류 행에 '추천'으로 미리 선택
   const ruleRows = unwrap(
@@ -94,7 +104,8 @@ export default async function ClassifyPage({
             cat: searchParams.cat,
             unclassified: searchParams.unclassified === '1',
             source: searchParams.source,
-            brand: searchParams.brand,
+            brand: presetBrand,
+            store: presetStore,
           }}
         />
       </div>

@@ -62,13 +62,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '저장할 매출이 없습니다.' }, { status: 422 });
   }
 
-  // 확정된 달 보호 — 확정은 (ym, brand) 단위
+  // 확정된 달 보호 — 확정은 (ym, brand, store) 3단위, POS 는 정확히 그 단위로 귀속
   const { data: closed, error: closeErr } = await supabase
     .schema('finance')
     .from('monthly_close')
     .select('ym,status')
     .in('ym', r.yms)
     .eq('brand', brand)
+    .eq('store', store)
     .eq('status', 'confirmed');
   if (closeErr && !isMissingTable(closeErr)) {
     return NextResponse.json({ error: `확정월 확인 실패: ${closeErr.message}` }, { status: 500 });

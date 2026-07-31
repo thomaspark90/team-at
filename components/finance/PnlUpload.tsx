@@ -41,11 +41,12 @@ const POS_UNITS: PosUnit[] = [
   { key: 'staffmeal', brand: 'staffmeal', store: '', posType: 'payhere', label: '스탭밀 (페이히어)' },
 ];
 
-export default function PnlUpload() {
+export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
   const router = useRouter();
+  const fixedUnit = POS_UNITS.find((u) => u.key === fixedUnitKey) ?? null;
   const [file, setFile] = useState<File | null>(null);
-  const [password, setPassword] = useState('0000');
-  const [unit, setUnit] = useState<PosUnit>(POS_UNITS[0]);
+  const [password, setPassword] = useState((fixedUnit ?? POS_UNITS[0]).posType === 'toss' ? '0000' : '');
+  const [unit, setUnit] = useState<PosUnit>(fixedUnit ?? POS_UNITS[0]);
   const [mapping, setMapping] = useState<{ sheet: string; header: Record<string, string> } | null>(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -123,20 +124,25 @@ export default function PnlUpload() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        {/* POS 단위 선택 — 어느 브랜드·지점의 파일인지 (같은 달이라도 지점별로 따로 저장·교체) */}
-        <div className="flex overflow-hidden rounded-md border border-border">
-          {POS_UNITS.map((u) => (
-            <button
-              key={u.key}
-              onClick={() => { setUnit(u); setPassword(u.posType === 'toss' ? '0000' : ''); reset(); }}
-              className={`px-3 py-1.5 text-[13px] transition-colors ${
-                unit.key === u.key ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {u.label}
-            </button>
-          ))}
-        </div>
+        {/* POS 단위 선택 — 어느 브랜드·지점의 파일인지 (같은 달이라도 지점별로 따로 저장·교체).
+            단위별 자료 입력 페이지에서는 단위가 고정돼 선택기가 숨는다. */}
+        {fixedUnit ? (
+          <span className="rounded-md border border-border bg-muted px-3 py-1.5 text-[13px] text-foreground">{fixedUnit.label}</span>
+        ) : (
+          <div className="flex overflow-hidden rounded-md border border-border">
+            {POS_UNITS.map((u) => (
+              <button
+                key={u.key}
+                onClick={() => { setUnit(u); setPassword(u.posType === 'toss' ? '0000' : ''); reset(); }}
+                className={`px-3 py-1.5 text-[13px] transition-colors ${
+                  unit.key === u.key ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {u.label}
+              </button>
+            ))}
+          </div>
+        )}
         <input
           type="file"
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
