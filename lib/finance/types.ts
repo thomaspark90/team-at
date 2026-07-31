@@ -48,6 +48,17 @@ export const unitOf = (id: string | null | undefined): UnitDef | null =>
   UNITS.find((u) => u.id === id) ?? null;
 export const unitLabel = (id: string | null | undefined) => unitOf(id)?.label ?? '미지정';
 
+// 거래 출처(bank 컬럼) 라벨 — 은행 계좌(신한/우리)와 결제 지출(네이버 페이/쿠팡)이 한 축에 섞여 있어
+// '은행' 접미를 일괄로 붙이면 '네이버은행/coupang은행'처럼 어색해진다(2026-07-31 표기 확정).
+export const BANK_SOURCE_LABELS: Record<string, string> = {
+  shinhan: '신한은행',
+  woori: '우리은행',
+  naverpay: '네이버 페이 지출',
+  coupang: '쿠팡 지출',
+  excel: '엑셀',
+};
+export const bankSourceLabel = (b: string | null | undefined) => (b ? (BANK_SOURCE_LABELS[b] ?? b) : '');
+
 // 계정과목 대분류
 export type CategoryType =
   | 'revenue' // 매출

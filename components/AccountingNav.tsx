@@ -6,7 +6,7 @@ import { UNITS, unitOf, type UnitId } from '@/lib/finance/types';
 
 // 회계 내비 — 2단 구조 (2026-07-31 대표 지시):
 //   1단: 회계 단위 선택 — 스탭밀 | 가든서비스(양재천점) | 가든서비스(판교점)
-//   2단: 선택된 단위 소속 메뉴 — 대시보드 | 송금 요청·송금 설정 | 자료 입력·자료 분류·자료 이력 | 월 확정·계정과목
+//   2단: 선택된 단위 소속 메뉴 — 대시보드 | 송금 요청·송금 설정 | 자료 입력·지출 자료 분류·자료 이력 | 월 확정·계정과목
 // 단위는 URL(?unit= 또는 /finance/upload/[unit])로 전달되고, 모든 메뉴 링크가 단위를 실어 나른다.
 
 const UNIT_TAB_LABEL: Record<UnitId, string> = {
@@ -37,7 +37,7 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
   ];
   const BOOKKEEPING = [
     { href: `/finance/upload/${u}`, label: '자료 입력' },
-    { href: '/finance/classify', label: '자료 분류' },
+    { href: '/finance/classify', label: '지출 자료 분류' },
     { href: '/finance/uploads', label: '자료 이력' },
   ];
   const CLOSING = [{ href: '/finance/close', label: '월 확정' }];
@@ -45,7 +45,7 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
 
   // 브랜드 스코프 멤버 — 단위 탭 없이(서버 리다이렉트로 강제) 분류+송금만
   const groups = scoped
-    ? [[{ href: '/finance/classify', label: '자료 분류' }], TRANSFER]
+    ? [[{ href: '/finance/classify', label: '지출 자료 분류' }], TRANSFER]
     : [
         HOME,
         TRANSFER,

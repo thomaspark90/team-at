@@ -238,7 +238,7 @@ export default function SankeyFlow({
 
   const ebit = d.totalRevenue - d.totalExpense;
 
-  // 노드 클릭 → 자료 분류 화면을 해당 거래만 필터링해 연다
+  // 노드 클릭 → 지출 자료 분류 화면을 해당 거래만 필터링해 연다
   const hrefFor = (n: Rect): string | null => {
     if (!n.linkType) return null;
     const p = new URLSearchParams();
@@ -352,7 +352,7 @@ export default function SankeyFlow({
                       </tspan>
                     </text>
                   )}
-                  <title>{`${n.name} · ${won(n.amount)} (${pct(n.amount, n.total)})${href ? ' · 클릭해서 자료 분류로' : ''}`}</title>
+                  <title>{`${n.name} · ${won(n.amount)} (${pct(n.amount, n.total)})${href ? ' · 클릭해서 지출 자료 분류로' : ''}`}</title>
                 </g>
               );
             })}

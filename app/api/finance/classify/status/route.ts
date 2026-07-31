@@ -10,7 +10,7 @@ export interface SourceStatus {
   byBank: Record<string, number>; // 미분류의 은행별 내역(은행 출처 타일 캡션용)
 }
 
-// 자료 분류 보드 상태 — 해당 월 거래를 출처(은행/카드/네이버)별로 집계 + 월 확정 상태.
+// 지출 자료 분류 보드 상태 — 해당 월 거래를 출처(은행/카드/네이버)별로 집계 + 월 확정 상태.
 export async function GET(req: Request) {
   const supabase = await createClient();
   const {

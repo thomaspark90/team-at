@@ -162,7 +162,7 @@ export default function MonthlyUploadBoard({
       </div>
       <p className="mt-1 text-[13px] text-muted-foreground">
         매월 올려야 할 자료예요. 칸을 눌러 엑셀(.xlsx/.csv)을 올리면 AI가 양식과 무관하게 읽어 거래로
-        넣고, 올린 칸은 체크돼요. 저장된 거래는 <Link href="/finance/classify" className="underline">자료 분류</Link>에서 계정을 지정해요.
+        넣고, 올린 칸은 체크돼요. 저장된 거래는 <Link href="/finance/classify" className="underline">지출 자료 분류</Link>에서 계정을 지정해요.
       </p>
 
       <input ref={fileInput} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
@@ -176,7 +176,7 @@ export default function MonthlyUploadBoard({
                 const st = slots?.[s.key];
                 const busy = parsing && activeSlot === s.key;
                 if (s.source === 'naverpay') {
-                  // 네이버 — 매일 자동수집 소스: 칸 클릭은 업로드가 아니라 자료 분류(네이버 필터)로
+                  // 네이버 — 매일 자동수집 소스: 칸 클릭은 업로드가 아니라 지출 자료 분류(네이버 필터)로
                   // 이동한다. 이 달 수집 건수를 숫자로 표기하고, 엑셀 추가 업로드는 보조(+)로만 남긴다.
                   return (
                     <Link

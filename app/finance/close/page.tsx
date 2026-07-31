@@ -92,7 +92,7 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
         </div>
         <p className="mb-5 mt-0 text-[13px] leading-[1.6] text-muted-foreground">
           <b>{unit.label}</b>의 월 확정이에요 — 단위는 상단에서 선택해요. 미분류
-          {unit.store ? '와 지점 미지정 가든 거래' : ''}가 0건인 달만 확정할 수 있고, 확정하면 그 달·그 단위의 자료 분류가
+          {unit.store ? '와 지점 미지정 가든 거래' : ''}가 0건인 달만 확정할 수 있고, 확정하면 그 달·그 단위의 지출 자료 분류가
           잠겨요. {allowConfirm ? '' : '(확정 권한은 관리자에게 요청하세요.)'}
         </p>
         <MonthlyCloseManager key={unit.id} months={months} canConfirm={allowConfirm} unit={unit.id} brand={unit.brand} />

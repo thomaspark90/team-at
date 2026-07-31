@@ -81,7 +81,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
       if (!res.ok) throw new Error(j.error || '저장에 실패했어요.');
       setSaved(j as SaveResult);
       setPreview(null);
-      router.refresh(); // 자료 분류 목록에 새 카드 건 반영
+      router.refresh(); // 지출 자료 분류 목록에 새 카드 건 반영
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -99,7 +99,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
           <div className="mb-1 text-foreground">✓ 저장 완료{saved.linked ? ' · 정산 연결됨' : ' · 미연결(결제 대기)'}</div>
           <div className="text-[13px] text-muted-foreground">
             {won(saved.saved).replace('₩', '')}건 저장 · 중복 {saved.duplicates}건 건너뜀 · 카테고리는 직접 지정해요(학습된 가맹점은 미리 선택돼요) ·{' '}
-            <a href="/finance/classify?source=card" className="text-foreground underline">자료 분류에서 지정 →</a>
+            <a href="/finance/classify?source=card" className="text-foreground underline">지출 자료 분류에서 지정 →</a>
           </div>
         </div>
       )}
@@ -109,7 +109,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
         <div>
           <h2 className="text-[15px] text-foreground">신한카드 이용내역으로 지출 자료 세분화</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            신한 사업자카드 <b>이용내역 엑셀</b>을 올려, 통장의 <b>‘신한카드’ 결제 건</b>과 연결하세요. 그 결제 한 줄이 아래 사용내역으로 나뉘어 자료 분류에 들어가요.
+            신한 사업자카드 <b>이용내역 엑셀</b>을 올려, 통장의 <b>‘신한카드’ 결제 건</b>과 연결하세요. 그 결제 한 줄이 아래 사용내역으로 나뉘어 지출 자료 분류에 들어가요.
           </p>
         </div>
         <div>
@@ -177,7 +177,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
           </div>
 
           <div className="border-b border-border px-4 py-[10px] text-[12.5px] text-muted-foreground">
-            연결하면 아래 <b>{preview.fresh}건</b>이 자료 분류에 편입되고, 통장의 카드결제 1건은 <b>손익 제외 › 카드대금정산</b>으로 잠겨요.
+            연결하면 아래 <b>{preview.fresh}건</b>이 지출 자료 분류에 편입되고, 통장의 카드결제 1건은 <b>손익 제외 › 카드대금정산</b>으로 잠겨요.
             {preview.duplicates > 0 && <> (이미 저장된 {preview.duplicates}건 제외)</>}
           </div>
 

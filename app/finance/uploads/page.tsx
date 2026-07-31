@@ -68,7 +68,7 @@ export default async function UploadsPage({ searchParams }: { searchParams: { un
         <div className="mb-1 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">자료 이력</h1>
           <Link href="/finance/classify" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-            ← 자료 분류
+            ← 지출 자료 분류
           </Link>
         </div>
         <p className="mb-5 text-[13px] text-muted-foreground">

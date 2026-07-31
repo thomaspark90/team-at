@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { wonNum as won, fmtYm as fmtYmLabel } from '@/lib/finance/format';
 import SplitModal, { type SplitTarget, type SplitRuleSuggestion } from './SplitModal';
-import { storeLabel, type Brand, type Store } from '@/lib/finance/types';
+import { storeLabel, bankSourceLabel, type Brand, type Store } from '@/lib/finance/types';
 
 export interface TxRow {
   id: number;
@@ -44,7 +44,7 @@ interface Suggestion {
 }
 
 const CONF = 0.6;
-const PAGE_SIZE = 100; // 자료 분류 표 페이지 크기
+const PAGE_SIZE = 100; // 지출 자료 분류 표 페이지 크기
 // Gemini billing(유료 Tier 1) 연결 확인(2026-07) → AI 추천 부활.
 const AI_ENABLED = true;
 const TYPE_LABEL: Record<string, string> = {
@@ -55,7 +55,6 @@ const TYPE_LABEL: Record<string, string> = {
   excluded: '손익 제외',
 };
 const TYPE_ORDER = ['revenue', 'cogs', 'sga', 'non_operating', 'excluded'];
-const BANK_LABEL: Record<string, string> = { shinhan: '신한', woori: '우리', naverpay: '네이버', excel: '엑셀' };
 
 export default function ClassifyPanel({
   txns,
@@ -481,7 +480,7 @@ export default function ClassifyPanel({
                 onClick={() => setFilterBank(b)}
                 className={`rounded-sm px-3 py-1 text-[13px] ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
-                {b === 'all' ? '전체 은행' : `${BANK_LABEL[b] ?? b}은행`}
+                {b === 'all' ? '전체 출처' : bankSourceLabel(b)}
               </button>
             );
           })}
@@ -691,7 +690,7 @@ export default function ClassifyPanel({
                   <input type="checkbox" checked={allSelected} onChange={toggleAll} title="현재 페이지 전체 선택" aria-label="현재 페이지 전체 선택" />
                 </th>
                 <Th right>#</Th>
-                <Th>은행</Th>
+                <Th>출처</Th>
                 <Th>거래일자</Th>
                 <Th>거래시간</Th>
                 <Th right>금액</Th>
@@ -722,7 +721,7 @@ export default function ClassifyPanel({
                     <td className="px-2 py-2 text-right align-middle text-[12px] tabular-nums text-muted-foreground">
                       {pageStart + rowIdx + 1}
                     </td>
-                    <Td>{BANK_LABEL[tx.bank] ?? tx.bank}</Td>
+                    <Td>{bankSourceLabel(tx.bank)}</Td>
                     <Td mono>{date}</Td>
                     <Td mono>{time ?? ''}</Td>
                     <Td right mono>

@@ -17,14 +17,14 @@ interface Status {
 const TILES: { key: 'bank' | 'card' | 'naverpay'; label: string }[] = [
   { key: 'bank', label: '은행 입출금' },
   { key: 'card', label: '카드 지출' },
-  { key: 'naverpay', label: '네이버' },
+  { key: 'naverpay', label: '네이버 페이 지출' },
 ];
-const BANK_LABEL: Record<string, string> = { shinhan: '신한', woori: '우리', naverpay: '네이버', excel: '엑셀' };
+const BANK_LABEL: Record<string, string> = { shinhan: '신한', woori: '우리', naverpay: '네이버 페이', coupang: '쿠팡', excel: '엑셀' };
 
 const fmtYm = (ym: string) => `${ym.split('-')[0]}년 ${Number(ym.split('-')[1])}월`;
 
-// 자료 분류 보드 — 월별로 출처별 미분류가 얼마나 남았는지 To-do 로 보여주고,
-// 타일 클릭 시 자료 분류 화면을 해당 월·출처·미분류만으로 필터해 연다. 끝은 월 확정.
+// 지출 자료 분류 보드 — 월별로 출처별 미분류가 얼마나 남았는지 To-do 로 보여주고,
+// 타일 클릭 시 지출 자료 분류 화면을 해당 월·출처·미분류만으로 필터해 연다. 끝은 월 확정.
 // 기준 월(ym)은 대시보드 상단 공용 월 선택(AccountingBoards)에서 내려받는다.
 export default function ClassifyBoard({ ym }: { ym: string }) {
   const [status, setStatus] = useState<Status | null>(null);
@@ -59,7 +59,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
     <section className="rounded-2xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="m-0 text-[15px] font-medium">
-          자료 분류
+          지출 자료 분류
           {status && totalRows > 0 && (
             <span className={`ml-2 text-[12px] font-normal ${totalUncl === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
               {totalUncl === 0 ? '모두 분류됨' : `미분류 ${totalUncl}건`}

@@ -67,7 +67,7 @@ export default async function AccountingDashboardPage({ searchParams }: { search
           </div>
         </section>
 
-        {/* 월별 회계자료 업로드 → 자료 분류 보드 (상단 공용 월 선택) — 기장 권한자만.
+        {/* 월별 회계자료 업로드 → 지출 자료 분류 보드 (상단 공용 월 선택) — 기장 권한자만.
             브랜드는 상단 내비 단위가 고정(가든 지점 둘은 통장·카드가 공용이라 같은 가든 보드) */}
         {isStaff && <AccountingBoards fixedBrand={unit.brand} />}
 

@@ -98,7 +98,7 @@ export default async function FinancePage({ searchParams }: { searchParams: { br
                 <h2 className="m-0 text-[15px] text-foreground">자료 입력</h2>
                 <p className="mt-1 text-[13px] text-muted-foreground">
                   회계가 브랜드별로 분리돼 있어요. <b>브랜드 페이지에서 올려야</b> 그 브랜드 회계로 정확히 들어가요.
-                  올린 뒤 <Link href="/finance/classify" className="underline">자료 분류</Link>에서 계정을 지정해요.
+                  올린 뒤 <Link href="/finance/classify" className="underline">지출 자료 분류</Link>에서 계정을 지정해요.
                 </p>
               </div>
               {/* 단위별 업로드 페이지 진입 — 스탭밀 / 가든 양재천점 / 가든 판교점 */}
@@ -165,7 +165,7 @@ function Overview({ o }: { o: OverviewData }) {
               done={o.unclassifiedTotal === 0}
               text={o.unclassifiedTotal === 0 ? '미분류 없음 — 모두 분류됐어요' : `미분류 ${o.unclassifiedTotal}건`}
               href="/finance/classify?unclassified=1"
-              cta={o.unclassifiedTotal === 0 ? '자료 분류' : '분류하러 가기'}
+              cta={o.unclassifiedTotal === 0 ? '지출 자료 분류' : '분류하러 가기'}
             />
             <TodoRow
               done={o.latestConfirmed}
@@ -184,7 +184,7 @@ function Overview({ o }: { o: OverviewData }) {
           {/* 빠른 이동 */}
           <div className="flex flex-wrap gap-2">
             {[
-              { href: '/finance/classify', label: '자료 분류' },
+              { href: '/finance/classify', label: '지출 자료 분류' },
               { href: '/finance/flow', label: '자금 흐름' },
               { href: '/finance/dashboard', label: '대시보드' },
               { href: '/finance/metrics', label: '지표' },

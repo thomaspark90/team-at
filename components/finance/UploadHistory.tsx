@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { won } from '@/lib/finance/format';
+import { bankSourceLabel } from '@/lib/finance/types';
 
 export interface UploadRow {
   id: number;
@@ -18,14 +19,14 @@ export interface UploadRow {
   statement_total: number | null;
 }
 
-const BANK_LABEL: Record<string, string> = { shinhan: '신한', woori: '우리', naverpay: '네이버', excel: '엑셀' };
 const fmt = (s: string | null) => (s ? s.slice(0, 10) : '');
 
 function kind(u: UploadRow): string {
   if (u.source === 'card') return `${u.card_issuer ?? '신한'}카드 이용내역`;
   if (u.source === 'receipt') return `${u.card_issuer ?? '쿠팡'} 영수증`;
-  if (u.source === 'naverpay') return '네이버페이 결제내역(자동)';
-  return `${BANK_LABEL[u.bank] ?? u.bank}은행 거래내역`;
+  if (u.source === 'naverpay') return '네이버 페이 지출 내역(자동)';
+  if (u.source === 'coupang') return '쿠팡 지출 내역(자동)';
+  return `${bankSourceLabel(u.bank)} 거래내역`;
 }
 
 export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
@@ -64,7 +65,7 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
       <div className="mx-auto my-[60px] max-w-[460px] text-center text-muted-foreground">
         <div className="mb-3 text-[32px]">🗂️</div>
         <h2 className="mb-2 text-[15px] text-foreground">아직 올린 자료가 없어요</h2>
-        <p className="text-[13px]">자료 분류의 자료 보충에서 신한카드·쿠팡 자료를 올려보세요.</p>
+        <p className="text-[13px]">지출 자료 분류의 자료 보충에서 신한카드·쿠팡 자료를 올려보세요.</p>
       </div>
     );
   }
