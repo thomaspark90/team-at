@@ -10,13 +10,16 @@ export interface UploadSlot {
   // 저장될 거래의 출처 — 지출 자료 분류 타일 매칭 + 현금 집계(source='bank'만) 규칙에 쓰인다.
   // 지출 세부(카드·쿠팡)는 'card' 로 넣어 통장의 카드대금 결제 건과 이중계산을 막는다.
   source: 'bank' | 'card' | 'naverpay';
+  // 자동수집 소스(쿠팡·네이버 launchd 크롤러) — 보드에서 업로드 칸이 아니라
+  // '이 달 수집 N건 · 분류 보기' 타일로 표시. 엑셀 추가 업로드는 보조(+)로만.
+  auto?: boolean;
 }
 
 export const UPLOAD_SLOTS: UploadSlot[] = [
   { key: 'bank_shinhan', label: '신한은행', group: '입출금 내역', source: 'bank' },
   { key: 'bank_woori', label: '우리은행', group: '입출금 내역', source: 'bank' },
-  { key: 'coupang', label: '쿠팡 지출', group: '지출 세부 내역', source: 'card' },
-  { key: 'naverpay', label: '네이버 페이 지출', group: '지출 세부 내역', source: 'naverpay' },
+  { key: 'coupang', label: '쿠팡 지출', group: '지출 세부 내역', source: 'card', auto: true },
+  { key: 'naverpay', label: '네이버 페이 지출', group: '지출 세부 내역', source: 'naverpay', auto: true },
   { key: 'card_main', label: '주지출 카드', group: '지출 세부 내역', source: 'card' },
 ];
 

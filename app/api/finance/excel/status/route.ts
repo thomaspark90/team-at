@@ -95,20 +95,20 @@ export async function GET(req: Request) {
     if (key) add(key, r, 'auto');
   }
 
-  // 3) 네이버 — launchd 자동수집 거래가 이 달에 있으면 완료(매일 수집 = 월 전체).
-  //    건수는 항상 이 달의 naverpay 거래 수로 표기 — 보드 숫자 = 분류 화면(source=naverpay) 행 수.
-  {
+  // 3) 자동수집(네이버·쿠팡) — launchd 크롤러 거래가 이 달에 있으면 완료(매일 수집 = 월 전체).
+  //    건수는 항상 이 달의 해당 소스 거래 수로 표기 — 보드 숫자 = 지출 자료 분류 화면 행 수.
+  for (const key of ['naverpay', 'coupang'] as const) {
     const { count } = await supabase
       .schema('finance')
       .from('transactions')
       .select('id', { count: 'exact', head: true })
-      .eq('bank', 'naverpay')
+      .eq('bank', key)
       .eq('brand', brand)
       .eq('ym', ym);
-    acc.naverpay.count = count ?? 0;
-    if ((count ?? 0) > 0 && acc.naverpay.via === null) {
-      acc.naverpay.via = 'auto';
-      acc.naverpay.intervals.push({ start: monthStart, end: monthEnd });
+    acc[key].count = count ?? 0;
+    if ((count ?? 0) > 0 && acc[key].via === null) {
+      acc[key].via = 'auto';
+      acc[key].intervals.push({ start: monthStart, end: monthEnd });
     }
   }
 

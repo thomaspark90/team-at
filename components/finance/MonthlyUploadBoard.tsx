@@ -175,13 +175,13 @@ export default function MonthlyUploadBoard({
               {UPLOAD_SLOTS.filter((s) => s.group === group).map((s) => {
                 const st = slots?.[s.key];
                 const busy = parsing && activeSlot === s.key;
-                if (s.source === 'naverpay') {
+                if (s.auto) {
                   // 네이버 — 매일 자동수집 소스: 칸 클릭은 업로드가 아니라 지출 자료 분류(네이버 필터)로
                   // 이동한다. 이 달 수집 건수를 숫자로 표기하고, 엑셀 추가 업로드는 보조(+)로만 남긴다.
                   return (
                     <Link
                       key={s.key}
-                      href={`/finance/classify?ym=${ym}&source=naverpay&brand=${brand}`}
+                      href={`/finance/classify?ym=${ym}&source=${s.key === 'coupang' ? 'coupang' : 'naverpay'}&brand=${brand}`}
                       className={`flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 transition-colors hover:border-foreground/40 ${
                         st?.done ? 'border-border bg-muted/40' : 'border-dashed border-border bg-background'
                       }`}

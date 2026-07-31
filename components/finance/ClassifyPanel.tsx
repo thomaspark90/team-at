@@ -515,7 +515,13 @@ export default function ClassifyPanel({
             title="필터 해제"
             className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3 py-1 text-[13px] font-medium text-primary"
           >
-            {srcFilter === 'card' ? '💳 카드만 보기' : srcFilter === 'naverpay' ? '🟢 네이버페이만 보기' : '🏦 은행만 보기'}
+            {srcFilter === 'card'
+              ? '💳 카드만 보기'
+              : srcFilter === 'naverpay'
+                ? '🟢 네이버 페이 지출만 보기'
+                : srcFilter === 'coupang'
+                  ? '📦 쿠팡 지출만 보기'
+                  : '🏦 은행만 보기'}
             <span className="text-[15px] leading-none">×</span>
           </button>
         )}
