@@ -24,8 +24,16 @@ export default function TaskBoard({ board }: { board: TaskBoardId }) {
 
   const load = useCallback(() => {
     fetch('/api/finance/tasks', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => setTasks(Array.isArray(d) ? d : []))
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
+      .then((d) => {
+        setTasks(Array.isArray(d) ? d : []);
+        setError(null);
+      })
+      // 조회 실패가 '업무 0건'처럼 보이지 않게 구분해서 알린다
+      .catch(() => setError('업무 목록을 불러오지 못했어요. 새로고침해 주세요.'))
       .finally(() => setLoading(false));
   }, []);
 

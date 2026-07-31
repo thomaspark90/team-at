@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRefresh } from '@/components/Refresh';
 import type { Brand, ParsedTransaction } from '@/lib/finance/types';
 import { won, fmtYm } from '@/lib/finance/format';
 
@@ -33,7 +33,7 @@ interface SaveResult {
 
 
 export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -81,7 +81,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
       if (!res.ok) throw new Error(j.error || '저장에 실패했어요.');
       setSaved(j as SaveResult);
       setPreview(null);
-      router.refresh(); // 지출 자료 분류 목록에 새 카드 건 반영
+      refresh(); // 지출 자료 분류 목록에 새 카드 건 반영
     } catch (e) {
       setError((e as Error).message);
     } finally {

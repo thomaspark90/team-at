@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useRefresh } from '@/components/Refresh';
 import { createClient } from '@/lib/supabase/client';
 import { wonNum as won, fmtYm as fmtYmLabel } from '@/lib/finance/format';
 import SplitModal, { type SplitTarget, type SplitRuleSuggestion } from './SplitModal';
@@ -79,7 +80,8 @@ export default function ClassifyPanel({
   // 가든 지점 단위는 '지점 미지정(공용)' 거래도 함께 보여준다 — 지정·분할로 정리해야 하는 대상이라서.
   fixedUnit?: { brand: 'staffmeal' | 'garden' | 'personal'; store: 'pangyo' | 'yangjae' | null } | null;
 }) {
-  const router = useRouter();
+  // 서버 데이터 재조회 — 갱신 중 전역 인디케이터 표시
+  const { refresh } = useRefresh();
   // URL 쿼리 — 서버가 initialFilter로 안 내려주는 필터(은행·검색어·페이지)의 복원용
   const sp = useSearchParams();
   // 규칙은 브랜드별 — 같은 가맹점이라도 스탭밀/가든이 다른 계정을 쓸 수 있다
@@ -308,7 +310,7 @@ export default function ClassifyPanel({
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '분할 해제에 실패했어요.');
-      router.refresh();
+      refresh();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -343,7 +345,7 @@ export default function ClassifyPanel({
       setSelected(new Set());
       setMoveBrand('');
       setMoveStore('');
-      router.refresh();
+      refresh();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -937,7 +939,7 @@ export default function ClassifyPanel({
           onClose={() => setSplitTarget(null)}
           onDone={() => {
             setSplitTarget(null);
-            router.refresh();
+            refresh();
           }}
         />
       )}

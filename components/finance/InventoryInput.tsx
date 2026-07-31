@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRefresh } from '@/components/Refresh';
 import { won } from '@/lib/finance/format';
 
 interface KindVals {
@@ -18,7 +18,7 @@ interface Props {
 const KINDS: ('식자재' | '포장소모품')[] = ['식자재', '포장소모품'];
 
 export default function InventoryInput({ ym, brand, initial, prevMonth }: Props) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [vals, setVals] = useState<Record<string, string>>({
     식자재: initial.식자재 != null ? String(initial.식자재) : '',
     포장소모품: initial.포장소모품 != null ? String(initial.포장소모품) : '',
@@ -40,7 +40,7 @@ export default function InventoryInput({ ym, brand, initial, prevMonth }: Props)
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '저장 실패');
       setSaved(kind);
-      router.refresh();
+      refresh();
     } catch (e) {
       setError((e as Error).message);
     } finally {

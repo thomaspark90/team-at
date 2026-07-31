@@ -74,3 +74,6 @@ export default async function FlowPage({ searchParams }: { searchParams: { brand
     </div>
   );
 }
+
+// 브라우저 탭 제목 — 루트 템플릿(%s · team-at) 적용
+export const metadata = { title: '자금 흐름' };

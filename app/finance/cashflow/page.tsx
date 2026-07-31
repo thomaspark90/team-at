@@ -64,3 +64,6 @@ export default async function CashflowPage({ searchParams }: { searchParams: { b
     </div>
   );
 }
+
+// 브라우저 탭 제목 — 루트 템플릿(%s · team-at) 적용
+export const metadata = { title: '월별 요약' };

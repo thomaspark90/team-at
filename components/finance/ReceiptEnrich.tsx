@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRefresh } from '@/components/Refresh';
 import { won } from '@/lib/finance/format';
 
 interface Item {
@@ -31,7 +31,7 @@ interface ApplyResult {
 }
 
 export default function ReceiptEnrich() {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -71,7 +71,7 @@ export default function ReceiptEnrich() {
       if (!res.ok) throw new Error(j.error || '적용에 실패했어요.');
       setDone(j as ApplyResult);
       setPreview(null);
-      router.refresh(); // 지출 자료 분류 목록에 나뉜 품목 반영
+      refresh(); // 지출 자료 분류 목록에 나뉜 품목 반영
     } catch (e) {
       setError((e as Error).message);
     } finally {

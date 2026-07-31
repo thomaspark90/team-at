@@ -3,16 +3,21 @@
 import { useState } from 'react';
 import type { BankSource, Brand, ParsedTransaction } from '@/lib/finance/types';
 import { brandLabel } from '@/lib/finance/types';
+import type { ContinuityReport, ExcelMapping } from '@/lib/finance/excel';
 import { wonNum as won } from '@/lib/finance/format';
 
 interface Preview {
-  bank: BankSource;
+  bank?: BankSource;
   totalRows: number;
   sumIn: number;
   sumOut: number;
   fresh: number;
   duplicates: number;
   sample: ParsedTransaction[];
+  // 엑셀 경로에서만 — AI 열 매핑(저장 요청에 되돌려줌) + 잔액 연속성 검사 결과
+  mapping?: ExcelMapping;
+  continuity?: ContinuityReport | null;
+  skipped?: number;
 }
 interface SaveResult {
   saved: number;
@@ -41,14 +46,9 @@ export default function UploadPanel({
   const [preview, setPreview] = useState<Preview | null>(null);
   const [saved, setSaved] = useState<SaveResult | null>(null);
 
-  function buildForm() {
-    const fd = new FormData();
-    fd.append('file', file as File);
-    fd.append('bank', bank);
-    fd.append('brand', brand);
-    if (password) fd.append('password', password);
-    return fd;
-  }
+  // 엑셀(.xlsx/.xls/.csv)은 AI 열 매핑 경로(/api/finance/excel/*)로, PDF는 은행 파서 경로로.
+  const isExcel = !!file && /\.(xlsx|xls|csv)$/i.test(file.name);
+  const slotKey = bank === 'shinhan' ? 'bank_shinhan' : 'bank_woori'; // 월별 보드 완료 체크·잔액 연속성 검사용
 
   async function analyze() {
     if (!file) return;
@@ -57,7 +57,19 @@ export default function UploadPanel({
     setPreview(null);
     setSaved(null);
     try {
-      const res = await fetch('/api/finance/parse', { method: 'POST', body: buildForm() });
+      const fd = new FormData();
+      fd.append('file', file);
+      if (isExcel) {
+        fd.append('slot', slotKey);
+      } else {
+        fd.append('bank', bank);
+        fd.append('brand', brand);
+        if (password) fd.append('password', password);
+      }
+      const res = await fetch(isExcel ? '/api/finance/excel/parse' : '/api/finance/parse', {
+        method: 'POST',
+        body: fd,
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || '입력에 실패했습니다.');
       setPreview(json as Preview);
@@ -73,7 +85,20 @@ export default function UploadPanel({
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch('/api/finance/save', { method: 'POST', body: buildForm() });
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('brand', brand);
+      if (isExcel) {
+        fd.append('mapping', JSON.stringify(preview.mapping));
+        fd.append('slot', slotKey);
+      } else {
+        fd.append('bank', bank);
+        if (password) fd.append('password', password);
+      }
+      const res = await fetch(isExcel ? '/api/finance/excel/save' : '/api/finance/save', {
+        method: 'POST',
+        body: fd,
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || '저장에 실패했습니다.');
       setSaved(json as SaveResult);
@@ -92,8 +117,12 @@ export default function UploadPanel({
           {brandLabel(brand)} · 거래내역 업로드
         </h1>
         <p className="text-[13px] text-muted-foreground">
-          {brandLabel(brand)} 명의 통장의 거래내역 PDF를 올려 파싱·미리보기 후 저장해요. 같은 거래는 자동으로 중복 제거되고,
-          거래는 전부 <b>{brandLabel(brand)}</b> 회계로 들어가요.
+          {brandLabel(brand)} 명의 통장의 거래내역 PDF 또는 엑셀(.xlsx/.xls/.csv)을 올려 파싱·미리보기 후 저장해요.
+          엑셀은 AI가 양식과 무관하게 열을 읽어요. 같은 거래는 자동으로 중복 제거되고, 거래는 각자 실제 날짜의 달로,
+          전부 <b>{brandLabel(brand)}</b> 회계로 들어가요.{' '}
+          <span className="text-amber-600 dark:text-amber-500">
+            단, 같은 기간을 PDF와 엑셀로 번갈아 올리면 중복을 걸러내지 못하니 계좌마다 한 가지 형식으로만 올려주세요.
+          </span>
           {sharedGardenNote && (
             <>
               {' '}
@@ -136,25 +165,27 @@ export default function UploadPanel({
         </div>
 
         <div>
-          <label className="ta-label">거래내역 PDF</label>
+          <label className="ta-label">거래내역 파일 (PDF 또는 엑셀)</label>
           <input
             type="file"
-            accept="application/pdf"
+            accept=".pdf,.xlsx,.xls,.csv"
             onChange={(e) => { setFile(e.target.files?.[0] ?? null); setSaved(null); }}
             className="text-[13px] text-foreground"
           />
         </div>
 
-        <div>
-          <label className="ta-label">
-            PDF 비밀번호 {bank === 'shinhan' ? '(신한은 보통 필요)' : '(없으면 비워두세요)'}
-          </label>
-          <input
-            type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-            placeholder="예: 940502"
-            className="ta-input w-[200px]"
-          />
-        </div>
+        {!isExcel && (
+          <div>
+            <label className="ta-label">
+              PDF 비밀번호 {bank === 'shinhan' ? '(신한은 보통 필요)' : '(없으면 비워두세요)'}
+            </label>
+            <input
+              type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              placeholder="예: 940502"
+              className="ta-input w-[200px]"
+            />
+          </div>
+        )}
 
         <div>
           <button
@@ -178,6 +209,25 @@ export default function UploadPanel({
             <Stat label="입금 합계" value={won(preview.sumIn)} />
             <Stat label="출금 합계" value={won(preview.sumOut)} />
           </div>
+
+          {preview.continuity && (
+            preview.continuity.breaks === 0 ? (
+              <p className="text-[12px] text-emerald-600">
+                ✓ 잔액 연속성 확인 — 중간 누락 없음 ({preview.continuity.checked}건 연결)
+              </p>
+            ) : preview.continuity.reliable ? (
+              <p className="text-[12px] text-red-500">
+                ⚠ 잔액 흐름이 {preview.continuity.breaks}곳에서 끊겨요
+                {preview.continuity.firstBreak &&
+                  ` (첫 지점: ${preview.continuity.firstBreak.date.slice(5).replace('-', '/')} ${preview.continuity.firstBreak.memo})`}
+                — 그 사이 거래가 빠졌을 수 있어요. 은행에서 전체 기간을 다시 내려받아 확인하세요.
+              </p>
+            ) : (
+              <p className="text-[12px] text-muted-foreground">
+                잔액 연속성은 판정하지 못했어요 (여러 계좌가 섞였거나 정렬이 다른 파일이에요).
+              </p>
+            )
+          )}
 
           {preview.fresh > 0 && (
           <div className="overflow-hidden rounded-md border border-border bg-background">

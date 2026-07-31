@@ -4,3 +4,6 @@ import { redirect } from 'next/navigation';
 export default function StudioHomePage() {
   redirect('/studio/menu');
 }
+
+// 브라우저 탭 제목 — 루트 템플릿(%s · team-at) 적용
+export const metadata = { title: 'Staff Meal' };

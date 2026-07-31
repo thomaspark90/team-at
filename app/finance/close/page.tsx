@@ -111,3 +111,6 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
     </div>
   );
 }
+
+// 브라우저 탭 제목 — 루트 템플릿(%s · team-at) 적용
+export const metadata = { title: '월 확정' };

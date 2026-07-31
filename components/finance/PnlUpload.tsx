@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useRefresh } from '@/components/Refresh';
 import { won, fmtYm } from '@/lib/finance/format';
 import type { Brand, Store } from '@/lib/finance/types';
 
@@ -43,6 +44,7 @@ const POS_UNITS: PosUnit[] = [
 
 export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
   const router = useRouter();
+  const { refresh } = useRefresh();
   const fixedUnit = POS_UNITS.find((u) => u.key === fixedUnitKey) ?? null;
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState((fixedUnit ?? POS_UNITS[0]).posType === 'toss' ? '0000' : '');
@@ -94,7 +96,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
       setDone(result);
       setPreview(null);
       router.push(`/finance/pnl?ym=${result.ym}`);
-      router.refresh();
+      refresh();
     } catch (e) {
       setError((e as Error).message);
     } finally {

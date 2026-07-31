@@ -310,7 +310,7 @@ export default function MonthlyUploadBoard({
           )}
           {preview.outOfMonth > 0 && (
             <p className="mt-2 text-[12px] text-amber-600">
-              ⚠ {fmtYm(ym)} 밖의 거래가 {preview.outOfMonth}건 있어요. 다른 달 파일이 아닌지 확인하세요. (거래는 각자 실제 날짜의 달로 들어가요)
+              ⚠ {fmtYm(ym)} 밖의 거래가 {preview.outOfMonth}건 있어요. 다른 달 파일이 아닌지 확인하세요. (거래는 각자 실제 날짜의 달로 들어가고, 그 달의 칸에도 자동 반영돼요)
             </p>
           )}
           {preview.sample.length > 0 && (

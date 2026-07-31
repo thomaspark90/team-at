@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRefresh } from '@/components/Refresh';
 import { won } from '@/lib/finance/format';
 import { bankSourceLabel } from '@/lib/finance/types';
 
@@ -30,7 +30,7 @@ function kind(u: UploadRow): string {
 }
 
 export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +52,7 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '삭제에 실패했어요.');
-      router.refresh();
+      refresh();
     } catch (e) {
       setError((e as Error).message);
     } finally {

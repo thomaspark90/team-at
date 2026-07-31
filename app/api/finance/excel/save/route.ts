@@ -27,7 +27,8 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const file = form.get('file');
   const mappingRaw = form.get('mapping');
-  // 월별 보드에서 올릴 때 어느 월·슬롯 몫인지(선택) — 보드 완료 체크에 사용
+  // 어느 슬롯 몫인지(선택) — 보드 완료 체크에 사용. 월별 보드는 slot+ym을,
+  // 업로드 페이지(전체 기간 엑셀)는 slot만 보낸다 — 완료 체크는 기간 겹침으로 잡힌다.
   const slotRaw = form.get('slot');
   const ymRaw = form.get('ym');
   const slot = typeof slotRaw === 'string' && SLOT_KEYS.includes(slotRaw) ? slotRaw : null;
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
   const { fresh, duplicates } = dedupe(result.transactions, existing);
   if (fresh.length === 0) {
     // 전부 중복이어도 보드 슬롯은 '올렸음'으로 기록해 완료·커버리지 체크가 남게 한다
-    if (slot && slotYm) {
+    if (slot) {
       await supabase.schema('finance').from('uploads').insert({
         bank: 'excel',
         source,
@@ -115,7 +116,7 @@ export async function POST(req: Request) {
       uploaded_by: user.id,
       period_start: periodStart,
       period_end: periodEnd,
-      ...(slot && slotYm ? { slot, slot_ym: slotYm } : {}),
+      ...(slot ? { slot, slot_ym: slotYm } : {}),
     })
     .select('id')
     .single();
@@ -164,7 +165,7 @@ export async function POST(req: Request) {
     supabase,
     user,
     '엑셀 내역 저장',
-    `[${brand}] ${slotLabel ? `[${slotYm} ${slotLabel}] ` : ''}${file.name} ${fresh.length}건(중복 ${duplicates})`
+    `[${brand}] ${slotLabel ? `[${slotYm ? `${slotYm} ` : ''}${slotLabel}] ` : ''}${file.name} ${fresh.length}건(중복 ${duplicates})`
   );
 
   return NextResponse.json({

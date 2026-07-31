@@ -7,7 +7,8 @@ import { monthCoverage, type DayInterval } from '@/lib/finance/coverage';
 export const runtime = 'nodejs';
 
 // 월별 업로드 보드 상태 — 슬롯별 완료 여부 + 기간 커버리지(부분 업로드 감지).
-// 이 보드에서 올린 것(uploads.slot/slot_ym) 외에, 기존 경로도 자동 감지해 체크한다:
+// 이 보드에서 올린 것(uploads.slot)은 slot_ym 칸뿐 아니라 파일 기간이 겹치는 모든 달의
+// 칸에 반영된다(여러 달치 파일을 한 칸에서 올려도 각 달이 체크됨). 그 외 기존 경로도 자동 감지:
 //   신한/우리 = 은행 PDF 업로드(기간이 해당 월과 겹침), 주지출 카드 = 카드명세 업로드,
 //   네이버 = 자동수집 거래 존재(매일 수집이라 월 전체로 간주).
 // 완료 판정: 슬롯에 쌓인 업로드들의 기간 합집합이 월을 덮으면 full, 일부만 덮으면 부분(◐).
@@ -38,27 +39,28 @@ export async function GET(req: Request) {
   // 슬롯별 수집: 업로드 건수·시각·경로 + 기간 구간들
   const acc: Record<
     string,
-    { count: number; at: string | null; via: 'slot' | 'auto' | null; intervals: DayInterval[]; periodless: boolean }
+    { count: number; at: string | null; via: 'slot' | 'auto' | null; intervals: DayInterval[]; periodless: boolean; ids: number[] }
   > = {};
-  for (const s of UPLOAD_SLOTS) acc[s.key] = { count: 0, at: null, via: null, intervals: [], periodless: false };
-  const add = (key: string, u: { row_count?: unknown; uploaded_at?: unknown; period_start?: unknown; period_end?: unknown }, via: 'slot' | 'auto') => {
+  for (const s of UPLOAD_SLOTS) acc[s.key] = { count: 0, at: null, via: null, intervals: [], periodless: false, ids: [] };
+  const add = (key: string, u: { id?: unknown; row_count?: unknown; uploaded_at?: unknown; period_start?: unknown; period_end?: unknown }, via: 'slot' | 'auto') => {
     const a = acc[key];
     if (!a) return;
     a.count += Number(u.row_count ?? 0);
     a.at = String(u.uploaded_at ?? a.at ?? '');
     a.via = a.via ?? via;
+    if (u.id != null) a.ids.push(Number(u.id));
     if (u.period_start && u.period_end) a.intervals.push({ start: String(u.period_start), end: String(u.period_end) });
     else a.periodless = true; // 구버전 기록(기간 없음) — 커버리지 판정 불가 → 완전으로 간주
   };
 
-  // 1) 이 보드에서 올린 업로드
+  // 1) 이 보드에서 올린 업로드 — 자기 월 칸(slot_ym) 또는 파일 기간이 이 달과 겹치는 것
   const { data: slotRows, error: slotErr } = await supabase
     .schema('finance')
     .from('uploads')
-    .select('slot,row_count,uploaded_at,period_start,period_end')
-    .eq('slot_ym', ym)
+    .select('id,slot,row_count,uploaded_at,period_start,period_end')
     .eq('brand', brand)
     .not('slot', 'is', null)
+    .or(`slot_ym.eq.${ym},and(period_start.lte.${monthEnd},period_end.gte.${monthStart})`)
     .order('uploaded_at');
   if (slotErr) {
     return NextResponse.json(
@@ -77,7 +79,7 @@ export async function GET(req: Request) {
   const { data: periodRows } = await supabase
     .schema('finance')
     .from('uploads')
-    .select('bank,source,row_count,uploaded_at,period_start,period_end')
+    .select('id,bank,source,row_count,uploaded_at,period_start,period_end')
     .eq('brand', brand)
     .is('slot', null)
     .lte('period_start', monthEnd)
@@ -93,6 +95,21 @@ export async function GET(req: Request) {
             ? 'bank_woori'
             : null;
     if (key) add(key, r, 'auto');
+  }
+
+  // 업로드가 여러 달에 걸칠 수 있으니 칸 숫자는 row_count 합이 아니라 '이 달에 실제 저장된
+  // 거래 수'로 다시 센다 — 보드 숫자 = 지출 자료 분류 화면 행 수. (네이버·쿠팡은 3)에서 별도 집계)
+  for (const s of UPLOAD_SLOTS) {
+    if (s.key === 'naverpay' || s.key === 'coupang') continue;
+    const a = acc[s.key];
+    if (a.ids.length === 0) continue;
+    const { count } = await supabase
+      .schema('finance')
+      .from('transactions')
+      .select('id', { count: 'exact', head: true })
+      .in('upload_id', a.ids)
+      .eq('ym', ym);
+    a.count = count ?? 0;
   }
 
   // 3) 자동수집(네이버·쿠팡) — launchd 크롤러 거래가 이 달에 있으면 완료(매일 수집 = 월 전체).

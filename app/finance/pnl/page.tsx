@@ -440,3 +440,6 @@ function SubRow({ label, k }: { label: string; k: { 기초: number; 매입: numb
     </tr>
   );
 }
+
+// 브라우저 탭 제목 — 루트 템플릿(%s · team-at) 적용
+export const metadata = { title: '관리손익' };

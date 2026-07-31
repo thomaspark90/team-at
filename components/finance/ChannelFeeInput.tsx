@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRefresh } from '@/components/Refresh';
 import { won } from '@/lib/finance/format';
 
 // 월별 채널수수료(정산서 실제 금액) 입력. 미입력이면 관리손익에서 공급가액×기본율로 추정.
@@ -16,7 +16,7 @@ export default function ChannelFeeInput({
   initial: number | null; // 실제 입력값(없으면 null=추정)
   estimate: number; // 추정 금액(참고 표시)
 }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [val, setVal] = useState(initial != null ? String(initial) : '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -35,7 +35,7 @@ export default function ChannelFeeInput({
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '저장 실패');
       setSaved(true);
-      router.refresh();
+      refresh();
     } catch (e) {
       setError((e as Error).message);
     } finally {

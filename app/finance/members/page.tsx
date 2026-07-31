@@ -45,3 +45,6 @@ export default async function MembersPage() {
     </div>
   );
 }
+
+// 브라우저 탭 제목 — 루트 템플릿(%s · team-at) 적용
+export const metadata = { title: '멤버 관리' };
