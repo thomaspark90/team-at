@@ -19,18 +19,15 @@ export default async function AccountingDashboardPage({ searchParams }: { search
   } = await supabase.auth.getUser();
   if (!user) redirect('/');
 
-  const { role, brandScope } = await resolveMember(supabase, user);
+  // 멤버 조회와 대기 송금 요약(로그인한 누구나 열람 가능, RLS 동일)은 서로 독립 — 병렬 조회
+  const [{ role, brandScope }, { data: pending }] = await Promise.all([
+    resolveMember(supabase, user),
+    supabase.schema('finance').from('transfer_requests').select('amount').eq('status', 'pending'),
+  ]);
   // 브랜드 스코프 멤버는 분류 화면이 홈
   if (brandScope) redirect('/finance/classify');
   const isStaff = ['admin', 'classifier'].includes(role ?? '');
   const unit = unitOf(searchParams.unit) ?? unitOf('staffmeal')!;
-
-  // 대기 송금 요약 — 로그인한 누구나 열람 가능(RLS 동일)
-  const { data: pending } = await supabase
-    .schema('finance')
-    .from('transfer_requests')
-    .select('amount')
-    .eq('status', 'pending');
   const pendingCount = pending?.length ?? 0;
   const pendingSum = (pending ?? []).reduce((s, r) => s + Number(r.amount), 0);
 

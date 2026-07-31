@@ -50,5 +50,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  // PROTECTED 경로에서만 실행 — 그 외(/, /api/*, /s/* 등)에서 매 요청 Supabase 인증 왕복이
+  // 발생하던 것을 제거. /api 는 각 라우트가, / 는 페이지가 자체 인증 확인.
+  matcher: ['/dashboard/:path*', '/studio/:path*', '/garden/:path*', '/finance/:path*'],
 };
