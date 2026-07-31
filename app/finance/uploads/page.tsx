@@ -6,7 +6,7 @@ import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import UploadHistory, { type UploadRow } from '@/components/finance/UploadHistory';
-import { UNITS, unitOf } from '@/lib/finance/types';
+import { unitOf } from '@/lib/finance/types';
 
 export default async function UploadsPage({ searchParams }: { searchParams: { unit?: string } }) {
   const supabase = await createClient();
@@ -71,34 +71,10 @@ export default async function UploadsPage({ searchParams }: { searchParams: { un
             ← 자료 분류
           </Link>
         </div>
-        <p className="mb-4 text-[13px] text-muted-foreground">
-          그동안 올린 은행·신한카드·쿠팡 영수증 자료의 이력이에요.
-          {unit?.store && ' 통장·카드는 가든 공용 자료라 양재천·판교 탭에 같이 보여요.'}
+        <p className="mb-5 text-[13px] text-muted-foreground">
+          {unit ? <b>{unit.label}</b> : '전체'} 자료 이력이에요 — 단위는 상단에서 선택해요.
+          {unit?.store && ' 통장·카드는 가든 공용 자료라 양재천·판교에 같이 보여요.'}
         </p>
-        {/* 단위 탭 */}
-        <div className="mb-5 flex overflow-hidden rounded-md border border-border" style={{ width: 'fit-content' }}>
-          <Link
-            href="/finance/uploads"
-            aria-current={!unit ? 'page' : undefined}
-            className={`px-3 py-1.5 text-[13px] transition-colors ${
-              !unit ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            전체
-          </Link>
-          {UNITS.map((u) => (
-            <Link
-              key={u.id}
-              href={`/finance/uploads?unit=${u.id}`}
-              aria-current={unit?.id === u.id ? 'page' : undefined}
-              className={`px-3 py-1.5 text-[13px] transition-colors ${
-                unit?.id === u.id ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {u.label}
-            </Link>
-          ))}
-        </div>
         <UploadHistory uploads={list} />
       </div>
     </div>

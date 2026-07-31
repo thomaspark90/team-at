@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { resolveMember } from '@/lib/finance/access';
-import { UNITS, unitOf } from '@/lib/finance/types';
+import { unitOf } from '@/lib/finance/types';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import UploadPanel from '@/components/finance/UploadPanel';
@@ -59,15 +59,6 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
                 )}
               </p>
             </div>
-            {!brandScope && (
-              <div className="flex gap-2">
-                {UNITS.filter((u) => u.id !== unit.id).map((u) => (
-                  <Link key={u.id} href={`/finance/upload/${u.id}`} className="ta-btn h-9 px-3 text-[13px]">
-                    {u.label} →
-                  </Link>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* 1) POS 매출 — 지점 단위 귀속 */}

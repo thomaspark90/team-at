@@ -6,11 +6,13 @@ import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import AccountingBoards from '@/components/finance/AccountingBoards';
 import TaskBoard from '@/components/finance/TaskBoard';
+import { unitOf } from '@/lib/finance/types';
 
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 
 // 회계 대시보드 — 대기 송금 요약 + 회계자료 엑셀 업로드(스태프).
-export default async function AccountingDashboardPage() {
+// 내비 2단 구조: 상단에서 고른 단위(?unit=)가 업로드 보드의 브랜드를 고정한다.
+export default async function AccountingDashboardPage({ searchParams }: { searchParams: { unit?: string } }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -21,6 +23,7 @@ export default async function AccountingDashboardPage() {
   // 브랜드 스코프 멤버는 분류 화면이 홈
   if (brandScope) redirect('/finance/classify');
   const isStaff = ['admin', 'classifier'].includes(role ?? '');
+  const unit = unitOf(searchParams.unit) ?? unitOf('staffmeal')!;
 
   // 대기 송금 요약 — 로그인한 누구나 열람 가능(RLS 동일)
   const { data: pending } = await supabase
@@ -64,8 +67,9 @@ export default async function AccountingDashboardPage() {
           </div>
         </section>
 
-        {/* 월별 회계자료 업로드 → 자료 분류 보드 (상단 공용 월 선택) — 기장 권한자만 */}
-        {isStaff && <AccountingBoards />}
+        {/* 월별 회계자료 업로드 → 자료 분류 보드 (상단 공용 월 선택) — 기장 권한자만.
+            브랜드는 상단 내비 단위가 고정(가든 지점 둘은 통장·카드가 공용이라 같은 가든 보드) */}
+        {isStaff && <AccountingBoards fixedBrand={unit.brand} />}
 
         {/* 기장 업무 칸반 — 은행·카드 업로드, 거래 분류, 기말재고, 월 확정 등 정기 업무 체크 */}
         {isStaff && (

@@ -98,6 +98,7 @@ export default async function ClassifyPage({
           rules={rules}
           splitRules={splitRules}
           lockedBrand={brandScope}
+          fixedUnit={unit ? { brand: unit.brand, store: unit.store } : null}
           initialFilter={{
             ym: searchParams.ym,
             type: searchParams.type,

@@ -6,7 +6,7 @@ import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import MonthlyCloseManager, { type MonthRow } from '@/components/finance/MonthlyCloseManager';
-import { UNITS, unitOf } from '@/lib/finance/types';
+import { unitOf } from '@/lib/finance/types';
 
 export default async function ClosePage({ searchParams }: { searchParams: { brand?: string; unit?: string } }) {
   const supabase = await createClient();
@@ -20,9 +20,9 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
   if (brandScope) redirect('/finance/classify');
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
   const allowConfirm = await canConfirm(supabase, user);
-  // 확정은 3단위 — 스탭밀 / 가든 양재천점 / 가든 판교점 (구버전 ?brand=staffmeal 링크 호환)
+  // 확정은 3단위 — 단위는 상단 내비(2단)에서 선택돼 ?unit= 으로 내려온다 (기본 스탭밀, 구 ?brand= 링크 호환)
   const unit =
-    unitOf(searchParams.unit) ?? (searchParams.brand === 'staffmeal' ? unitOf('staffmeal')! : unitOf('yangjae')!);
+    unitOf(searchParams.unit) ?? (searchParams.brand === 'garden' ? unitOf('yangjae')! : unitOf('staffmeal')!);
 
   // 월별 거래수·미분류수 집계 (데이터량이 작아 JS 집계) — 선택된 단위만.
   // 가든 지점 단위는 '지점 미지정' 가든 거래도 함께 집계 — 미지정이 남으면 확정 불가.
@@ -90,26 +90,11 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
             ← 재무 홈
           </Link>
         </div>
-        <p className="mb-4 mt-0 text-[13px] leading-[1.6] text-muted-foreground">
-          확정은 <b>지점 단위</b>(스탭밀·양재천·판교)로 해요 — {unit.label}의 미분류
+        <p className="mb-5 mt-0 text-[13px] leading-[1.6] text-muted-foreground">
+          <b>{unit.label}</b>의 월 확정이에요 — 단위는 상단에서 선택해요. 미분류
           {unit.store ? '와 지점 미지정 가든 거래' : ''}가 0건인 달만 확정할 수 있고, 확정하면 그 달·그 단위의 자료 분류가
           잠겨요. {allowConfirm ? '' : '(확정 권한은 관리자에게 요청하세요.)'}
         </p>
-        {/* 단위 탭 */}
-        <div className="mb-5 flex overflow-hidden self-start rounded-md border border-border" style={{ width: 'fit-content' }}>
-          {UNITS.map((u) => (
-            <Link
-              key={u.id}
-              href={`/finance/close?unit=${u.id}`}
-              aria-current={u.id === unit.id ? 'page' : undefined}
-              className={`px-3 py-1.5 text-[13px] transition-colors ${
-                u.id === unit.id ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {u.label}
-            </Link>
-          ))}
-        </div>
         <MonthlyCloseManager key={unit.id} months={months} canConfirm={allowConfirm} unit={unit.id} brand={unit.brand} />
       </div>
     </div>

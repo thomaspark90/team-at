@@ -16,10 +16,12 @@ const defaultYm = () => {
 // 업로드 보드·자료 분류 보드가 같은 월로 함께 움직인다.
 // 스트립은 과거 24개월~다음 달까지, 화면 폭만큼(약 7개) 보이고 좌우 스크롤로 나머지 확인.
 // 칩 옆 배지 = 그 달의 남은 업무 수(미완료 업로드 슬롯 + 미분류 출처 + 월 확정).
-export default function AccountingBoards() {
+export default function AccountingBoards({ fixedBrand }: { fixedBrand?: Brand }) {
   const [ym, setYm] = useState(defaultYm);
   // 회계가 브랜드별로 분리 — 업로드 보드는 선택된 브랜드 회계로만 저장·판정된다.
-  const [brand, setBrand] = useState<Brand>('garden');
+  // 내비 2단(단위) 구조에서는 상단 단위가 브랜드를 고정(fixedBrand)하고 자체 탭은 숨긴다.
+  const [brandState, setBrand] = useState<Brand>('garden');
+  const brand = fixedBrand ?? brandState;
   const [todos, setTodos] = useState<Record<string, number>>({});
   const selectedRef = useRef<HTMLButtonElement>(null);
 
@@ -52,24 +54,26 @@ export default function AccountingBoards() {
   return (
     <>
       <div className="rounded-2xl border border-border bg-card px-3 py-2">
-        <div className="flex items-center gap-1 px-1 pt-1.5">
-          {BRANDS.map((b) => {
-            const on = brand === b.id;
-            return (
-              <button
-                key={b.id}
-                onClick={() => setBrand(b.id)}
-                aria-pressed={on}
-                className={`rounded-lg px-3 py-1 text-[13px] transition-colors ${
-                  on ? 'bg-foreground font-medium text-background' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {b.label}
-              </button>
-            );
-          })}
-          <span className="ml-2 text-[11px] text-muted-foreground">브랜드별로 회계가 분리돼요 — 올린 자료는 선택된 브랜드로 들어가요</span>
-        </div>
+        {!fixedBrand && (
+          <div className="flex items-center gap-1 px-1 pt-1.5">
+            {BRANDS.map((b) => {
+              const on = brand === b.id;
+              return (
+                <button
+                  key={b.id}
+                  onClick={() => setBrand(b.id)}
+                  aria-pressed={on}
+                  className={`rounded-lg px-3 py-1 text-[13px] transition-colors ${
+                    on ? 'bg-foreground font-medium text-background' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {b.label}
+                </button>
+              );
+            })}
+            <span className="ml-2 text-[11px] text-muted-foreground">브랜드별로 회계가 분리돼요 — 올린 자료는 선택된 브랜드로 들어가요</span>
+          </div>
+        )}
         <div className="flex overflow-x-auto pb-1 pt-1.5 [scrollbar-width:thin]">
           {months.map((m) => {
             const selected = m === ym;

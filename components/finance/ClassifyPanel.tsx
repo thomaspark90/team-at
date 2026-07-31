@@ -66,6 +66,7 @@ export default function ClassifyPanel({
   splitRules = [],
   initialFilter,
   lockedBrand = null,
+  fixedUnit = null,
 }: {
   txns: TxRow[];
   cats: Cat[];
@@ -75,6 +76,9 @@ export default function ClassifyPanel({
   splitRules?: SplitRule[];
   initialFilter?: { ym?: string; type?: string; cat?: string; unclassified?: boolean; source?: string; brand?: string; store?: string };
   lockedBrand?: 'staffmeal' | 'garden' | null; // 브랜드 스코프 멤버 — 서버에서 해당 브랜드만 내려옴, 브랜드 탭 숨김
+  // 단위 고정 뷰(내비 2단 구조) — 스탭밀/양재천점/판교점 페이지: 브랜드·지점 탭 숨김.
+  // 가든 지점 단위는 '지점 미지정(공용)' 거래도 함께 보여준다 — 지정·분할로 정리해야 하는 대상이라서.
+  fixedUnit?: { brand: 'staffmeal' | 'garden'; store: 'pangyo' | 'yangjae' | null } | null;
 }) {
   const router = useRouter();
   // 규칙은 브랜드별 — 같은 가맹점이라도 스탭밀/가든이 다른 계정을 쓸 수 있다
@@ -186,14 +190,19 @@ export default function ClassifyPanel({
   const q = search.trim().toLowerCase();
   const storeMatches = (r: TxRow) =>
     storeFilter === 'all' || (storeFilter === 'none' ? r.store == null : r.store === storeFilter);
+  // 단위 고정 뷰 — 스탭밀=브랜드 일치, 가든 지점=자기 지점+미지정(공용)
+  const unitMatches = (r: TxRow) =>
+    !fixedUnit ||
+    (r.brand === fixedUnit.brand && (fixedUnit.store == null || r.store === fixedUnit.store || r.store == null));
   const filtered = rows.filter(
     (r) =>
+      unitMatches(r) &&
       (filterYm === 'all' || r.tx_at.slice(0, 7) === filterYm) &&
       (filterBank === 'all' || r.bank === filterBank) &&
       (srcFilter === 'all' || (r.source ?? 'bank') === srcFilter) &&
-      // 브랜드 필터 — 실제 brand 컬럼 기준(전 소스). 가든이면 지점(store) 하위 필터까지.
-      (brandFilter === 'all' || r.brand === brandFilter) &&
-      ((brandFilter !== 'garden' && lockedBrand !== 'garden') || storeMatches(r)) &&
+      // 브랜드 필터 — 실제 brand 컬럼 기준(전 소스). 가든이면 지점(store) 하위 필터까지. 단위 고정 시 생략.
+      (!!fixedUnit || brandFilter === 'all' || r.brand === brandFilter) &&
+      (!!fixedUnit || (brandFilter !== 'garden' && lockedBrand !== 'garden') || storeMatches(r)) &&
       (!unclOnly || r.category_id == null) &&
       (!q || r.memo.toLowerCase().includes(q) || r.normalized_key.toLowerCase().includes(q) || (r.channel ?? '').toLowerCase().includes(q)) &&
       matchesCat(r)
@@ -517,7 +526,15 @@ export default function ClassifyPanel({
             {lockedBrand === 'staffmeal' ? '스탭밀 담당' : '가든서비스 담당'} · 해당 브랜드 거래만 표시
           </span>
         )}
-        {!lockedBrand && (
+        {fixedUnit && (
+          // 단위 고정 뷰(내비 2단) — 브랜드·지점 탭 대신 단위 안내 칩
+          <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-[13px] text-muted-foreground">
+            {fixedUnit.brand === 'staffmeal'
+              ? '스탭밀 거래만 표시'
+              : `가든 ${storeLabel(fixedUnit.store)} + 지점 미지정(공용) 거래 표시 — 미지정은 지점 지정·분할로 정리해요`}
+          </span>
+        )}
+        {!lockedBrand && !fixedUnit && (
           // 브랜드 필터 — 실제 brand 컬럼 기준(전 소스). 회계가 브랜드별로 분리돼 있다.
           <div className="inline-flex gap-1 rounded-md border border-border p-1">
             {[
@@ -538,7 +555,7 @@ export default function ClassifyPanel({
             ))}
           </div>
         )}
-        {(brandFilter === 'garden' || lockedBrand === 'garden') && (
+        {!fixedUnit && (brandFilter === 'garden' || lockedBrand === 'garden') && (
           // 가든서비스 지점(store) 필터 — 지점별 손익 분류용. '미지정'이 남지 않게 하는 게 목표.
           <div className="inline-flex gap-1 rounded-md border border-border p-1">
             {[
