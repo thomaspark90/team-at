@@ -13,6 +13,7 @@ const UNIT_TAB_LABEL: Record<UnitId, string> = {
   staffmeal: '스탭밀',
   yangjae: '가든서비스(양재천점)',
   pangyo: '가든서비스(판교점)',
+  personal: '개인',
 };
 
 export default function AccountingNav({ role, scoped = false }: { role: string | null; scoped?: boolean }) {
@@ -25,11 +26,17 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
   const unit =
     unitOf(uploadMatch?.[1]) ?? unitOf(searchParams.get('unit')) ?? UNITS[0];
 
-  // 단위 전환 — 지금 보고 있는 페이지를 유지한 채 단위만 바꾼다
+  // 단위 전환 — 지금 보고 있는 페이지를 유지한 채 단위만 바꾼다.
+  // 개인 단위는 지출 분류 화면 전용(자료입력·월확정·POS 개념 없음)이라 항상 분류로 보낸다.
   const unitHref = (id: UnitId) =>
-    uploadMatch ? `/finance/upload/${id}` : `${pathname}?unit=${id}`;
+    id === 'personal'
+      ? '/finance/classify?unit=personal'
+      : uploadMatch
+      ? `/finance/upload/${id}`
+      : `${pathname}?unit=${id}`;
 
   const u = unit.id;
+  const isPersonal = u === 'personal';
   const HOME = [{ href: '/dashboard', label: '대시보드' }];
   const TRANSFER = [
     { href: '/dashboard/transfer', label: '송금 요청' },
@@ -43,9 +50,14 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
   const CLOSING = [{ href: '/finance/close', label: '월 확정' }];
   const ADMIN = [{ href: '/finance/categories', label: '계정과목' }];
 
+  // 개인 단위 — 손익 제외 사적 지출 정리 전용. 자료입력·월확정·계정과목 없이 분류만.
+  const PERSONAL = [{ href: '/finance/classify', label: '개인 지출 분류' }];
+
   // 브랜드 스코프 멤버 — 단위 탭 없이(서버 리다이렉트로 강제) 분류+송금만
   const groups = scoped
     ? [[{ href: '/finance/classify', label: '지출 자료 분류' }], TRANSFER]
+    : isPersonal
+    ? [PERSONAL]
     : [
         HOME,
         TRANSFER,

@@ -21,8 +21,12 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
   const allowConfirm = await canConfirm(supabase, user);
   // 확정은 3단위 — 단위는 상단 내비(2단)에서 선택돼 ?unit= 으로 내려온다 (기본 스탭밀, 구 ?brand= 링크 호환)
+  // 개인(personal) 단위는 월 확정 대상이 아니다 — 진입 시 스탭밀로 대체.
+  const requested = unitOf(searchParams.unit);
   const unit =
-    unitOf(searchParams.unit) ?? (searchParams.brand === 'garden' ? unitOf('yangjae')! : unitOf('staffmeal')!);
+    (requested && requested.id !== 'personal' ? requested : null) ??
+    (searchParams.brand === 'garden' ? unitOf('yangjae')! : unitOf('staffmeal')!);
+  if (requested?.id === 'personal') redirect('/finance/classify?unit=personal');
 
   // 월별 거래수·미분류수 집계 (데이터량이 작아 JS 집계) — 선택된 단위만.
   // 가든 지점 단위는 '지점 미지정' 가든 거래도 함께 집계 — 미지정이 남으면 확정 불가.
@@ -95,7 +99,14 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
           {unit.store ? '와 지점 미지정 가든 거래' : ''}가 0건인 달만 확정할 수 있고, 확정하면 그 달·그 단위의 지출 자료 분류가
           잠겨요. {allowConfirm ? '' : '(확정 권한은 관리자에게 요청하세요.)'}
         </p>
-        <MonthlyCloseManager key={unit.id} months={months} canConfirm={allowConfirm} unit={unit.id} brand={unit.brand} />
+        {/* personal 은 위에서 리다이렉트되므로 여기 unit 은 항상 사업 단위 */}
+        <MonthlyCloseManager
+          key={unit.id}
+          months={months}
+          canConfirm={allowConfirm}
+          unit={unit.id as 'staffmeal' | 'yangjae' | 'pangyo'}
+          brand={unit.brand as 'staffmeal' | 'garden'}
+        />
       </div>
     </div>
   );

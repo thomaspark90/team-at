@@ -21,8 +21,9 @@ const SIG: Record<Signal, { cls: string; label: string }> = {
   bad: { cls: 'text-destructive', label: '높음' },
 };
 
-// 브랜드 세그먼트 — 기본 가든(기존 숫자와 동일), 'all' = 두 브랜드 합산 보기
-type BrandSeg = Brand | 'all';
+// 브랜드 세그먼트 — 기본 가든(기존 숫자와 동일), 'all' = 두 사업 브랜드 합산 보기.
+// 개인(personal)은 손익 제외라 관리손익 세그먼트에 없다(BRANDS = 사업 브랜드만).
+type BrandSeg = Exclude<Brand, 'personal'> | 'all';
 const SEGMENTS: { id: BrandSeg; label: string }[] = [...BRANDS, { id: 'all', label: '전체' }];
 
 export default async function PnlPage({ searchParams }: { searchParams: { ym?: string; brand?: string; store?: string } }) {
