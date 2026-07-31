@@ -93,7 +93,8 @@ export default function Dashboard({
   // 가든 지점 필터 — 지점 손익 확정(2026-07-28) 후속. 지점 미지정 행은 '전체 지점'에서만 보임.
   const [store, setStore] = useState<'all' | 'pangyo' | 'yangjae'>('all');
   const { months, expenseKeys } = useMemo(() => {
-    let tx = brand === 'all' ? txns : txns.filter((t) => (t.brand ?? 'garden') === brand);
+    // '전체'는 사업 브랜드만 — 개인(personal)은 손익 제외라 카테고리와 무관하게 뺀다.
+    let tx = brand === 'all' ? txns.filter((t) => t.brand !== 'personal') : txns.filter((t) => (t.brand ?? 'garden') === brand);
     let pos = brand === 'all' ? posSales : posSales.filter((p) => (p.brand ?? 'garden') === brand);
     if (brand === 'garden' && store !== 'all') {
       tx = tx.filter((t) => t.store === store);

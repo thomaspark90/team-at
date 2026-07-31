@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { normalizeKey } from '@/lib/finance/normalize';
 import { hash } from '@/lib/finance/dedup';
+import { resolvePersonalCat, applyPersonalCategory } from '@/lib/finance/personal';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -104,6 +105,10 @@ export async function POST(req: Request) {
     return true;
   });
 
+  // 개인(personal) 지출은 손익 제외 '개인지출' 카테고리로 자동 분류한다(공용 헬퍼).
+  const hasPersonal = mapped.some((m) => m.brand === 'personal');
+  const personalCat = hasPersonal ? await resolvePersonalCat(supabase) : { personalCatId: null, excludedIds: [] };
+
   // 이미 적재된 건도 브랜드·지점은 소급 갱신 — 도입 이전 적재분 백필.
   // 수집기가 배송지로 명시 판정한 건(_explicit_brand)만, 값이 다른 행만 갱신한다.
   let brandUpdated = 0;
@@ -131,6 +136,14 @@ export async function POST(req: Request) {
     }
   }
 
+  // 개인 브랜드 기존 거래를 '개인지출'로 소급 분류 — 미분류·사업계정만(손익 제외 세부분류는 보존).
+  if (personalCat.personalCatId != null) {
+    const personalHashes = Array.from(
+      new Set(mapped.filter((m) => m.brand === 'personal').map((m) => m.dedup_hash)),
+    );
+    await applyPersonalCategory(supabase, personalHashes, personalCat);
+  }
+
   if (fresh.length === 0) {
     return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0, brandUpdated });
   }
@@ -149,6 +162,11 @@ export async function POST(req: Request) {
     const cat = keyToCat.get(`${m.brand}|${m.normalized_key}`);
     if (cat != null) {
       m.category_id = cat;
+      m.classified_at = now as never;
+      autoClassified++;
+    } else if (m.brand === 'personal' && personalCat.personalCatId != null) {
+      // 개인 지출은 학습 규칙이 없어도 '개인지출'(손익 제외)로 기본 분류
+      m.category_id = personalCat.personalCatId;
       m.classified_at = now as never;
       autoClassified++;
     }

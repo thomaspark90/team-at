@@ -164,7 +164,9 @@ async function PnlBody({
 
   // 지출·재고·수수료도 브랜드로 필터 — '전체'는 합산, 지점 뷰는 store 까지
   let txnsQ = supabase.schema('finance').from('transactions').select('category_id,amount_in,amount_out').eq('ym', selectedYm);
+  // '전체'는 사업 브랜드만 합산 — 개인(personal)은 손익 제외라 카테고리와 무관하게 뺀다.
   if (seg !== 'all') txnsQ = txnsQ.eq('brand', seg);
+  else txnsQ = txnsQ.neq('brand', 'personal');
   if (store) txnsQ = txnsQ.eq('store', store);
   // 지점 뷰에서 빠지는 '지점 미지정' 가든 지출 — 경고 표기용
   const unassignedQ = store
