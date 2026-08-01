@@ -18,11 +18,18 @@ interface Preview {
   mapping?: ExcelMapping;
   continuity?: ContinuityReport | null;
   skipped?: number;
+  // 파일 사이 잔액 연속성 검사용 양 끝 거래 + 교차 형식(PDF↔엑셀) 업로드 이력 경고
+  boundary?: {
+    first: { txAt: string; amountIn: number; amountOut: number; balance: number };
+    last: { txAt: string; balance: number };
+  } | null;
+  crossFormat?: { count: number } | null;
 }
 interface SaveResult {
   saved: number;
   duplicates: number;
   autoClassified: number;
+  blockedConfirmed?: number; // 확정월이라 제외된 건수
 }
 
 // 파일별 진행 상태 — 여러 파일을 한 번에 올려 순차 파싱·저장한다
@@ -90,11 +97,11 @@ export default function UploadPanel({
       try {
         const fd = new FormData();
         fd.append('file', e.file);
+        fd.append('brand', brand); // 교차 형식(PDF↔엑셀) 경고 판정용
         if (e.isExcel) {
           fd.append('slot', slotKey);
         } else {
           fd.append('bank', bank);
-          fd.append('brand', brand);
           if (password) fd.append('password', password);
         }
         const res = await fetch(e.isExcel ? '/api/finance/excel/parse' : '/api/finance/parse', {
@@ -144,6 +151,7 @@ export default function UploadPanel({
         total.saved += Number(json.saved ?? 0);
         total.duplicates += Number(json.duplicates ?? 0);
         total.autoClassified += Number(json.autoClassified ?? 0);
+        total.blockedConfirmed = (total.blockedConfirmed ?? 0) + Number(json.blockedConfirmed ?? 0);
         patch(i, { status: 'saved', result: json as SaveResult });
       } catch (err) {
         patch(i, { status: 'error', error: (err as Error).message });
@@ -165,6 +173,22 @@ export default function UploadPanel({
     { totalRows: 0, fresh: 0, duplicates: 0, sumIn: 0, sumOut: 0 }
   );
   const single = entries.length === 1 ? entries[0] : null;
+
+  // 파일 사이 잔액 연속성 — 기간이 이어지는 파일들의 경계에서 '앞 파일 끝 잔액 + 뒤 파일 첫 입출금 =
+  // 뒤 파일 첫 잔액'이 성립하는지. 깨지면 두 파일 사이 기간의 거래가 빠졌다는 신호.
+  const chain = entries
+    .filter((e) => (e.status === 'ready' || e.status === 'saved') && e.preview?.boundary)
+    .sort((a, b) => (a.preview!.boundary!.first.txAt < b.preview!.boundary!.first.txAt ? -1 : 1));
+  const boundaryGaps: string[] = [];
+  for (let i = 1; i < chain.length; i++) {
+    const prev = chain[i - 1].preview!.boundary!;
+    const cur = chain[i].preview!.boundary!;
+    if (cur.first.txAt <= prev.last.txAt) continue; // 기간이 겹치는 파일은 경계 검사 대상 아님
+    const expected = prev.last.balance + cur.first.amountIn - cur.first.amountOut;
+    if (Math.abs(expected - cur.first.balance) > 0.5)
+      boundaryGaps.push(`${chain[i - 1].file.name} ↔ ${chain[i].file.name}`);
+  }
+  const crossCount = ready.reduce((s, e) => s + (e.preview?.crossFormat?.count ?? 0), 0);
 
   return (
     <div className="flex flex-col gap-5">
@@ -197,6 +221,9 @@ export default function UploadPanel({
           <div className="mb-1 text-foreground">✓ 저장 완료</div>
           <div className="text-[13px] text-muted-foreground">
             {won(done.saved)}건 저장 (자동 분류 {won(done.autoClassified)}건) · 중복 {won(done.duplicates)}건 건너뜀
+            {(done.blockedConfirmed ?? 0) > 0 && (
+              <span className="text-amber-600"> · 확정월 거래 {won(done.blockedConfirmed!)}건 제외(재오픈 후 업로드)</span>
+            )}
           </div>
         </div>
       )}
@@ -335,6 +362,18 @@ export default function UploadPanel({
       {/* 합산 미리보기 + 저장 */}
       {ready.length > 0 && !done && (
         <>
+          {boundaryGaps.length > 0 && (
+            <p className="m-0 text-[12px] text-red-500">
+              ⚠ 파일 사이 잔액이 이어지지 않아요 — 그 사이 기간의 거래가 빠졌을 수 있어요: {boundaryGaps.join(', ')}.
+              은행에서 빠진 기간을 다시 내려받아 함께 올려주세요.
+            </p>
+          )}
+          {crossCount > 0 && (
+            <p className="m-0 text-[12px] text-amber-600">
+              ⚠ 이 기간에 <b>다른 형식(PDF↔엑셀)</b>으로 올린 이력이 있어요. 형식이 다르면 중복이 걸러지지 않아
+              같은 거래가 이중 저장될 수 있어요 — 같은 계좌 내역이면 저장 전에 업로드 이력을 확인하세요.
+            </p>
+          )}
           <div className="flex flex-wrap gap-3">
             <Stat label="총 거래" value={`${won(agg.totalRows)}건`} />
             <Stat label="신규(저장 대상)" value={`${won(agg.fresh)}건`} />

@@ -53,6 +53,42 @@ export async function POST(req: Request) {
   );
   const { fresh, duplicates } = dedupe(result.transactions, existing);
 
+  // 잔액 흐름의 양 끝 — 여러 파일 업로드 시 파일 사이 연속성 검사용(클라이언트에서 대조)
+  const balRows = [...result.transactions].sort((a, b) => (a.txAt < b.txAt ? -1 : 1)).filter((t) => t.balance !== 0);
+  const boundary = balRows.length
+    ? {
+        first: {
+          txAt: balRows[0].txAt,
+          amountIn: balRows[0].amountIn,
+          amountOut: balRows[0].amountOut,
+          balance: balRows[0].balance,
+        },
+        last: { txAt: balRows[balRows.length - 1].txAt, balance: balRows[balRows.length - 1].balance },
+      }
+    : null;
+
+  // 교차 형식 경고 — 같은 브랜드·겹치는 기간에 엑셀 업로드 이력이 있으면
+  // 지문 체계가 달라 중복이 안 걸러진다(이중 저장 위험) → 저장 전 경고용
+  const brand = typeof form.get('brand') === 'string' ? String(form.get('brand')) : null;
+  let crossFormat: { count: number } | null = null;
+  if (brand) {
+    const dates = result.transactions.map((t) => t.txAt).sort();
+    const ps = dates[0]?.slice(0, 10);
+    const pe = dates[dates.length - 1]?.slice(0, 10);
+    if (ps && pe) {
+      const { count } = await supabase
+        .schema('finance')
+        .from('uploads')
+        .select('id', { count: 'exact', head: true })
+        .eq('brand', brand)
+        .eq('bank', 'excel')
+        .eq('source', 'bank')
+        .lte('period_start', pe)
+        .gte('period_end', ps);
+      if ((count ?? 0) > 0) crossFormat = { count: count ?? 0 };
+    }
+  }
+
   return NextResponse.json({
     bank: result.bank,
     totalRows: result.totalRows,
@@ -60,6 +96,8 @@ export async function POST(req: Request) {
     sumOut: result.sumOut,
     fresh: fresh.length,
     duplicates,
+    boundary,
+    crossFormat,
     sample: fresh.slice(0, 200),
   });
 }

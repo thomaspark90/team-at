@@ -16,6 +16,7 @@ interface Preview {
   duplicates: number;
   outOfMonth: number;
   coverage: { full: boolean; label: string | null; pct: number } | null;
+  crossFormat?: { count: number } | null; // 같은 기간 PDF 업로드 이력 — 이중 저장 경고
   continuity: {
     checked: number;
     breaks: number;
@@ -129,6 +130,7 @@ export default function MonthlyUploadBoard({
       fd.append('file', f);
       fd.append('ym', ym);
       fd.append('slot', activeSlot); // 은행 슬롯이면 잔액 연속성 검사가 붙음
+      fd.append('brand', brand); // 교차 형식(PDF↔엑셀) 경고 판정용
       const res = await fetch('/api/finance/excel/parse', { method: 'POST', body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '엑셀을 읽지 못했어요.');
@@ -160,7 +162,7 @@ export default function MonthlyUploadBoard({
       setNotice(
         j.saved === 0
           ? `${label} — 모두 이미 저장된 거래예요. 슬롯은 완료로 표시했어요.`
-          : `${label} ${j.saved}건 저장 (자동분류 ${j.autoClassified}건${j.duplicates ? ` · 중복 ${j.duplicates}건 제외` : ''})`
+          : `${label} ${j.saved}건 저장 (자동분류 ${j.autoClassified}건${j.duplicates ? ` · 중복 ${j.duplicates}건 제외` : ''}${j.blockedConfirmed ? ` · 확정월 ${j.blockedConfirmed}건 제외` : ''})`
       );
       setPreview(null);
       fileRef.current = null;
@@ -483,6 +485,12 @@ export default function MonthlyUploadBoard({
           {preview.outOfMonth > 0 && (
             <p className="mt-2 text-[12px] text-amber-600">
               ⚠ {fmtYm(ym)} 밖의 거래가 {preview.outOfMonth}건 있어요. 다른 달 파일이 아닌지 확인하세요. (거래는 각자 실제 날짜의 달로 들어가고, 그 달의 칸에도 자동 반영돼요)
+            </p>
+          )}
+          {(preview.crossFormat?.count ?? 0) > 0 && (
+            <p className="mt-2 text-[12px] text-amber-600">
+              ⚠ 이 기간에 <b>PDF로 올린 이력</b>이 있어요. 형식이 다르면 중복이 걸러지지 않아 같은 거래가 이중
+              저장될 수 있어요 — 같은 계좌 내역이면 저장 전에 업로드 이력을 확인하세요.
             </p>
           )}
           {preview.sample.length > 0 && (

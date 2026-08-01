@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
 import { fetchExistingHashes } from '@/lib/finance/dedup';
+import { lockedYms } from '@/lib/finance/monthLock';
 import { dedupe } from '@/lib/finance/parse';
 import { fileToRows, rowsToTransactions, type ExcelMapping } from '@/lib/finance/excel';
 import { SLOT_KEYS, UPLOAD_SLOTS } from '@/lib/finance/uploadSlots';
@@ -70,7 +71,20 @@ export async function POST(req: Request) {
   const periodStart = allDates[0]?.slice(0, 10);
   const periodEnd = allDates[allDates.length - 1]?.slice(0, 10);
 
-  const { fresh, duplicates } = dedupe(result.transactions, existing);
+  const { fresh: freshAll, duplicates } = dedupe(result.transactions, existing);
+
+  // 확정월 가드 — 확정된 달의 거래는 저장하지 않는다(POS·분할과 동일한 409 규칙,
+  // 여러 달 파일은 확정월 몫만 제외하고 나머지는 저장).
+  const locked = await lockedYms(supabase, brand);
+  const blockedMonths = Array.from(new Set(freshAll.filter((t) => locked.has(t.ym)).map((t) => t.ym))).sort();
+  const fresh = freshAll.filter((t) => !locked.has(t.ym));
+  const blockedConfirmed = freshAll.length - fresh.length;
+  if (fresh.length === 0 && blockedConfirmed > 0) {
+    return NextResponse.json(
+      { error: `확정된 달(${blockedMonths.join(', ')})의 거래만 있어요. 월 확정을 재오픈한 뒤 올려주세요.` },
+      { status: 409 }
+    );
+  }
   if (fresh.length === 0) {
     // 전부 중복이어도 보드 슬롯은 '올렸음'으로 기록해 완료·커버리지 체크가 남게 한다
     if (slot) {
@@ -86,7 +100,7 @@ export async function POST(req: Request) {
         slot_ym: slotYm,
       });
     }
-    return NextResponse.json({ saved: 0, duplicates, autoClassified: 0 });
+    return NextResponse.json({ saved: 0, duplicates, autoClassified: 0, blockedConfirmed: 0 });
   }
 
   // 학습 규칙(normalized_key → category_id)으로 자동 분류
@@ -172,5 +186,6 @@ export async function POST(req: Request) {
     saved: fresh.length,
     duplicates,
     autoClassified: insertRows.filter((r) => r.category_id).length,
+    blockedConfirmed, // 확정월이라 제외된 건수
   });
 }
