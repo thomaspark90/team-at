@@ -67,9 +67,10 @@ export default async function AccountingDashboardPage({ searchParams }: { search
           </div>
         </section>
 
-        {/* 월별 회계자료 업로드 → 지출 자료 분류 보드 (상단 공용 월 선택) — 기장 권한자만.
-            브랜드는 상단 내비 단위가 고정(가든 지점 둘은 통장·카드가 공용이라 같은 가든 보드) */}
-        {isStaff && <AccountingBoards fixedBrand={unit.brand} initialTodos={initialTodos} />}
+        {/* 월별 자료 현황 + 지출 자료 분류 보드 (상단 공용 월 선택) — 기장 권한자만.
+            대시보드는 확인 전용(2026-08-01 대표 지시) — 업로드는 각 단위의 자료 입력 페이지에서.
+            브랜드는 상단 내비 단위가 고정(가든 지점 둘은 통장·카드가 공용이라 같은 가든 현황) */}
+        {isStaff && <AccountingBoards fixedBrand={unit.brand} unitId={unit.id} mode="status" initialTodos={initialTodos} />}
 
         {/* 기장 업무 칸반 — 은행·카드 업로드, 거래 분류, 기말재고, 월 확정 등 정기 업무 체크 */}
         {isStaff && (

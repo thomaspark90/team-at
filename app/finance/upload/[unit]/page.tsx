@@ -9,6 +9,7 @@ import UploadPanel from '@/components/finance/UploadPanel';
 import CardReconcile from '@/components/finance/CardReconcile';
 import ReceiptEnrich from '@/components/finance/ReceiptEnrich';
 import PnlUpload from '@/components/finance/PnlUpload';
+import AccountingBoards from '@/components/finance/AccountingBoards';
 
 // 단위별 자료 입력 페이지 — 스탭밀 / 가든 양재천점 / 가든 판교점 (2026-07-31 3단위 구조).
 // 스탭밀: 통장·카드·POS 전부 이 페이지에서 = 스탭밀 회계.
@@ -73,11 +74,17 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
             <PnlUpload fixedUnitKey={posUnitKey} />
           </div>
 
-          {/* 2) 은행 거래내역 (PDF) — 가든은 공용 계좌 */}
+          {/* 2) 월별 회계자료 업로드 보드 — 은행·카드 엑셀 슬롯 (대시보드에서 이관, 2026-08-01).
+              대시보드는 현황 확인 전용이고, 실제 업로드는 전부 이 페이지에서 한다. */}
+          <div className="flex flex-col gap-4">
+            <AccountingBoards fixedBrand={unit.brand} unitId={unit.id} mode="upload" />
+          </div>
+
+          {/* 3) 은행 거래내역 (PDF) — 가든은 공용 계좌 */}
           <UploadPanel brand={unit.brand} sharedGardenNote={!!unit.store} />
-          {/* 3) 신한카드 이용내역 — 같은 브랜드 통장의 카드결제 건과 정산 연결 */}
+          {/* 4) 신한카드 이용내역 — 같은 브랜드 통장의 카드결제 건과 정산 연결 */}
           <CardReconcile brand={unit.brand} />
-          {/* 4) 쿠팡 영수증 품목 분해 — 브랜드·지점은 원본 카드 건에서 자동 상속 */}
+          {/* 5) 쿠팡 영수증 품목 분해 — 브랜드·지점은 원본 카드 건에서 자동 상속 */}
           <ReceiptEnrich />
         </div>
       </div>

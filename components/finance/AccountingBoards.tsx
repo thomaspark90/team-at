@@ -20,10 +20,15 @@ const defaultYm = () => {
 export default function AccountingBoards({
   fixedBrand,
   initialTodos,
+  mode = 'upload',
+  unitId,
 }: {
   fixedBrand?: Brand;
   // 서버 컴포넌트가 미리 집계한 월 배지 — 있으면 첫 진입 시 클라이언트 재조회를 생략한다.
   initialTodos?: Record<string, number>;
+  // 'status' = 대시보드 현황(업로드 없음, POS 포함, 분류 보드 동반) / 'upload' = 자료 입력 페이지의 업로드 보드
+  mode?: 'upload' | 'status';
+  unitId?: string; // status 모드에서 '자료 입력' 이동 대상 단위
 }) {
   // 선택 월을 URL(?ym=)에 반영 — 분류 화면에 다녀오거나 새로고침해도 보던 달 유지.
   // replaceState(얕은 갱신)라 서버 재조회 없이 주소만 바뀐다.
@@ -146,8 +151,8 @@ export default function AccountingBoards({
         </div>
       </div>
 
-      <MonthlyUploadBoard ym={ym} brand={brand} onSaved={loadTodos} />
-      <ClassifyBoard ym={ym} />
+      <MonthlyUploadBoard ym={ym} brand={brand} readOnly={mode === 'status'} unitId={unitId} onSaved={loadTodos} />
+      {mode === 'status' && <ClassifyBoard ym={ym} />}
     </>
   );
 }

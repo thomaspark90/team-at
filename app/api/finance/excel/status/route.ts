@@ -139,5 +139,25 @@ export async function GET(req: Request) {
     slots[s.key] = { done, full, range: cov.label, count: a.count, at: a.at || null, via: a.via };
   }
 
-  return NextResponse.json({ ym, slots });
+  // 4) POS 매출 — 지점 단위 존재 여부(대시보드 현황 보드용). 업로드는 자료 입력 페이지에서.
+  //    가든은 지점 2개(양재천 토스/판교 페이히어), 스탭밀은 단일('').
+  const posStores = brand === 'garden' ? ['yangjae', 'pangyo'] : [''];
+  const pos: Record<string, { done: boolean; days: number; supply: number }> = {};
+  for (const st of posStores) {
+    const { data: posRows } = await supabase
+      .schema('finance')
+      .from('pos_sales')
+      .select('sale_date,supply')
+      .eq('brand', brand)
+      .eq('store', st)
+      .eq('ym', ym);
+    const rows = (posRows ?? []) as { sale_date: string; supply: number }[];
+    pos[st] = {
+      done: rows.length > 0,
+      days: new Set(rows.map((r) => r.sale_date)).size,
+      supply: rows.reduce((s, r) => s + Number(r.supply), 0),
+    };
+  }
+
+  return NextResponse.json({ ym, slots, pos });
 }

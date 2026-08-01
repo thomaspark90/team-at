@@ -33,23 +33,41 @@ const fmtDay = (iso: string) => {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 };
 
-// 월별 회계자료 업로드 보드 — 매월 올려야 할 자료를 슬롯(To-do)로 보여주고,
-// 올린 슬롯은 체크·비활성 처리해 남은 일이 한눈에 보이게 한다.
-// 은행 PDF·카드명세·네이버 자동수집 등 기존 경로로 들어온 것도 자동 감지해 체크한다.
-// 기준 월(ym)은 대시보드 상단 공용 월 선택(AccountingBoards)에서 내려받고,
-// 저장 성공 시 onSaved 로 알려 월 스트립 배지를 갱신하게 한다.
+// POS 현황(대시보드 현황 보드 전용) — 지점 키('' = 스탭밀 단일) → 상태
+interface PosStatus {
+  done: boolean;
+  days: number;
+  supply: number;
+}
+const POS_META: Record<string, { label: string; unit: string }> = {
+  yangjae: { label: 'POS 양재천 (토스)', unit: 'yangjae' },
+  pangyo: { label: 'POS 판교 (페이히어)', unit: 'pangyo' },
+  '': { label: 'POS (페이히어)', unit: 'staffmeal' },
+};
+
+// 월별 회계자료 보드 — 매월 올려야 할 자료를 슬롯(To-do)로 보여준다.
+// 은행 PDF·카드명세·자동수집 등 기존 경로로 들어온 것도 자동 감지해 체크한다.
+// 기준 월(ym)은 상단 공용 월 선택(AccountingBoards)에서 내려받는다.
+// 두 가지 모드(2026-08-01 대표 지시로 분리):
+//   readOnly=true  — 대시보드 '자료 현황': 업로드 없음, 빠진 자료 확인 + 자료 입력 페이지로 이동. POS 현황 포함.
+//   readOnly=false — 자료 입력 페이지: 칸 클릭으로 엑셀 업로드(기존 동작).
 export default function MonthlyUploadBoard({
   ym,
   brand = 'garden',
+  readOnly = false,
+  unitId,
   onSaved,
 }: {
   ym: string;
   brand?: Brand;
+  readOnly?: boolean;
+  unitId?: string; // 현황 모드에서 '자료 입력' 이동 대상 단위(staffmeal|yangjae|pangyo)
   onSaved?: () => void;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const fileRef = useRef<File | null>(null);
   const [slots, setSlots] = useState<Record<string, SlotStatus> | null>(null);
+  const [pos, setPos] = useState<Record<string, PosStatus> | null>(null);
   const [activeSlot, setActiveSlot] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -63,6 +81,7 @@ export default function MonthlyUploadBoard({
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '상태를 불러오지 못했어요.');
       setSlots(j.slots as Record<string, SlotStatus>);
+      setPos((j.pos as Record<string, PosStatus> | undefined) ?? null);
       setError(null);
     } catch (e) {
       setSlots(null);
@@ -148,26 +167,44 @@ export default function MonthlyUploadBoard({
   const partialCount = slots ? UPLOAD_SLOTS.filter((s) => slots[s.key]?.done && !slots[s.key]?.full).length : 0;
   const activeLabel = UPLOAD_SLOTS.find((s) => s.key === activeSlot)?.label ?? '';
 
+  // 현황 모드의 '자료 입력' 이동 대상
+  const uploadHref = `/finance/upload/${unitId ?? (brand === 'staffmeal' ? 'staffmeal' : 'yangjae')}`;
+  const posEntries = pos ? Object.entries(pos).filter(([k]) => POS_META[k]) : [];
+  const posDone = posEntries.filter(([, v]) => v.done).length;
+  const totalSlots = UPLOAD_SLOTS.length + (readOnly ? posEntries.length : 0);
+  const totalDone = doneCount + (readOnly ? posDone : 0);
+
   return (
     <section className="rounded-2xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="m-0 text-[15px] font-medium">
-          {brandLabel(brand)} · 월별 회계자료 업로드
+          {brandLabel(brand)} · {readOnly ? '월별 자료 현황' : '월별 회계자료 업로드'}
           {slots && (
-            <span className={`ml-2 text-[12px] font-normal ${doneCount === UPLOAD_SLOTS.length ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-              {doneCount}/{UPLOAD_SLOTS.length} 완료{partialCount > 0 && <span className="text-amber-600"> · 부분 {partialCount}</span>}
+            <span className={`ml-2 text-[12px] font-normal ${totalDone === totalSlots ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+              {totalDone}/{totalSlots} 완료{partialCount > 0 && <span className="text-amber-600"> · 부분 {partialCount}</span>}
             </span>
           )}
         </h2>
       </div>
       <p className="mt-1 text-[13px] text-muted-foreground">
-        매월 올려야 할 자료예요. 칸을 눌러 엑셀(.xlsx/.csv)을 올리면 AI가 양식과 무관하게 읽어 거래로
-        넣고, 올린 칸은 체크돼요. 저장된 거래는 <Link href="/finance/classify" className="underline">지출 자료 분류</Link>에서 계정을 지정해요.
+        {readOnly ? (
+          <>
+            이 달에 필요한 자료가 다 들어왔는지 확인하는 화면이에요. 점선 칸 = 아직 없는 자료 — 누르면{' '}
+            <Link href={uploadHref} className="underline">자료 입력</Link>으로 이동해요. 업로드는 자료 입력에서만 해요.
+          </>
+        ) : (
+          <>
+            매월 올려야 할 자료예요. 칸을 눌러 엑셀(.xlsx/.csv)을 올리면 AI가 양식과 무관하게 읽어 거래로
+            넣고, 올린 칸은 체크돼요. 저장된 거래는 <Link href="/finance/classify" className="underline">지출 자료 분류</Link>에서 계정을 지정해요.
+          </>
+        )}
       </p>
 
-      <input ref={fileInput} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
+      {!readOnly && (
+        <input ref={fileInput} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
+      )}
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className={`mt-4 grid gap-4 sm:grid-cols-2 ${readOnly ? 'lg:grid-cols-3' : ''}`}>
         {GROUPS.map((group) => (
           <div key={group}>
             <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{group}</div>
@@ -201,17 +238,19 @@ export default function MonthlyUploadBoard({
                             {st?.done ? ' 자동 수집' : ' 수집 전'} · 분류 보기 →
                           </>
                         )}
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            pickSlot(s.key);
-                          }}
-                          className="rounded border border-border px-1.5 py-0.5 hover:text-foreground"
-                          title="엑셀 파일 추가 업로드"
-                        >
-                          +
-                        </button>
+                        {!readOnly && (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              pickSlot(s.key);
+                            }}
+                            className="rounded border border-border px-1.5 py-0.5 hover:text-foreground"
+                            title="엑셀 파일 추가 업로드"
+                          >
+                            +
+                          </button>
+                        )}
                       </span>
                     </Link>
                   );
@@ -226,51 +265,103 @@ export default function MonthlyUploadBoard({
                       <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
                         {st.count > 0 && `${st.count}건`}
                         {st.via === 'auto' ? ' · 자동 반영' : st.at ? ` · ${fmtDay(st.at)}` : ''}
-                        <button onClick={() => pickSlot(s.key)} className="rounded border border-border px-1.5 py-0.5 hover:text-foreground" title="추가 파일 올리기">
-                          +
-                        </button>
+                        {!readOnly && (
+                          <button onClick={() => pickSlot(s.key)} className="rounded border border-border px-1.5 py-0.5 hover:text-foreground" title="추가 파일 올리기">
+                            +
+                          </button>
+                        )}
                       </span>
                     </div>
                   );
                 }
                 if (st?.done && !st.full) {
                   // 부분 업로드 — 월 일부 구간만 덮음. 이어서 올리면 합집합으로 재판정.
-                  return (
-                    <button
-                      key={s.key}
-                      onClick={() => pickSlot(s.key)}
-                      disabled={parsing}
-                      className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-amber-500/60 bg-amber-500/5 px-3.5 py-2.5 text-left transition-colors hover:border-amber-600 disabled:opacity-60"
-                    >
+                  const partialInner = (
+                    <>
                       <span className="flex items-center gap-2 text-[13px] font-medium">
                         <span className="text-amber-600">◐</span>
                         {s.label}
                       </span>
                       <span className="text-right text-[12px]">
                         <span className="font-medium text-amber-600">{st.range ?? '일부'}만 올라옴</span>
-                        <span className="block text-[11px] text-muted-foreground">{busy ? '읽는 중…' : '이어서 업로드 →'}</span>
+                        <span className="block text-[11px] text-muted-foreground">
+                          {readOnly ? '자료 입력에서 이어서 →' : busy ? '읽는 중…' : '이어서 업로드 →'}
+                        </span>
                       </span>
+                    </>
+                  );
+                  const partialCls =
+                    'flex items-center justify-between gap-2 rounded-xl border border-dashed border-amber-500/60 bg-amber-500/5 px-3.5 py-2.5 text-left transition-colors hover:border-amber-600 disabled:opacity-60';
+                  return readOnly ? (
+                    <Link key={s.key} href={uploadHref} className={partialCls}>{partialInner}</Link>
+                  ) : (
+                    <button key={s.key} onClick={() => pickSlot(s.key)} disabled={parsing} className={partialCls}>
+                      {partialInner}
                     </button>
                   );
                 }
-                return (
-                  <button
-                    key={s.key}
-                    onClick={() => pickSlot(s.key)}
-                    disabled={parsing || !slots}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 text-left transition-colors hover:border-foreground/40 disabled:opacity-60"
-                  >
+                const emptyInner = (
+                  <>
                     <span className="text-[13px] font-medium">{s.label}</span>
-                    <span className="text-[12px] text-muted-foreground">{busy ? '읽는 중…' : !slots ? '확인 중…' : '업로드 →'}</span>
+                    <span className="text-[12px] text-muted-foreground">
+                      {readOnly ? '없음 — 자료 입력에서 올리기 →' : busy ? '읽는 중…' : !slots ? '확인 중…' : '업로드 →'}
+                    </span>
+                  </>
+                );
+                const emptyCls =
+                  'flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 text-left transition-colors hover:border-foreground/40 disabled:opacity-60';
+                return readOnly ? (
+                  <Link key={s.key} href={uploadHref} className={emptyCls}>{emptyInner}</Link>
+                ) : (
+                  <button key={s.key} onClick={() => pickSlot(s.key)} disabled={parsing || !slots} className={emptyCls}>
+                    {emptyInner}
                   </button>
                 );
               })}
             </div>
           </div>
         ))}
+        {/* POS 매출 현황 — 대시보드 현황 모드 전용(업로드는 각 지점의 자료 입력 페이지에서) */}
+        {readOnly && posEntries.length > 0 && (
+          <div>
+            <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">매출 (POS)</div>
+            <div className="flex flex-col gap-2">
+              {posEntries.map(([storeKey, p]) => {
+                const meta = POS_META[storeKey];
+                if (p.done) {
+                  return (
+                    <Link
+                      key={storeKey}
+                      href={`/finance/pnl?ym=${ym}&brand=${brand}${storeKey ? `&store=${storeKey}` : ''}`}
+                      className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 opacity-80 transition-colors hover:border-foreground/40"
+                    >
+                      <span className="flex items-center gap-2 text-[13px]">
+                        <span className="text-emerald-600">✓</span>
+                        <span className="text-muted-foreground">{meta.label}</span>
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {p.days}일 · {won(p.supply)} · 손익 보기 →
+                      </span>
+                    </Link>
+                  );
+                }
+                return (
+                  <Link
+                    key={storeKey}
+                    href={`/finance/upload/${meta.unit}`}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 transition-colors hover:border-foreground/40"
+                  >
+                    <span className="text-[13px] font-medium">{meta.label}</span>
+                    <span className="text-[12px] text-muted-foreground">없음 — 자료 입력에서 올리기 →</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
-      {preview && activeSlot && (
+      {!readOnly && preview && activeSlot && (
         <div className="mt-4 rounded-xl border border-border bg-background p-4">
           <div className="text-[13px] font-medium">
             {fmtYm(ym)} · {activeLabel} <span className="font-normal text-muted-foreground">— 인식 결과 확인</span>
