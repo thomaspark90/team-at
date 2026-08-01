@@ -33,6 +33,14 @@ const fmtDay = (iso: string) => {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 };
 
+// 칸(슬롯) 우상단 필요 액션 배지 — 좌측 월 사이드바 배지와 같은 시각 언어.
+// 미완료 칸마다 1 (업로드/수집 액션 1개). 부모 칸에 relative 필요.
+const ActionBadge = ({ n = 1 }: { n?: number }) => (
+  <span className="absolute -right-1.5 -top-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-none text-white">
+    {n}
+  </span>
+);
+
 // POS 현황(대시보드 현황 보드 전용) — 지점 키('' = 스탭밀 단일) → 상태
 interface PosStatus {
   done: boolean;
@@ -223,10 +231,11 @@ export default function MonthlyUploadBoard({
                     <Link
                       key={s.key}
                       href={`/finance/classify?ym=${ym}&source=${s.key === 'coupang' ? 'coupang' : 'naverpay'}&brand=${brand}`}
-                      className={`flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 transition-colors hover:border-foreground/40 ${
+                      className={`relative flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 transition-colors hover:border-foreground/40 ${
                         st?.done ? 'border-border bg-muted/40' : 'border-dashed border-border bg-background'
                       }`}
                     >
+                      {slots && !st?.done && <ActionBadge />}
                       <span className="flex items-center gap-2 text-[13px] font-medium">
                         {st?.done && <span className="text-emerald-600">✓</span>}
                         {s.label}
@@ -282,6 +291,7 @@ export default function MonthlyUploadBoard({
                   // 부분 업로드 — 월 일부 구간만 덮음. 이어서 올리면 합집합으로 재판정.
                   const partialInner = (
                     <>
+                      <ActionBadge />
                       <span className="flex items-center gap-2 text-[13px] font-medium">
                         <span className="text-amber-600">◐</span>
                         {s.label}
@@ -295,7 +305,7 @@ export default function MonthlyUploadBoard({
                     </>
                   );
                   const partialCls =
-                    'flex items-center justify-between gap-2 rounded-xl border border-dashed border-amber-500/60 bg-amber-500/5 px-3.5 py-2.5 text-left transition-colors hover:border-amber-600 disabled:opacity-60';
+                    'relative flex items-center justify-between gap-2 rounded-xl border border-dashed border-amber-500/60 bg-amber-500/5 px-3.5 py-2.5 text-left transition-colors hover:border-amber-600 disabled:opacity-60';
                   return readOnly ? (
                     <Link key={s.key} href={uploadHref} className={partialCls}>{partialInner}</Link>
                   ) : (
@@ -306,6 +316,7 @@ export default function MonthlyUploadBoard({
                 }
                 const emptyInner = (
                   <>
+                    {slots && <ActionBadge />}
                     <span className="text-[13px] font-medium">{s.label}</span>
                     <span className="text-[12px] text-muted-foreground">
                       {readOnly ? '없음 — 자료 입력에서 올리기 →' : busy ? '읽는 중…' : !slots ? '확인 중…' : '업로드 →'}
@@ -313,7 +324,7 @@ export default function MonthlyUploadBoard({
                   </>
                 );
                 const emptyCls =
-                  'flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 text-left transition-colors hover:border-foreground/40 disabled:opacity-60';
+                  'relative flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 text-left transition-colors hover:border-foreground/40 disabled:opacity-60';
                 return readOnly ? (
                   <Link key={s.key} href={uploadHref} className={emptyCls}>{emptyInner}</Link>
                 ) : (
@@ -353,8 +364,9 @@ export default function MonthlyUploadBoard({
                   <Link
                     key={storeKey}
                     href={readOnly ? `/finance/upload/${meta.unit}` : '#pos'}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 transition-colors hover:border-foreground/40"
+                    className="relative flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 transition-colors hover:border-foreground/40"
                   >
+                    <ActionBadge />
                     <span className="text-[13px] font-medium">{meta.label}</span>
                     <span className="text-[12px] text-muted-foreground">
                       {readOnly ? '없음 — 자료 입력에서 올리기 →' : '없음 — 위 POS 업로더에서 올리기 ↑'}
