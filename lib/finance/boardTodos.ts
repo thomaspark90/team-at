@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { UPLOAD_SLOTS } from './uploadSlots';
+import { UPLOAD_SLOTS, slotsForBanks } from './uploadSlots';
 import { monthCoverage, type DayInterval } from './coverage';
 
 const toYm = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -18,17 +18,23 @@ export async function computeBoardTodos(supabase: SupabaseClient, brand?: string
 
   const closesSel = supabase.schema('finance').from('monthly_close').select('ym,status,store');
   const uploadsSel = supabase.schema('finance').from('uploads').select('slot,slot_ym,bank,source,period_start,period_end');
-  const txSel = supabase.schema('finance').from('transactions').select('ym,source,category_id');
+  const txSel = supabase.schema('finance').from('transactions').select('ym,source,category_id,bank');
   // POS 매출은 브랜드 지정 시에만 배지에 포함 — 보드의 POS 칸과 합이 맞도록. (전역 모드는 기존 동작 유지)
   const posSel = supabase.schema('finance').from('pos_sales').select('ym,store');
-  const [closesQ, uploadsQ, txQ, posQ] = await Promise.all([
+  // 브랜드별 사용 은행(brand_settings) — 안 쓰는 은행 슬롯은 배지 집계에서 제외.
+  // 조회 실패(테이블 미생성 등)·전역 모드는 전체 슬롯 유지.
+  const banksSel = supabase.schema('finance').from('brand_settings').select('banks').eq('brand', brand ?? '').maybeSingle();
+  const [closesQ, uploadsQ, txQ, posQ, banksQ] = await Promise.all([
     brand ? closesSel.eq('brand', brand) : closesSel,
     brand ? uploadsSel.eq('brand', brand) : uploadsSel,
     brand ? txSel.eq('brand', brand) : txSel,
     brand && brand !== 'personal' ? posSel.eq('brand', brand) : Promise.resolve({ data: [], error: null }),
+    brand ? banksSel : Promise.resolve({ data: null, error: null }),
   ]);
   if (uploadsQ.error) throw new Error(uploadsQ.error.message);
   if (txQ.error) throw new Error(txQ.error.message);
+  const brandBanks = (banksQ.data as { banks?: string[] } | null)?.banks;
+  const slots = brand && !banksQ.error && brandBanks?.length ? slotsForBanks(brandBanks) : UPLOAD_SLOTS;
 
   const posByYm = new Map<string, Set<string>>();
   for (const p of posQ.data ?? []) {
@@ -90,8 +96,9 @@ export async function computeBoardTodos(supabase: SupabaseClient, brand?: string
     }
   }
 
-  // 월·출처별 거래/미분류 집계
+  // 월·출처별 거래/미분류 집계 + 자동수집(네이버·쿠팡, bank 필드 기준) 존재 여부
   const perMonth = new Map<string, Record<string, { total: number; uncl: number }>>();
+  const autoCollected = new Map<string, { naverpay: boolean; coupang: boolean }>();
   for (const t of txQ.data ?? []) {
     const ym = String(t.ym);
     const src = String(t.source ?? 'bank');
@@ -100,15 +107,24 @@ export async function computeBoardTodos(supabase: SupabaseClient, brand?: string
     bucket[src] = bucket[src] ?? { total: 0, uncl: 0 };
     bucket[src].total++;
     if (t.category_id == null) bucket[src].uncl++;
+    const bk = String(t.bank ?? '');
+    if (bk === 'naverpay' || bk === 'coupang') {
+      const a = autoCollected.get(ym) ?? { naverpay: false, coupang: false };
+      a[bk as 'naverpay' | 'coupang'] = true;
+      autoCollected.set(ym, a);
+    }
   }
 
   const counts: Record<string, number> = {};
   for (const ym of months) {
     const sources = perMonth.get(ym) ?? {};
-    if ((sources.naverpay?.total ?? 0) > 0) {
-      // 자동수집 = 매일 들어오므로 월 전체로 간주
-      const [yy, mm] = ym.split('-').map(Number);
-      mark(ym, 'naverpay', { start: `${ym}-01`, end: `${ym}-${String(new Date(yy, mm, 0).getDate()).padStart(2, '0')}` });
+    // 자동수집(네이버·쿠팡) = 거래가 있으면 월 전체로 간주 — 보드 상태 API와 동일 규칙
+    const auto = autoCollected.get(ym);
+    for (const key of ['naverpay', 'coupang'] as const) {
+      if (auto?.[key]) {
+        const [yy, mm] = ym.split('-').map(Number);
+        mark(ym, key, { start: `${ym}-01`, end: `${ym}-${String(new Date(yy, mm, 0).getDate()).padStart(2, '0')}` });
+      }
     }
     const hasData = Object.values(sources).some((s) => s.total > 0);
 
@@ -118,7 +134,7 @@ export async function computeBoardTodos(supabase: SupabaseClient, brand?: string
     }
     const slotMap = slotAcc.get(ym) ?? new Map();
     // 완료 = 올라갔고(커버리지 판정 가능하면) 월 전체를 덮음 — 부분(◐)은 남은 업무로 집계
-    const uploadOpen = UPLOAD_SLOTS.filter((s) => {
+    const uploadOpen = slots.filter((s) => {
       const a = slotMap.get(s.key);
       if (!a) return true;
       if (a.intervals.length === 0) return !a.periodless; // 기간 없는 구버전 기록만 = 완료 간주
