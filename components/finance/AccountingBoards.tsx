@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import MonthlyUploadBoard from './MonthlyUploadBoard';
 import ClassifyBoard from './ClassifyBoard';
+import MonthSidebar from './MonthSidebar';
 import { BRANDS, type Brand } from '@/lib/finance/types';
 
 const toYm = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -13,10 +14,10 @@ const defaultYm = () => {
   return toYm(new Date(now.getFullYear(), now.getMonth() - 1, 1));
 };
 
-// 회계 월별 업무 묶음 — 상단 월 스트립에서 한 번만 고르면
+// 회계 월별 업무 묶음 — 연·월을 한 번만 고르면
 // 업로드 보드·지출 자료 분류 보드가 같은 월로 함께 움직인다.
-// 스트립은 과거 24개월~다음 달까지, 화면 폭만큼(약 7개) 보이고 좌우 ‹ › 버튼(또는 가로 스크롤)로 나머지 확인.
-// 칩 옆 배지 = 그 달의 남은 업무 수(미완료 업로드 슬롯 + 미분류 출처 + 월 확정).
+// 데스크톱(lg+)은 좌측 고정 연·월 사이드바(MonthSidebar), 좁은 화면은 가로 스트립(‹ › 버튼).
+// 범위는 과거 24개월~다음 달. 배지 = 그 달의 남은 업무 수(미완료 업로드 슬롯 + 미분류 출처 + 월 확정).
 export default function AccountingBoards({
   fixedBrand,
   initialTodos,
@@ -80,10 +81,17 @@ export default function AccountingBoards({
   }, [ym]);
 
   return (
-    <>
-      <div className="rounded-2xl border border-border bg-card px-3 py-2">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+      {/* 데스크톱(lg+): 좌측 고정 연·월 패널 — 스크롤해도 따라오는 sticky */}
+      <div className="hidden lg:sticky lg:top-4 lg:block lg:w-[172px] lg:shrink-0">
+        <MonthSidebar months={months} ym={ym} todos={todos} onSelect={setYm} />
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
+      {/* 브랜드 탭(있을 때) + 좁은 화면용 월 스트립 — 데스크톱은 사이드바가 대신한다 */}
+      <div className={`rounded-2xl border border-border bg-card px-3 py-2 ${fixedBrand ? 'lg:hidden' : ''}`}>
         {!fixedBrand && (
-          <div className="flex items-center gap-1 px-1 pt-1.5">
+          <div className="flex items-center gap-1 px-1 pb-1 pt-1.5">
             {BRANDS.map((b) => {
               const on = brand === b.id;
               return (
@@ -102,7 +110,7 @@ export default function AccountingBoards({
             <span className="ml-2 text-[11px] text-muted-foreground">브랜드별로 회계가 분리돼요 — 올린 자료는 선택된 브랜드로 들어가요</span>
           </div>
         )}
-        <div className="flex items-center gap-1 pb-1 pt-1.5">
+        <div className="flex items-center gap-1 pb-1 pt-1.5 lg:hidden">
           <button
             onClick={() => scrollStrip(-1)}
             aria-label="이전 달들 보기"
@@ -153,6 +161,7 @@ export default function AccountingBoards({
 
       <MonthlyUploadBoard ym={ym} brand={brand} readOnly={mode === 'status'} unitId={unitId} onSaved={loadTodos} />
       {mode === 'status' && <ClassifyBoard ym={ym} />}
-    </>
+      </div>
+    </div>
   );
 }
