@@ -235,6 +235,29 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
         </p>
       )}
 
+      {/* 처리 중 안내 — 뭘 하고 있는지 화면에 명시(2026-08-01 대표 요청) */}
+      {applying && batchAt != null && batchFiles[batchAt] && (
+        <div className="flex items-center gap-2 rounded-md border border-border bg-muted px-4 py-3 text-[13px]">
+          <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-foreground" aria-hidden />
+          <span className="text-foreground">
+            ⏳ 파일 처리 중 — {batchAt + 1}/{batchFiles.length} · <b>{batchFiles[batchAt].name}</b>
+          </span>
+          <span className="text-muted-foreground">읽고 저장하는 데 파일당 몇 초 걸려요. 창을 닫지 마세요.</span>
+        </div>
+      )}
+      {loading && file && (
+        <div className="flex items-center gap-2 rounded-md border border-border bg-muted px-4 py-3 text-[13px]">
+          <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-foreground" aria-hidden />
+          <span className="text-foreground">⏳ 파일 읽는 중 — <b>{file.name}</b></span>
+        </div>
+      )}
+      {applying && batchAt == null && (
+        <div className="flex items-center gap-2 rounded-md border border-border bg-muted px-4 py-3 text-[13px]">
+          <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-foreground" aria-hidden />
+          <span className="text-foreground">⏳ 저장 중…</span>
+        </div>
+      )}
+
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
       {done && (
@@ -247,7 +270,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
         </div>
       )}
 
-      {batchResults.length > 0 && (
+      {(batchResults.length > 0 || (applying && batchAt != null)) && (
         <div className="overflow-hidden rounded-md border border-border bg-background">
           <table className="w-full border-collapse text-[13px]">
             <thead>
@@ -273,6 +296,14 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
                   </td>
                 </tr>
               ))}
+              {applying && batchAt != null && batchFiles[batchAt] && (
+                <tr className="border-t border-border">
+                  <td className="max-w-[280px] truncate px-3 py-2 text-muted-foreground">{batchFiles[batchAt].name}</td>
+                  <td className="px-3 py-2 text-muted-foreground">—</td>
+                  <td className="px-3 py-2 text-right text-muted-foreground">—</td>
+                  <td className="px-3 py-2 text-muted-foreground">⏳ 처리 중…</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
