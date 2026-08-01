@@ -166,7 +166,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
           <h2 className="text-[15px] text-foreground">POS 매출 올리기</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
             지점의 POS 매출리포트 엑셀을 올리면 <b>공급가액 매출</b>이 월별로 반영돼요. 같은 달·같은 지점을 다시 올리면 교체돼요.
-            양재천=토스(비번 0000), 판교·스탭밀=페이히어. (상품권은 매출에서 제외)
+            양재천=토스(비번 0000), 판교·스탭밀=페이히어. (식권·상품권 판매는 선수금이라 매출에서 제외 — 사용 시점에 매출로 잡혀요)
           </p>
         </div>
         <button onClick={() => { setOpen(false); reset(); }} className="text-[13px] text-muted-foreground hover:text-foreground">닫기</button>
@@ -264,7 +264,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
         <div className="rounded-md border border-border bg-muted p-4 text-[13px]">
           <div className="mb-1 text-foreground">✓ 저장 완료 — {done.yms.map(fmtYm).join(', ')} · 이어서 다음 파일을 올릴 수 있어요</div>
           <div className="text-muted-foreground">
-            공급가액 매출 <b className="text-foreground">{won(done.supply)}</b> · {done.inserted}개 집계행{done.excludedRows ? ` · 상품권 ${done.excludedRows}건 제외` : ''} ·{' '}
+            공급가액 매출 <b className="text-foreground">{won(done.supply)}</b> · {done.inserted}개 집계행{done.excludedRows ? ` · 식권·상품권 ${done.excludedRows}건 제외` : ''} ·{' '}
             <a href={`/finance/pnl?ym=${done.ym}`} className="text-foreground underline">관리손익 보기 →</a>
           </div>
         </div>
@@ -291,7 +291,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
                     {r.error ? (
                       <span className="text-destructive">❌ {r.error}</span>
                     ) : (
-                      <span className="text-positive">✓ {r.inserted}행{r.excludedRows ? ` · 상품권 ${r.excludedRows}건 제외` : ''}</span>
+                      <span className="text-positive">✓ {r.inserted}행{r.excludedRows ? ` · 식권·상품권 ${r.excludedRows}건 제외` : ''}</span>
                     )}
                   </td>
                 </tr>
@@ -316,7 +316,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
             <span className="rounded-md border border-border px-3 py-1.5">공급가액 매출 <b className="text-positive">{won(preview.totals.supply)}</b></span>
             <span className="rounded-md border border-border px-3 py-1.5">주문행 <b>{preview.meta.dataRows.toLocaleString('ko-KR')}</b> (취소 {preview.meta.canceled})</span>
             {preview.excluded.rows > 0 && (
-              <span className="rounded-md border border-border px-3 py-1.5 text-muted-foreground">상품권 제외 {preview.excluded.rows}건 ({won(preview.excluded.gross)})</span>
+              <span className="rounded-md border border-border px-3 py-1.5 text-muted-foreground">식권·상품권 제외 {preview.excluded.rows}건 ({won(preview.excluded.gross)})</span>
             )}
           </div>
 
