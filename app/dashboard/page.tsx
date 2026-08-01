@@ -6,7 +6,6 @@ import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import AccountingBoards from '@/components/finance/AccountingBoards';
 import MonthShell from '@/components/finance/MonthShell';
-import TaskBoard from '@/components/finance/TaskBoard';
 import { unitOf } from '@/lib/finance/types';
 import { computeBoardTodos } from '@/lib/finance/boardTodos';
 
@@ -74,17 +73,10 @@ export default async function AccountingDashboardPage({ searchParams }: { search
             브랜드는 상단 내비 단위가 고정(가든 지점 둘은 통장·카드가 공용이라 같은 가든 현황) */}
         {isStaff && (
           <MonthShell initialTodos={initialTodos} brand={unit.brand}>
+            {/* 기장 현황은 상태 그리드의 숫자·배지로 충분해 업무 보드(기장 칸반)는 제거(2026-08-01 대표 지시).
+                단발 업무 추가는 리포트 재무 대시보드(/finance/dashboard)의 업무 보드에 남아 있음.
+                되살리려면 TaskBoard board="accounting" 섹션을 다시 넣으면 됨. */}
             <AccountingBoards fixedBrand={unit.brand} unitId={unit.id} mode="status" />
-
-            {/* 기장 업무 칸반 — 은행·카드 업로드, 거래 분류, 기말재고, 월 확정 등 정기 업무 체크 */}
-            <section className="rounded-2xl border border-border bg-card p-5">
-              <h2 className="m-0 mb-1 text-[15px] font-medium">업무 보드</h2>
-              <p className="mb-4 mt-0 text-[13px] text-muted-foreground">
-                주간·월간 기장 업무가 자동으로 생성돼요. POS·채널수수료·관리손익 검토는{' '}
-                <Link href="/finance/dashboard" className="underline">재무 대시보드</Link>에서 관리해요.
-              </p>
-              <TaskBoard board="accounting" />
-            </section>
           </MonthShell>
         )}
       </div>
