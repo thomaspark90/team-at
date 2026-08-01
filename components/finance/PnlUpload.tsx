@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+
 import { useRefresh } from '@/components/Refresh';
 import { won, fmtYm } from '@/lib/finance/format';
 import type { Brand, Store } from '@/lib/finance/types';
@@ -42,11 +42,24 @@ const POS_UNITS: PosUnit[] = [
   { key: 'staffmeal', brand: 'staffmeal', store: '', posType: 'payhere', label: '스탭밀 (페이히어)' },
 ];
 
+// 일괄(복수 파일) 업로드 결과 한 줄
+interface BatchRow {
+  name: string;
+  yms: string[];
+  supply: number;
+  inserted: number;
+  excludedRows: number;
+  error?: string;
+}
+
 export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
-  const router = useRouter();
   const { refresh } = useRefresh();
   const fixedUnit = POS_UNITS.find((u) => u.key === fixedUnitKey) ?? null;
   const [file, setFile] = useState<File | null>(null);
+  // 복수 파일 선택 시 — 월별 파일 여러 개를 한 번에 순차 업로드(2026-08-01 대표 요청)
+  const [batchFiles, setBatchFiles] = useState<File[]>([]);
+  const [batchAt, setBatchAt] = useState<number | null>(null); // 진행 중인 파일 index
+  const [batchResults, setBatchResults] = useState<BatchRow[]>([]);
   const [password, setPassword] = useState((fixedUnit ?? POS_UNITS[0]).posType === 'toss' ? '0000' : '');
   const [unit, setUnit] = useState<PosUnit>(fixedUnit ?? POS_UNITS[0]);
   const [mapping, setMapping] = useState<{ sheet: string; header: Record<string, string> } | null>(null);
@@ -57,7 +70,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [done, setDone] = useState<ApplyResult | null>(null);
 
-  const reset = () => { setPreview(null); setDone(null); setError(null); setMapping(null); };
+  const reset = () => { setPreview(null); setDone(null); setError(null); setMapping(null); setBatchResults([]); };
 
   async function analyze() {
     if (!file) return;
@@ -95,13 +108,47 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
       const result = j as ApplyResult;
       setDone(result);
       setPreview(null);
-      router.push(`/finance/pnl?ym=${result.ym}`);
+      // 페이지 이동 없음 — 연속 업로드를 위해 그대로 유지(2026-08-01), 데이터만 갱신
       refresh();
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setApplying(false);
     }
+  }
+
+  // 복수 파일 순차 업로드 — 파일별 미리보기 없이 바로 저장(같은 달 재업로드=교체라 안전),
+  // 끝나면 파일별 결과 표로 검증. 실패한 파일은 표에 남고 나머지는 계속 진행.
+  async function applyBatch() {
+    if (batchFiles.length === 0) return;
+    setApplying(true);
+    setError(null);
+    setBatchResults([]);
+    const results: BatchRow[] = [];
+    for (let i = 0; i < batchFiles.length; i++) {
+      setBatchAt(i);
+      const f = batchFiles[i];
+      try {
+        const fd = new FormData();
+        fd.append('file', f);
+        fd.append('password', password);
+        fd.append('brand', unit.brand);
+        fd.append('store', unit.store);
+        fd.append('posType', unit.posType);
+        const res = await fetch('/api/finance/pos/apply', { method: 'POST', body: fd });
+        const j = await res.json();
+        if (!res.ok) throw new Error(j.error || '저장 실패');
+        const r = j as ApplyResult;
+        results.push({ name: f.name, yms: r.yms, supply: r.supply, inserted: r.inserted, excludedRows: r.excludedRows });
+      } catch (e) {
+        results.push({ name: f.name, yms: [], supply: 0, inserted: 0, excludedRows: 0, error: (e as Error).message });
+      }
+      setBatchResults([...results]);
+    }
+    setBatchAt(null);
+    setBatchFiles([]);
+    setApplying(false);
+    refresh();
   }
 
   if (!open) {
@@ -147,8 +194,15 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
         )}
         <input
           type="file"
+          multiple
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          onChange={(e) => { setFile(e.target.files?.[0] ?? null); reset(); }}
+          onChange={(e) => {
+            const list = Array.from(e.target.files ?? []);
+            // 1개 = 미리보기 확인 흐름, 2개 이상 = 순차 일괄 업로드 흐름
+            setFile(list.length === 1 ? list[0] : null);
+            setBatchFiles(list.length > 1 ? list : []);
+            reset();
+          }}
           className="text-[13px] text-foreground"
         />
         <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
@@ -161,19 +215,66 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
             placeholder="0000"
           />
         </label>
-        <button onClick={analyze} disabled={!file || loading} className="ta-btn-primary">
-          {loading ? '읽는 중…' : '업로드'}
-        </button>
+        {batchFiles.length > 1 ? (
+          <button onClick={applyBatch} disabled={applying} className="ta-btn-primary">
+            {applying && batchAt != null
+              ? `${batchAt + 1}/${batchFiles.length} 업로드 중…`
+              : `${batchFiles.length}개 파일 연속 업로드`}
+          </button>
+        ) : (
+          <button onClick={analyze} disabled={!file || loading} className="ta-btn-primary">
+            {loading ? '읽는 중…' : '업로드'}
+          </button>
+        )}
       </div>
+
+      {batchFiles.length > 1 && !applying && batchResults.length === 0 && (
+        <p className="text-[12px] text-muted-foreground">
+          {batchFiles.length}개 파일을 순서대로 바로 저장해요(파일별 미리보기 없음 — 같은 달 재업로드는 교체라 안전).
+          끝나면 파일별 결과 표로 확인해요.
+        </p>
+      )}
 
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
       {done && (
         <div className="rounded-md border border-border bg-muted p-4 text-[13px]">
-          <div className="mb-1 text-foreground">✓ 저장 완료 — {done.yms.map(fmtYm).join(', ')}</div>
+          <div className="mb-1 text-foreground">✓ 저장 완료 — {done.yms.map(fmtYm).join(', ')} · 이어서 다음 파일을 올릴 수 있어요</div>
           <div className="text-muted-foreground">
-            공급가액 매출 <b className="text-foreground">{won(done.supply)}</b> · {done.inserted}개 집계행{done.excludedRows ? ` · 상품권 ${done.excludedRows}건 제외` : ''}
+            공급가액 매출 <b className="text-foreground">{won(done.supply)}</b> · {done.inserted}개 집계행{done.excludedRows ? ` · 상품권 ${done.excludedRows}건 제외` : ''} ·{' '}
+            <a href={`/finance/pnl?ym=${done.ym}`} className="text-foreground underline">관리손익 보기 →</a>
           </div>
+        </div>
+      )}
+
+      {batchResults.length > 0 && (
+        <div className="overflow-hidden rounded-md border border-border bg-background">
+          <table className="w-full border-collapse text-[13px]">
+            <thead>
+              <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+                <th className="px-3 py-2 text-left font-normal">파일</th>
+                <th className="px-3 py-2 text-left font-normal">월</th>
+                <th className="px-3 py-2 text-right font-normal">공급가액</th>
+                <th className="px-3 py-2 text-left font-normal">결과</th>
+              </tr>
+            </thead>
+            <tbody>
+              {batchResults.map((r) => (
+                <tr key={r.name} className="border-t border-border">
+                  <td className="max-w-[280px] truncate px-3 py-2 text-muted-foreground" title={r.name}>{r.name}</td>
+                  <td className="px-3 py-2 text-foreground">{r.yms.map(fmtYm).join(', ') || '—'}</td>
+                  <td className="px-3 py-2 text-right tabular text-foreground">{r.error ? '—' : won(r.supply)}</td>
+                  <td className="px-3 py-2">
+                    {r.error ? (
+                      <span className="text-destructive">❌ {r.error}</span>
+                    ) : (
+                      <span className="text-positive">✓ {r.inserted}행{r.excludedRows ? ` · 상품권 ${r.excludedRows}건 제외` : ''}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
