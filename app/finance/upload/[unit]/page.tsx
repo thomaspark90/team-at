@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { resolveMember } from '@/lib/finance/access';
 import { unitOf } from '@/lib/finance/types';
+import { getBrandBanks } from '@/lib/finance/brandBanks';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import PnlUpload from '@/components/finance/PnlUpload';
@@ -32,6 +33,8 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
   if (!isStaff) redirect('/finance');
 
   const posUnitKey = unit.id === 'staffmeal' ? 'staffmeal' : `garden-${unit.store}`;
+  // 브랜드별 사용 은행(설정 페이지에서 관리) — 업로드 보드·PDF 업로더가 이 은행만 보여준다
+  const banks = await getBrandBanks(supabase, unit.brand);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -78,7 +81,7 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
                 은행 거래내역은 스탭밀·가든 모두 엑셀로 올리므로, 이 그리드가 유일한 업로드 경로다.
                 (은행 PDF 폼·신한카드 정산·쿠팡 영수증 세분화는 2026-08-01 제거 — 그리드와 중복.
                  필요 시 컴포넌트는 코드에 남아 있으니 되살릴 수 있음: UploadPanel/CardReconcile/ReceiptEnrich) */}
-            <AccountingBoards fixedBrand={unit.brand} unitId={unit.id} mode="upload" />
+            <AccountingBoards fixedBrand={unit.brand} unitId={unit.id} mode="upload" banks={banks} />
           </MonthShell>
         </div>
       </div>

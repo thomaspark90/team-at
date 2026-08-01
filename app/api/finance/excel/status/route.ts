@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import { UPLOAD_SLOTS, type SlotStatus } from '@/lib/finance/uploadSlots';
+import { getBrandBanks } from '@/lib/finance/brandBanks';
 import { monthCoverage, type DayInterval } from '@/lib/finance/coverage';
 
 export const runtime = 'nodejs';
@@ -32,6 +33,8 @@ export async function GET(req: Request) {
   // 브랜드별 보드 — 상태도 그 브랜드 업로드·거래만 본다(미지정=garden, 기존 동작 유지)
   const brandRaw = params.get('brand') ?? 'garden';
   const brand = brandRaw === 'staffmeal' ? 'staffmeal' : 'garden';
+  // 브랜드별 사용 은행 — 보드·월확정 게이트가 이 목록의 은행 슬롯만 요구한다
+  const banks = await getBrandBanks(supabase, brand);
   const [y, m] = ym.split('-').map(Number);
   const monthStart = `${ym}-01`;
   const monthEnd = `${ym}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
@@ -191,5 +194,5 @@ export async function GET(req: Request) {
   );
   const close = { confirmed: requiredStores.every((s) => confirmedStores.has(s)) };
 
-  return NextResponse.json({ ym, slots, pos, classify, close });
+  return NextResponse.json({ ym, slots, pos, classify, close, banks });
 }

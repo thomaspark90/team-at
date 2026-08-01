@@ -85,7 +85,7 @@ export default async function ClassifyPage({
             </Link>
             {role === 'admin' && (
               <Link href="/finance/categories" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-                계정과목 관리 →
+                설정(계정과목) →
               </Link>
             )}
           </div>

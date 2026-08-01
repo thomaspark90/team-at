@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { brandLabel, type Brand, type ParsedTransaction } from '@/lib/finance/types';
 import type { ExcelMapping } from '@/lib/finance/excel';
-import { UPLOAD_SLOTS, type SlotGroup, type SlotStatus } from '@/lib/finance/uploadSlots';
+import { slotsForBanks, type SlotGroup, type SlotStatus } from '@/lib/finance/uploadSlots';
 
 interface Preview {
   mapping: ExcelMapping;
@@ -64,17 +64,21 @@ export default function MonthlyUploadBoard({
   brand = 'garden',
   readOnly = false,
   unitId,
+  initialBanks,
   onSaved,
 }: {
   ym: string;
   brand?: Brand;
   readOnly?: boolean;
   unitId?: string; // 현황 모드에서 '자료 입력' 이동 대상 단위(staffmeal|yangjae|pangyo)
+  initialBanks?: string[]; // 브랜드 고정 페이지에서 서버가 미리 읽은 사용 은행 — 첫 렌더 깜빡임 방지
   onSaved?: () => void;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const fileRef = useRef<File | null>(null);
   const [slots, setSlots] = useState<Record<string, SlotStatus> | null>(null);
+  // 브랜드별 사용 은행 — 상태 API 응답으로 갱신. null = 미로드(전체 슬롯 표시)
+  const [banks, setBanks] = useState<string[] | null>(initialBanks ?? null);
   const [pos, setPos] = useState<Record<string, PosStatus> | null>(null);
   // 분류·월확정 현황 — 칸 배지 합이 좌측 월 배지와 일치하도록 같은 규칙으로 서버에서 집계
   const [classify, setClassify] = useState<{ total: number; sources: number } | null>(null);
@@ -92,6 +96,7 @@ export default function MonthlyUploadBoard({
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '상태를 불러오지 못했어요.');
       setSlots(j.slots as Record<string, SlotStatus>);
+      setBanks((j.banks as string[] | undefined) ?? null);
       setPos((j.pos as Record<string, PosStatus> | undefined) ?? null);
       setClassify((j.classify as { total: number; sources: number } | undefined) ?? null);
       setMonthClose((j.close as { confirmed: boolean } | undefined) ?? null);
@@ -151,7 +156,7 @@ export default function MonthlyUploadBoard({
       const res = await fetch('/api/finance/excel/save', { method: 'POST', body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '저장에 실패했어요.');
-      const label = UPLOAD_SLOTS.find((s) => s.key === activeSlot)?.label ?? '';
+      const label = SLOTS.find((s) => s.key === activeSlot)?.label ?? '';
       setNotice(
         j.saved === 0
           ? `${label} — 모두 이미 저장된 거래예요. 슬롯은 완료로 표시했어요.`
@@ -176,9 +181,11 @@ export default function MonthlyUploadBoard({
     setError(null);
   }
 
-  const doneCount = slots ? UPLOAD_SLOTS.filter((s) => slots[s.key]?.done && slots[s.key]?.full).length : 0;
-  const partialCount = slots ? UPLOAD_SLOTS.filter((s) => slots[s.key]?.done && !slots[s.key]?.full).length : 0;
-  const activeLabel = UPLOAD_SLOTS.find((s) => s.key === activeSlot)?.label ?? '';
+  // 이 브랜드가 쓰는 슬롯만 — 사용 은행 설정(brand_settings)에서 꺼진 은행 슬롯은 표시·집계 제외
+  const SLOTS = slotsForBanks(banks);
+  const doneCount = slots ? SLOTS.filter((s) => slots[s.key]?.done && slots[s.key]?.full).length : 0;
+  const partialCount = slots ? SLOTS.filter((s) => slots[s.key]?.done && !slots[s.key]?.full).length : 0;
+  const activeLabel = SLOTS.find((s) => s.key === activeSlot)?.label ?? '';
 
   // 현황 모드의 '자료 입력' 이동 대상
   const uploadHref = `/finance/upload/${unitId ?? (brand === 'staffmeal' ? 'staffmeal' : 'yangjae')}`;
@@ -191,7 +198,7 @@ export default function MonthlyUploadBoard({
   // 분류·확정 칸도 완료 카운트에 포함 (personal 등 확정 개념 없는 응답이면 제외)
   const extraTotal = (classify ? 1 : 0) + (monthClose ? 1 : 0);
   const extraDone = (classify && classify.total === 0 ? 1 : 0) + (monthClose?.confirmed ? 1 : 0);
-  const totalSlots = UPLOAD_SLOTS.length + posEntries.length + extraTotal;
+  const totalSlots = SLOTS.length + posEntries.length + extraTotal;
   const totalDone = doneCount + posDone + extraDone;
 
   return (
@@ -229,7 +236,7 @@ export default function MonthlyUploadBoard({
           <div key={group}>
             <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{group}</div>
             <div className="flex flex-col gap-2">
-              {UPLOAD_SLOTS.filter((s) => s.group === group).map((s) => {
+              {SLOTS.filter((s) => s.group === group).map((s) => {
                 const st = slots?.[s.key];
                 const busy = parsing && activeSlot === s.key;
                 if (s.auto) {

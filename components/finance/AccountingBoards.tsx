@@ -20,11 +20,13 @@ export default function AccountingBoards({
   fixedBrand,
   mode = 'upload',
   unitId,
+  banks,
 }: {
   fixedBrand?: Brand;
   // 'status' = 대시보드 현황(업로드 없음, POS 포함, 분류 보드 동반) / 'upload' = 자료 입력 페이지의 업로드 보드
   mode?: 'upload' | 'status';
   unitId?: string; // status 모드에서 '자료 입력' 이동 대상 단위
+  banks?: string[]; // fixedBrand 페이지에서 서버가 미리 읽은 사용 은행(brand_settings)
 }) {
   const ctx = useMonthCtx();
   const ym = ctx?.ym ?? defaultYm();
@@ -58,7 +60,14 @@ export default function AccountingBoards({
         </div>
       )}
 
-      <MonthlyUploadBoard ym={ym} brand={brand} readOnly={mode === 'status'} unitId={unitId} onSaved={ctx?.refreshTodos} />
+      <MonthlyUploadBoard
+        ym={ym}
+        brand={brand}
+        readOnly={mode === 'status'}
+        unitId={unitId}
+        initialBanks={fixedBrand ? banks : undefined}
+        onSaved={ctx?.refreshTodos}
+      />
       {mode === 'status' && <ClassifyBoard ym={ym} />}
     </>
   );

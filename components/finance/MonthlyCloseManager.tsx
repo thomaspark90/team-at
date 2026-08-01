@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { wonNum as won, fmtYm } from '@/lib/finance/format';
-import { UPLOAD_SLOTS, type SlotStatus } from '@/lib/finance/uploadSlots';
+import { slotsForBanks, type SlotStatus } from '@/lib/finance/uploadSlots';
 
 export interface MonthRow {
   ym: string;
@@ -42,7 +42,8 @@ export default function MonthlyCloseManager({
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '업로드 현황 확인 실패');
       const slots = j.slots as Record<string, SlotStatus>;
-      const issues = UPLOAD_SLOTS.flatMap((s) => {
+      // 사용 은행 설정 반영 — 이 브랜드가 안 쓰는 은행 슬롯은 확정 점검에서 요구하지 않는다
+      const issues = slotsForBanks((j.banks as string[] | undefined) ?? null).flatMap((s) => {
         const st = slots[s.key];
         if (!st?.done) return [`${s.label} — 업로드 안 됨`];
         if (!st.full) return [`${s.label} — ${st.range ?? '일부'} 구간만 올라옴 (부분)`];

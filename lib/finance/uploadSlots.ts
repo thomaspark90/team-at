@@ -13,17 +13,24 @@ export interface UploadSlot {
   // 자동수집 소스(쿠팡·네이버 launchd 크롤러) — 보드에서 업로드 칸이 아니라
   // '이 달 수집 N건 · 분류 보기' 타일로 표시. 엑셀 추가 업로드는 보조(+)로만.
   auto?: boolean;
+  // 은행 슬롯 — 브랜드별 사용 은행 설정(finance.brand_settings)의 필터 대상
+  bank?: 'shinhan' | 'woori';
 }
 
 export const UPLOAD_SLOTS: UploadSlot[] = [
-  { key: 'bank_shinhan', label: '신한은행', group: '입출금 내역', source: 'bank' },
-  { key: 'bank_woori', label: '우리은행', group: '입출금 내역', source: 'bank' },
+  { key: 'bank_shinhan', label: '신한은행', group: '입출금 내역', source: 'bank', bank: 'shinhan' },
+  { key: 'bank_woori', label: '우리은행', group: '입출금 내역', source: 'bank', bank: 'woori' },
   { key: 'coupang', label: '쿠팡 지출', group: '지출 세부 내역', source: 'card', auto: true },
   { key: 'naverpay', label: '네이버 페이 지출', group: '지출 세부 내역', source: 'naverpay', auto: true },
   { key: 'card_main', label: '주지출 카드', group: '지출 세부 내역', source: 'card' },
 ];
 
 export const SLOT_KEYS = UPLOAD_SLOTS.map((s) => s.key);
+
+// 브랜드의 사용 은행 설정을 반영한 슬롯 목록 — 목록에 없는 은행 슬롯만 빠진다.
+// banks 미지정(null/undefined = 설정 미로드·미지정)이면 전체 슬롯.
+export const slotsForBanks = (banks: string[] | null | undefined): UploadSlot[] =>
+  UPLOAD_SLOTS.filter((s) => !s.bank || !banks || banks.includes(s.bank));
 
 // 슬롯별 완료 상태 (상태 API 응답)
 export interface SlotStatus {
