@@ -25,6 +25,16 @@ interface SaveResult {
   autoClassified: number;
 }
 
+// 파일별 진행 상태 — 여러 파일을 한 번에 올려 순차 파싱·저장한다
+interface Entry {
+  file: File;
+  isExcel: boolean;
+  status: 'picked' | 'parsing' | 'ready' | 'saving' | 'saved' | 'error';
+  preview?: Preview;
+  error?: string;
+  result?: SaveResult;
+}
+
 const BANKS: { value: BankSource; label: string }[] = [
   { value: 'shinhan', label: '신한은행' },
   { value: 'woori', label: '우리은행' },
@@ -38,77 +48,117 @@ export default function UploadPanel({
   sharedGardenNote?: boolean; // 가든 지점 페이지에서 — 통장이 공용임을 안내
 }) {
   const [bank, setBank] = useState<BankSource>('shinhan');
-  const [file, setFile] = useState<File | null>(null);
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<Preview | null>(null);
-  const [saved, setSaved] = useState<SaveResult | null>(null);
+  const [done, setDone] = useState<SaveResult | null>(null); // 전 파일 합산 결과
 
   // 엑셀(.xlsx/.xls/.csv)은 AI 열 매핑 경로(/api/finance/excel/*)로, PDF는 은행 파서 경로로.
-  const isExcel = !!file && /\.(xlsx|xls|csv)$/i.test(file.name);
   const slotKey = bank === 'shinhan' ? 'bank_shinhan' : 'bank_woori'; // 월별 보드 완료 체크·잔액 연속성 검사용
+  const hasPdf = entries.some((e) => !e.isExcel);
+
+  const patch = (i: number, p: Partial<Entry>) =>
+    setEntries((es) => es.map((e, j) => (j === i ? { ...e, ...p } : e)));
+
+  function onPick(list: FileList | null) {
+    const files = Array.from(list ?? []);
+    setEntries(
+      files.map((f) => ({ file: f, isExcel: /\.(xlsx|xls|csv)$/i.test(f.name), status: 'picked' as const }))
+    );
+    setDone(null);
+    setError(null);
+  }
 
   async function analyze() {
-    if (!file) return;
+    if (!entries.length) return;
     setLoading(true);
     setError(null);
-    setPreview(null);
-    setSaved(null);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      if (isExcel) {
-        fd.append('slot', slotKey);
-      } else {
-        fd.append('bank', bank);
-        fd.append('brand', brand);
-        if (password) fd.append('password', password);
+    setDone(null);
+    // 순차 처리 — 엑셀은 파일마다 AI 열 매핑 호출이 붙어서 병렬로 몰지 않는다
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i];
+      patch(i, { status: 'parsing', preview: undefined, error: undefined, result: undefined });
+      try {
+        const fd = new FormData();
+        fd.append('file', e.file);
+        if (e.isExcel) {
+          fd.append('slot', slotKey);
+        } else {
+          fd.append('bank', bank);
+          fd.append('brand', brand);
+          if (password) fd.append('password', password);
+        }
+        const res = await fetch(e.isExcel ? '/api/finance/excel/parse' : '/api/finance/parse', {
+          method: 'POST',
+          body: fd,
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || '입력에 실패했습니다.');
+        patch(i, { status: 'ready', preview: json as Preview });
+      } catch (err) {
+        patch(i, { status: 'error', error: (err as Error).message });
       }
-      const res = await fetch(isExcel ? '/api/finance/excel/parse' : '/api/finance/parse', {
-        method: 'POST',
-        body: fd,
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || '입력에 실패했습니다.');
-      setPreview(json as Preview);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }
 
-  async function save() {
-    if (!file || !preview || preview.fresh === 0) return;
+  async function saveAll() {
     setSaving(true);
     setError(null);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('brand', brand);
-      if (isExcel) {
-        fd.append('mapping', JSON.stringify(preview.mapping));
-        fd.append('slot', slotKey);
-      } else {
-        fd.append('bank', bank);
-        if (password) fd.append('password', password);
+    const total: SaveResult = { saved: 0, duplicates: 0, autoClassified: 0 };
+    // 순차 저장 — 파일 간 겹치는 거래는 앞 파일 저장 후 DB 지문 대조로 자동으로 걸러진다
+    for (let i = 0; i < entries.length; i++) {
+      const e = entries[i];
+      if (e.status !== 'ready' || !e.preview) continue;
+      if (e.preview.fresh === 0) {
+        patch(i, { status: 'saved', result: { saved: 0, duplicates: e.preview.duplicates, autoClassified: 0 } });
+        continue;
       }
-      const res = await fetch(isExcel ? '/api/finance/excel/save' : '/api/finance/save', {
-        method: 'POST',
-        body: fd,
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || '저장에 실패했습니다.');
-      setSaved(json as SaveResult);
-      setPreview(null);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSaving(false);
+      patch(i, { status: 'saving' });
+      try {
+        const fd = new FormData();
+        fd.append('file', e.file);
+        fd.append('brand', brand);
+        if (e.isExcel) {
+          fd.append('mapping', JSON.stringify(e.preview.mapping));
+          fd.append('slot', slotKey);
+        } else {
+          fd.append('bank', bank);
+          if (password) fd.append('password', password);
+        }
+        const res = await fetch(e.isExcel ? '/api/finance/excel/save' : '/api/finance/save', {
+          method: 'POST',
+          body: fd,
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || '저장에 실패했습니다.');
+        total.saved += Number(json.saved ?? 0);
+        total.duplicates += Number(json.duplicates ?? 0);
+        total.autoClassified += Number(json.autoClassified ?? 0);
+        patch(i, { status: 'saved', result: json as SaveResult });
+      } catch (err) {
+        patch(i, { status: 'error', error: (err as Error).message });
+      }
     }
+    setDone(total);
+    setSaving(false);
   }
+
+  const ready = entries.filter((e) => e.status === 'ready' && e.preview);
+  const agg = ready.reduce(
+    (a, e) => ({
+      totalRows: a.totalRows + e.preview!.totalRows,
+      fresh: a.fresh + e.preview!.fresh,
+      duplicates: a.duplicates + e.preview!.duplicates,
+      sumIn: a.sumIn + e.preview!.sumIn,
+      sumOut: a.sumOut + e.preview!.sumOut,
+    }),
+    { totalRows: 0, fresh: 0, duplicates: 0, sumIn: 0, sumOut: 0 }
+  );
+  const analyzed = entries.some((e) => e.status !== 'picked');
+  const single = entries.length === 1 ? entries[0] : null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -117,11 +167,12 @@ export default function UploadPanel({
           {brandLabel(brand)} · 거래내역 업로드
         </h1>
         <p className="text-[13px] text-muted-foreground">
-          {brandLabel(brand)} 명의 통장의 거래내역 PDF 또는 엑셀(.xlsx/.xls/.csv)을 올려 파싱·미리보기 후 저장해요.
-          엑셀은 AI가 양식과 무관하게 열을 읽어요. 같은 거래는 자동으로 중복 제거되고, 거래는 각자 실제 날짜의 달로,
-          전부 <b>{brandLabel(brand)}</b> 회계로 들어가요.{' '}
+          {brandLabel(brand)} 명의 통장의 거래내역 PDF 또는 엑셀(.xlsx/.xls/.csv)을 <b>여러 개 한 번에</b> 올려
+          파싱·미리보기 후 저장해요. 엑셀은 AI가 양식과 무관하게 열을 읽어요. 같은 거래는 파일 안·파일 간·재업로드 모두
+          자동으로 중복 제거되고, 거래는 각자 실제 날짜의 달로, 전부 <b>{brandLabel(brand)}</b> 회계로 들어가요.{' '}
           <span className="text-amber-600 dark:text-amber-500">
             단, 같은 기간을 PDF와 엑셀로 번갈아 올리면 중복을 걸러내지 못하니 계좌마다 한 가지 형식으로만 올려주세요.
+            한 번에 올리는 파일들은 위에서 고른 같은 은행 것이어야 해요.
           </span>
           {sharedGardenNote && (
             <>
@@ -134,12 +185,12 @@ export default function UploadPanel({
         </p>
       </div>
 
-      {/* 저장 완료 배너 */}
-      {saved && (
+      {/* 저장 완료 배너 — 전 파일 합산 */}
+      {done && (
         <div className="rounded-md border border-border bg-muted p-4">
           <div className="mb-1 text-foreground">✓ 저장 완료</div>
           <div className="text-[13px] text-muted-foreground">
-            {won(saved.saved)}건 저장 (자동 분류 {won(saved.autoClassified)}건) · 중복 {won(saved.duplicates)}건 건너뜀
+            {won(done.saved)}건 저장 (자동 분류 {won(done.autoClassified)}건) · 중복 {won(done.duplicates)}건 건너뜀
           </div>
         </div>
       )}
@@ -165,19 +216,20 @@ export default function UploadPanel({
         </div>
 
         <div>
-          <label className="ta-label">거래내역 파일 (PDF 또는 엑셀)</label>
+          <label className="ta-label">거래내역 파일 (PDF·엑셀 — 여러 개 선택 가능)</label>
           <input
             type="file"
+            multiple
             accept=".pdf,.xlsx,.xls,.csv"
-            onChange={(e) => { setFile(e.target.files?.[0] ?? null); setSaved(null); }}
+            onChange={(e) => onPick(e.target.files)}
             className="text-[13px] text-foreground"
           />
         </div>
 
-        {!isExcel && (
+        {(!entries.length || hasPdf) && (
           <div>
             <label className="ta-label">
-              PDF 비밀번호 {bank === 'shinhan' ? '(신한은 보통 필요)' : '(없으면 비워두세요)'}
+              PDF 비밀번호 {bank === 'shinhan' ? '(신한은 보통 필요)' : '(없으면 비워두세요)'} — 모든 PDF에 같이 적용
             </label>
             <input
               type="password" value={password} onChange={(e) => setPassword(e.target.value)}
@@ -189,47 +241,76 @@ export default function UploadPanel({
 
         <div>
           <button
-            onClick={analyze} disabled={!file || loading}
+            onClick={analyze} disabled={!entries.length || loading || saving}
             className="ta-btn-primary"
           >
-            {loading ? '업로드 중…' : '업로드'}
+            {loading ? '읽는 중…' : entries.length > 1 ? `${entries.length}개 파일 읽기` : '업로드'}
           </button>
         </div>
 
         {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
       </div>
 
-      {/* 결과 */}
-      {preview && (
+      {/* 파일별 진행 목록 */}
+      {analyzed && entries.length > 0 && (
+        <div className="overflow-hidden rounded-md border border-border bg-background">
+          {entries.map((e, i) => (
+            <div key={`${e.file.name}-${i}`} className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5 text-[13px] ${i > 0 ? 'border-t border-border' : ''}`}>
+              <span className="min-w-0 flex-1 truncate text-foreground">
+                {e.file.name}
+                <span className="ml-2 text-[11px] uppercase text-muted-foreground">{e.isExcel ? '엑셀' : 'PDF'}</span>
+              </span>
+              <span className="flex shrink-0 items-center gap-3">
+                {e.preview?.continuity && (
+                  e.preview.continuity.breaks === 0 ? (
+                    <span className="text-[12px] text-emerald-600">잔액연속 ✓</span>
+                  ) : e.preview.continuity.reliable ? (
+                    <span className="text-[12px] text-red-500">⚠ 잔액 끊김 {e.preview.continuity.breaks}곳</span>
+                  ) : (
+                    <span className="text-[12px] text-muted-foreground">잔액연속 판정불가</span>
+                  )
+                )}
+                {e.status === 'parsing' && <span className="text-muted-foreground">읽는 중…</span>}
+                {e.status === 'ready' && e.preview && (
+                  e.preview.fresh > 0 ? (
+                    <span>
+                      <b className="text-emerald-600">신규 {won(e.preview.fresh)}건</b>
+                      {e.preview.duplicates > 0 && <span className="text-muted-foreground"> · 중복 {won(e.preview.duplicates)}</span>}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">모두 이미 저장됨 ({won(e.preview.totalRows)}건)</span>
+                  )
+                )}
+                {e.status === 'saving' && <span className="text-muted-foreground">저장 중…</span>}
+                {e.status === 'saved' && e.result && (
+                  <span className="text-emerald-600">✓ {won(e.result.saved)}건 저장</span>
+                )}
+                {e.status === 'error' && <span className="text-red-500">⚠ {e.error}</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 합산 미리보기 + 저장 */}
+      {ready.length > 0 && !done && (
         <>
           <div className="flex flex-wrap gap-3">
-            <Stat label="총 거래" value={`${won(preview.totalRows)}건`} />
-            <Stat label="신규(저장 대상)" value={`${won(preview.fresh)}건`} />
-            <Stat label="이미 저장됨(중복)" value={`${won(preview.duplicates)}건`} />
-            <Stat label="입금 합계" value={won(preview.sumIn)} />
-            <Stat label="출금 합계" value={won(preview.sumOut)} />
+            <Stat label="총 거래" value={`${won(agg.totalRows)}건`} />
+            <Stat label="신규(저장 대상)" value={`${won(agg.fresh)}건`} />
+            <Stat label="이미 저장됨(중복)" value={`${won(agg.duplicates)}건`} />
+            <Stat label="입금 합계" value={won(agg.sumIn)} />
+            <Stat label="출금 합계" value={won(agg.sumOut)} />
           </div>
 
-          {preview.continuity && (
-            preview.continuity.breaks === 0 ? (
-              <p className="text-[12px] text-emerald-600">
-                ✓ 잔액 연속성 확인 — 중간 누락 없음 ({preview.continuity.checked}건 연결)
-              </p>
-            ) : preview.continuity.reliable ? (
-              <p className="text-[12px] text-red-500">
-                ⚠ 잔액 흐름이 {preview.continuity.breaks}곳에서 끊겨요
-                {preview.continuity.firstBreak &&
-                  ` (첫 지점: ${preview.continuity.firstBreak.date.slice(5).replace('-', '/')} ${preview.continuity.firstBreak.memo})`}
-                — 그 사이 거래가 빠졌을 수 있어요. 은행에서 전체 기간을 다시 내려받아 확인하세요.
-              </p>
-            ) : (
-              <p className="text-[12px] text-muted-foreground">
-                잔액 연속성은 판정하지 못했어요 (여러 계좌가 섞였거나 정렬이 다른 파일이에요).
-              </p>
-            )
+          {entries.length > 1 && agg.fresh > 0 && (
+            <p className="m-0 text-[12px] text-muted-foreground">
+              파일 간 기간이 겹치면 신규 합계가 실제보다 크게 보일 수 있어요 — 저장할 때 앞 파일부터 차례로 넣으며
+              겹치는 거래는 자동으로 걸러져요.
+            </p>
           )}
 
-          {preview.fresh > 0 && (
+          {single?.preview && single.preview.fresh > 0 && (
           <div className="overflow-hidden rounded-md border border-border bg-background">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] border-collapse text-[13px]">
@@ -240,7 +321,7 @@ export default function UploadPanel({
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.sample.map((t) => (
+                  {single.preview.sample.map((t) => (
                     <tr key={t.dedupHash} className="border-t border-border hover:bg-accent">
                       <Td mono>{t.txAt.replace('T', ' ')}</Td>
                       <Td>{t.channel}</Td>
@@ -253,27 +334,27 @@ export default function UploadPanel({
                 </tbody>
               </table>
             </div>
-            {preview.fresh > preview.sample.length && (
+            {single.preview.fresh > single.preview.sample.length && (
               <div className="border-t border-border px-4 py-[10px] text-[11px] text-muted-foreground">
-                … 외 {won(preview.fresh - preview.sample.length)}건 (미리보기는 최대 200건, 저장은 전체)
+                … 외 {won(single.preview.fresh - single.preview.sample.length)}건 (미리보기는 최대 200건, 저장은 전체)
               </div>
             )}
           </div>
           )}
 
-          {preview.fresh > 0 ? (
+          {agg.fresh > 0 ? (
             <button
-              onClick={save}
+              onClick={saveAll}
               disabled={saving}
               className="ta-btn-primary self-start"
             >
-              {saving ? '저장 중…' : `${won(preview.fresh)}건 저장하기`}
+              {saving ? '저장 중…' : `${entries.length > 1 ? `${ready.length}개 파일 · ` : ''}${won(agg.fresh)}건 저장하기`}
             </button>
           ) : (
             <div className="rounded-md border border-border bg-muted p-4">
               <div className="mb-1 text-foreground">✓ 이미 모두 저장된 거래예요</div>
               <div className="text-[13px] text-muted-foreground">
-                이 파일의 {won(preview.totalRows)}건은 전부 중복(이미 저장됨)이라 새로 저장할 게 없어요. 분류는{' '}
+                올린 파일의 {won(agg.totalRows)}건은 전부 중복(이미 저장됨)이라 새로 저장할 게 없어요. 분류는{' '}
                 <a href="/finance/classify" className="text-foreground underline">지출 자료 분류 →</a> 에서 하세요.
               </div>
             </div>
