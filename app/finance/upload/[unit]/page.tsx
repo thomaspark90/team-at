@@ -62,8 +62,8 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
             </div>
           </div>
 
-          {/* 1) POS 매출 — 지점 단위 귀속 */}
-          <div className="ta-card flex flex-col gap-3">
+          {/* 1) POS 매출 — 지점 단위 귀속 (#pos: 월별 보드의 POS 칸에서 앵커 이동) */}
+          <div id="pos" className="ta-card flex flex-col gap-3 scroll-mt-4">
             <div>
               <h2 className="m-0 text-[15px] text-foreground">POS 매출</h2>
               <p className="mt-1 text-[13px] text-muted-foreground">

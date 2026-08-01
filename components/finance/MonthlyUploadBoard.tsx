@@ -169,10 +169,14 @@ export default function MonthlyUploadBoard({
 
   // 현황 모드의 '자료 입력' 이동 대상
   const uploadHref = `/finance/upload/${unitId ?? (brand === 'staffmeal' ? 'staffmeal' : 'yangjae')}`;
-  const posEntries = pos ? Object.entries(pos).filter(([k]) => POS_META[k]) : [];
+  // POS 체크리스트 — 현황(대시보드) 모드는 브랜드의 전 지점, 업로드(자료 입력) 모드는 자기 단위 지점만.
+  // 업로드 모드에서 빠진 POS 칸을 누르면 같은 페이지의 POS 업로더(#pos)로 이동한다.
+  const posEntries = (pos ? Object.entries(pos).filter(([k]) => POS_META[k]) : []).filter(
+    ([k]) => readOnly || !unitId || POS_META[k].unit === unitId,
+  );
   const posDone = posEntries.filter(([, v]) => v.done).length;
-  const totalSlots = UPLOAD_SLOTS.length + (readOnly ? posEntries.length : 0);
-  const totalDone = doneCount + (readOnly ? posDone : 0);
+  const totalSlots = UPLOAD_SLOTS.length + posEntries.length;
+  const totalDone = doneCount + posDone;
 
   return (
     <section className="rounded-2xl border border-border bg-card p-5">
@@ -204,7 +208,7 @@ export default function MonthlyUploadBoard({
         <input ref={fileInput} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
       )}
 
-      <div className={`mt-4 grid gap-4 sm:grid-cols-2 ${readOnly ? 'lg:grid-cols-3' : ''}`}>
+      <div className={`mt-4 grid gap-4 sm:grid-cols-2 ${posEntries.length > 0 ? 'lg:grid-cols-3' : ''}`}>
         {GROUPS.map((group) => (
           <div key={group}>
             <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{group}</div>
@@ -321,8 +325,8 @@ export default function MonthlyUploadBoard({
             </div>
           </div>
         ))}
-        {/* POS 매출 현황 — 대시보드 현황 모드 전용(업로드는 각 지점의 자료 입력 페이지에서) */}
-        {readOnly && posEntries.length > 0 && (
+        {/* POS 매출 체크 — 현황 모드는 브랜드 전 지점, 업로드 모드는 이 단위 지점(빠졌으면 #pos 업로더로) */}
+        {posEntries.length > 0 && (
           <div>
             <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">매출 (POS)</div>
             <div className="flex flex-col gap-2">
@@ -348,11 +352,13 @@ export default function MonthlyUploadBoard({
                 return (
                   <Link
                     key={storeKey}
-                    href={`/finance/upload/${meta.unit}`}
+                    href={readOnly ? `/finance/upload/${meta.unit}` : '#pos'}
                     className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 transition-colors hover:border-foreground/40"
                   >
                     <span className="text-[13px] font-medium">{meta.label}</span>
-                    <span className="text-[12px] text-muted-foreground">없음 — 자료 입력에서 올리기 →</span>
+                    <span className="text-[12px] text-muted-foreground">
+                      {readOnly ? '없음 — 자료 입력에서 올리기 →' : '없음 — 위 POS 업로더에서 올리기 ↑'}
+                    </span>
                   </Link>
                 );
               })}
