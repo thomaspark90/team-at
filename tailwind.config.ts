@@ -45,10 +45,16 @@ const config: Config = {
         sans: ['Freesentation', 'system-ui', 'sans-serif'],
         serif: ['Freesentation', 'system-ui', 'sans-serif'],
       },
+      // 박스·컨테이너 라운드 전 스케일 10px 통일(2026-08-01 대표 지시) — full(원형)만 예외.
+      // 개별 컴포넌트가 rounded-md/lg/xl/2xl 무엇을 쓰든 같은 값이 나온다.
       borderRadius: {
-        lg: '4px',
-        md: '3px',
-        sm: '2px',
+        DEFAULT: '10px',
+        sm: '10px',
+        md: '10px',
+        lg: '10px',
+        xl: '10px',
+        '2xl': '10px',
+        '3xl': '10px',
       },
     },
   },

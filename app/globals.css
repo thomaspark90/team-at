@@ -49,10 +49,10 @@
     --border: 45 5% 85%;
     --input: 240 5.9% 90%;
     --ring: 240 5.9% 10%;
-    /* radius: 명시 3-값 (sm 2 · md 3 · lg 4). md가 버튼·인풋·카드 전반을 좌우 */
-    --radius-sm: 2px;
-    --radius-md: 3px;
-    --radius-lg: 4px;
+    /* radius: 전 스케일 10px 통일(2026-08-01) — tailwind.config borderRadius와 동기 유지 */
+    --radius-sm: 10px;
+    --radius-md: 10px;
+    --radius-lg: 10px;
 
     /* Chart colors — midday 그대로 (순수 흑/백 + 회색 그리드) */
     --chart-grid-stroke: #e6e6e6;

@@ -28,7 +28,7 @@ export default function PasswordGate() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg">
-      <form onSubmit={handleSubmit} className="bg-white p-9 rounded-[20px] border border-line shadow-card w-80 space-y-4">
+      <form onSubmit={handleSubmit} className="bg-white p-9 rounded-lg border border-line shadow-card w-80 space-y-4">
         <h1 className="text-xl font-medium text-center text-fg tracking-tight">team-at</h1>
         <p className="text-sm text-center text-gray-400">스토리 제작 도구</p>
         <input
