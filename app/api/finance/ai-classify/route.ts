@@ -13,8 +13,85 @@ interface Cat {
   parent_id: number | null;
 }
 
+// 그룹이 많으면(2025 소급 등) 한 번에 보내다 잘리므로 청크로 나눠 호출하고,
+// 무료 한도(429)에 걸리면 excel 열매핑과 같은 순서로 모델을 폴백한다.
+const MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+];
+const CHUNK = 80; // 청크당 그룹 수 — 프롬프트·응답 길이 안전 범위
+
+interface Parsed {
+  index: number;
+  categoryId: number;
+  confidence: number;
+  reason?: string;
+}
+
+async function suggestChunk(
+  groups: { key: string; memo: string; inflow: boolean; count: number }[],
+  catList: string,
+  apiKey: string
+): Promise<Parsed[]> {
+  const prompt = `너는 한국 카페의 회계 분류 도우미다. 아래 계정과목과 은행 거래내용을 보고 각 거래를 가장 알맞은 계정과목 id로 분류하라.
+분류 원칙:
+- 입금(inflow)은 매출(revenue)·영업외수익 계열, 출금은 지출(cogs 재료비/sga 판관비)·영업외비용 계열.
+- 카드사·페이 정산 입금 = 매출. 사람 이름만 있는 반복 출금 = 인건비 계열. 전력/가스/수도 = 수도광열비.
+- 확신이 낮으면 confidence를 0.5 미만으로 정직하게 낮춰라.
+
+[계정과목 id 목록]
+${catList}
+
+[분류할 거래]
+${groups.map((g, i) => `${i}. 내용="${g.memo}" ${g.inflow ? '입금' : '출금'} ${g.count}건`).join('\n')}`;
+
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            index: { type: 'INTEGER' },
+            categoryId: { type: 'INTEGER' },
+            confidence: { type: 'NUMBER' },
+            reason: { type: 'STRING' },
+          },
+          required: ['index', 'categoryId', 'confidence'],
+        },
+      },
+    },
+  });
+
+  let lastError = '';
+  for (const model of MODELS) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }
+    );
+    if (res.status === 429 || res.status === 503) {
+      lastError = `${model}: ${res.status}`;
+      continue;
+    }
+    if (!res.ok) throw new Error(`Gemini 오류(${res.status}): ${(await res.text()).slice(0, 200)}`);
+    const gj = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+    const text = gj.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      lastError = `${model}: 빈 응답`;
+      continue;
+    }
+    return JSON.parse(text) as Parsed[];
+  }
+  throw new Error(`AI 사용량 한도에 걸렸어요. 잠시 후 다시 시도해주세요. (${lastError})`);
+}
+
 // 미분류(정규화 키 있는) 거래를 Gemini 로 분류 추천. 빈 내용은 개별이라 제외(수동).
-export async function POST() {
+// body.brand 지정 시 그 브랜드의 미분류만 — 분류 화면의 브랜드 스코프와 일치시킨다.
+export async function POST(req: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -34,11 +111,17 @@ export async function POST() {
     );
   }
 
-  const { data: txns } = await supabase
+  const reqBody = (await req.json().catch(() => ({}))) as { brand?: string };
+  const brand =
+    reqBody.brand && ['garden', 'staffmeal', 'personal'].includes(reqBody.brand) ? reqBody.brand : null;
+
+  let txQ = supabase
     .schema('finance')
     .from('transactions')
     .select('normalized_key,memo,amount_in,amount_out')
     .is('category_id', null);
+  if (brand) txQ = txQ.eq('brand', brand);
+  const { data: txns } = await txQ;
 
   // 정규화 키 그룹 (빈 키 제외)
   const groupMap = new Map<string, { memo: string; inflow: boolean; count: number }>();
@@ -63,75 +146,35 @@ export async function POST() {
     })
     .join('\n');
 
-  const prompt = `너는 한국 카페의 회계 분류 도우미다. 아래 계정과목과 은행 거래내용을 보고 각 거래를 가장 알맞은 계정과목 id로 분류하라.
-분류 원칙:
-- 입금(inflow)은 매출(revenue)·영업외수익 계열, 출금은 지출(cogs 재료비/sga 판관비)·영업외비용 계열.
-- 카드사·페이 정산 입금 = 매출. 사람 이름만 있는 반복 출금 = 인건비 계열. 전력/가스/수도 = 수도광열비.
-- 확신이 낮으면 confidence를 0.5 미만으로 정직하게 낮춰라.
-
-[계정과목 id 목록]
-${catList}
-
-[분류할 거래]
-${groups.map((g, i) => `${i}. 내용="${g.memo}" ${g.inflow ? '입금' : '출금'} ${g.count}건`).join('\n')}`;
-
-  let gj: unknown;
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: 'ARRAY',
-              items: {
-                type: 'OBJECT',
-                properties: {
-                  index: { type: 'INTEGER' },
-                  categoryId: { type: 'INTEGER' },
-                  confidence: { type: 'NUMBER' },
-                  reason: { type: 'STRING' },
-                },
-                required: ['index', 'categoryId', 'confidence'],
-              },
-            },
-          },
-        }),
-      }
-    );
-    if (!res.ok) {
-      const t = await res.text();
-      return NextResponse.json({ error: `Gemini 오류: ${t.slice(0, 200)}` }, { status: 500 });
-    }
-    gj = await res.json();
-  } catch (e) {
-    return NextResponse.json({ error: `Gemini 호출 실패: ${(e as Error).message}` }, { status: 500 });
-  }
-
-  const text =
-    (gj as { candidates?: { content?: { parts?: { text?: string }[] } }[] })?.candidates?.[0]?.content?.parts?.[0]
-      ?.text ?? '[]';
-  let parsed: { index: number; categoryId: number; confidence: number; reason?: string }[];
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return NextResponse.json({ error: 'AI 응답을 해석하지 못했어요.' }, { status: 500 });
-  }
-
+  // 청크 단위로 나눠 호출 — 일부 청크가 실패해도 나머지 추천은 살려서 부분 반환
   const validIds = new Set((cats as Cat[] | null ?? []).map((c) => c.id));
-  const suggestions = parsed
-    .map((p) => ({
-      key: groups[p.index]?.key,
-      categoryId: p.categoryId,
-      confidence: p.confidence,
-      reason: p.reason ?? '',
-    }))
-    .filter((s) => s.key && validIds.has(s.categoryId));
+  const suggestions: { key: string; categoryId: number; confidence: number; reason: string }[] = [];
+  let failedChunks = 0;
+  let lastError = '';
+  for (let i = 0; i < groups.length; i += CHUNK) {
+    const chunk = groups.slice(i, i + CHUNK);
+    try {
+      const parsed = await suggestChunk(chunk, catList, key);
+      for (const p of parsed) {
+        const g = chunk[p.index];
+        if (g && validIds.has(p.categoryId)) {
+          suggestions.push({ key: g.key, categoryId: p.categoryId, confidence: p.confidence, reason: p.reason ?? '' });
+        }
+      }
+    } catch (e) {
+      failedChunks++;
+      lastError = (e as Error).message;
+    }
+  }
+  if (suggestions.length === 0 && failedChunks > 0) {
+    return NextResponse.json({ error: lastError || 'AI 추천에 실패했어요.' }, { status: 500 });
+  }
 
-  await logActivity(supabase, user, 'AI 분류 추천 실행', `${suggestions.length}건 추천`);
-  return NextResponse.json({ suggestions });
+  await logActivity(
+    supabase,
+    user,
+    'AI 분류 추천 실행',
+    `${brand ? `[${brand}] ` : ''}${suggestions.length}건 추천 (그룹 ${groups.length}개${failedChunks ? ` · 실패 청크 ${failedChunks}` : ''})`
+  );
+  return NextResponse.json({ suggestions, failedChunks });
 }

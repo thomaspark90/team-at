@@ -390,11 +390,18 @@ export default function ClassifyPanel({
     return true;
   }
 
+  // AI 추천 범위 — 현재 화면의 브랜드 스코프와 일치시킨다(전체 보기면 전 브랜드)
+  const aiBrand = fixedUnit?.brand ?? lockedBrand ?? (brandFilter !== 'all' ? brandFilter : null);
+
   async function fetchAI() {
     setAiLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/finance/ai-classify', { method: 'POST' });
+      const res = await fetch('/api/finance/ai-classify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(aiBrand ? { brand: aiBrand } : {}),
+      });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || 'AI 추천에 실패했어요.');
       const map: Record<string, Suggestion> = {};
@@ -403,6 +410,7 @@ export default function ClassifyPanel({
       }
       setSuggestions(map);
       if (Object.keys(map).length === 0) setError('AI가 추천할 미분류 그룹이 없어요.');
+      else if (j.failedChunks > 0) setError(`일부 그룹(${j.failedChunks}묶음)은 추천에 실패했어요 — 잠시 후 다시 실행하면 이어서 추천돼요.`);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -414,6 +422,7 @@ export default function ClassifyPanel({
     const seen = new Set<string>();
     for (const tx of rows) {
       if (tx.category_id != null || !tx.normalized_key) continue;
+      if (aiBrand && tx.brand !== aiBrand) continue; // 추천 스코프 밖 브랜드에 오적용 방지
       const s = suggestions[tx.normalized_key];
       if (!s || s.confidence < CONF || seen.has(tx.normalized_key)) continue;
       seen.add(tx.normalized_key);
