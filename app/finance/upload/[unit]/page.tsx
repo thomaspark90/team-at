@@ -64,7 +64,7 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
           </div>
 
           {/* 좌측 고정 연·월 사이드바(MonthShell) — POS 매출부터 하단 업로더까지 전부 오른쪽 열로 */}
-          <MonthShell>
+          <MonthShell brand={unit.brand}>
             {/* 1) POS 매출 — 지점 단위 귀속 (#pos: 월별 보드의 POS 칸에서 앵커 이동) */}
             <div id="pos" className="ta-card flex flex-col gap-3 scroll-mt-4">
               <div>

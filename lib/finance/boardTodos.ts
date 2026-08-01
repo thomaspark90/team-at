@@ -7,25 +7,56 @@ const toYm = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStar
 // 월 스트립 배지용 — 월별 남은 업무 수 일괄 집계.
 // 남은 업무 = 미완료 업로드 슬롯 + 미분류가 남은 출처 수 + 월 확정(자료 있고 미확정이면 1).
 // 확정된 달·이번 달 이후·자료 없는 옛날 달은 0 (배지 없음).
+// brand 지정 시 그 브랜드 몫만 집계(페이지가 브랜드 고정) — 미지정은 전 브랜드 합산(구버전 호환).
 // API 라우트와 대시보드 서버 컴포넌트(초기 데이터 프리페치)가 공용으로 사용. 조회 실패 시 throw.
-export async function computeBoardTodos(supabase: SupabaseClient): Promise<Record<string, number>> {
+export async function computeBoardTodos(supabase: SupabaseClient, brand?: string): Promise<Record<string, number>> {
   const now = new Date();
   const currentYm = toYm(now);
   const prevYm = toYm(new Date(now.getFullYear(), now.getMonth() - 1, 1));
   const months: string[] = [];
   for (let i = -24; i <= 1; i++) months.push(toYm(new Date(now.getFullYear(), now.getMonth() + i, 1)));
 
-  const [closesQ, uploadsQ, txQ] = await Promise.all([
-    supabase.schema('finance').from('monthly_close').select('ym,status'),
-    supabase.schema('finance').from('uploads').select('slot,slot_ym,bank,source,period_start,period_end'),
-    supabase.schema('finance').from('transactions').select('ym,source,category_id'),
+  const closesSel = supabase.schema('finance').from('monthly_close').select('ym,status,store');
+  const uploadsSel = supabase.schema('finance').from('uploads').select('slot,slot_ym,bank,source,period_start,period_end');
+  const txSel = supabase.schema('finance').from('transactions').select('ym,source,category_id');
+  // POS 매출은 브랜드 지정 시에만 배지에 포함 — 보드의 POS 칸과 합이 맞도록. (전역 모드는 기존 동작 유지)
+  const posSel = supabase.schema('finance').from('pos_sales').select('ym,store');
+  const [closesQ, uploadsQ, txQ, posQ] = await Promise.all([
+    brand ? closesSel.eq('brand', brand) : closesSel,
+    brand ? uploadsSel.eq('brand', brand) : uploadsSel,
+    brand ? txSel.eq('brand', brand) : txSel,
+    brand && brand !== 'personal' ? posSel.eq('brand', brand) : Promise.resolve({ data: [], error: null }),
   ]);
   if (uploadsQ.error) throw new Error(uploadsQ.error.message);
   if (txQ.error) throw new Error(txQ.error.message);
 
-  const confirmed = new Set(
-    (closesQ.data ?? []).filter((c) => c.status === 'confirmed').map((c) => String(c.ym))
-  );
+  const posByYm = new Map<string, Set<string>>();
+  for (const p of posQ.data ?? []) {
+    const ym = String(p.ym);
+    if (!posByYm.has(ym)) posByYm.set(ym, new Set());
+    posByYm.get(ym)!.add(String(p.store ?? ''));
+  }
+  const posStores = brand === 'garden' ? ['yangjae', 'pangyo'] : brand === 'staffmeal' ? [''] : [];
+
+  // 월확정은 단위별 (ym,brand,store) — 가든은 양재천·판교 둘 다 확정돼야 그 달 완료.
+  // 그 외(스탭밀 등·브랜드 미지정 전역)는 확정 행이 있으면 완료(기존 동작 유지).
+  const confirmedRows = (closesQ.data ?? []).filter((c) => c.status === 'confirmed');
+  let confirmed: Set<string>;
+  if (brand === 'garden') {
+    const byYm = new Map<string, Set<string>>();
+    for (const c of confirmedRows) {
+      const ym = String(c.ym);
+      if (!byYm.has(ym)) byYm.set(ym, new Set());
+      byYm.get(ym)!.add(String(c.store ?? ''));
+    }
+    confirmed = new Set(
+      Array.from(byYm.entries())
+        .filter(([, stores]) => stores.has('yangjae') && stores.has('pangyo'))
+        .map(([ym]) => ym)
+    );
+  } else {
+    confirmed = new Set(confirmedRows.map((c) => String(c.ym)));
+  }
 
   // 월·슬롯별 수집 — 보드 업로드(slot 기록)는 slot_ym 달 + 파일 기간이 겹치는 모든 달에,
   // 기존 경로(slot 없음)는 기간 겹침으로 자동 감지해 반영한다.
@@ -94,8 +125,11 @@ export async function computeBoardTodos(supabase: SupabaseClient): Promise<Recor
       return !monthCoverage(ym, a.intervals).full;
     }).length;
     const classifyOpen = Object.values(sources).filter((s) => s.uncl > 0).length;
-    const closeOpen = hasData ? 1 : 0;
-    counts[ym] = uploadOpen + classifyOpen + closeOpen;
+    // 개인(personal)은 월확정 개념이 없다(확정 화면에서 제외되는 단위)
+    const closeOpen = brand === 'personal' ? 0 : hasData ? 1 : 0;
+    // POS 매출 미입력 지점 수 (브랜드 지정 시에만 — 보드 POS 칸과 동일 규칙)
+    const posOpen = posStores.filter((s) => !posByYm.get(ym)?.has(s)).length;
+    counts[ym] = uploadOpen + classifyOpen + closeOpen + posOpen;
   }
 
   return counts;

@@ -6,7 +6,8 @@ import { computeBoardTodos } from '@/lib/finance/boardTodos';
 export const runtime = 'nodejs';
 
 // 월 스트립 배지용 — 집계 로직은 lib/finance/boardTodos.ts (대시보드 서버 프리페치와 공용)
-export async function GET() {
+// ?brand= 로 페이지 브랜드 몫만 집계(미지정 = 전 브랜드 합산, 구버전 호환)
+export async function GET(req: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -18,8 +19,11 @@ export async function GET() {
     return NextResponse.json({ error: '회계 권한이 없습니다.' }, { status: 403 });
   }
 
+  const brandRaw = new URL(req.url).searchParams.get('brand');
+  const brand = brandRaw && ['garden', 'staffmeal', 'personal'].includes(brandRaw) ? brandRaw : undefined;
+
   try {
-    return NextResponse.json({ counts: await computeBoardTodos(supabase) });
+    return NextResponse.json({ counts: await computeBoardTodos(supabase, brand) });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : '집계에 실패했어요.' }, { status: 500 });
   }

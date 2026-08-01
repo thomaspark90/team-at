@@ -23,15 +23,15 @@ export default async function AccountingDashboardPage({ searchParams }: { search
 
   // 멤버 조회·대기 송금 요약(로그인한 누구나 열람 가능, RLS 동일)·월 배지 집계는 서로 독립 — 병렬 조회.
   // 배지는 부가 정보라 실패해도 페이지는 뜨게 하고, 클라이언트에서 재조회한다.
+  const unit = unitOf(searchParams.unit) ?? unitOf('staffmeal')!;
   const [{ role, brandScope }, { data: pending }, initialTodos] = await Promise.all([
     resolveMember(supabase, user),
     supabase.schema('finance').from('transfer_requests').select('amount').eq('status', 'pending'),
-    computeBoardTodos(supabase).catch(() => undefined),
+    computeBoardTodos(supabase, unit.brand).catch(() => undefined),
   ]);
   // 브랜드 스코프 멤버는 분류 화면이 홈
   if (brandScope) redirect('/finance/classify');
   const isStaff = ['admin', 'classifier'].includes(role ?? '');
-  const unit = unitOf(searchParams.unit) ?? unitOf('staffmeal')!;
   const pendingCount = pending?.length ?? 0;
   const pendingSum = (pending ?? []).reduce((s, r) => s + Number(r.amount), 0);
 
@@ -73,7 +73,7 @@ export default async function AccountingDashboardPage({ searchParams }: { search
             대시보드는 확인 전용(2026-08-01 대표 지시) — 업로드는 각 단위의 자료 입력 페이지에서.
             브랜드는 상단 내비 단위가 고정(가든 지점 둘은 통장·카드가 공용이라 같은 가든 현황) */}
         {isStaff && (
-          <MonthShell initialTodos={initialTodos}>
+          <MonthShell initialTodos={initialTodos} brand={unit.brand}>
             <AccountingBoards fixedBrand={unit.brand} unitId={unit.id} mode="status" />
 
             {/* 기장 업무 칸반 — 은행·카드 업로드, 거래 분류, 기말재고, 월 확정 등 정기 업무 체크 */}

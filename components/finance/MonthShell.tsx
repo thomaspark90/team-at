@@ -28,10 +28,13 @@ export const useMonthCtx = () => useContext(MonthCtx);
 export default function MonthShell({
   children,
   initialTodos,
+  brand,
 }: {
   children: React.ReactNode;
   // 서버 컴포넌트가 미리 집계한 월 배지 — 있으면 첫 진입 시 클라이언트 재조회를 생략한다.
   initialTodos?: Record<string, number>;
+  // 페이지의 브랜드 — 배지를 이 브랜드 몫만 집계한다(미지정 = 전 브랜드 합산)
+  brand?: string;
 }) {
   // 선택 월을 URL(?ym=)에 반영 — 분류 화면에 다녀오거나 새로고침해도 보던 달 유지.
   // replaceState(얕은 갱신)라 서버 재조회 없이 주소만 바뀐다.
@@ -60,13 +63,13 @@ export default function MonthShell({
 
   const loadTodos = useCallback(async () => {
     try {
-      const res = await fetch('/api/finance/board/todos');
+      const res = await fetch(`/api/finance/board/todos${brand ? `?brand=${brand}` : ''}`);
       const j = await res.json();
       if (res.ok) setTodos((j.counts as Record<string, number>) ?? {});
     } catch {
       /* 배지는 부가 정보 — 실패해도 조용히 스킵 */
     }
-  }, []);
+  }, [brand]);
 
   const hasInitial = initialTodos !== undefined;
   useEffect(() => {

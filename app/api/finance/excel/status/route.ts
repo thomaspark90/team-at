@@ -159,5 +159,37 @@ export async function GET(req: Request) {
     };
   }
 
-  return NextResponse.json({ ym, slots, pos });
+  // 5) 분류·월확정 — 보드의 '분류·확정' 칸용. 월 스트립 배지(boardTodos)와 같은 규칙으로
+  //    집계해 칸 배지 합 = 월 배지가 되게 한다: 미분류 출처 수 + 미확정 1.
+  const unclBySource: Record<string, number> = {};
+  for (const src of ['bank', 'card', 'naverpay', 'coupang'] as const) {
+    const { count } = await supabase
+      .schema('finance')
+      .from('transactions')
+      .select('id', { count: 'exact', head: true })
+      .eq('brand', brand)
+      .eq('ym', ym)
+      .eq('source', src)
+      .is('category_id', null);
+    if ((count ?? 0) > 0) unclBySource[src] = count ?? 0;
+  }
+  const classify = {
+    total: Object.values(unclBySource).reduce((s, n) => s + n, 0),
+    sources: Object.keys(unclBySource).length,
+  };
+
+  // 월확정은 단위별 (ym,brand,store) — 가든은 양재천·판교 둘 다 확정돼야 완료
+  const requiredStores = brand === 'garden' ? ['yangjae', 'pangyo'] : [''];
+  const { data: closeRows } = await supabase
+    .schema('finance')
+    .from('monthly_close')
+    .select('store,status')
+    .eq('brand', brand)
+    .eq('ym', ym);
+  const confirmedStores = new Set(
+    (closeRows ?? []).filter((c) => c.status === 'confirmed').map((c) => String(c.store ?? ''))
+  );
+  const close = { confirmed: requiredStores.every((s) => confirmedStores.has(s)) };
+
+  return NextResponse.json({ ym, slots, pos, classify, close });
 }

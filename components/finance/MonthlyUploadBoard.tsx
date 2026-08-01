@@ -76,6 +76,9 @@ export default function MonthlyUploadBoard({
   const fileRef = useRef<File | null>(null);
   const [slots, setSlots] = useState<Record<string, SlotStatus> | null>(null);
   const [pos, setPos] = useState<Record<string, PosStatus> | null>(null);
+  // 분류·월확정 현황 — 칸 배지 합이 좌측 월 배지와 일치하도록 같은 규칙으로 서버에서 집계
+  const [classify, setClassify] = useState<{ total: number; sources: number } | null>(null);
+  const [monthClose, setMonthClose] = useState<{ confirmed: boolean } | null>(null);
   const [activeSlot, setActiveSlot] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -90,6 +93,8 @@ export default function MonthlyUploadBoard({
       if (!res.ok) throw new Error(j.error || '상태를 불러오지 못했어요.');
       setSlots(j.slots as Record<string, SlotStatus>);
       setPos((j.pos as Record<string, PosStatus> | undefined) ?? null);
+      setClassify((j.classify as { total: number; sources: number } | undefined) ?? null);
+      setMonthClose((j.close as { confirmed: boolean } | undefined) ?? null);
       setError(null);
     } catch (e) {
       setSlots(null);
@@ -183,8 +188,11 @@ export default function MonthlyUploadBoard({
     ([k]) => readOnly || !unitId || POS_META[k].unit === unitId,
   );
   const posDone = posEntries.filter(([, v]) => v.done).length;
-  const totalSlots = UPLOAD_SLOTS.length + posEntries.length;
-  const totalDone = doneCount + posDone;
+  // 분류·확정 칸도 완료 카운트에 포함 (personal 등 확정 개념 없는 응답이면 제외)
+  const extraTotal = (classify ? 1 : 0) + (monthClose ? 1 : 0);
+  const extraDone = (classify && classify.total === 0 ? 1 : 0) + (monthClose?.confirmed ? 1 : 0);
+  const totalSlots = UPLOAD_SLOTS.length + posEntries.length + extraTotal;
+  const totalDone = doneCount + posDone + extraDone;
 
   return (
     <section className="rounded-2xl border border-border bg-card p-5">
@@ -216,7 +224,7 @@ export default function MonthlyUploadBoard({
         <input ref={fileInput} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
       )}
 
-      <div className={`mt-4 grid gap-4 sm:grid-cols-2 ${posEntries.length > 0 ? 'lg:grid-cols-3' : ''}`}>
+      <div className={`mt-4 grid gap-4 sm:grid-cols-2 ${posEntries.length > 0 ? 'xl:grid-cols-4' : 'lg:grid-cols-3'}`}>
         {GROUPS.map((group) => (
           <div key={group}>
             <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{group}</div>
@@ -374,6 +382,54 @@ export default function MonthlyUploadBoard({
                   </Link>
                 );
               })}
+            </div>
+          </div>
+        )}
+        {/* 분류·월 확정 — 업로드 다음의 마감 업무. 이 칸들 배지까지 합치면 좌측 월 배지와 일치한다 */}
+        {(classify || monthClose) && (
+          <div>
+            <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">분류 · 확정</div>
+            <div className="flex flex-col gap-2">
+              {classify &&
+                (classify.total === 0 ? (
+                  <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 opacity-70">
+                    <span className="flex items-center gap-2 text-[13px]">
+                      <span className="text-emerald-600">✓</span>
+                      <span className="text-muted-foreground line-through">지출 자료 분류</span>
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">미분류 없음</span>
+                  </div>
+                ) : (
+                  <Link
+                    href={`/finance/classify?ym=${ym}&brand=${brand}`}
+                    className="relative flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 transition-colors hover:border-foreground/40"
+                  >
+                    <ActionBadge n={classify.sources} />
+                    <span className="text-[13px] font-medium">지출 자료 분류</span>
+                    <span className="text-[12px] text-muted-foreground">
+                      미분류 <b className="tabular-nums text-foreground">{classify.total}건</b> · 분류하기 →
+                    </span>
+                  </Link>
+                ))}
+              {monthClose &&
+                (monthClose.confirmed ? (
+                  <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 opacity-70">
+                    <span className="flex items-center gap-2 text-[13px]">
+                      <span className="text-emerald-600">✓</span>
+                      <span className="text-muted-foreground line-through">월 확정</span>
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">확정됨</span>
+                  </div>
+                ) : (
+                  <Link
+                    href={`/finance/close?unit=${unitId ?? (brand === 'staffmeal' ? 'staffmeal' : 'yangjae')}`}
+                    className="relative flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 transition-colors hover:border-foreground/40"
+                  >
+                    <ActionBadge />
+                    <span className="text-[13px] font-medium">월 확정</span>
+                    <span className="text-[12px] text-muted-foreground">미확정 — 확정하기 →</span>
+                  </Link>
+                ))}
             </div>
           </div>
         )}
