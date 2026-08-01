@@ -62,11 +62,18 @@ export default function UploadPanel({
   const patch = (i: number, p: Partial<Entry>) =>
     setEntries((es) => es.map((e, j) => (j === i ? { ...e, ...p } : e)));
 
-  function onPick(list: FileList | null) {
-    const files = Array.from(list ?? []);
-    setEntries(
-      files.map((f) => ({ file: f, isExcel: /\.(xlsx|xls|csv)$/i.test(f.name), status: 'picked' as const }))
-    );
+  // 선택·드롭할 때마다 목록에 누적한다(교체 아님) — 파일을 하나씩 골라도 여러 개가 쌓인다.
+  // 같은 파일(이름+크기+수정시각)은 한 번만.
+  function addFiles(list: FileList | File[] | null) {
+    const files = Array.from(list ?? []).filter((f) => /\.(pdf|xlsx|xls|csv)$/i.test(f.name));
+    if (!files.length) return;
+    setEntries((es) => {
+      const seen = new Set(es.map((e) => `${e.file.name}|${e.file.size}|${e.file.lastModified}`));
+      const added = files
+        .filter((f) => !seen.has(`${f.name}|${f.size}|${f.lastModified}`))
+        .map((f) => ({ file: f, isExcel: /\.(xlsx|xls|csv)$/i.test(f.name), status: 'picked' as const }));
+      return [...es, ...added];
+    });
     setDone(null);
     setError(null);
   }
@@ -157,7 +164,6 @@ export default function UploadPanel({
     }),
     { totalRows: 0, fresh: 0, duplicates: 0, sumIn: 0, sumOut: 0 }
   );
-  const analyzed = entries.some((e) => e.status !== 'picked');
   const single = entries.length === 1 ? entries[0] : null;
 
   return (
@@ -217,13 +223,29 @@ export default function UploadPanel({
 
         <div>
           <label className="ta-label">거래내역 파일 (PDF·엑셀 — 여러 개 선택 가능)</label>
-          <input
-            type="file"
-            multiple
-            accept=".pdf,.xlsx,.xls,.csv"
-            onChange={(e) => onPick(e.target.files)}
-            className="text-[13px] text-foreground"
-          />
+          <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              addFiles(e.dataTransfer.files);
+            }}
+            className="flex flex-col gap-2 rounded-md border border-dashed border-border p-3"
+          >
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.xlsx,.xls,.csv"
+              onChange={(e) => {
+                addFiles(e.target.files);
+                e.target.value = ''; // 같은 파일을 다시 골라도 onChange가 뜨게
+              }}
+              className="text-[13px] text-foreground"
+            />
+            <p className="m-0 text-[11px] text-muted-foreground">
+              파일을 이 칸에 끌어다 놓아도 돼요. 선택 창에서는 ⌘(맥)/Ctrl(윈도우)을 누른 채 클릭하면 여러 개가
+              골라지고, <b>하나씩 다시 선택해도 아래 목록에 계속 추가</b>돼요.
+            </p>
+          </div>
         </div>
 
         {(!entries.length || hasPdf) && (
@@ -251,9 +273,17 @@ export default function UploadPanel({
         {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
       </div>
 
-      {/* 파일별 진행 목록 */}
-      {analyzed && entries.length > 0 && (
+      {/* 파일별 목록 — 선택 즉시 표시, 파싱·저장 진행 상태 겸용 */}
+      {entries.length > 0 && (
         <div className="overflow-hidden rounded-md border border-border bg-background">
+          <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-2 text-[12px] text-muted-foreground">
+            <span>{entries.length}개 파일 선택됨</span>
+            {!loading && !saving && (
+              <button onClick={() => setEntries([])} className="hover:text-foreground">
+                전체 비우기
+              </button>
+            )}
+          </div>
           {entries.map((e, i) => (
             <div key={`${e.file.name}-${i}`} className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5 text-[13px] ${i > 0 ? 'border-t border-border' : ''}`}>
               <span className="min-w-0 flex-1 truncate text-foreground">
@@ -270,6 +300,7 @@ export default function UploadPanel({
                     <span className="text-[12px] text-muted-foreground">잔액연속 판정불가</span>
                   )
                 )}
+                {e.status === 'picked' && <span className="text-muted-foreground">대기</span>}
                 {e.status === 'parsing' && <span className="text-muted-foreground">읽는 중…</span>}
                 {e.status === 'ready' && e.preview && (
                   e.preview.fresh > 0 ? (
@@ -286,6 +317,15 @@ export default function UploadPanel({
                   <span className="text-emerald-600">✓ {won(e.result.saved)}건 저장</span>
                 )}
                 {e.status === 'error' && <span className="text-red-500">⚠ {e.error}</span>}
+                {!loading && !saving && e.status !== 'saved' && e.status !== 'saving' && (
+                  <button
+                    onClick={() => setEntries((es) => es.filter((_, j) => j !== i))}
+                    aria-label="목록에서 제거"
+                    className="rounded px-1 text-muted-foreground hover:text-foreground"
+                  >
+                    ✕
+                  </button>
+                )}
               </span>
             </div>
           ))}
