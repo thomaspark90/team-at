@@ -81,12 +81,24 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
                 대시보드는 현황 확인 전용이고, 실제 업로드는 전부 이 페이지에서 한다. */}
             <AccountingBoards fixedBrand={unit.brand} unitId={unit.id} mode="upload" />
 
-            {/* 3) 은행 거래내역 (PDF·엑셀) — 가든은 공용 계좌 */}
-            <UploadPanel brand={unit.brand} sharedGardenNote={!!unit.store} />
-            {/* 4) 신한카드 이용내역 — 같은 브랜드 통장의 카드결제 건과 정산 연결 */}
-            <CardReconcile brand={unit.brand} />
-            {/* 5) 쿠팡 영수증 품목 분해 — 브랜드·지점은 원본 카드 건에서 자동 상속 */}
-            <ReceiptEnrich />
+            {/* 3~5) 위 그리드(엑셀·CSV)로 안 되는 경우용 — 은행 PDF·카드 정산·쿠팡 영수증 세분화.
+                평소 업로드는 위 월별 보드로 하고, 이건 필요할 때만 펼친다(2026-08-01: 그리드와 중복이라 접어 정리). */}
+            <details className="ta-card">
+              <summary className="cursor-pointer select-none list-none text-[15px] text-foreground [&::-webkit-details-marker]:hidden">
+                은행 PDF · 카드 정산 · 쿠팡 영수증 세분화
+                <span className="ml-2 text-[13px] text-muted-foreground">
+                  — 은행을 PDF로 올리거나, 신한카드 정산·쿠팡 품목 분해가 필요할 때만 펼쳐요
+                </span>
+              </summary>
+              <div className="mt-6 flex flex-col gap-8 border-t border-border pt-6">
+                {/* 은행 거래내역 (PDF·엑셀) — 가든은 공용 계좌 */}
+                <UploadPanel brand={unit.brand} sharedGardenNote={!!unit.store} />
+                {/* 신한카드 이용내역 — 같은 브랜드 통장의 카드결제 건과 정산 연결 */}
+                <CardReconcile brand={unit.brand} />
+                {/* 쿠팡 영수증 품목 분해 — 브랜드·지점은 원본 카드 건에서 자동 상속 */}
+                <ReceiptEnrich />
+              </div>
+            </details>
           </MonthShell>
         </div>
       </div>
