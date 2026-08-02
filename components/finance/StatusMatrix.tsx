@@ -74,7 +74,7 @@ export default function StatusMatrix({ brand, unitId }: { brand: Brand; unitId?:
         연·월 × 자료 종류의 미입력 현황이에요. 칸을 누르면 그 달로 이동해요.{' '}
         <span className="text-[12px]">
           <span className="text-emerald-600">✓ 완료</span> · <span className="text-amber-600">◐ 일부만</span> ·{' '}
-          <span className="rounded bg-amber-500/15 px-1 text-amber-600">빈칸 = 미입력</span>
+          <span className="rounded bg-amber-500/15 px-1 text-amber-600">자료 업로드 필요 = 미입력</span>
         </span>
       </p>
 
@@ -182,8 +182,10 @@ function Cell({ state, onClick }: { state: SlotState; onClick: () => void }) {
       <button
         onClick={onClick}
         aria-label="미입력 — 그 달로 이동"
-        className="h-[22px] w-full min-w-[52px] rounded bg-amber-500/15 transition-colors hover:bg-amber-500/30"
-      />
+        className="w-full min-w-[52px] whitespace-nowrap rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] text-amber-600 transition-colors hover:bg-amber-500/30"
+      >
+        자료 업로드 필요
+      </button>
     </td>
   );
 }
