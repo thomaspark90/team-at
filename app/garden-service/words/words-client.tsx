@@ -209,6 +209,19 @@ export default function WordsClient() {
   const receivedRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<{ addPending: (t: string) => void } | null>(null);
 
+  // iOS 키보드가 뷰포트를 줄이면 고정 컨테이너 밖(전역 흰 배경)이 드러난다 —
+  // 이 페이지에 있는 동안 html/body 배경을 페이지 배경 톤으로 맞춘다.
+  useEffect(() => {
+    const de = document.documentElement, b = document.body;
+    const prev = [de.style.background, b.style.background];
+    de.style.background = '#223039';
+    b.style.background = 'linear-gradient(#26332C, #223039)';
+    return () => {
+      de.style.background = prev[0];
+      b.style.background = prev[1];
+    };
+  }, []);
+
   useEffect(() => {
     const field = fieldRef.current;
     if (!field) return;
