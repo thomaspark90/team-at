@@ -76,13 +76,14 @@ export async function POST(req: Request) {
     const ps = dates[0]?.slice(0, 10);
     const pe = dates[dates.length - 1]?.slice(0, 10);
     if (ps && pe) {
+      // 엑셀 업로드 = 은행 슬롯(slot 있음) 업로드 또는 구버전 bank='excel' 기록
       const { count } = await supabase
         .schema('finance')
         .from('uploads')
         .select('id', { count: 'exact', head: true })
         .eq('brand', brand)
-        .eq('bank', 'excel')
         .eq('source', 'bank')
+        .or('bank.eq.excel,slot.not.is.null')
         .lte('period_start', pe)
         .gte('period_end', ps);
       if ((count ?? 0) > 0) crossFormat = { count: count ?? 0 };

@@ -92,11 +92,14 @@ export async function POST(req: Request) {
       const ps = dates[0]?.slice(0, 10);
       const pe = dates[dates.length - 1]?.slice(0, 10);
       if (ps && pe) {
+        // PDF 업로드 = slot 없는 은행 업로드 (엑셀 은행 슬롯 업로드도 bank=은행명을 가지므로 slot으로 구분)
         const { count } = await supabase
           .schema('finance')
           .from('uploads')
           .select('id', { count: 'exact', head: true })
           .eq('brand', brand)
+          .eq('source', 'bank')
+          .is('slot', null)
           .in('bank', ['shinhan', 'woori'])
           .lte('period_start', pe)
           .gte('period_end', ps);

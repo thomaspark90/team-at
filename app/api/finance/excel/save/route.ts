@@ -41,6 +41,9 @@ export async function POST(req: Request) {
   }
   // 슬롯별 거래 출처 — 카드·쿠팡은 'card'(현금 집계 제외), 네이버는 'naverpay', 그 외 'bank'
   const source = UPLOAD_SLOTS.find((s) => s.key === slot)?.source ?? 'bank';
+  // 은행 슬롯 엑셀은 실제 은행으로 기록 — 분류 화면의 은행 필터·표시 라벨이 제대로 잡히게.
+  // (중복 지문은 파싱 때 'excel' 프리픽스로 이미 확정돼 재업로드 dedup에는 영향 없음)
+  const bankLabel = slot === 'bank_shinhan' ? 'shinhan' : slot === 'bank_woori' ? 'woori' : 'excel';
   if (!(file instanceof File) || typeof mappingRaw !== 'string') {
     return NextResponse.json({ error: '파일과 매핑 정보가 필요해요. 미리보기부터 다시 해주세요.' }, { status: 400 });
   }
@@ -89,7 +92,7 @@ export async function POST(req: Request) {
     // 전부 중복이어도 보드 슬롯은 '올렸음'으로 기록해 완료·커버리지 체크가 남게 한다
     if (slot) {
       await supabase.schema('finance').from('uploads').insert({
-        bank: 'excel',
+        bank: bankLabel,
         source,
         brand,
         row_count: 0,
@@ -123,7 +126,7 @@ export async function POST(req: Request) {
     .schema('finance')
     .from('uploads')
     .insert({
-      bank: 'excel',
+      bank: bankLabel,
       source,
       brand,
       row_count: fresh.length,
@@ -148,7 +151,7 @@ export async function POST(req: Request) {
   const insertRows = fresh.map((t) => {
     const cat = keyToCat.get(t.normalizedKey) ?? null;
     return {
-      bank: 'excel',
+      bank: bankLabel,
       source,
       brand,
       tx_at: t.txAt,
