@@ -92,7 +92,7 @@ export default function StatusMatrix({ brand, unitId }: { brand: Brand; unitId?:
                     className="inline-flex items-center gap-1 uppercase tracking-[0.04em] hover:text-foreground"
                     title="클릭해서 날짜 정렬 방향 전환"
                   >
-                    월 <span aria-hidden>{desc ? '↓' : '↑'}</span>
+                    날짜 <span aria-hidden>{desc ? '↓' : '↑'}</span>
                     <span className="sr-only">{desc ? '내림차순(최신 먼저)' : '오름차순(과거 먼저)'}</span>
                   </button>
                 </th>
