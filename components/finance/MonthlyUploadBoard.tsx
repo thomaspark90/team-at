@@ -286,8 +286,16 @@ export default function MonthlyUploadBoard({
                   );
                 }
                 if (st?.done && st.full) {
+                  // 완료 칸 클릭 = 이 달·이 슬롯의 거래 내역 보기(지출 자료 분류, 은행/카드 필터).
+                  // 추가 업로드는 보조(+)로.
+                  const viewHref = `/finance/classify?ym=${ym}&brand=${brand}${s.bank ? `&bank=${s.bank}` : '&source=card'}`;
                   return (
-                    <div key={s.key} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 opacity-70">
+                    <Link
+                      key={s.key}
+                      href={viewHref}
+                      title={`${fmtYm(ym)} ${s.label} 거래 내역 보기`}
+                      className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 opacity-70 transition-opacity hover:opacity-100"
+                    >
                       <span className="flex items-center gap-2 text-[13px]">
                         <span className="text-emerald-600">✓</span>
                         <span className="text-muted-foreground line-through">{s.label}</span>
@@ -295,13 +303,22 @@ export default function MonthlyUploadBoard({
                       <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
                         {st.count > 0 && `${st.count}건`}
                         {st.via === 'auto' ? ' · 자동 반영' : st.at ? ` · ${fmtDay(st.at)}` : ''}
+                        <span>· 내역 →</span>
                         {!readOnly && (
-                          <button onClick={() => pickSlot(s.key)} className="rounded border border-border px-1.5 py-0.5 hover:text-foreground" title="추가 파일 올리기">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              pickSlot(s.key);
+                            }}
+                            className="rounded border border-border px-1.5 py-0.5 hover:text-foreground"
+                            title="추가 파일 올리기"
+                          >
                             +
                           </button>
                         )}
                       </span>
-                    </div>
+                    </Link>
                   );
                 }
                 if (st?.done && !st.full) {
