@@ -6,13 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 // 디자인 원본: Figma '제철 단어 — Garden Service' (파일 47CQNr6kcEDVkpdH5YtYCK).
 // 아직 저장 백엔드 없음 — 제출은 화면 연출('놓아두는 중')까지만 동작한다.
 
-const WORDS: Array<{ t: string; s: number }> = [
-  { t: '모기장', s: 3 }, { t: '나무 그늘', s: 2 }, { t: '열대야', s: 2 },
-  { t: '소나기', s: 3 }, { t: '계곡물', s: 1 }, { t: '살얼음', s: 2 },
-  { t: '수박', s: 3 }, { t: '매미', s: 1 }, { t: '부채', s: 2 },
-  { t: '평상', s: 2 }, { t: '빗소리', s: 1 }, { t: '선풍기 바람', s: 1 },
-  { t: '찬 물컵', s: 1 },
-];
+import { SEED_WORDS as WORDS } from './seed-words';
 
 const CSS = `
 .jw-root {

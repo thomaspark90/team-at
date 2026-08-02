@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { SEED_WORDS } from '@/app/garden-service/words/seed-words';
 
 // 제철 단어 검수 — 손님이 보낸 단어를 게시/반려한다. 게시된 단어는 /garden-service/words 에 뜬다.
 
@@ -92,6 +93,35 @@ export default function GardenWords() {
         <p className="text-[13px] text-muted-foreground">불러오는 중…</p>
       ) : (
         <>
+          <section>
+            <h2 className="mb-3 text-[13px] font-medium text-muted-foreground">
+              지금 화면에 떠 있는 단어 {SEED_WORDS.length + approved.length}
+            </h2>
+            <ul className="flex flex-wrap gap-2">
+              {SEED_WORDS.map((w) => (
+                <li
+                  key={'seed-' + w.t}
+                  className="rounded-full border border-border px-3.5 py-1.5 text-[13px] text-muted-foreground"
+                  title="기본 제철 단어"
+                >
+                  {w.t}
+                </li>
+              ))}
+              {approved.map((w) => (
+                <li
+                  key={'live-' + w.id}
+                  className="rounded-full border border-border bg-card px-3.5 py-1.5 text-[13px]"
+                  title="게시된 손님 단어"
+                >
+                  {w.text}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              흐린 것은 기본 제철 단어, 진한 것은 게시된 손님 단어입니다.
+            </p>
+          </section>
+
           <section>
             <h2 className="mb-3 text-[13px] font-medium text-muted-foreground">
               대기 중 {pending.length > 0 && <span className="text-foreground">{pending.length}</span>}
