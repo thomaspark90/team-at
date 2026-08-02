@@ -110,6 +110,58 @@ const CSS = `
 @media (prefers-reduced-motion: reduce) {
   .jw-root .word { transition: opacity 0.3s ease; }
 }
+.jw-root .view-toggle {
+  position: absolute;
+  top: 24px;
+  right: 20px;
+  z-index: 6;
+  border: 1px solid var(--line);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.jw-root .view-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.jw-root .list-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: rgba(18, 26, 22, 0.55);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.jw-root .list-panel {
+  width: min(520px, 100%);
+  max-height: 72vh;
+  overflow-y: auto;
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px 26px;
+}
+.jw-root .list-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--ink-faint);
+  margin: 0 0 8px;
+}
+.jw-root .list-label + .list-label,
+.jw-root .list-words + .list-label { margin-top: 20px; }
+.jw-root .list-words {
+  font-size: 15px;
+  line-height: 2.2;
+  color: var(--ink);
+  margin: 0;
+}
 .jw-root .leave {
   position: absolute;
   left: 50%;
@@ -214,6 +266,8 @@ export default function WordsClient() {
   const sendingRef = useRef(false);
   const toastTimerRef = useRef(0);
   const [toastMsg, setToastMsg] = useState<React.ReactNode>(null);
+  const [showList, setShowList] = useState(false);
+  const [guestWords, setGuestWords] = useState<string[]>([]);
 
   const showToast = (node: React.ReactNode) => {
     setToastMsg(node);
@@ -311,6 +365,7 @@ export default function WordsClient() {
         const list = (d.words ?? []).map((w) => String(w.text)).filter(Boolean);
         if (list.length) {
           approved = list;
+          setGuestWords(list);
           layout();
         }
       })
@@ -413,6 +468,23 @@ export default function WordsClient() {
         </p>
       </header>
       <div className="field" ref={fieldRef} aria-label="이 계절의 단어들" />
+      <button className="view-toggle" onClick={() => setShowList((v) => !v)}>
+        {showList ? '흩어 보기' : '모아 보기'}
+      </button>
+      {showList && (
+        <div className="list-overlay" onClick={() => setShowList(false)}>
+          <div className="list-panel" role="dialog" aria-label="이 계절의 단어 전체" onClick={(e) => e.stopPropagation()}>
+            <p className="list-label">이 계절의 단어</p>
+            <p className="list-words">{WORDS.map((w) => w.t).join('  ·  ')}</p>
+            {guestWords.length > 0 && (
+              <>
+                <p className="list-label">손님이 두고 간 단어</p>
+                <p className="list-words">{guestWords.join('  ·  ')}</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       <div className="leave">
         <form onSubmit={onSubmit} autoComplete="off">
           <input ref={inputRef} type="text" maxLength={10} placeholder="여름이면 떠오르는 단어" aria-label="두고 갈 단어" />
