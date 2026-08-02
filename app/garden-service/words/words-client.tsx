@@ -88,7 +88,7 @@ const CSS = `
 .jw-root .word:hover { color: var(--accent); }
 .jw-root .word.s1 { font-size: 15px; font-weight: 300; --op: 0.62; }
 .jw-root .word.s2 { font-size: 19px; font-weight: 400; --op: 0.8; }
-.jw-root .word.s3 { font-size: 25px; font-weight: 500; --op: 0.94; }
+.jw-root .word.s3 { font-size: 17px; font-weight: 500; --op: 0.94; }
 .jw-root .word.pending {
   color: var(--accent);
   border-bottom: 1px dashed var(--accent);
