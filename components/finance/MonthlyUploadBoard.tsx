@@ -378,10 +378,12 @@ export default function MonthlyUploadBoard({
               {posEntries.map(([storeKey, p]) => {
                 const meta = POS_META[storeKey];
                 if (p.done) {
+                  // 업로드(자료 입력) 모드는 칸 클릭 = 위 POS 업로더로(추가·재업로드) —
+                  // 손익 이동은 현황(대시보드) 모드에서만. '올리려고 눌렀는데 관리손익으로 감' 방지.
                   return (
                     <Link
                       key={storeKey}
-                      href={`/finance/pnl?ym=${ym}&brand=${brand}${storeKey ? `&store=${storeKey}` : ''}`}
+                      href={readOnly ? `/finance/pnl?ym=${ym}&brand=${brand}${storeKey ? `&store=${storeKey}` : ''}` : '#pos'}
                       className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 opacity-80 transition-colors hover:border-foreground/40"
                     >
                       <span className="flex items-center gap-2 text-[13px]">
@@ -389,7 +391,7 @@ export default function MonthlyUploadBoard({
                         <span className="text-muted-foreground">{meta.label}</span>
                       </span>
                       <span className="text-[11px] text-muted-foreground">
-                        {p.days}일 · {won(p.supply)} · 손익 보기 →
+                        {p.days}일 · {won(p.supply)} · {readOnly ? '손익 보기 →' : '위 업로더에서 추가 ↑'}
                       </span>
                     </Link>
                   );

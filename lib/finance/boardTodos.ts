@@ -27,6 +27,22 @@ interface BoardData {
   perMonth: Map<string, Record<string, { total: number; uncl: number }>>;
 }
 
+// Supabase 기본 응답 상한(1,000행) 회피 — 전 행을 페이지로 나눠 끝까지 수집.
+// 잘린 채 집계하면 상한 밖의 달이 '미입력'으로 오표시된다(2026-01 POS 오탐 원인).
+// build 가 매 페이지 새 쿼리를 만들어야 하고, 순서 고정용 order 는 build 안에서 건다.
+const FETCH_PAGE = 1000;
+type QueryResult<T> = { data: T[] | null; error: { message: string } | null };
+async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<QueryResult<T>>): Promise<QueryResult<T>> {
+  const all: T[] = [];
+  for (let from = 0; ; from += FETCH_PAGE) {
+    const { data, error } = await build(from, from + FETCH_PAGE - 1);
+    if (error) return { data: all, error };
+    all.push(...(data ?? []));
+    if (!data || data.length < FETCH_PAGE) break;
+  }
+  return { data: all, error: null };
+}
+
 async function collectBoardData(supabase: SupabaseClient, brand?: string): Promise<BoardData> {
   const now = new Date();
   const currentYm = toYm(now);
@@ -34,19 +50,32 @@ async function collectBoardData(supabase: SupabaseClient, brand?: string): Promi
   const months: string[] = [];
   for (let i = -24; i <= 1; i++) months.push(toYm(new Date(now.getFullYear(), now.getMonth() + i, 1)));
 
-  const closesSel = supabase.schema('finance').from('monthly_close').select('ym,status,store');
-  const uploadsSel = supabase.schema('finance').from('uploads').select('slot,slot_ym,bank,source,period_start,period_end');
-  const txSel = supabase.schema('finance').from('transactions').select('ym,source,category_id,bank');
+  const fin = () => supabase.schema('finance');
+  const closesSel = fetchAll((a, b) => {
+    const q = fin().from('monthly_close').select('ym,status,store');
+    return (brand ? q.eq('brand', brand) : q).order('ym').range(a, b);
+  });
+  const uploadsSel = fetchAll((a, b) => {
+    const q = fin().from('uploads').select('slot,slot_ym,bank,source,period_start,period_end');
+    return (brand ? q.eq('brand', brand) : q).order('id').range(a, b);
+  });
+  const txSel = fetchAll((a, b) => {
+    const q = fin().from('transactions').select('ym,source,category_id,bank');
+    return (brand ? q.eq('brand', brand) : q).order('id').range(a, b);
+  });
   // POS 매출은 브랜드 지정 시에만 포함 — 보드의 POS 칸과 합이 맞도록. (전역 모드는 기존 동작 유지)
-  const posSel = supabase.schema('finance').from('pos_sales').select('ym,store');
+  const posSel =
+    brand && brand !== 'personal'
+      ? fetchAll((a, b) => fin().from('pos_sales').select('ym,store').eq('brand', brand).order('id').range(a, b))
+      : Promise.resolve({ data: [], error: null });
   // 브랜드별 사용 은행(brand_settings) — 안 쓰는 은행 슬롯은 집계에서 제외.
   // 조회 실패(테이블 미생성 등)·전역 모드는 전체 슬롯 유지.
   const banksSel = supabase.schema('finance').from('brand_settings').select('banks').eq('brand', brand ?? '').maybeSingle();
   const [closesQ, uploadsQ, txQ, posQ, banksQ] = await Promise.all([
-    brand ? closesSel.eq('brand', brand) : closesSel,
-    brand ? uploadsSel.eq('brand', brand) : uploadsSel,
-    brand ? txSel.eq('brand', brand) : txSel,
-    brand && brand !== 'personal' ? posSel.eq('brand', brand) : Promise.resolve({ data: [], error: null }),
+    closesSel,
+    uploadsSel,
+    txSel,
+    posSel,
     brand ? banksSel : Promise.resolve({ data: null, error: null }),
   ]);
   if (uploadsQ.error) throw new Error(uploadsQ.error.message);
