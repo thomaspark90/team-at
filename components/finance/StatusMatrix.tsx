@@ -20,6 +20,8 @@ export default function StatusMatrix({ brand, unitId }: { brand: Brand; unitId?:
   const ctx = useMonthCtx();
   const [data, setData] = useState<BoardMatrix | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 날짜 정렬 — 기본 최신이 위(내림차순), '월' 헤더 클릭으로 토글
+  const [desc, setDesc] = useState(true);
 
   const load = useCallback(async () => {
     try {
@@ -84,7 +86,16 @@ export default function StatusMatrix({ brand, unitId }: { brand: Brand; unitId?:
           <table className="w-full min-w-[640px] border-collapse text-[13px]">
             <thead>
               <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
-                <th className="sticky left-0 bg-card px-2 py-2 text-left font-normal">월</th>
+                <th className="sticky left-0 bg-card px-2 py-2 text-left font-normal">
+                  <button
+                    onClick={() => setDesc((d) => !d)}
+                    className="inline-flex items-center gap-1 uppercase tracking-[0.04em] hover:text-foreground"
+                    title="클릭해서 날짜 정렬 방향 전환"
+                  >
+                    월 <span aria-hidden>{desc ? '↓' : '↑'}</span>
+                    <span className="sr-only">{desc ? '내림차순(최신 먼저)' : '오름차순(과거 먼저)'}</span>
+                  </button>
+                </th>
                 {data.slots.map((s) => (
                   <th key={s.key} className="whitespace-nowrap px-2 py-2 text-center font-normal">{s.label}</th>
                 ))}
@@ -96,7 +107,7 @@ export default function StatusMatrix({ brand, unitId }: { brand: Brand; unitId?:
               </tr>
             </thead>
             <tbody>
-              {data.rows.map((r) => (
+              {(desc ? [...data.rows].reverse() : data.rows).map((r) => (
                 <tr key={r.ym} className="border-t border-border">
                   <td className="sticky left-0 whitespace-nowrap bg-card px-2 py-1.5 text-[12px] text-muted-foreground">
                     {fmtYm(r.ym)}
