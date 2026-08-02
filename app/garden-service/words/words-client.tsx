@@ -149,8 +149,9 @@ const CSS = `
   border-radius: 11px;
   cursor: pointer;
 }
-.jw-root .leave button:focus-visible,
-.jw-root .leave input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.jw-root .leave button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.jw-root .leave input:focus { outline: none; }
+.jw-root .leave form:focus-within { border-color: rgba(255, 255, 255, 0.45); }
 .jw-root .leave .hint {
   text-align: center;
   font-size: 10px;
