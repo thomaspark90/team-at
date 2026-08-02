@@ -213,7 +213,7 @@ export default function WordsClient() {
     const field = fieldRef.current;
     if (!field) return;
 
-    let placed: Array<{ x: number; y: number }> = [];
+    let placed: Array<{ x: number; y: number; w: number; h: number }> = [];
     const floaters: FloatEl[] = [];
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const timers: number[] = [];
@@ -223,28 +223,38 @@ export default function WordsClient() {
       const w = field!.clientWidth, h = field!.clientHeight;
       return { x0: w < 720 ? 30 : 70, x1: w - 40, y0: h * 0.22, y1: h - 150 };
     }
-    function tooClose(x: number, y: number, minD: number) {
-      return placed.some((p) => Math.hypot(p.x - x, p.y - y) < minD);
+    type Rect = { x: number; y: number; w: number; h: number };
+    // 확장(pad)된 상자끼리의 겹침 면적 — pad는 부유 진폭 + 최소 여백
+    function overlapArea(a: Rect, b: Rect, pad: number) {
+      const ix = Math.min(a.x + a.w + pad, b.x + b.w) - Math.max(a.x - pad, b.x);
+      const iy = Math.min(a.y + a.h + pad, b.y + b.h) - Math.max(a.y - pad, b.y);
+      return ix > 0 && iy > 0 ? ix * iy : 0;
     }
     function position(el: FloatEl) {
       const b = fieldBounds();
-      const minD = Math.min(140, (b.x1 - b.x0) / 3.2);
-      let x = 0, y = 0, tries = 0;
-      do {
-        x = rand(b.x0, b.x1 - el.offsetWidth - 10);
-        y = rand(b.y0, b.y1);
-        tries++;
-      } while (tooClose(x, y, minD) && tries < 60);
-      placed.push({ x, y });
-      el.style.left = x + 'px';
-      el.style.top = y + 'px';
+      const w = el.offsetWidth, h = el.offsetHeight;
+      const pad = field!.clientWidth < 720 ? 18 : 28;
+      let best: Rect | null = null, bestScore = Infinity;
+      for (let i = 0; i < 140; i++) {
+        const x = rand(b.x0, Math.max(b.x0 + 1, b.x1 - w - 10));
+        const y = rand(b.y0, Math.max(b.y0 + 1, b.y1 - h));
+        const rect = { x, y, w, h };
+        let score = 0;
+        for (const p of placed) score += overlapArea(rect, p, pad);
+        if (score === 0) { best = rect; break; }
+        if (score < bestScore) { bestScore = score; best = rect; }
+      }
+      placed.push(best!);
+      el.style.left = best!.x + 'px';
+      el.style.top = best!.y + 'px';
     }
     function makeWord(w: { t: string; s: number }, pending?: boolean) {
       const el = document.createElement('span') as FloatEl;
       el.className = 'word s' + (w.s || 2) + (pending ? ' pending' : '');
       el.textContent = w.t;
+      const small = field!.clientWidth < 720;
       el._float = {
-        ax: rand(6, 14), ay: rand(8, 18),
+        ax: small ? rand(3, 7) : rand(6, 14), ay: small ? rand(4, 9) : rand(8, 18),
         wx: rand(0.15, 0.35), wy: rand(0.12, 0.3),
         px: rand(0, Math.PI * 2), py: rand(0, Math.PI * 2),
       };
@@ -296,7 +306,7 @@ export default function WordsClient() {
         hidden++;
         el.classList.remove('shown');
         timers.push(window.setTimeout(() => {
-          placed = floaters.filter((o) => o !== el).map((o) => ({ x: o.offsetLeft, y: o.offsetTop }));
+          placed = floaters.filter((o) => o !== el).map((o) => ({ x: o.offsetLeft, y: o.offsetTop, w: o.offsetWidth, h: o.offsetHeight }));
           position(el);
           el.classList.add('shown');
           hidden--;
