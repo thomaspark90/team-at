@@ -97,7 +97,7 @@ const CSS = `
 .jw-root .word.pending::after {
   content: "놓아두는 중";
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   line-height: 1.8;
   color: var(--ink-faint);
@@ -143,7 +143,7 @@ const CSS = `
   background: rgba(248, 250, 246, 0.88);
   color: #2E3B33;
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
   padding: 9px 16px;
   border-radius: 11px;
