@@ -9,6 +9,7 @@ import AccountingNav from '@/components/AccountingNav';
 import PnlUpload from '@/components/finance/PnlUpload';
 import AccountingBoards from '@/components/finance/AccountingBoards';
 import MonthShell from '@/components/finance/MonthShell';
+import StatusMatrix from '@/components/finance/StatusMatrix';
 
 // 단위별 자료 입력 페이지 — 스탭밀 / 가든 양재천점 / 가든 판교점 (2026-07-31 3단위 구조).
 // 스탭밀: 통장·카드·POS 전부 이 페이지에서 = 스탭밀 회계.
@@ -65,6 +66,9 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
 
           {/* 좌측 고정 연·월 사이드바(MonthShell) — POS 매출부터 하단 업로더까지 전부 오른쪽 열로 */}
           <MonthShell brand={unit.brand}>
+            {/* 0) 전체 자료 현황 매트릭스 — 연·월 × 자료 종류 미입력 한눈 조망(2026-08-02 대표 지시) */}
+            <StatusMatrix brand={unit.brand} unitId={unit.id} />
+
             {/* 1) POS 매출 — 지점 단위 귀속 (#pos: 월별 보드의 POS 칸에서 앵커 이동) */}
             <div id="pos" className="ta-card flex flex-col gap-3 scroll-mt-4">
               <div>

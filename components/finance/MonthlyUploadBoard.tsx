@@ -204,7 +204,7 @@ export default function MonthlyUploadBoard({
   const totalDone = doneCount + posDone + extraDone;
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-5">
+    <section id="monthly-board" className="scroll-mt-4 rounded-2xl border border-border bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="m-0 text-[15px] font-medium">
           {brandLabel(brand)} · {readOnly ? '월별 자료 현황' : '월별 회계자료 업로드'}

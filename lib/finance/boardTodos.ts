@@ -1,15 +1,33 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { UPLOAD_SLOTS, slotsForBanks } from './uploadSlots';
+import { UPLOAD_SLOTS, slotsForBanks, type UploadSlot } from './uploadSlots';
 import { monthCoverage, type DayInterval } from './coverage';
 
 const toYm = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+const lastDayOf = (ym: string) => {
+  const [y, m] = ym.split('-').map(Number);
+  return `${ym}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+};
 
-// 월 스트립 배지용 — 월별 남은 업무 수 일괄 집계.
-// 남은 업무 = 미완료 업로드 슬롯 + 미분류가 남은 출처 수 + 월 확정(자료 있고 미확정이면 1).
-// 확정된 달·이번 달 이후·자료 없는 옛날 달은 0 (배지 없음).
-// brand 지정 시 그 브랜드 몫만 집계(페이지가 브랜드 고정) — 미지정은 전 브랜드 합산(구버전 호환).
-// API 라우트와 대시보드 서버 컴포넌트(초기 데이터 프리페치)가 공용으로 사용. 조회 실패 시 throw.
-export async function computeBoardTodos(supabase: SupabaseClient, brand?: string): Promise<Record<string, number>> {
+// ---------- 공용 수집기 ----------
+// 월 배지(computeBoardTodos)와 전체 현황 매트릭스(computeBoardMatrix)가 같은 데이터·같은
+// 규칙을 쓰도록 집계를 한곳에 모은다 — 두 화면의 숫자가 어긋나는 사고 방지.
+interface SlotCover {
+  intervals: DayInterval[];
+  periodless: boolean;
+}
+interface BoardData {
+  months: string[]; // 과거 24개월 ~ 다음 달 (과거→미래)
+  currentYm: string;
+  prevYm: string;
+  slots: UploadSlot[]; // 브랜드 사용 은행(brand_settings) 반영된 요구 슬롯
+  posStores: string[];
+  posByYm: Map<string, Set<string>>;
+  confirmed: Set<string>;
+  slotAcc: Map<string, Map<string, SlotCover>>;
+  perMonth: Map<string, Record<string, { total: number; uncl: number }>>;
+}
+
+async function collectBoardData(supabase: SupabaseClient, brand?: string): Promise<BoardData> {
   const now = new Date();
   const currentYm = toYm(now);
   const prevYm = toYm(new Date(now.getFullYear(), now.getMonth() - 1, 1));
@@ -19,9 +37,9 @@ export async function computeBoardTodos(supabase: SupabaseClient, brand?: string
   const closesSel = supabase.schema('finance').from('monthly_close').select('ym,status,store');
   const uploadsSel = supabase.schema('finance').from('uploads').select('slot,slot_ym,bank,source,period_start,period_end');
   const txSel = supabase.schema('finance').from('transactions').select('ym,source,category_id,bank');
-  // POS 매출은 브랜드 지정 시에만 배지에 포함 — 보드의 POS 칸과 합이 맞도록. (전역 모드는 기존 동작 유지)
+  // POS 매출은 브랜드 지정 시에만 포함 — 보드의 POS 칸과 합이 맞도록. (전역 모드는 기존 동작 유지)
   const posSel = supabase.schema('finance').from('pos_sales').select('ym,store');
-  // 브랜드별 사용 은행(brand_settings) — 안 쓰는 은행 슬롯은 배지 집계에서 제외.
+  // 브랜드별 사용 은행(brand_settings) — 안 쓰는 은행 슬롯은 집계에서 제외.
   // 조회 실패(테이블 미생성 등)·전역 모드는 전체 슬롯 유지.
   const banksSel = supabase.schema('finance').from('brand_settings').select('banks').eq('brand', brand ?? '').maybeSingle();
   const [closesQ, uploadsQ, txQ, posQ, banksQ] = await Promise.all([
@@ -67,7 +85,7 @@ export async function computeBoardTodos(supabase: SupabaseClient, brand?: string
   // 월·슬롯별 수집 — 보드 업로드(slot 기록)는 slot_ym 달 + 파일 기간이 겹치는 모든 달에,
   // 기존 경로(slot 없음)는 기간 겹침으로 자동 감지해 반영한다.
   // 기간 구간을 모아 커버리지(부분 업로드는 미완료로 집계)까지 판정한다.
-  const slotAcc = new Map<string, Map<string, { intervals: DayInterval[]; periodless: boolean }>>();
+  const slotAcc = new Map<string, Map<string, SlotCover>>();
   const mark = (ym: string, key: string, iv: DayInterval | null) => {
     if (!slotAcc.has(ym)) slotAcc.set(ym, new Map());
     const m = slotAcc.get(ym)!;
@@ -115,38 +133,89 @@ export async function computeBoardTodos(supabase: SupabaseClient, brand?: string
     }
   }
 
-  const counts: Record<string, number> = {};
+  // 자동수집(네이버·쿠팡) = 거래가 있으면 월 전체로 간주 — 보드 상태 API와 동일 규칙
   for (const ym of months) {
-    const sources = perMonth.get(ym) ?? {};
-    // 자동수집(네이버·쿠팡) = 거래가 있으면 월 전체로 간주 — 보드 상태 API와 동일 규칙
     const auto = autoCollected.get(ym);
     for (const key of ['naverpay', 'coupang'] as const) {
-      if (auto?.[key]) {
-        const [yy, mm] = ym.split('-').map(Number);
-        mark(ym, key, { start: `${ym}-01`, end: `${ym}-${String(new Date(yy, mm, 0).getDate()).padStart(2, '0')}` });
-      }
+      if (auto?.[key]) mark(ym, key, { start: `${ym}-01`, end: lastDayOf(ym) });
     }
+  }
+
+  return { months, currentYm, prevYm, slots, posStores, posByYm, confirmed, slotAcc, perMonth };
+}
+
+// 슬롯 한 칸의 상태 — 보드·배지·매트릭스 공통 판정
+export type SlotState = 'full' | 'partial' | 'missing';
+function slotState(d: BoardData, ym: string, key: string): SlotState {
+  const a = d.slotAcc.get(ym)?.get(key);
+  if (!a) return 'missing';
+  if (a.intervals.length === 0) return a.periodless ? 'full' : 'missing'; // 기간 없는 구버전 기록 = 완료 간주
+  const cov = monthCoverage(ym, a.intervals);
+  return cov.full ? 'full' : cov.label ? 'partial' : 'missing';
+}
+
+// ---------- 월 스트립 배지 — 월별 남은 업무 수 일괄 집계 ----------
+// 남은 업무 = 미완료 업로드 슬롯 + 미분류가 남은 출처 수 + 월 확정(자료 있고 미확정이면 1) + POS 미입력 지점.
+// 확정된 달·이번 달 이후·자료 없는 옛날 달은 0 (배지 없음).
+// brand 지정 시 그 브랜드 몫만 집계(페이지가 브랜드 고정) — 미지정은 전 브랜드 합산(구버전 호환).
+export async function computeBoardTodos(supabase: SupabaseClient, brand?: string): Promise<Record<string, number>> {
+  const d = await collectBoardData(supabase, brand);
+  const counts: Record<string, number> = {};
+  for (const ym of d.months) {
+    const sources = d.perMonth.get(ym) ?? {};
     const hasData = Object.values(sources).some((s) => s.total > 0);
 
-    if (ym >= currentYm || confirmed.has(ym) || (!hasData && ym !== prevYm)) {
+    if (ym >= d.currentYm || d.confirmed.has(ym) || (!hasData && ym !== d.prevYm)) {
       counts[ym] = 0;
       continue;
     }
-    const slotMap = slotAcc.get(ym) ?? new Map();
     // 완료 = 올라갔고(커버리지 판정 가능하면) 월 전체를 덮음 — 부분(◐)은 남은 업무로 집계
-    const uploadOpen = slots.filter((s) => {
-      const a = slotMap.get(s.key);
-      if (!a) return true;
-      if (a.intervals.length === 0) return !a.periodless; // 기간 없는 구버전 기록만 = 완료 간주
-      return !monthCoverage(ym, a.intervals).full;
-    }).length;
+    const uploadOpen = d.slots.filter((s) => slotState(d, ym, s.key) !== 'full').length;
     const classifyOpen = Object.values(sources).filter((s) => s.uncl > 0).length;
     // 개인(personal)은 월확정 개념이 없다(확정 화면에서 제외되는 단위)
     const closeOpen = brand === 'personal' ? 0 : hasData ? 1 : 0;
     // POS 매출 미입력 지점 수 (브랜드 지정 시에만 — 보드 POS 칸과 동일 규칙)
-    const posOpen = posStores.filter((s) => !posByYm.get(ym)?.has(s)).length;
+    const posOpen = d.posStores.filter((s) => !d.posByYm.get(ym)?.has(s)).length;
     counts[ym] = uploadOpen + classifyOpen + closeOpen + posOpen;
   }
-
   return counts;
+}
+
+// ---------- 전체 현황 매트릭스 — 행=연·월, 열=자료 종류 ----------
+// 자료가 있는 첫 달부터 이번 달까지, 모든 칸의 상태를 한 번에 반환한다(자료 입력 페이지 조망용).
+export interface MatrixMonth {
+  ym: string;
+  hasData: boolean; // 그 달 거래 존재 여부
+  slots: Record<string, SlotState>;
+  pos: Record<string, boolean>; // store('' = 단일) → 매출 존재
+  uncl: number; // 미분류 건수(전 출처 합)
+  confirmed: boolean;
+}
+export interface BoardMatrix {
+  rows: MatrixMonth[]; // 과거 → 최신
+  slots: { key: string; label: string }[];
+  posStores: string[];
+}
+export async function computeBoardMatrix(supabase: SupabaseClient, brand?: string): Promise<BoardMatrix> {
+  const d = await collectBoardData(supabase, brand);
+  const hasAny = (ym: string) =>
+    Object.values(d.perMonth.get(ym) ?? {}).some((s) => s.total > 0) ||
+    (d.slotAcc.get(ym)?.size ?? 0) > 0 ||
+    (d.posByYm.get(ym)?.size ?? 0) > 0;
+  const first = d.months.find(hasAny) ?? d.currentYm;
+
+  const rows: MatrixMonth[] = [];
+  for (const ym of d.months) {
+    if (ym < first || ym > d.currentYm) continue;
+    const sources = d.perMonth.get(ym) ?? {};
+    rows.push({
+      ym,
+      hasData: Object.values(sources).some((s) => s.total > 0),
+      slots: Object.fromEntries(d.slots.map((s) => [s.key, slotState(d, ym, s.key)])),
+      pos: Object.fromEntries(d.posStores.map((st) => [st, d.posByYm.get(ym)?.has(st) ?? false])),
+      uncl: Object.values(sources).reduce((a, s) => a + s.uncl, 0),
+      confirmed: d.confirmed.has(ym),
+    });
+  }
+  return { rows, slots: d.slots.map((s) => ({ key: s.key, label: s.label })), posStores: d.posStores };
 }
