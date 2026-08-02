@@ -86,8 +86,8 @@ const CSS = `
 }
 .jw-root .word.shown { opacity: var(--op, 0.9); }
 .jw-root .word:hover { color: var(--accent); }
-.jw-root .word.s1 { font-size: 15px; font-weight: 300; --op: 0.62; }
-.jw-root .word.s2 { font-size: 19px; font-weight: 400; --op: 0.8; }
+.jw-root .word.s1 { font-size: 13px; font-weight: 300; --op: 0.62; }
+.jw-root .word.s2 { font-size: 15px; font-weight: 400; --op: 0.8; }
 .jw-root .word.s3 { font-size: 17px; font-weight: 500; --op: 0.94; }
 .jw-root .word.pending {
   color: var(--accent);
@@ -171,7 +171,7 @@ const CSS = `
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 16px 18px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
   color: var(--ink-soft);
   opacity: 0;
