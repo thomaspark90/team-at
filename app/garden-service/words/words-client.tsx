@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // 제철 단어 — 손님이 익명으로 단어를 두고 가는 페이지의 프론트.
 // 디자인 원본: Figma '제철 단어 — Garden Service' (파일 47CQNr6kcEDVkpdH5YtYCK).
@@ -28,7 +28,7 @@ const CSS = `
   overflow: hidden;
   background: var(--ground);
   color: var(--ink);
-  font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  font-family: 'Freesentation', -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 .jw-root .bg {
@@ -51,10 +51,13 @@ const CSS = `
   z-index: 3;
   pointer-events: none;
 }
-.jw-root .eyebrow {
-  font-size: 10px;
-  letter-spacing: 0.28em;
-  color: var(--ink-faint);
+.jw-root .logo {
+  width: 106px;
+  aspect-ratio: 206 / 35;
+  background-color: var(--ink);
+  opacity: 0.85;
+  -webkit-mask: url('/brand/garden-service.png') no-repeat left center / contain;
+  mask: url('/brand/garden-service.png') no-repeat left center / contain;
   margin: 0 0 10px;
 }
 .jw-root h1 {
@@ -207,8 +210,16 @@ function rand(a: number, b: number) {
 export default function WordsClient() {
   const fieldRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const receivedRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<{ addPending: (t: string) => void } | null>(null);
+  const sendingRef = useRef(false);
+  const toastTimerRef = useRef(0);
+  const [toastMsg, setToastMsg] = useState<React.ReactNode>(null);
+
+  const showToast = (node: React.ReactNode) => {
+    setToastMsg(node);
+    clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToastMsg(null), 4200);
+  };
 
   // iOS 키보드가 뷰포트를 줄이면 고정 컨테이너 밖(전역 흰 배경)이 드러난다 —
   // 이 페이지에 있는 동안 html/body 배경을 페이지 배경 톤으로 맞춘다.
@@ -277,16 +288,35 @@ export default function WordsClient() {
       floaters.push(el);
       return el;
     }
+    // 게시된 손님 단어 — 텍스트 기반 결정적 크기(1~3)로 무리에 섞는다
+    let approved: string[] = [];
+    function sizeOf(t: string) {
+      return ((t.charCodeAt(0) + t.length) % 3) + 1;
+    }
     function layout() {
       placed = [];
       floaters.length = 0;
       field!.innerHTML = '';
-      WORDS.forEach((w, i) => {
+      const all = [...WORDS, ...approved.map((t) => ({ t, s: sizeOf(t) }))];
+      all.forEach((w, i) => {
         const el = makeWord(w);
         timers.push(window.setTimeout(() => el.classList.add('shown'), 250 + i * 130));
       });
     }
     layout();
+
+    fetch('/api/garden-words')
+      .then((r) => (r.ok ? r.json() : { words: [] }))
+      .then((d: { words?: Array<{ text: string }> }) => {
+        const list = (d.words ?? []).map((w) => String(w.text)).filter(Boolean);
+        if (list.length) {
+          approved = list;
+          layout();
+        }
+      })
+      .catch(() => {
+        // 목록을 못 가져와도 기본 제철 단어는 이미 떠 있다
+      });
 
     let rt = 0;
     const onResize = () => {
@@ -328,17 +358,10 @@ export default function WordsClient() {
       }, 3000) as unknown as number);
     }
 
-    let toastTimer = 0;
     apiRef.current = {
       addPending(t: string) {
         const el = makeWord({ t, s: 2 }, true);
         requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('shown')));
-        const received = receivedRef.current;
-        if (received) {
-          received.classList.add('show');
-          clearTimeout(toastTimer);
-          toastTimer = window.setTimeout(() => received.classList.remove('show'), 4200);
-        }
       },
     };
 
@@ -346,21 +369,36 @@ export default function WordsClient() {
       cancelAnimationFrame(raf);
       timers.forEach((id) => { clearTimeout(id); clearInterval(id); });
       clearTimeout(rt);
-      clearTimeout(toastTimer);
       window.removeEventListener('resize', onResize);
       apiRef.current = null;
     };
   }, []);
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const input = inputRef.current;
-    if (!input) return;
+    if (!input || sendingRef.current) return;
     const t = input.value.trim().replace(/\s+/g, ' ');
     if (!t) { input.focus(); return; }
-    apiRef.current?.addPending(t);
+    sendingRef.current = true;
     input.value = '';
     input.blur();
+    try {
+      const res = await fetch('/api/garden-words', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: t }),
+      });
+      if (!res.ok) throw new Error();
+      apiRef.current?.addPending(t);
+      showToast(
+        <>잘 받았습니다. 가든서비스에서 확인 후.<br />어딘가에 조용히 놓아두겠습니다.</>
+      );
+    } catch {
+      showToast('지금은 단어를 받을 수 없어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+      sendingRef.current = false;
+    }
   };
 
   return (
@@ -368,7 +406,7 @@ export default function WordsClient() {
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <div className="bg" aria-hidden="true" />
       <header>
-        <p className="eyebrow">GARDEN SERVICE</p>
+        <div className="logo" role="img" aria-label="Garden Service" />
         <h1>제철 단어</h1>
         <p className="season">
           여름의 단어들이 놓여 있습니다.<br />당신의 단어도 하나 두고 가세요.
@@ -382,8 +420,8 @@ export default function WordsClient() {
         </form>
         <p className="hint">단어만 · 여덟 자 안팎 · 가든서비스가 읽어본 뒤 게시됩니다</p>
       </div>
-      <div className="received" ref={receivedRef} role="status">
-        잘 받았습니다. 가든서비스에서 확인 후.<br />어딘가에 조용히 놓아두겠습니다.
+      <div className={'received' + (toastMsg ? ' show' : '')} role="status">
+        {toastMsg}
       </div>
       <footer>양재천 · 여름</footer>
     </div>
