@@ -6,6 +6,7 @@ import { useRefresh } from '@/components/Refresh';
 import { createClient } from '@/lib/supabase/client';
 import { wonNum as won, fmtYm as fmtYmLabel } from '@/lib/finance/format';
 import SplitModal, { type SplitTarget, type SplitRuleSuggestion } from './SplitModal';
+import { useMonthCtx } from './MonthShell';
 import { storeLabel, bankSourceLabel, type Brand, type Store } from '@/lib/finance/types';
 
 export interface TxRow {
@@ -125,7 +126,18 @@ export default function ClassifyPanel({
   const [suggestions, setSuggestions] = useState<Record<string, Suggestion>>({});
   const [aiLoading, setAiLoading] = useState(false);
   const [aiApplying, setAiApplying] = useState(false);
-  const [filterYm, setFilterYm] = useState(initialFilter?.ym ?? 'all');
+  // 페이지 셸(MonthShell)의 좌측 연·월 사이드바와 동기 — 사이드바에서 달을 고르면 그 달만 분류(2026-08-03).
+  // 셸 밖에서 쓰이면(구 화면) 기존처럼 자체 월 셀렉트만 동작한다.
+  const ctx = useMonthCtx();
+  const [filterYm, setFilterYm] = useState(initialFilter?.ym ?? (ctx ? ctx.ym : 'all'));
+  const ctxYm = ctx?.ym;
+  useEffect(() => {
+    if (ctxYm) {
+      setFilterYm(ctxYm);
+      setPage(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctxYm]);
   const [filterBank, setFilterBank] = useState(sp.get('bank') ?? 'all');
   // 자금 흐름에서 넘어온 계정 필터(type/세부계정)
   const [catFilter, setCatFilter] = useState<{ type?: string; cat?: string }>({
@@ -295,6 +307,7 @@ export default function ClassifyPanel({
     setSelected(new Set());
     setBulkCat('');
     setAiApplying(false);
+    ctx?.refreshTodos(); // 사이드바 배지 갱신
   }
 
   function openSplit(tx: TxRow) {
@@ -397,6 +410,7 @@ export default function ClassifyPanel({
       )
     );
     setBusy(null);
+    ctx?.refreshTodos(); // 사이드바 배지 갱신
     return true;
   }
 
@@ -476,6 +490,7 @@ export default function ClassifyPanel({
       setError((e as Error).message);
     }
     setAiApplying(false);
+    ctx?.refreshTodos(); // 사이드바 배지 갱신
   }
 
   async function resetAll() {
@@ -546,7 +561,11 @@ export default function ClassifyPanel({
       <div className="flex flex-wrap items-center gap-[10px]">
         <select
           value={filterYm}
-          onChange={(e) => setFilterYm(e.target.value)}
+          onChange={(e) => {
+            setFilterYm(e.target.value);
+            // 사이드바와 동기 — '전체 월'은 사이드바 하이라이트만 남고 필터는 전체
+            if (ctx && e.target.value !== 'all') ctx.setYm(e.target.value);
+          }}
           className="ta-input text-[13px]"
         >
           <option value="all">전체 월</option>

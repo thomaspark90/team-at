@@ -6,6 +6,8 @@ import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import ClassifyPanel, { type TxRow, type Cat, type SplitRule } from '@/components/finance/ClassifyPanel';
+import MonthShell from '@/components/finance/MonthShell';
+import { computeBoardTodos } from '@/lib/finance/boardTodos';
 import { unitOf } from '@/lib/finance/types';
 
 export default async function ClassifyPage({
@@ -58,6 +60,13 @@ export default async function ClassifyPage({
   const presetBrand = unit ? unit.brand : searchParams.brand;
   const presetStore = unit ? (unit.store ?? undefined) : searchParams.store;
 
+  // 좌측 연·월 사이드바(MonthShell)의 배지 브랜드 — 단위·스코프·브랜드 프리셋 순으로 결정
+  const shellBrand =
+    unit?.brand ??
+    brandScope ??
+    (presetBrand && ['garden', 'staffmeal', 'personal'].includes(presetBrand) ? presetBrand : undefined);
+  const initialTodos = await computeBoardTodos(supabase, shellBrand ?? undefined).catch(() => undefined);
+
   // 학습된 규칙(정규화키→계정) — 미분류 행에 '추천'으로 미리 선택
   const ruleRows = unwrap(
     await supabase.schema('finance').from('rules').select('normalized_key,category_id,brand'),
@@ -76,7 +85,7 @@ export default async function ClassifyPage({
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <AccountingNav role={role} scoped={!!brandScope} />
-      <div className="mx-auto max-w-[1120px] px-6 py-8">
+      <div className="mx-auto max-w-[1600px] px-6 py-8">
         <div className="mb-4 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">지출 자료 분류</h1>
           <div className="flex gap-4">
@@ -90,25 +99,28 @@ export default async function ClassifyPage({
             )}
           </div>
         </div>
-        <ClassifyPanel
-          txns={(txns as TxRow[]) ?? []}
-          cats={(cats as Cat[]) ?? []}
-          userId={user.id}
-          confirmed={confirmed}
-          rules={rules}
-          splitRules={splitRules}
-          lockedBrand={brandScope}
-          fixedUnit={unit ? { brand: unit.brand, store: unit.store } : null}
-          initialFilter={{
-            ym: searchParams.ym,
-            type: searchParams.type,
-            cat: searchParams.cat,
-            unclassified: searchParams.unclassified === '1',
-            source: searchParams.source,
-            brand: presetBrand,
-            store: presetStore,
-          }}
-        />
+        {/* 좌측 연·월 사이드바 — 달을 고르면 그 달 거래만 분류(자료 입력과 동일 UX, 2026-08-03) */}
+        <MonthShell brand={shellBrand} initialTodos={initialTodos}>
+          <ClassifyPanel
+            txns={(txns as TxRow[]) ?? []}
+            cats={(cats as Cat[]) ?? []}
+            userId={user.id}
+            confirmed={confirmed}
+            rules={rules}
+            splitRules={splitRules}
+            lockedBrand={brandScope}
+            fixedUnit={unit ? { brand: unit.brand, store: unit.store } : null}
+            initialFilter={{
+              ym: searchParams.ym,
+              type: searchParams.type,
+              cat: searchParams.cat,
+              unclassified: searchParams.unclassified === '1',
+              source: searchParams.source,
+              brand: presetBrand,
+              store: presetStore,
+            }}
+          />
+        </MonthShell>
       </div>
     </div>
   );
