@@ -956,9 +956,19 @@ export default function ClassifyPanel({
                         </select>
                         {busy === tx.id && <span className="text-[11px] text-muted-foreground">저장…</span>}
                         {sug && busy !== tx.id && (
-                          <span title={sug.reason} className={`whitespace-nowrap text-[11px] ${sug.confidence >= CONF ? 'text-foreground' : 'text-muted-foreground'}`}>
-                            {sug.confidence >= CONF ? '추천' : '⚠️ 확인'} · {catName(sug.categoryId)}
-                          </span>
+                          // AI 추천 배지 = 원클릭 확정 버튼(2026-08-04 대표 요청) — 맞으면 눌러서
+                          // 바로 적용(같은 가맹점 전파 + 규칙 학습). 틀리면 드롭다운으로 다른 계정 선택.
+                          <button
+                            onClick={() => classify(tx, sug.categoryId)}
+                            title={`${sug.reason ? `${sug.reason} — ` : ''}눌러서 이 계정으로 확정해요 (같은 가맹점 전파·규칙 학습)`}
+                            className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                              sug.confidence >= CONF
+                                ? 'border-primary/40 bg-primary/10 text-primary'
+                                : 'border-amber-500/40 bg-amber-500/10 text-amber-600 hover:border-amber-600'
+                            }`}
+                          >
+                            {sug.confidence >= CONF ? '추천' : '⚠️ 확인'} · {catName(sug.categoryId)} 적용
+                          </button>
                         )}
                         {ruleSug && busy !== tx.id && (
                           <button
