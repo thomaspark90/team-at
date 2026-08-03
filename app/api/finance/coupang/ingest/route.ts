@@ -125,8 +125,9 @@ export async function POST(req: Request) {
     if (!cur) continue;
     const patch: { amount_out?: number; amount_in?: number; channel?: string | null } = {};
     if (cur.out !== m.amount_out || cur.in !== m.amount_in) { patch.amount_out = m.amount_out; patch.amount_in = m.amount_in; }
-    // 채널은 '해석되어 주소가 생겼을 때만' 갱신(미해석 마커로 되돌리지 않음)
-    if (m.channel && !m.channel.includes('🔍미해석') && cur.channel !== m.channel) patch.channel = m.channel;
+    // 채널(상품명+배송지) 갱신 — 값이 다르면 갱신하되, 이미 주소(@)가 있는 행을 '🔍미해석'으로 되돌리지는 않음.
+    // (빈 채널·상품명 없던 옛 적재분 → 상품명으로 채우고, 해석되면 주소까지 반영)
+    if (m.channel && cur.channel !== m.channel && !(cur.channel?.includes('@') && m.channel.includes('🔍미해석'))) patch.channel = m.channel;
     if (Object.keys(patch).length) {
       await supabase.from('transactions').update(patch).eq('dedup_hash', m.dedup_hash);
       if (patch.amount_out !== undefined) amountUpdated++;
