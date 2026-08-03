@@ -58,6 +58,7 @@ export interface PnlResult {
   labor: number; // 인건비
   fixed: number; // 고정비(나머지 판관비)
   unclassified: number; // 미분류 유출(경고)
+  misang: number; // '미상' 계정(용도 불명 보류) — 지출로 포함하되 별도 줄로 경고 표시
   cardLump: number; // 간이(은행 기준) 모드 전용 — 카드대금 결제 총액(세부 미분해 지출)
   operatingProfit: number; // 영업이익(EBIT 근사)
   metrics: {
@@ -118,11 +119,14 @@ export function buildPnl(
 
   // ---- 지출(거래분류) ----
   const cardSettleId = cats.find((c) => c.type === 'excluded' && c.name === '카드대금정산')?.id;
+  // '미상'(용도 불명 보류) — 어느 유형에 만들었든 지출로 포함하고 별도 줄로 표시(이익 부풀림 방지)
+  const misangId = cats.find((c) => c.name.includes('미상'))?.id;
   let 식자재매입 = 0;
   let 포장매입 = 0;
   let labor = 0;
   let fixed = 0;
   let unclassified = 0;
+  let misang = 0;
   let cardLump = 0;
   for (const t of txns) {
     const gross = (t.amount_out || 0) - (t.amount_in || 0); // 환불 반영(순 지출)
@@ -133,6 +137,10 @@ export function buildPnl(
     }
     const c = byId.get(t.category_id);
     if (!c) continue;
+    if (misangId != null && c.id === misangId) {
+      misang += gross; // 용도 불명 — 과세여부를 몰라 총액 그대로(미분류와 동일 취급)
+      continue;
+    }
     if (opts?.bankOnly && cardSettleId != null && c.id === cardSettleId) {
       cardLump += gross; // 카드대금 결제 = 세부 미분해 지출(총액 그대로)
       continue;
@@ -176,7 +184,7 @@ export function buildPnl(
   const feeAmount = data.channelFee != null ? data.channelFee : Math.round(sales.supply * CHANNEL_FEE_RATE);
   const netSales = sales.supply - feeAmount;
   const grossProfit = netSales - cogsTotal;
-  const operatingProfit = grossProfit - labor - fixed - unclassified - cardLump;
+  const operatingProfit = grossProfit - labor - fixed - unclassified - misang - cardLump;
 
   const div = (n: number) => (sales.supply > 0 ? n / sales.supply : 0);
   return {
@@ -189,6 +197,7 @@ export function buildPnl(
     labor,
     fixed,
     unclassified,
+    misang,
     cardLump,
     operatingProfit,
     metrics: {

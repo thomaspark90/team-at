@@ -276,8 +276,8 @@ async function PnlBody({
   const foodSig = SIG[benchmark('food', p.metrics.foodCostRate)];
   const laborSig = SIG[benchmark('labor', p.metrics.laborRate)];
   const primeSig = SIG[benchmark('prime', p.metrics.primeCost)];
-  // 간이 모드에서 카드 지출이 미분해면 재료비·지표가 실제보다 좋게 보임 → 지표는 '잠정' 처리
-  const uncertain = p.unclassified > 0 || p.cardLump > 0;
+  // 간이 모드 카드 미분해·미분류·미상(용도 불명)이 있으면 지표가 실제보다 좋게 보임 → '잠정' 처리
+  const uncertain = p.unclassified > 0 || p.cardLump > 0 || p.misang > 0;
 
   return (
     <>
@@ -360,6 +360,9 @@ async function PnlBody({
               <Row label="(−) 고정비 (판관비)" amount={-p.fixed} />
               {p.cardLump > 0 && (
                 <Row label="(−) 카드 지출 (세부 미분해)" amount={-p.cardLump} warn sub="카드대금 결제 총액 · 세부내역 연결 시 재료비·판관비로 분해" />
+              )}
+              {p.misang > 0 && (
+                <Row label="(−) 미상 (확인 필요)" amount={-p.misang} warn sub="용도 불명 보류 — 분류 화면 '미상 N건'에서 밝혀 재분류" />
               )}
               {p.unclassified > 0 && <Row label="(−) 미분류" amount={-p.unclassified} warn />}
               <Row label="영업이익 (EBIT 근사)" amount={p.operatingProfit} bold big sub="감가상각 전" />

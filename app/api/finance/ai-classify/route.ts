@@ -149,7 +149,9 @@ export async function POST(req: Request) {
     const p = (cats as Cat[]).find((x) => x.id === c.parent_id);
     return `[${c.type}] ${p ? p.name + ' > ' : ''}${c.name}`;
   };
+  // '미상'(용도 불명 보류함)은 AI가 배우거나 추천하면 안 되는 계정 — 목록·예시에서 제외
   const catList = (cats as Cat[] | null ?? [])
+    .filter((c) => !c.name.includes('미상'))
     .map((c) => `${c.id}: ${catLabel(c.id)}`)
     .join('\n');
 
@@ -187,7 +189,7 @@ export async function POST(req: Request) {
   const pushEx = (text: string, categoryId: number) => {
     const label = catLabel(categoryId);
     const t = text.trim().slice(0, 80);
-    if (!label || !t || seenText.has(t)) return;
+    if (!label || label.includes('미상') || !t || seenText.has(t)) return;
     seenText.add(t);
     pool.push({ text: t, label, tokens: tokenize(t) });
   };

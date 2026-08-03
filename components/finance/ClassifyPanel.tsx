@@ -195,6 +195,12 @@ export default function ClassifyPanel({
   const yms = Array.from(new Set(rows.map((r) => r.tx_at.slice(0, 7)))).sort((a, b) => b.localeCompare(a));
   const banks = Array.from(new Set(rows.map((r) => r.bank)));
 
+  // '미상' 파킹 계정 — 용도를 모르는 지출 보류함(2026-08-04 대표 요청). 사용자가 만든
+  // 계정을 이름으로 감지(유형 무관), 기존에 미상으로 분류한 건들도 자동 포함된다.
+  const misangCat = cats.find((c) => c.name.includes('미상'));
+  const [misangOnly, setMisangOnly] = useState(false);
+  const misangCount = misangCat ? rows.filter((r) => r.category_id === misangCat.id).length : 0;
+
   const matchesCat = (r: TxRow): boolean => {
     if (catFilter.type) {
       const c = r.category_id != null ? catById.get(r.category_id) : undefined;
@@ -225,6 +231,7 @@ export default function ClassifyPanel({
       (!!fixedUnit || brandFilter === 'all' || r.brand === brandFilter) &&
       (!!fixedUnit || (brandFilter !== 'garden' && lockedBrand !== 'garden') || storeMatches(r)) &&
       (!unclOnly || r.category_id == null || keepVisible.current.has(r.id)) &&
+      (!misangOnly || (misangCat != null && r.category_id === misangCat.id)) &&
       (!q || r.memo.toLowerCase().includes(q) || r.normalized_key.toLowerCase().includes(q) || (r.channel ?? '').toLowerCase().includes(q)) &&
       matchesCat(r)
   );
@@ -247,7 +254,7 @@ export default function ClassifyPanel({
     // 필터를 바꾸면 '방금 분류한 행 유지'도 정리 — 미분류만 보기를 다시 켜면 진짜 미분류만 남는다
     keepVisible.current = new Set();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterYm, filterBank, srcFilter, brandFilter, storeFilter, unclOnly, q, catFilter.type, catFilter.cat]);
+  }, [filterYm, filterBank, srcFilter, brandFilter, storeFilter, unclOnly, misangOnly, q, catFilter.type, catFilter.cat]);
 
   // 필터·페이지를 URL에 반영(얕은 갱신, 서버 재조회 없음) — 새로고침·뒤로가기에도 작업 위치 유지.
   // 셸(MonthShell navigate) 안에서는 끔 — 달 클릭으로 router.replace 전환이 진행되는 중에
@@ -379,12 +386,14 @@ export default function ClassifyPanel({
     }
   }
 
-  async function classify(tx: TxRow, categoryId: number) {
+  // opts.single = 이 거래 한 건만 분류(키 전파·규칙 학습 없음) — '미상' 파킹처럼
+  // 가맹점 전체에 학습되면 안 되는 지정에 사용
+  async function classify(tx: TxRow, categoryId: number, opts?: { single?: boolean }) {
     setBusy(tx.id);
     setError(null);
     const supabase = createClient();
     const now = new Date().toISOString();
-    const key = tx.normalized_key;
+    const key = opts?.single ? null : tx.normalized_key;
 
     let q = supabase
       .schema('finance')
@@ -603,13 +612,30 @@ export default function ClassifyPanel({
           })}
         </div>
         <button
-          onClick={() => setUnclOnly((v) => !v)}
+          onClick={() => {
+            setUnclOnly((v) => !v);
+            setMisangOnly(false);
+          }}
           className={`rounded-md border px-3 py-[7px] text-[13px] font-medium ${
             unclOnly ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground'
           }`}
         >
           미분류만
         </button>
+        {misangCat && misangCount > 0 && (
+          // 미상 모아보기 — 용도 불명으로 보류한 거래를 나중에 밝혀서 재분류하는 동선
+          <button
+            onClick={() => {
+              setMisangOnly((v) => !v);
+              setUnclOnly(false);
+            }}
+            className={`rounded-md border px-3 py-[7px] text-[13px] font-medium ${
+              misangOnly ? 'border-amber-500 bg-amber-500/10 text-amber-600' : 'border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            미상 {misangCount}건
+          </button>
+        )}
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -977,6 +1003,16 @@ export default function ClassifyPanel({
                             className="whitespace-nowrap rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
                           >
                             학습 · {catName(ruleSug)} 적용
+                          </button>
+                        )}
+                        {misangCat && tx.category_id == null && busy !== tx.id && (
+                          // 용도 불명 파킹 — 이 거래만 미상 처리(규칙 학습·전파 없음), '미상 N건'에서 나중에 확인
+                          <button
+                            onClick={() => classify(tx, misangCat.id, { single: true })}
+                            title="용도를 모르는 거래를 일단 보류해요 — 이 거래 한 건만 미상으로(학습 없음), 상단 '미상 N건'에서 나중에 밝혀 재분류"
+                            className="whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                          >
+                            미상
                           </button>
                         )}
                         {tx.split_parent_id == null && busy !== tx.id && (
