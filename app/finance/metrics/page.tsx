@@ -25,23 +25,39 @@ export default async function MetricsPage() {
   const role = await resolveRole(supabase, user);
   if (!role) redirect('/finance'); // 멤버(admin/classifier/viewer)만 — viewer는 이름 없는 안전 뷰로
 
-  // dashboard_tx = memo(이름) 없는 멤버 전용 뷰. viewer도 읽을 수 있어 지표 화면이 열림.
-  // brand 컬럼은 migration_brand.sql 의 뷰 재정의로 노출됨.
-  // store 컬럼은 migration_accounting_split.sql 뷰 재정의로 노출 — 마이그레이션 전이면 store 없이 폴백
-  let txRows = await supabase.schema('finance').from('dashboard_tx').select('tx_at,amount_in,amount_out,category_id,brand,store');
+  // ⚠️ 전량 조회(페이지네이션) — 예전엔 limit 없이 한 번만 select 해서 Supabase 기본 1000행 캡에
+  // 걸렸다. POS 일별 행이 1000개를 넘으면 가장 최근(2026년) 달이 통째로 잘려 매출 0으로 보였다(2026-08-04 버그).
+  // 뷰엔 고유 id가 없어 선택 컬럼 전부로 정렬 → 페이지 경계의 동일 튜플은 서로 교환 가능(누락·중복 없음).
+  const fetchAll = async (table: string, cols: string, order: string[]) => {
+    const PAGE = 1000;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const out: any[] = [];
+    for (let from = 0; ; from += PAGE) {
+      let q = supabase.schema('finance').from(table).select(cols);
+      for (const c of order) q = q.order(c, { ascending: true, nullsFirst: true });
+      const { data, error } = await q.range(from, from + PAGE - 1);
+      if (error) return { data: out, error };
+      out.push(...(data ?? []));
+      if (!data || data.length < PAGE) break;
+    }
+    return { data: out, error: null as null };
+  };
+
+  // dashboard_tx = memo(이름) 없는 멤버 전용 뷰(viewer도 읽음). store 컬럼은 마이그레이션 전이면 없어 폴백.
+  const txOrder = ['tx_at', 'category_id', 'brand', 'store', 'amount_in', 'amount_out'];
+  let txRows = await fetchAll('dashboard_tx', 'tx_at,amount_in,amount_out,category_id,brand,store', txOrder);
   if (txRows.error) {
-    txRows = await supabase.schema('finance').from('dashboard_tx').select('tx_at,amount_in,amount_out,category_id,brand');
+    txRows = await fetchAll('dashboard_tx', 'tx_at,amount_in,amount_out,category_id,brand', ['tx_at', 'category_id', 'brand', 'amount_in', 'amount_out']);
   }
   const txns = unwrap(txRows, '지표 거래');
   const cats = unwrap(
     await supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable'),
     '계정과목',
   );
-  // 매출 = POS 공급가액(발생주의). viewer도 볼 수 있는 memo-free 뷰(dashboard_pos)에서 조회.
-  // 뷰가 아직 없으면(마이그레이션 전) pos_sales로 폴백 — admin/classifier는 즉시 동작.
-  let posRows = await supabase.schema('finance').from('dashboard_pos').select('sale_date,supply,brand,store');
-  if (posRows.error) posRows = await supabase.schema('finance').from('dashboard_pos').select('sale_date,supply,brand');
-  if (posRows.error) posRows = await supabase.schema('finance').from('pos_sales').select('sale_date,supply,brand');
+  // 매출 = POS 공급가액(발생주의). memo-free 뷰(dashboard_pos), 없으면 pos_sales로 폴백.
+  let posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand,store', ['sale_date', 'brand', 'store', 'supply']);
+  if (posRows.error) posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
+  if (posRows.error) posRows = await fetchAll('pos_sales', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
   const posSales = ((posRows.data as { sale_date: string; supply: number; brand?: string | null; store?: string | null }[] | null) ?? []).map((p) => ({ saleDate: p.sale_date, supply: p.supply, brand: p.brand, store: p.store ?? null }));
 
   // 통장 입출금·월말 잔액 월별 집계 — 지표 첫 차트용(2026-08-04 대표 지시).
