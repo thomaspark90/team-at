@@ -568,22 +568,22 @@ export default function ClassifyPanel({
     <div className="flex flex-col gap-3">
       {/* 필터 바 */}
       <div className="flex flex-wrap items-center gap-[10px]">
-        <select
-          value={filterYm}
-          onChange={(e) => {
-            setFilterYm(e.target.value);
-            // 사이드바와 동기 — URL(?ym=)로 이동해 그 달(또는 '전체 월')을 서버에서 다시 조회한다.
-            if (ctx) ctx.setYm(e.target.value);
-          }}
-          className="ta-input text-[13px]"
-        >
-          <option value="all">전체 월</option>
-          {yms.map((ym) => (
-            <option key={ym} value={ym}>
-              {fmtYmLabel(ym)}
-            </option>
-          ))}
-        </select>
+        {/* 월 선택은 좌측 사이드바가 전담(2026-08-04 대표 지시로 드롭다운 제거) —
+            셸 밖에서 쓰일 때만 폴백으로 표시 */}
+        {!ctx && (
+          <select
+            value={filterYm}
+            onChange={(e) => setFilterYm(e.target.value)}
+            className="ta-input text-[13px]"
+          >
+            <option value="all">전체 월</option>
+            {yms.map((ym) => (
+              <option key={ym} value={ym}>
+                {fmtYmLabel(ym)}
+              </option>
+            ))}
+          </select>
+        )}
         <div className="inline-flex gap-1 rounded-md border border-border p-1">
           {['all', ...banks].map((b) => {
             const on = filterBank === b;
