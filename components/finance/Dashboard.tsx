@@ -301,8 +301,9 @@ export default function Dashboard({
               <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={52} />
               <Tooltip content={<ChartTooltip fmt={won} />} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="입금" fill={CAT[0]} maxBarSize={18} />
-              <Bar dataKey="출금" fill={CAT[1]} maxBarSize={18} />
+              {/* 극성 색 — 입금=초록(양수 숫자색과 통일), 출금=빨강. 카테고리 팔레트가 아닌 의미색 */}
+              <Bar dataKey="입금" fill="hsl(var(--number-colored))" maxBarSize={18} />
+              <Bar dataKey="출금" fill="hsl(var(--destructive))" maxBarSize={18} />
               <Line type="monotone" dataKey="월말 잔액" stroke={LINE} strokeWidth={2} dot={{ r: 2, fill: LINE }}>
                 {/* 라벨이 잔액 선과 겹치지 않게 20px 위로(2026-08-04 대표 지시) — 차트 상단 여백도 함께 확보 */}
                 <LabelList dataKey="월말 잔액" position="top" offset={20} formatter={wonLabel} style={pointLabel} />
