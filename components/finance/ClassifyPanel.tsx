@@ -424,9 +424,20 @@ export default function ClassifyPanel({
       const res = await fetch('/api/finance/ai-classify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(aiBrand ? { brand: aiBrand } : {}),
+        body: JSON.stringify({ ...(aiBrand ? { brand: aiBrand } : {}), ...(filterYm !== 'all' ? { ym: filterYm } : {}) }),
       });
-      const j = await res.json();
+      // 타임아웃 등으로 JSON이 아닌 텍스트 오류(Vercel "An error…")가 올 수 있어 안전 파싱
+      const raw = await res.text();
+      let j: { suggestions?: unknown; failedChunks?: number; error?: string } = {};
+      try {
+        j = raw ? JSON.parse(raw) : {};
+      } catch {
+        throw new Error(
+          res.ok
+            ? 'AI 응답을 읽지 못했어요. 잠시 후 다시 시도하세요.'
+            : 'AI 분류가 시간 초과됐어요 — 왼쪽에서 특정 달을 골라 범위를 좁힌 뒤 다시 눌러주세요.'
+        );
+      }
       if (!res.ok) throw new Error(j.error || 'AI 추천에 실패했어요.');
       const map: Record<string, Suggestion> = {};
       for (const s of j.suggestions as { key: string; categoryId: number; confidence: number; reason: string }[]) {
@@ -434,7 +445,7 @@ export default function ClassifyPanel({
       }
       setSuggestions(map);
       if (Object.keys(map).length === 0) setError('AI가 추천할 미분류 그룹이 없어요.');
-      else if (j.failedChunks > 0) setError(`일부 그룹(${j.failedChunks}묶음)은 추천에 실패했어요 — 잠시 후 다시 실행하면 이어서 추천돼요.`);
+      else if ((j.failedChunks ?? 0) > 0) setError(`일부 그룹(${j.failedChunks}묶음)은 추천에 실패했어요 — 잠시 후 다시 실행하면 이어서 추천돼요.`);
     } catch (e) {
       setError((e as Error).message);
     }
