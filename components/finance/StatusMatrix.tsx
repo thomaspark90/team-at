@@ -16,13 +16,23 @@ const POS_LABEL: Record<string, string> = {
   '': 'POS',
 };
 
-export default function StatusMatrix({ brand, unitId }: { brand: Brand; unitId?: string }) {
+export default function StatusMatrix({
+  brand,
+  unitId,
+  initialData,
+}: {
+  brand: Brand;
+  unitId?: string;
+  // 서버 컴포넌트가 미리 집계한 매트릭스 — 있으면 첫 화면부터 완성본이 뜬다('불러오는 중' 깜빡임 제거)
+  initialData?: BoardMatrix;
+}) {
   const ctx = useMonthCtx();
-  const [data, setData] = useState<BoardMatrix | null>(null);
+  const [data, setData] = useState<BoardMatrix | null>(initialData ?? null);
   const [error, setError] = useState<string | null>(null);
   // 날짜 정렬 — 기본 최신이 위(내림차순), '월' 헤더 클릭으로 토글
   const [desc, setDesc] = useState(true);
 
+  const hasInitial = initialData !== undefined;
   const load = useCallback(async () => {
     try {
       const res = await fetch(`/api/finance/board/matrix?brand=${brand}`);
@@ -36,8 +46,8 @@ export default function StatusMatrix({ brand, unitId }: { brand: Brand; unitId?:
   }, [brand]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!hasInitial) load();
+  }, [load, hasInitial]);
 
   // 셀 클릭 — 그 달을 선택하고 아래 월별 보드로 스크롤(업로드 액션은 보드 칸에서)
   const goMonth = (ym: string, anchor: string) => {
