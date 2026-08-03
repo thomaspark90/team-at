@@ -111,9 +111,13 @@ export default function ClassifyPanel({
       return b.tx_at.localeCompare(a.tx_at);
     });
   const [rows, setRows] = useState<TxRow[]>(() => sortTxns(txns));
+  // 방금 분류한 행 id — '미분류만 보기'에서도 그 자리에 남겨 오클릭을 바로 수정할 수 있게(2026-08-03 대표 요청).
+  // 서버 재조회(txns 교체) 때 비운다 — 그때는 분류가 저장 반영된 뒤라 목록에서 빠져도 자연스럽다.
+  const keepVisible = useRef<Set<number>>(new Set());
   // 사이드바에서 자료 업로드 후 router.refresh() 되면 새 거래를 반영
   useEffect(() => {
     setRows(sortTxns(txns));
+    keepVisible.current = new Set();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [txns]);
   const [busy, setBusy] = useState<number | null>(null);
@@ -206,7 +210,7 @@ export default function ClassifyPanel({
       // 브랜드 필터 — 실제 brand 컬럼 기준(전 소스). 가든이면 지점(store) 하위 필터까지. 단위 고정 시 생략.
       (!!fixedUnit || brandFilter === 'all' || r.brand === brandFilter) &&
       (!!fixedUnit || (brandFilter !== 'garden' && lockedBrand !== 'garden') || storeMatches(r)) &&
-      (!unclOnly || r.category_id == null) &&
+      (!unclOnly || r.category_id == null || keepVisible.current.has(r.id)) &&
       (!q || r.memo.toLowerCase().includes(q) || r.normalized_key.toLowerCase().includes(q) || (r.channel ?? '').toLowerCase().includes(q)) &&
       matchesCat(r)
   );
@@ -286,6 +290,7 @@ export default function ClassifyPanel({
       return;
     }
     // 선택 일괄분류는 규칙 학습 안 함(여러 가맹점 섞일 수 있음). 규칙은 개별 드롭다운에서.
+    targets.forEach((r) => keepVisible.current.add(r.id));
     setRows((list) => list.map((r) => (selected.has(r.id) && !isLocked(r) ? { ...r, category_id: catId } : r)));
     setSelected(new Set());
     setBulkCat('');
@@ -381,6 +386,11 @@ export default function ClassifyPanel({
         .from('rules')
         .upsert({ normalized_key: key, brand: tx.brand, category_id: categoryId, created_by: userId }, { onConflict: 'normalized_key,brand' });
     }
+    for (const r of rows) {
+      if ((key ? r.normalized_key === key && r.brand === tx.brand : r.id === tx.id) && !isLocked(r)) {
+        keepVisible.current.add(r.id);
+      }
+    }
     setRows((list) =>
       list.map((r) =>
         (key ? r.normalized_key === key && r.brand === tx.brand : r.id === tx.id) && !isLocked(r) ? { ...r, category_id: categoryId } : r
@@ -448,6 +458,11 @@ export default function ClassifyPanel({
         applied += Number(j.updated ?? 0);
         // 화면 반영 — 적용된 키의 미분류 행을 채운다(확정월 잠긴 행 제외, 서버도 동일 필터)
         const catByKey = new Map<string, number>(items.map((i) => [i.key, i.categoryId] as [string, number]));
+        for (const r of rows) {
+          if (r.brand === b && r.category_id == null && r.normalized_key && catByKey.has(r.normalized_key) && !isLocked(r)) {
+            keepVisible.current.add(r.id);
+          }
+        }
         setRows((list) =>
           list.map((r) =>
             r.brand === b && r.category_id == null && r.normalized_key && catByKey.has(r.normalized_key) && !isLocked(r)
@@ -791,7 +806,18 @@ export default function ClassifyPanel({
                 const [date, time] = tx.tx_at.split('T');
                 const selVal = tx.category_id ?? sug?.categoryId ?? ruleSug ?? '';
                 return (
-                  <tr key={tx.id} className={`border-t border-border hover:bg-accent ${selected.has(tx.id) ? 'bg-primary/5' : locked ? 'bg-muted' : ''}`}>
+                  <tr
+                    key={tx.id}
+                    className={`border-t border-border hover:bg-accent ${
+                      selected.has(tx.id)
+                        ? 'bg-primary/5'
+                        : locked
+                          ? 'bg-muted'
+                          : unclOnly && tx.category_id != null
+                            ? 'bg-emerald-500/5' // 미분류 보기에서 방금 분류돼 남아있는 행 — 즉시 수정 가능
+                            : ''
+                    }`}
+                  >
                     <td className="px-3 py-2 align-middle">
                       {!locked && (
                         <input type="checkbox" checked={selected.has(tx.id)} onChange={() => toggleSel(tx.id)} aria-label="선택" />
