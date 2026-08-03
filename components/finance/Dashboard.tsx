@@ -6,6 +6,7 @@ import {
   Line,
   BarChart,
   Bar,
+  ComposedChart,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -92,10 +93,13 @@ export default function Dashboard({
   txns,
   cats,
   posSales = [],
+  bankCash = [],
 }: {
   txns: AggTx[];
   cats: AggCat[];
   posSales?: { saleDate: string; supply: number; brand?: string | null; store?: string | null }[];
+  // 통장 입출금·월말 잔액 월별 집계(서버 프리페치) — 첫 차트용. viewer는 빈 배열 → 차트 생략
+  bankCash?: { ym: string; brand: string; bank: string; inflow: number; outflow: number; balance: number }[];
 }) {
   const [unit, setUnit] = useState<Unit>('month');
   const [netVat, setNetVat] = useState(true);
@@ -105,6 +109,28 @@ export default function Dashboard({
   const { brand, store } = seg;
   // 좌측 연·월 사이드바(MonthShell)와 동기 — 고른 달의 요약 타일·구성비를 비춘다. 셸 밖(구 화면)이면 null → 최근 달.
   const ctx = useMonthCtx();
+
+  // 통장 입출금·잔액 월별 시계열 — 브랜드 필터만 적용(통장은 브랜드 단위, 가든 지점 구분 없음).
+  // 선두의 전부-0 달은 잘라 실데이터 시작부터 그린다.
+  const bankData = useMemo(() => {
+    const rows =
+      brand === 'all'
+        ? bankCash.filter((r) => r.brand !== 'personal')
+        : bankCash.filter((r) => (r.brand || 'garden') === brand);
+    const byYm = new Map<string, { in: number; out: number; bal: number }>();
+    for (const r of rows) {
+      const a = byYm.get(r.ym) ?? { in: 0, out: 0, bal: 0 };
+      a.in += r.inflow;
+      a.out += r.outflow;
+      a.bal += r.balance;
+      byYm.set(r.ym, a);
+    }
+    const all = Array.from(byYm.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([ym, a]) => ({ p: ym.slice(2).replace('-', '.'), 입금: a.in, 출금: a.out, '월말 잔액': a.bal }));
+    const first = all.findIndex((d) => d.입금 !== 0 || d.출금 !== 0 || d['월말 잔액'] !== 0);
+    return first < 0 ? [] : all.slice(first);
+  }, [bankCash, brand]);
   const { months, expenseKeys } = useMemo(() => {
     // '전체'는 사업 브랜드만 — 개인(personal)은 손익 제외라 카테고리와 무관하게 뺀다.
     let tx = brand === 'all' ? txns.filter((t) => t.brand !== 'personal') : txns.filter((t) => (t.brand ?? 'garden') === brand);
@@ -258,6 +284,31 @@ export default function Dashboard({
         <div className="-mt-2 text-[11px] text-muted-foreground">
           이 기간 <b>POS 매출이 없어요</b> — 매출은 <a href="/finance/pnl" className="underline">관리손익</a>에서 토스 매출리포트를 올려야 잡혀요.
         </div>
+      )}
+
+      {/* 1) 통장 입출금·잔액 — 분류와 무관한 통장 자체의 현금 흐름(대표 지시로 첫 차트, 2026-08-04) */}
+      {unit === 'month' && bankData.length > 0 && (
+        <ChartCard
+          title="통장 입출금·잔액"
+          subtitle={`월별 입금·출금(막대)과 월말 잔액(선) · 분류 무관 통장 기준${
+            brand === 'garden' && store !== 'all' ? ' · 통장은 가든 공용(지점 구분 없음)' : ''
+          }`}
+        >
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={bankData} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+              <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+              <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={52} />
+              <Tooltip content={<ChartTooltip fmt={won} />} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="입금" fill={CAT[0]} radius={[4, 4, 0, 0]} maxBarSize={18} />
+              <Bar dataKey="출금" fill={CAT[1]} radius={[4, 4, 0, 0]} maxBarSize={18} />
+              <Line type="monotone" dataKey="월말 잔액" stroke={LINE} strokeWidth={2} dot={{ r: 2, fill: LINE }}>
+                <LabelList dataKey="월말 잔액" position="top" formatter={wonLabel} style={pointLabel} />
+              </Line>
+            </ComposedChart>
+          </ResponsiveContainer>
+        </ChartCard>
       )}
 
       <ChartCard title="매출 추이" subtitle="점선=평균">

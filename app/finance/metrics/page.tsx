@@ -44,6 +44,60 @@ export default async function MetricsPage() {
   if (posRows.error) posRows = await supabase.schema('finance').from('pos_sales').select('sale_date,supply,brand');
   const posSales = ((posRows.data as { sale_date: string; supply: number; brand?: string | null; store?: string | null }[] | null) ?? []).map((p) => ({ saleDate: p.sale_date, supply: p.supply, brand: p.brand, store: p.store ?? null }));
 
+  // 통장 입출금·월말 잔액 월별 집계 — 지표 첫 차트용(2026-08-04 대표 지시).
+  // dashboard_tx(안전 뷰)에는 은행·잔액이 없어 원본 transactions에서 별도 집계.
+  // admin/classifier만(viewer는 RLS로 원본이 안 보여 차트 생략). 분할 자식 행 제외(이중계상 방지).
+  type BankCashRow = { ym: string; brand: string; bank: string; inflow: number; outflow: number; balance: number };
+  const bankCash: BankCashRow[] = [];
+  if (['admin', 'classifier'].includes(role)) {
+    const PAGE = 1000;
+    const raw: { ym: string; bank: string; brand: string | null; tx_at: string; amount_in: number; amount_out: number; balance: number }[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .schema('finance')
+        .from('transactions')
+        .select('ym,bank,brand,tx_at,amount_in,amount_out,balance')
+        .eq('source', 'bank')
+        .is('split_parent_id', null)
+        .order('id')
+        .range(from, from + PAGE - 1);
+      if (error) break;
+      raw.push(...((data ?? []) as typeof raw));
+      if (!data || data.length < PAGE) break;
+    }
+    // (브랜드,은행)별 월 집계 + 월말 잔액(그 달 마지막 거래), 거래 없는 달은 잔액 이월
+    const agg = new Map<string, Map<string, { inflow: number; outflow: number; lastAt: string; balance: number }>>();
+    for (const t of raw) {
+      const k = `${t.brand ?? 'garden'}|${t.bank}`;
+      if (!agg.has(k)) agg.set(k, new Map());
+      const mm = agg.get(k)!;
+      const ym = String(t.ym);
+      const a = mm.get(ym) ?? { inflow: 0, outflow: 0, lastAt: '', balance: 0 };
+      a.inflow += Number(t.amount_in) || 0;
+      a.outflow += Number(t.amount_out) || 0;
+      // 잔액 0 = 미기재(엑셀 일부) — 월말 잔액 후보에서 제외
+      if (Number(t.balance) !== 0 && String(t.tx_at) >= a.lastAt) {
+        a.lastAt = String(t.tx_at);
+        a.balance = Number(t.balance);
+      }
+      mm.set(ym, a);
+    }
+    const allYms = Array.from(new Set(raw.map((t) => String(t.ym)))).sort();
+    for (const [k, mm] of Array.from(agg.entries())) {
+      const [bBrand, bank] = k.split('|');
+      let carry = 0;
+      for (const ym of allYms) {
+        const a = mm.get(ym);
+        if (a) {
+          if (a.balance !== 0) carry = a.balance;
+          bankCash.push({ ym, brand: bBrand, bank, inflow: a.inflow, outflow: a.outflow, balance: carry });
+        } else {
+          bankCash.push({ ym, brand: bBrand, bank, inflow: 0, outflow: 0, balance: carry });
+        }
+      }
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
@@ -61,7 +115,7 @@ export default async function MetricsPage() {
         {/* 좌측 연·월 사이드바 — 회계 자료 화면과 동일한 셸. 지표는 모든 데이터가 이미 클라이언트에 있어
             서버 재조회가 필요 없다 → navigate=false(얕은 갱신). 배지 없음(initialTodos={{}}). */}
         <MonthShell navigate={false} initialTodos={{}}>
-          <Dashboard txns={(txns as AggTx[]) ?? []} cats={(cats as AggCat[]) ?? []} posSales={posSales} />
+          <Dashboard txns={(txns as AggTx[]) ?? []} cats={(cats as AggCat[]) ?? []} posSales={posSales} bankCash={bankCash} />
         </MonthShell>
       </div>
     </div>
