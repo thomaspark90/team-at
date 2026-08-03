@@ -50,7 +50,8 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: 'JSON 본문이 필요합니다.' }, { status: 400 });
   }
-  const valid = rows.filter((r) => r && r.paid_at && Number(r.amount) > 0);
+  // 금액 0(전량취소)도 통과시킨다 — 기존 적재분을 0으로 소급 정정하기 위해. 신규 0원 행은 아래 fresh에서 제외.
+  const valid = rows.filter((r) => r && r.paid_at && Number(r.amount) >= 0);
   if (valid.length === 0) return NextResponse.json({ saved: 0, duplicates: 0, autoClassified: 0 });
 
   const supabase = createServiceClient(url, serviceKey, { db: { schema: 'finance' } });
@@ -92,19 +93,38 @@ export async function POST(req: Request) {
     };
   });
 
-  // 재적재 중복 차단 (dedup_hash 기존 여부 청크 조회)
+  // 재적재 중복 차단 (dedup_hash 기존 여부 + 현재 금액 청크 조회)
   const hashes = Array.from(new Set(mapped.map((m) => m.dedup_hash)));
   const existing = new Set<string>();
+  const existingAmt = new Map<string, { out: number; in: number }>();
   for (let i = 0; i < hashes.length; i += 100) {
-    const { data } = await supabase.from('transactions').select('dedup_hash').in('dedup_hash', hashes.slice(i, i + 100));
-    (data ?? []).forEach((e: { dedup_hash: string }) => existing.add(e.dedup_hash));
+    const { data } = await supabase.from('transactions').select('dedup_hash,amount_out,amount_in').in('dedup_hash', hashes.slice(i, i + 100));
+    (data ?? []).forEach((e: { dedup_hash: string; amount_out: number; amount_in: number }) => {
+      existing.add(e.dedup_hash);
+      existingAmt.set(e.dedup_hash, { out: e.amount_out ?? 0, in: e.amount_in ?? 0 });
+    });
   }
   const seen = new Set<string>();
   const fresh = mapped.filter((m) => {
     if (existing.has(m.dedup_hash) || seen.has(m.dedup_hash)) return false;
+    if (m.amount_out <= 0 && m.amount_in <= 0) return false; // 신규 0원(전량취소) 행은 삽입하지 않음
     seen.add(m.dedup_hash);
     return true;
   });
+
+  // 금액 소급 정정 — 기존 적재분의 금액이 새 계산(할인가·부분취소 반영)과 다르면 갱신.
+  // 쿠팡이 금액의 source of truth 이므로 다르면 덮어쓴다(정가→할인가, 부분취소 차감 등).
+  let amountUpdated = 0;
+  const seenAmt = new Set<string>();
+  for (const m of mapped) {
+    if (!existing.has(m.dedup_hash) || seenAmt.has(m.dedup_hash)) continue;
+    seenAmt.add(m.dedup_hash);
+    const cur = existingAmt.get(m.dedup_hash);
+    if (cur && (cur.out !== m.amount_out || cur.in !== m.amount_in)) {
+      await supabase.from('transactions').update({ amount_out: m.amount_out, amount_in: m.amount_in }).eq('dedup_hash', m.dedup_hash);
+      amountUpdated++;
+    }
+  }
 
   // 개인(personal) 지출은 손익 제외 '개인지출' 카테고리로 자동 분류한다(공용 헬퍼).
   const hasPersonal = mapped.some((m) => m.brand === 'personal');
@@ -147,7 +167,7 @@ export async function POST(req: Request) {
   }
 
   if (fresh.length === 0) {
-    return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0, brandUpdated, personalCategorized });
+    return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0, brandUpdated, personalCategorized, amountUpdated });
   }
 
   // 학습 규칙(normalized_key → category_id)으로 자동 분류 — 규칙은 브랜드별
@@ -198,5 +218,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
   }
 
-  return NextResponse.json({ saved: fresh.length, duplicates: mapped.length - fresh.length, autoClassified, brandUpdated, personalCategorized });
+  return NextResponse.json({ saved: fresh.length, duplicates: mapped.length - fresh.length, autoClassified, brandUpdated, personalCategorized, amountUpdated });
 }
