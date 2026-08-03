@@ -76,7 +76,9 @@ export async function POST(req: Request) {
       source: 'coupang',
       tx_at: txAt,
       ym: txAt.slice(0, 7),
-      channel: [product, shipTo ? `@${shipTo}` : ''].filter(Boolean).join(' ') || null, // 상품명+수령인(참고 표시)
+      // 상품명 + 배송지(해석됨) 또는 '🔍미해석'(주소 미조회 → 브랜드가 garden 기본 추정치).
+      // 분류 화면에서 '미해석' 검색으로 수동 교정 대상을 찾을 수 있다. 해석되면 아래 소급 갱신으로 주소로 바뀐다.
+      channel: [product, shipTo ? `@${shipTo}` : '🔍미해석'].filter(Boolean).join(' ') || null,
       memo: merchant,                            // 분류 단서 = 가맹점명
       amount_out: isRefund ? 0 : Math.round(Number(r.amount)),
       amount_in: isRefund ? Math.round(Number(r.amount)) : 0,
@@ -96,12 +98,12 @@ export async function POST(req: Request) {
   // 재적재 중복 차단 (dedup_hash 기존 여부 + 현재 금액 청크 조회)
   const hashes = Array.from(new Set(mapped.map((m) => m.dedup_hash)));
   const existing = new Set<string>();
-  const existingAmt = new Map<string, { out: number; in: number }>();
+  const existingRow = new Map<string, { out: number; in: number; channel: string | null }>();
   for (let i = 0; i < hashes.length; i += 100) {
-    const { data } = await supabase.from('transactions').select('dedup_hash,amount_out,amount_in').in('dedup_hash', hashes.slice(i, i + 100));
-    (data ?? []).forEach((e: { dedup_hash: string; amount_out: number; amount_in: number }) => {
+    const { data } = await supabase.from('transactions').select('dedup_hash,amount_out,amount_in,channel').in('dedup_hash', hashes.slice(i, i + 100));
+    (data ?? []).forEach((e: { dedup_hash: string; amount_out: number; amount_in: number; channel: string | null }) => {
       existing.add(e.dedup_hash);
-      existingAmt.set(e.dedup_hash, { out: e.amount_out ?? 0, in: e.amount_in ?? 0 });
+      existingRow.set(e.dedup_hash, { out: e.amount_out ?? 0, in: e.amount_in ?? 0, channel: e.channel ?? null });
     });
   }
   const seen = new Set<string>();
@@ -112,17 +114,22 @@ export async function POST(req: Request) {
     return true;
   });
 
-  // 금액 소급 정정 — 기존 적재분의 금액이 새 계산(할인가·부분취소 반영)과 다르면 갱신.
-  // 쿠팡이 금액의 source of truth 이므로 다르면 덮어쓴다(정가→할인가, 부분취소 차감 등).
+  // 소급 정정 — 기존 적재분의 금액/채널이 새 계산과 다르면 갱신.
+  // 금액: 쿠팡이 source of truth(정가→할인가, 부분취소 차감). 채널: 미해석→해석되면 '🔍미해석'→주소.
   let amountUpdated = 0;
   const seenAmt = new Set<string>();
   for (const m of mapped) {
     if (!existing.has(m.dedup_hash) || seenAmt.has(m.dedup_hash)) continue;
     seenAmt.add(m.dedup_hash);
-    const cur = existingAmt.get(m.dedup_hash);
-    if (cur && (cur.out !== m.amount_out || cur.in !== m.amount_in)) {
-      await supabase.from('transactions').update({ amount_out: m.amount_out, amount_in: m.amount_in }).eq('dedup_hash', m.dedup_hash);
-      amountUpdated++;
+    const cur = existingRow.get(m.dedup_hash);
+    if (!cur) continue;
+    const patch: { amount_out?: number; amount_in?: number; channel?: string | null } = {};
+    if (cur.out !== m.amount_out || cur.in !== m.amount_in) { patch.amount_out = m.amount_out; patch.amount_in = m.amount_in; }
+    // 채널은 '해석되어 주소가 생겼을 때만' 갱신(미해석 마커로 되돌리지 않음)
+    if (m.channel && !m.channel.includes('🔍미해석') && cur.channel !== m.channel) patch.channel = m.channel;
+    if (Object.keys(patch).length) {
+      await supabase.from('transactions').update(patch).eq('dedup_hash', m.dedup_hash);
+      if (patch.amount_out !== undefined) amountUpdated++;
     }
   }
 
