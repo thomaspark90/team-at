@@ -242,6 +242,8 @@ export default function ClassifyPanel({
       return;
     }
     setPage(1);
+    // 필터를 바꾸면 '방금 분류한 행 유지'도 정리 — 미분류만 보기를 다시 켜면 진짜 미분류만 남는다
+    keepVisible.current = new Set();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterYm, filterBank, srcFilter, brandFilter, storeFilter, unclOnly, q, catFilter.type, catFilter.cat]);
 
@@ -399,11 +401,9 @@ export default function ClassifyPanel({
         .from('rules')
         .upsert({ normalized_key: key, brand: tx.brand, category_id: categoryId, created_by: userId }, { onConflict: 'normalized_key,brand' });
     }
-    for (const r of rows) {
-      if ((key ? r.normalized_key === key && r.brand === tx.brand : r.id === tx.id) && !isLocked(r)) {
-        keepVisible.current.add(r.id);
-      }
-    }
+    // 오클릭 보호는 사용자가 직접 만진 행만 — 같은 키로 전파된 행까지 남기면 목록이 분류된 행으로 넘친다.
+    // (남은 이 행에서 계정을 고치면 키 전파로 나머지 행도 같이 고쳐진다)
+    keepVisible.current.add(tx.id);
     setRows((list) =>
       list.map((r) =>
         (key ? r.normalized_key === key && r.brand === tx.brand : r.id === tx.id) && !isLocked(r) ? { ...r, category_id: categoryId } : r
@@ -481,13 +481,9 @@ export default function ClassifyPanel({
         const j = await res.json();
         if (!res.ok) throw new Error(j.error || '일괄 적용에 실패했어요.');
         applied += Number(j.updated ?? 0);
-        // 화면 반영 — 적용된 키의 미분류 행을 채운다(확정월 잠긴 행 제외, 서버도 동일 필터)
+        // 화면 반영 — 적용된 키의 미분류 행을 채운다(확정월 잠긴 행 제외, 서버도 동일 필터).
+        // AI 일괄 적용은 keepVisible에 안 넣는다 — 수백 건이 미분류 보기에 남아 목록이 넘치는 부작용(2026-08-03).
         const catByKey = new Map<string, number>(items.map((i) => [i.key, i.categoryId] as [string, number]));
-        for (const r of rows) {
-          if (r.brand === b && r.category_id == null && r.normalized_key && catByKey.has(r.normalized_key) && !isLocked(r)) {
-            keepVisible.current.add(r.id);
-          }
-        }
         setRows((list) =>
           list.map((r) =>
             r.brand === b && r.category_id == null && r.normalized_key && catByKey.has(r.normalized_key) && !isLocked(r)
