@@ -8,7 +8,11 @@ import AccountingNav from '@/components/AccountingNav';
 import CategoryManager, { type ManagedCat } from '@/components/finance/CategoryManager';
 import BrandBankSettings, { type BrandBankRow } from '@/components/finance/BrandBankSettings';
 
-export default async function CategoriesPage() {
+export default async function CategoriesPage({
+  searchParams,
+}: {
+  searchParams: { from?: string };
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -37,7 +41,11 @@ export default async function CategoriesPage() {
       <div className="mx-auto max-w-[1120px] px-6 py-8">
         <div className="mb-4 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">설정</h1>
-          <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+          {/* 분류 화면에서 넘어왔으면(from) 그 화면(단위·월 그대로)으로 복귀. 내부 경로만 허용(오픈 리다이렉트 방지). */}
+          <Link
+            href={searchParams.from?.startsWith('/finance/') ? searchParams.from : '/finance/classify'}
+            className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+          >
             ← 재무로
           </Link>
         </div>

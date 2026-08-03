@@ -96,6 +96,12 @@ export default async function ClassifyPage({
     .select('normalized_key,brand,allocations');
   const splitRules = (splitRuleRows as SplitRule[] | null) ?? [];
 
+  // 설정에서 '재무로'로 돌아올 때 지금 이 분류 화면(단위·월·필터 그대로)으로 오도록 현재 URL을 from으로 넘긴다.
+  const backQs = new URLSearchParams();
+  for (const [k, v] of Object.entries(searchParams)) if (typeof v === 'string' && v) backQs.set(k, v);
+  const selfHref = `/finance/classify${backQs.toString() ? `?${backQs.toString()}` : ''}`;
+  const settingsHref = `/finance/categories?from=${encodeURIComponent(selfHref)}`;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
@@ -108,7 +114,7 @@ export default async function ClassifyPage({
               자료 이력 →
             </Link>
             {role === 'admin' && (
-              <Link href="/finance/categories" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+              <Link href={settingsHref} className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
                 설정(계정과목) →
               </Link>
             )}
