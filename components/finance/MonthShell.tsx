@@ -46,7 +46,8 @@ export default function MonthShell({
   // 선택 월을 URL(?ym=)에 반영 — 분류 화면에 다녀오거나 새로고침해도 보던 달 유지.
   const router = useRouter();
   const urlYm = useSearchParams().get('ym');
-  const [ym, setYmState] = useState(() => (urlYm && /^\d{4}-\d{2}$/.test(urlYm) ? urlYm : defaultYm()));
+  const validYm = (v: string | null): v is string => !!v && (/^\d{4}-\d{2}$/.test(v) || v === 'all');
+  const [ym, setYmState] = useState(() => (validYm(urlYm) ? urlYm : defaultYm()));
   const setYm = (m: string) => {
     setYmState(m);
     const url = new URL(window.location.href);
@@ -54,9 +55,10 @@ export default function MonthShell({
     if (navigate) router.replace(url.pathname + url.search, { scroll: false });
     else window.history.replaceState(null, '', url);
   };
-  // 내비게이션(월 칩 링크·뒤로가기 등)으로 URL의 ym이 바뀌면 상태 동기화
+  // 내비게이션(월 칩 링크·뒤로가기 등)으로 URL의 ym이 바뀌면 상태 동기화 ('all' 포함)
   useEffect(() => {
-    if (urlYm && /^\d{4}-\d{2}$/.test(urlYm)) setYmState((cur) => (cur === urlYm ? cur : urlYm));
+    if (validYm(urlYm)) setYmState((cur) => (cur === urlYm ? cur : urlYm));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlYm]);
   const [todos, setTodos] = useState<Record<string, number>>(initialTodos ?? {});
   const selectedRef = useRef<HTMLButtonElement>(null);

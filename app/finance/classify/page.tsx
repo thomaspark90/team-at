@@ -24,6 +24,18 @@ export default async function ClassifyPage({
   const { role, brandScope } = await resolveMember(supabase, user);
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
+  // 선택된 달만 조회 — 전체를 한 번에 불러오면 Supabase 기본 1000행 캡에 걸려 오래된 달
+  // (예: 2024-12)이 목록에서 통째로 빠진다(2026-08-03 버그). 사이드바 기본은 전월(MonthShell defaultYm).
+  const kstNow = new Date(Date.now() + 9 * 3600_000);
+  const prevMonth = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth() - 1, 1));
+  const defYm = `${prevMonth.getUTCFullYear()}-${String(prevMonth.getUTCMonth() + 1).padStart(2, '0')}`;
+  const selYm =
+    searchParams.ym === 'all'
+      ? 'all'
+      : searchParams.ym && /^\d{4}-\d{2}$/.test(searchParams.ym)
+      ? searchParams.ym
+      : defYm;
+
   // 브랜드 스코프 멤버는 해당 브랜드 거래만 — RLS 로도 강제되지만 서버 쿼리에서도 명시.
   let txQuery = supabase
     .schema('finance')
@@ -31,6 +43,8 @@ export default async function ClassifyPage({
     .select('id,memo,channel,normalized_key,amount_in,amount_out,category_id,tx_at,bank,source,is_installment,branch,brand,store,split_parent_id')
     .order('tx_at', { ascending: false });
   if (brandScope) txQuery = txQuery.eq('brand', brandScope);
+  if (selYm !== 'all') txQuery = txQuery.eq('ym', selYm);
+  else txQuery = txQuery.limit(20000); // '전체 월'은 캡을 넉넉히 올려 누락 없이(실질 전체)
   const txns = unwrap(await txQuery, '거래');
 
   const cats = unwrap(
@@ -100,8 +114,9 @@ export default async function ClassifyPage({
             )}
           </div>
         </div>
-        {/* 좌측 연·월 사이드바 — 달을 고르면 그 달 거래만 분류(자료 입력과 동일 UX, 2026-08-03) */}
-        <MonthShell brand={shellBrand} initialTodos={initialTodos} badgeKind="uncl">
+        {/* 좌측 연·월 사이드바 — 달을 고르면 URL(?ym=)로 이동해 그 달 거래만 서버에서 다시 조회.
+            navigate 필수: 예전엔 클라 상태만 바꿔 서버가 그 달을 다시 안 불러 오래된 달이 비어 보였다(2026-08-03). */}
+        <MonthShell brand={shellBrand} initialTodos={initialTodos} badgeKind="uncl" navigate>
           <ClassifyPanel
             txns={(txns as TxRow[]) ?? []}
             cats={(cats as Cat[]) ?? []}
