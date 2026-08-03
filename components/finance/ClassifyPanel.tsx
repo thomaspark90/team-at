@@ -249,8 +249,12 @@ export default function ClassifyPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterYm, filterBank, srcFilter, brandFilter, storeFilter, unclOnly, q, catFilter.type, catFilter.cat]);
 
-  // 필터·페이지를 URL에 반영(얕은 갱신, 서버 재조회 없음) — 새로고침·뒤로가기에도 작업 위치 유지
+  // 필터·페이지를 URL에 반영(얕은 갱신, 서버 재조회 없음) — 새로고침·뒤로가기에도 작업 위치 유지.
+  // 셸(MonthShell navigate) 안에서는 끔 — 달 클릭으로 router.replace 전환이 진행되는 중에
+  // 여기서 replaceState가 끼어들면 전환이 버려져 '두 번 눌러야 내용이 뜨는' 버그가 됨(2026-08-04).
+  // URL의 ym은 셸이 관리하고, 보조 필터(출처·검색·페이지)의 URL 유지는 이 화면에선 포기.
   useEffect(() => {
+    if (ctx) return;
     const url = new URL(window.location.href);
     const p = url.searchParams;
     const put = (k: string, v: string, empty: boolean) => (empty ? p.delete(k) : p.set(k, v));
