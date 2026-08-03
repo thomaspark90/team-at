@@ -45,7 +45,9 @@ interface Suggestion {
   reason: string;
 }
 
-const CONF = 0.6;
+// AI '확신 항목 적용' 기준(2026-08-03 0.6→0.75 상향, 대표 지시) — 미만은 '⚠️ 확인' 추천 배지만
+// 표시하고 자동 적용·규칙 학습에서 제외(오답이 규칙으로 굳는 걸 방지). 적용은 사람이 드롭다운으로.
+const CONF = 0.75;
 const PAGE_SIZE = 100; // 지출 자료 분류 표 페이지 크기
 // Gemini billing(유료 Tier 1) 연결 확인(2026-07) → AI 추천 부활.
 const AI_ENABLED = true;
@@ -570,8 +572,8 @@ export default function ClassifyPanel({
           value={filterYm}
           onChange={(e) => {
             setFilterYm(e.target.value);
-            // 사이드바와 동기 — '전체 월'은 사이드바 하이라이트만 남고 필터는 전체
-            if (ctx && e.target.value !== 'all') ctx.setYm(e.target.value);
+            // 사이드바와 동기 — URL(?ym=)로 이동해 그 달(또는 '전체 월')을 서버에서 다시 조회한다.
+            if (ctx) ctx.setYm(e.target.value);
           }}
           className="ta-input text-[13px]"
         >

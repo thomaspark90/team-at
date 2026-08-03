@@ -33,6 +33,7 @@ interface Parsed {
 async function suggestChunk(
   groups: { key: string; memo: string; inflow: boolean; count: number }[],
   catList: string,
+  examples: string,
   apiKey: string
 ): Promise<Parsed[]> {
   const prompt = `너는 한국 카페의 회계 분류 도우미다. 아래 계정과목과 은행 거래내용을 보고 각 거래를 가장 알맞은 계정과목 id로 분류하라.
@@ -40,7 +41,7 @@ async function suggestChunk(
 - 입금(inflow)은 매출(revenue)·영업외수익 계열, 출금은 지출(cogs 재료비/sga 판관비)·영업외비용 계열.
 - 카드사·페이 정산 입금 = 매출. 사람 이름만 있는 반복 출금 = 인건비 계열. 전력/가스/수도 = 수도광열비.
 - 확신이 낮으면 confidence를 0.5 미만으로 정직하게 낮춰라.
-
+${examples ? `- 아래 '기존 분류 예시'는 이 가게가 실제로 확정한 분류다. 유사한 가맹점·품목은 이 스타일을 최우선으로 따라라.\n\n[기존 분류 예시 — 가맹점 → 계정]\n${examples}\n` : ''}
 [계정과목 id 목록]
 ${catList}
 
@@ -142,11 +143,27 @@ export async function POST(req: Request) {
     .from('categories')
     .select('id,type,name,parent_id')
     .eq('active', true);
+  const catLabel = (id: number) => {
+    const c = (cats as Cat[] | null ?? []).find((x) => x.id === id);
+    if (!c) return null;
+    const p = (cats as Cat[]).find((x) => x.id === c.parent_id);
+    return `[${c.type}] ${p ? p.name + ' > ' : ''}${c.name}`;
+  };
   const catList = (cats as Cat[] | null ?? [])
-    .map((c) => {
-      const p = (cats as Cat[]).find((x) => x.id === c.parent_id);
-      return `${c.id}: [${c.type}] ${p ? p.name + ' > ' : ''}${c.name}`;
+    .map((c) => `${c.id}: ${catLabel(c.id)}`)
+    .join('\n');
+
+  // 학습된 규칙을 few-shot 예시로 주입 — 이 가게의 실제 분류 스타일을 흉내 내 오기입을 줄인다(2026-08-03).
+  // 브랜드 스코프가 있으면 그 브랜드 규칙만(브랜드마다 같은 가맹점을 다르게 분류할 수 있음). 최대 200개.
+  let rulesQ = supabase.schema('finance').from('rules').select('normalized_key,category_id').limit(200);
+  if (brand) rulesQ = rulesQ.eq('brand', brand);
+  const { data: ruleRows } = await rulesQ;
+  const examples = ((ruleRows as { normalized_key: string; category_id: number }[] | null) ?? [])
+    .map((r) => {
+      const label = catLabel(r.category_id);
+      return label ? `${r.normalized_key} → ${label}` : null;
     })
+    .filter(Boolean)
     .join('\n');
 
   // 청크 단위로 나눠 호출 — 일부 청크가 실패해도 나머지 추천은 살려서 부분 반환
@@ -157,7 +174,7 @@ export async function POST(req: Request) {
   for (let i = 0; i < groups.length; i += CHUNK) {
     const chunk = groups.slice(i, i + CHUNK);
     try {
-      const parsed = await suggestChunk(chunk, catList, key);
+      const parsed = await suggestChunk(chunk, catList, examples, key);
       for (const p of parsed) {
         const g = chunk[p.index];
         if (g && validIds.has(p.categoryId)) {
