@@ -295,16 +295,17 @@ export default function Dashboard({
           }`}
         >
           <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={bankData} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+            <ComposedChart data={bankData} margin={{ top: 28, right: 16, bottom: 4, left: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
               <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
               <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={52} />
               <Tooltip content={<ChartTooltip fmt={won} />} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="입금" fill={CAT[0]} radius={[4, 4, 0, 0]} maxBarSize={18} />
-              <Bar dataKey="출금" fill={CAT[1]} radius={[4, 4, 0, 0]} maxBarSize={18} />
+              <Bar dataKey="입금" fill={CAT[0]} maxBarSize={18} />
+              <Bar dataKey="출금" fill={CAT[1]} maxBarSize={18} />
               <Line type="monotone" dataKey="월말 잔액" stroke={LINE} strokeWidth={2} dot={{ r: 2, fill: LINE }}>
-                <LabelList dataKey="월말 잔액" position="top" formatter={wonLabel} style={pointLabel} />
+                {/* 라벨이 잔액 선과 겹치지 않게 20px 위로(2026-08-04 대표 지시) — 차트 상단 여백도 함께 확보 */}
+                <LabelList dataKey="월말 잔액" position="top" offset={20} formatter={wonLabel} style={pointLabel} />
               </Line>
             </ComposedChart>
           </ResponsiveContainer>
