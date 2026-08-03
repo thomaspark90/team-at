@@ -17,9 +17,20 @@ import {
 } from 'recharts';
 import { aggregate, capexDepreciation, UNCLASSIFIED, type AggTx, type AggCat, type Unit } from '@/lib/finance/aggregate';
 import { wonNum as won } from '@/lib/finance/format';
-import { BRANDS } from '@/lib/finance/types';
+import { useMonthCtx } from './MonthShell';
 
 const manwon = (v: number) => (Math.abs(v) >= 10000 ? `${Math.round(v / 10000).toLocaleString()}만` : String(v));
+
+// 회계 자료 화면과 같은 '단위'(브랜드+지점) 칩 — 하나로 브랜드·지점을 함께 고른다.
+// '전체'=사업 브랜드 합산(개인 제외), '가든서비스'=두 지점+미지정, 그 아래가 지점별.
+type SegId = 'all' | 'staffmeal' | 'garden' | 'garden-yangjae' | 'garden-pangyo';
+const SEGMENTS: { id: SegId; label: string; brand: 'all' | 'garden' | 'staffmeal'; store: 'all' | 'pangyo' | 'yangjae' }[] = [
+  { id: 'all', label: '전체', brand: 'all', store: 'all' },
+  { id: 'staffmeal', label: '스탭밀', brand: 'staffmeal', store: 'all' },
+  { id: 'garden', label: '가든서비스', brand: 'garden', store: 'all' },
+  { id: 'garden-yangjae', label: '가든(양재천)', brand: 'garden', store: 'yangjae' },
+  { id: 'garden-pangyo', label: '가든(판교)', brand: 'garden', store: 'pangyo' },
+];
 
 const GRID = 'var(--chart-grid-stroke)';
 const AXIS = 'var(--chart-axis-text)';
@@ -88,10 +99,12 @@ export default function Dashboard({
 }) {
   const [unit, setUnit] = useState<Unit>('month');
   const [netVat, setNetVat] = useState(true);
-  // 브랜드 필터 — 'all'=두 브랜드 합산. brand 없는 구 데이터는 garden 취급.
-  const [brand, setBrand] = useState<'all' | 'garden' | 'staffmeal'>('all');
-  // 가든 지점 필터 — 지점 손익 확정(2026-07-28) 후속. 지점 미지정 행은 '전체 지점'에서만 보임.
-  const [store, setStore] = useState<'all' | 'pangyo' | 'yangjae'>('all');
+  // 통합 단위 칩 하나로 브랜드+지점을 함께 고른다(회계 자료 화면과 동일). brand 없는 구 데이터는 garden 취급.
+  const [segId, setSegId] = useState<SegId>('all');
+  const seg = SEGMENTS.find((s) => s.id === segId) ?? SEGMENTS[0];
+  const { brand, store } = seg;
+  // 좌측 연·월 사이드바(MonthShell)와 동기 — 고른 달의 요약 타일·구성비를 비춘다. 셸 밖(구 화면)이면 null → 최근 달.
+  const ctx = useMonthCtx();
   const { months, expenseKeys } = useMemo(() => {
     // '전체'는 사업 브랜드만 — 개인(personal)은 손익 제외라 카테고리와 무관하게 뺀다.
     let tx = brand === 'all' ? txns.filter((t) => t.brand !== 'personal') : txns.filter((t) => (t.brand ?? 'garden') === brand);
@@ -107,51 +120,22 @@ export default function Dashboard({
 
   const toggle = (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="inline-flex gap-1 rounded-md border border-border p-1">
-        {([{ id: 'all', label: '전체' }, ...BRANDS] as { id: 'all' | 'garden' | 'staffmeal'; label: string }[]).map(
-          (b) => {
-            const on = brand === b.id;
-            return (
-              <button
-                key={b.id}
-                onClick={() => {
-                  setBrand(b.id);
-                  setStore('all');
-                }}
-                className={`rounded-sm px-3 py-1 text-[13px] transition-colors ${
-                  on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {b.label}
-              </button>
-            );
-          },
-        )}
+      <div className="inline-flex flex-wrap gap-1 rounded-md border border-border p-1">
+        {SEGMENTS.map((s) => {
+          const on = segId === s.id;
+          return (
+            <button
+              key={s.id}
+              onClick={() => setSegId(s.id)}
+              className={`rounded-sm px-3 py-1 text-[13px] transition-colors ${
+                on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {s.label}
+            </button>
+          );
+        })}
       </div>
-      {brand === 'garden' && (
-        <div className="inline-flex gap-1 rounded-md border border-border p-1">
-          {(
-            [
-              { id: 'all', label: '전체 지점' },
-              { id: 'pangyo', label: '판교' },
-              { id: 'yangjae', label: '양재천' },
-            ] as { id: 'all' | 'pangyo' | 'yangjae'; label: string }[]
-          ).map((s) => {
-            const on = store === s.id;
-            return (
-              <button
-                key={s.id}
-                onClick={() => setStore(s.id)}
-                className={`rounded-sm px-3 py-1 text-[13px] transition-colors ${
-                  on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {s.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
       <div className="inline-flex gap-1 rounded-md border border-border p-1">
         {(['month', 'week'] as Unit[]).map((u) => {
           const on = unit === u;
@@ -201,9 +185,19 @@ export default function Dashboard({
     );
   }
 
-  const last = months[months.length - 1];
-  const prev = months.length > 1 ? months[months.length - 2] : null;
+  // 요약 타일·구성비의 기준 달 = 사이드바에서 고른 달(월 단위). 그 달 데이터가 없거나 주 단위면 가장 최근.
+  const focusIdx = (() => {
+    if (unit === 'month' && ctx?.ym) {
+      const i = months.findIndex((m) => m.ym === ctx.ym);
+      if (i >= 0) return i;
+    }
+    return months.length - 1;
+  })();
+  const last = months[focusIdx];
+  const prev = focusIdx > 0 ? months[focusIdx - 1] : null;
   const avgRev = months.reduce((a, m) => a + m.revenue, 0) / months.length;
+  const isPast = focusIdx < months.length - 1; // 최근이 아닌 과거 달을 보는 중
+  const focusP = fmtP(last.ym); // 차트에서 선택 달 위치(강조선)
 
   const lineData = months.map((m) => ({ p: fmtP(m.ym), 매출: m.revenue, EBIT: m.ebit, 순이익: m.net }));
   // 감가상각(자본적지출 5년 정액) 반영 영업이익 — 비교용
@@ -242,10 +236,15 @@ export default function Dashboard({
 
   const lastExpense = last.cogs + last.sga;
   const prevExpense = prev ? prev.cogs + prev.sga : null;
-  const unitLabel = unit === 'month' ? '이번 달' : '이번 주';
+  const unitLabel = unit === 'month' ? (isPast ? `${focusP}` : '이번 달') : '이번 주';
 
   return (
     <div className="flex flex-col gap-5">
+      {isPast && (
+        <div className="-mb-1 text-[12px] text-muted-foreground">
+          좌측에서 고른 <b className="text-foreground">{focusP}</b> 기준 요약이에요 · 아래 추이 차트는 전체 기간
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-3">
           <Stat label={`${unitLabel} 매출${netVat ? ' (순액)' : ''}`} value={won(last.revenue)} delta={delta(last.revenue, prev?.revenue)} />
@@ -269,6 +268,7 @@ export default function Dashboard({
             <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
             <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
             <ReferenceLine y={avgRev} stroke={REF} strokeDasharray="4 4" />
+            {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
             <Line type="monotone" dataKey="매출" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
               <LabelList dataKey="매출" position="top" offset={8} formatter={wonLabel} style={pointLabel} />
             </Line>
@@ -285,6 +285,7 @@ export default function Dashboard({
             <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
             <Legend wrapperStyle={{ fontSize: 12, color: AXIS }} />
             <ReferenceLine y={0} stroke={REF} />
+            {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
             <Line type="monotone" dataKey="EBIT" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
               <LabelList dataKey="EBIT" position="top" offset={8} formatter={wonLabel} style={pointLabel} />
             </Line>
@@ -338,6 +339,7 @@ export default function Dashboard({
                 <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
                 <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
                 <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} share />} />
+                {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
                 {barKeys.map((k, i) => (
                   <Bar key={k} dataKey={k} stackId="a" fill={colorOf(k, i)} stroke={CAT_SURFACE} strokeWidth={1}>
                     {i === barKeys.length - 1 && (

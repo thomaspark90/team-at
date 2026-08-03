@@ -6,6 +6,7 @@ import { unwrap } from '@/lib/finance/db';
 import type { AggTx, AggCat } from '@/lib/finance/aggregate';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
+import MonthShell from '@/components/finance/MonthShell';
 import dynamic from 'next/dynamic';
 
 // recharts 포함 차트 번들은 별도 청크로 지연 로드 — 페이지 뼈대가 먼저 그려진다
@@ -47,7 +48,7 @@ export default async function MetricsPage() {
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <FinanceNav role={role} />
-      <div className="mx-auto max-w-[1120px] px-6 py-8">
+      <div className="mx-auto max-w-[1400px] px-6 py-8">
         <div className="mb-5 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">지표</h1>
           <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
@@ -57,7 +58,11 @@ export default async function MetricsPage() {
         <p className="mb-5 text-[13px] text-muted-foreground">
           <b>매출은 POS(발생주의)</b>, 지출은 통장·카드 기준이에요. 통장 현금흐름·잔액은 <Link href="/finance/cashflow" className="underline">월별 요약</Link>·<Link href="/finance/flow" className="underline">자금 흐름</Link>에서 봐요.
         </p>
-        <Dashboard txns={(txns as AggTx[]) ?? []} cats={(cats as AggCat[]) ?? []} posSales={posSales} />
+        {/* 좌측 연·월 사이드바 — 회계 자료 화면과 동일한 셸. 지표는 모든 데이터가 이미 클라이언트에 있어
+            서버 재조회가 필요 없다 → navigate=false(얕은 갱신). 배지 없음(initialTodos={{}}). */}
+        <MonthShell navigate={false} initialTodos={{}}>
+          <Dashboard txns={(txns as AggTx[]) ?? []} cats={(cats as AggCat[]) ?? []} posSales={posSales} />
+        </MonthShell>
       </div>
     </div>
   );
