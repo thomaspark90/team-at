@@ -58,6 +58,7 @@ export interface PnlResult {
   labor: number; // 인건비
   fixed: number; // 고정비(나머지 판관비)
   unclassified: number; // 미분류 유출(경고)
+  cardLump: number; // 간이(은행 기준) 모드 전용 — 카드대금 결제 총액(세부 미분해 지출)
   operatingProfit: number; // 영업이익(EBIT 근사)
   metrics: {
     foodCostRate: number; // 식자재원가율 = 식자재재료비 / 매출
@@ -81,9 +82,14 @@ const kindOf = (cat: PnlCat): InvKind => (cat.name === '포장재' ? '포장소�
 // 실제 금액을 입력하면 이 추정은 무시된다.
 export const CHANNEL_FEE_RATE = 0.017;
 
+// opts.bankOnly = 간이(은행 기준) 모드 — 쿠팡·네이버·카드 세부내역 없이도 지출 총량을 보는 근사 손익.
+// 호출 측이 txns를 통장(source='bank') 행만으로 필터해 넘겨야 하고(세부 행과 이중계상 방지),
+// 정밀 모드에서 손익 제외되는 '카드대금정산' 결제를 "카드 지출(세부 미분해)" 지출 줄로 포함한다.
+// 카드대금은 재료·판관·VAT가 섞인 총액이라 순액화하지 않는다(캡션에 명시).
 export function buildPnl(
   ym: string,
   data: { pos: PnlPosRow[]; txns: PnlTx[]; cats: PnlCat[]; inventory: PnlInventory[]; channelFee?: number | null },
+  opts?: { bankOnly?: boolean },
 ): PnlResult {
   const { pos, txns, cats, inventory } = data;
   const byId = new Map(cats.map((c) => [c.id, c]));
@@ -111,11 +117,13 @@ export function buildPnl(
   sales.byCategory = Array.from(catMap.values()).sort((a, b) => b.supply - a.supply);
 
   // ---- 지출(거래분류) ----
+  const cardSettleId = cats.find((c) => c.type === 'excluded' && c.name === '카드대금정산')?.id;
   let 식자재매입 = 0;
   let 포장매입 = 0;
   let labor = 0;
   let fixed = 0;
   let unclassified = 0;
+  let cardLump = 0;
   for (const t of txns) {
     const gross = (t.amount_out || 0) - (t.amount_in || 0); // 환불 반영(순 지출)
     if (t.category_id == null) {
@@ -125,6 +133,10 @@ export function buildPnl(
     }
     const c = byId.get(t.category_id);
     if (!c) continue;
+    if (opts?.bankOnly && cardSettleId != null && c.id === cardSettleId) {
+      cardLump += gross; // 카드대금 결제 = 세부 미분해 지출(총액 그대로)
+      continue;
+    }
     // 과세 매입은 공급가액(÷1.1)으로 순액 — 매출(공급가액)과 기준 통일. 면세(인건비·이자·세금 등)는 그대로.
     const net = c.vat_taxable !== false ? Math.round(gross / VAT_DIVISOR) : gross;
     if (c.type === 'cogs') {
@@ -164,7 +176,7 @@ export function buildPnl(
   const feeAmount = data.channelFee != null ? data.channelFee : Math.round(sales.supply * CHANNEL_FEE_RATE);
   const netSales = sales.supply - feeAmount;
   const grossProfit = netSales - cogsTotal;
-  const operatingProfit = grossProfit - labor - fixed - unclassified;
+  const operatingProfit = grossProfit - labor - fixed - unclassified - cardLump;
 
   const div = (n: number) => (sales.supply > 0 ? n / sales.supply : 0);
   return {
@@ -177,6 +189,7 @@ export function buildPnl(
     labor,
     fixed,
     unclassified,
+    cardLump,
     operatingProfit,
     metrics: {
       foodCostRate: div(식자재.재료비),

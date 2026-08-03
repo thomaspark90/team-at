@@ -26,7 +26,15 @@ const SIG: Record<Signal, { cls: string; label: string }> = {
 type BrandSeg = Exclude<Brand, 'personal'> | 'all';
 const SEGMENTS: { id: BrandSeg; label: string }[] = [...BRANDS, { id: 'all', label: '전체' }];
 
-export default async function PnlPage({ searchParams }: { searchParams: { ym?: string; brand?: string; store?: string } }) {
+// 손익 모드 — precise: 세부내역(카드·쿠팡·네이버) 연결 기준(기존). simple: 은행 출금 기준 간이
+// (세부내역 업로드 전에도 지출 총량을 근사 — 카드대금 결제를 '카드 지출(미분해)' 줄로 포함, 2026-08-03 대표 지시)
+type PnlMode = 'precise' | 'simple';
+
+export default async function PnlPage({
+  searchParams,
+}: {
+  searchParams: { ym?: string; brand?: string; store?: string; mode?: string };
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -37,6 +45,8 @@ export default async function PnlPage({ searchParams }: { searchParams: { ym?: s
 
   const seg: BrandSeg =
     searchParams.brand === 'staffmeal' ? 'staffmeal' : searchParams.brand === 'all' ? 'all' : 'garden';
+  const mode: PnlMode = searchParams.mode === 'simple' ? 'simple' : 'precise';
+  const modeQS = mode === 'simple' ? '&mode=simple' : '';
   // 지점 필터 — 가든에서만 의미(판교=페이히어, 양재천=토스). 지점 손익은 재고·수수료 안분 근사치.
   const store: Store | null =
     seg === 'garden' && (searchParams.store === 'pangyo' || searchParams.store === 'yangjae')
@@ -73,7 +83,7 @@ export default async function PnlPage({ searchParams }: { searchParams: { ym?: s
             {SEGMENTS.map((s) => (
               <Link
                 key={s.id}
-                href={`/finance/pnl?brand=${s.id}`}
+                href={`/finance/pnl?brand=${s.id}${modeQS}`}
                 aria-current={s.id === seg ? 'page' : undefined}
                 className={`px-3 py-1.5 text-[13px] transition-colors ${
                   s.id === seg ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
@@ -93,7 +103,7 @@ export default async function PnlPage({ searchParams }: { searchParams: { ym?: s
               ].map((s) => (
                 <Link
                   key={s.id || 'all'}
-                  href={`/finance/pnl?brand=garden${s.id ? `&store=${s.id}` : ''}`}
+                  href={`/finance/pnl?brand=garden${s.id ? `&store=${s.id}` : ''}${modeQS}`}
                   aria-current={(store ?? '') === s.id ? 'page' : undefined}
                   className={`px-3 py-1.5 text-[13px] transition-colors ${
                     (store ?? '') === s.id ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
@@ -104,9 +114,35 @@ export default async function PnlPage({ searchParams }: { searchParams: { ym?: s
               ))}
             </div>
           )}
-          {seg === 'staffmeal' && (
+          {/* 손익 모드 토글 — 간이(은행 기준)는 세부내역 없이 지출 총량으로 보는 근사 */}
+          <div className="flex overflow-hidden rounded-md border border-border">
+            {(
+              [
+                { id: 'precise', label: '정밀' },
+                { id: 'simple', label: '간이 (은행 기준)' },
+              ] as { id: PnlMode; label: string }[]
+            ).map((m) => (
+              <Link
+                key={m.id}
+                href={`/finance/pnl?brand=${seg}${store ? `&store=${store}` : ''}${searchParams.ym ? `&ym=${searchParams.ym}` : ''}${m.id === 'simple' ? '&mode=simple' : ''}`}
+                aria-current={m.id === mode ? 'page' : undefined}
+                className={`px-3 py-1.5 text-[13px] transition-colors ${
+                  m.id === mode ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {m.label}
+              </Link>
+            ))}
+          </div>
+          {mode === 'simple' && (
             <span className="text-[11px] text-muted-foreground">
-              스탭밀 통장·카드 자료는 아직 연결 전이라 지출이 비어 있을 수 있어요.
+              간이 = 통장 출금 기준 근사 — 카드대금은 '카드 지출(미분해)' 한 줄, 결제 시차로 월별 지출이 ±1개월
+              밀릴 수 있어요. 연간 합계는 거의 정확해요.
+            </span>
+          )}
+          {seg === 'staffmeal' && mode === 'precise' && (
+            <span className="text-[11px] text-muted-foreground">
+              카드 세부내역 연결 전이면 지출이 비어 보여요 — <b>간이 (은행 기준)</b>으로 보세요.
             </span>
           )}
           {store && (
@@ -131,6 +167,7 @@ export default async function PnlPage({ searchParams }: { searchParams: { ym?: s
             selectedYm={searchParams.ym && yms.includes(searchParams.ym) ? searchParams.ym : yms[0]}
             seg={seg}
             store={store}
+            mode={mode}
             supabase={supabase}
           />
         )}
@@ -146,6 +183,7 @@ async function PnlBody({
   selectedYm,
   seg,
   store,
+  mode,
   supabase,
 }: {
   pos: (PnlPosRow & { store?: string })[];
@@ -153,8 +191,10 @@ async function PnlBody({
   selectedYm: string;
   seg: BrandSeg;
   store: Store | null;
+  mode: PnlMode;
   supabase: Awaited<ReturnType<typeof createClient>>;
 }) {
+  const modeQS = mode === 'simple' ? '&mode=simple' : '';
   // 지점 매출비율 — 재고·수수료 안분과 지점 뷰의 POS 필터에 사용
   const monthPos = pos.filter((p) => p.ym === selectedYm);
   const brandSupply = monthPos.reduce((s, p) => s + p.supply, 0);
@@ -168,6 +208,8 @@ async function PnlBody({
   if (seg !== 'all') txnsQ = txnsQ.eq('brand', seg);
   else txnsQ = txnsQ.neq('brand', 'personal');
   if (store) txnsQ = txnsQ.eq('store', store);
+  // 간이(은행 기준) 모드 — 통장 행만 집계(카드·쿠팡·네이버 세부 행 제외 = 카드대금과 이중계상 방지)
+  if (mode === 'simple') txnsQ = txnsQ.eq('source', 'bank');
   // 지점 뷰에서 빠지는 '지점 미지정' 가든 지출 — 경고 표기용
   const unassignedQ = store
     ? supabase
@@ -219,10 +261,12 @@ async function PnlBody({
     .filter((r) => r.category_id == null || catTypeById.get(r.category_id) !== 'excluded')
     .reduce((s, r) => s + r.amount_out, 0);
 
-  const p = buildPnl(selectedYm, { pos: posView, txns, cats, inventory, channelFee });
+  const p = buildPnl(selectedYm, { pos: posView, txns, cats, inventory, channelFee }, { bankOnly: mode === 'simple' });
   const foodSig = SIG[benchmark('food', p.metrics.foodCostRate)];
   const laborSig = SIG[benchmark('labor', p.metrics.laborRate)];
   const primeSig = SIG[benchmark('prime', p.metrics.primeCost)];
+  // 간이 모드에서 카드 지출이 미분해면 재료비·지표가 실제보다 좋게 보임 → 지표는 '잠정' 처리
+  const uncertain = p.unclassified > 0 || p.cardLump > 0;
 
   return (
     <>
@@ -232,7 +276,7 @@ async function PnlBody({
           {yms.map((ym) => (
             <Link
               key={ym}
-              href={`/finance/pnl?ym=${ym}&brand=${seg}${store ? `&store=${store}` : ''}`}
+              href={`/finance/pnl?ym=${ym}&brand=${seg}${store ? `&store=${store}` : ''}${modeQS}`}
               aria-current={ym === selectedYm ? 'page' : undefined}
               className={`rounded-md border px-3 py-1.5 text-[13px] transition-colors ${
                 ym === selectedYm
@@ -249,9 +293,9 @@ async function PnlBody({
 
       {/* 지표 카드 */}
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Metric label="식자재 원가율" value={pct(p.metrics.foodCostRate)} sub={`전체 재료율 ${pct(p.metrics.materialRate)}`} sig={foodSig} uncertain={p.unclassified > 0} />
-        <Metric label="인건비율" value={pct(p.metrics.laborRate)} sub="매출 대비" sig={laborSig} uncertain={p.unclassified > 0} />
-        <Metric label="Prime Cost" value={pct(p.metrics.primeCost)} sub="식자재+인건비" sig={primeSig} uncertain={p.unclassified > 0} />
+        <Metric label="식자재 원가율" value={pct(p.metrics.foodCostRate)} sub={`전체 재료율 ${pct(p.metrics.materialRate)}`} sig={foodSig} uncertain={uncertain} />
+        <Metric label="인건비율" value={pct(p.metrics.laborRate)} sub="매출 대비" sig={laborSig} uncertain={uncertain} />
+        <Metric label="Prime Cost" value={pct(p.metrics.primeCost)} sub="식자재+인건비" sig={primeSig} uncertain={uncertain} />
         <Metric label="매출총이익률" value={pct(p.metrics.grossMargin)} sub={won(p.grossProfit)} />
       </div>
 
@@ -303,12 +347,23 @@ async function PnlBody({
               <Row label="매출총이익" amount={p.grossProfit} bold rate={p.metrics.grossMargin} />
               <Row label="(−) 인건비" amount={-p.labor} rate={p.metrics.laborRate} />
               <Row label="(−) 고정비 (판관비)" amount={-p.fixed} />
+              {p.cardLump > 0 && (
+                <Row label="(−) 카드 지출 (세부 미분해)" amount={-p.cardLump} warn sub="카드대금 결제 총액 · 세부내역 연결 시 재료비·판관비로 분해" />
+              )}
               {p.unclassified > 0 && <Row label="(−) 미분류" amount={-p.unclassified} warn />}
               <Row label="영업이익 (EBIT 근사)" amount={p.operatingProfit} bold big sub="감가상각 전" />
             </tbody>
           </table>
           <p className="mt-4 text-[11px] text-muted-foreground">
-            채널수수료는 정산서 금액(없으면 추정)까지 반영했어요. 영업외·자본적지출(감가상각) 등 손익제외 계정은 빠져 있어요.
+            {mode === 'simple' ? (
+              <>
+                간이(은행 기준) — 통장 출금만 집계하고 카드대금 결제는 '카드 지출(미분해)' 한 줄로 잡았어요.
+                카드대금은 보통 전월 사용분이라 월별 지출이 ±1개월 밀릴 수 있어요(연간 합계는 거의 정확).
+                영업외·자본적지출 등 손익제외 계정은 빠져 있어요.
+              </>
+            ) : (
+              <>채널수수료는 정산서 금액(없으면 추정)까지 반영했어요. 영업외·자본적지출(감가상각) 등 손익제외 계정은 빠져 있어요.</>
+            )}
           </p>
         </div>
 
