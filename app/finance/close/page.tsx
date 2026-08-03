@@ -6,6 +6,8 @@ import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import MonthlyCloseManager, { type MonthRow } from '@/components/finance/MonthlyCloseManager';
+import MonthShell from '@/components/finance/MonthShell';
+import { computeBoardTodos } from '@/lib/finance/boardTodos';
 import { unitOf } from '@/lib/finance/types';
 
 export default async function ClosePage({ searchParams }: { searchParams: { brand?: string; unit?: string } }) {
@@ -83,11 +85,14 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
     })
     .sort((a, b) => b.ym.localeCompare(a.ym));
 
+  // 좌측 연·월 사이드바 배지 — 이 단위의 브랜드 몫만
+  const initialTodos = await computeBoardTodos(supabase, unit.brand).catch(() => undefined);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <AccountingNav role={role} />
-      <div className="mx-auto max-w-[1120px] px-6 py-8">
+      <div className="mx-auto max-w-[1600px] px-6 py-8">
         <div className="mb-4 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">월 확정</h1>
           <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
@@ -99,14 +104,17 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
           {unit.store ? '와 지점 미지정 가든 거래' : ''}가 0건인 달만 확정할 수 있고, 확정하면 그 달·그 단위의 지출 자료 분류가
           잠겨요. {allowConfirm ? '' : '(확정 권한은 관리자에게 요청하세요.)'}
         </p>
-        {/* personal 은 위에서 리다이렉트되므로 여기 unit 은 항상 사업 단위 */}
-        <MonthlyCloseManager
-          key={unit.id}
-          months={months}
-          canConfirm={allowConfirm}
-          unit={unit.id as 'staffmeal' | 'yangjae' | 'pangyo'}
-          brand={unit.brand as 'staffmeal' | 'garden'}
-        />
+        {/* personal 은 위에서 리다이렉트되므로 여기 unit 은 항상 사업 단위.
+            좌측 연·월 사이드바 — 달을 고르면 표에서 그 달 행을 하이라이트·스크롤(2026-08-03) */}
+        <MonthShell brand={unit.brand} initialTodos={initialTodos}>
+          <MonthlyCloseManager
+            key={unit.id}
+            months={months}
+            canConfirm={allowConfirm}
+            unit={unit.id as 'staffmeal' | 'yangjae' | 'pangyo'}
+            brand={unit.brand as 'staffmeal' | 'garden'}
+          />
+        </MonthShell>
       </div>
     </div>
   );

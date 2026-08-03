@@ -7,6 +7,8 @@ import { buildPnl, benchmark, prevYm, CHANNEL_FEE_RATE, type PnlCat, type PnlTx,
 import { BRANDS, storeLabel, type Brand, type Store } from '@/lib/finance/types';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
+import MonthShell from '@/components/finance/MonthShell';
+import { computeBoardTodos } from '@/lib/finance/boardTodos';
 import PnlUpload from '@/components/finance/PnlUpload';
 import InventoryInput from '@/components/finance/InventoryInput';
 import ChannelFeeInput from '@/components/finance/ChannelFeeInput';
@@ -62,11 +64,14 @@ export default async function PnlPage({
   const pos = seg === 'all' ? posAll : posAll.filter((p) => (p.brand ?? 'garden') === seg);
   const yms = Array.from(new Set(pos.map((p) => p.ym))).sort((a, b) => b.localeCompare(a));
 
+  // 좌측 연·월 사이드바 배지 — 선택 브랜드 몫('전체'는 전 브랜드 합산)
+  const initialTodos = await computeBoardTodos(supabase, seg !== 'all' ? seg : undefined).catch(() => undefined);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <FinanceNav role={role} />
-      <div className="mx-auto max-w-[1120px] px-6 py-8">
+      <div className="mx-auto max-w-[1600px] px-6 py-8">
         <div className="mb-1.5 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">관리손익</h1>
           <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
@@ -77,6 +82,8 @@ export default async function PnlPage({
           POS 매출(발생주의·공급가액)에 매입기준 재료비·인건비를 맞춰 본 손익이에요. 통장 입출금 기준은 <Link href="/finance/cashflow" className="underline">월별 요약</Link>·<Link href="/finance/flow" className="underline">자금 흐름</Link>에서 봐요.
         </p>
 
+        {/* 좌측 연·월 사이드바 — 달 선택 시 ?ym= 내비게이션으로 서버가 그 달 손익을 다시 계산(2026-08-03) */}
+        <MonthShell brand={seg !== 'all' ? seg : undefined} initialTodos={initialTodos} navigate>
         {/* 브랜드 세그먼트 */}
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <div className="flex overflow-hidden rounded-md border border-border">
@@ -164,13 +171,17 @@ export default async function PnlPage({
           <PnlBody
             pos={pos}
             yms={yms}
-            selectedYm={searchParams.ym && yms.includes(searchParams.ym) ? searchParams.ym : yms[0]}
+            selectedYm={
+              // 사이드바로 POS 없는 달도 볼 수 있게 형식만 검증 — 그 달은 매출 0 + 지출만 표시
+              searchParams.ym && /^\d{4}-\d{2}$/.test(searchParams.ym) ? searchParams.ym : yms[0]
+            }
             seg={seg}
             store={store}
             mode={mode}
             supabase={supabase}
           />
         )}
+        </MonthShell>
       </div>
     </div>
   );

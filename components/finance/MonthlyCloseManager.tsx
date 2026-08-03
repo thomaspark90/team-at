@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { wonNum as won, fmtYm } from '@/lib/finance/format';
 import { slotsForBanks, type SlotStatus } from '@/lib/finance/uploadSlots';
+import { useMonthCtx } from './MonthShell';
 
 export interface MonthRow {
   ym: string;
@@ -36,6 +37,12 @@ export default function MonthlyCloseManager({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState<string | null>(null); // 진행 문구
   const [bulkGate, setBulkGate] = useState<{ ym: string; issues: string[] }[] | null>(null);
+  // 좌측 연·월 사이드바(MonthShell) 선택 달 — 표에서 그 달 행을 하이라이트하고 화면에 보이게
+  const ctx = useMonthCtx();
+  const selYm = ctx?.ym ?? null;
+  useEffect(() => {
+    if (selYm) document.getElementById(`close-${selYm}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [selYm]);
 
   // 커버리지 점검 — 슬롯별 업로드 상태를 확인해 빠진/부분 슬롯을 나열. 실패 시 null(판정 불가)
   async function checkIssues(ym: string): Promise<string[] | null> {
@@ -189,7 +196,13 @@ export default function MonthlyCloseManager({
                 const unassigned = r.unassigned ?? 0;
                 const ready = r.unclassified === 0 && unassigned === 0;
                 return (
-                  <tr key={r.ym} className={`border-t border-border hover:bg-accent ${confirmed ? 'bg-muted' : ''}`}>
+                  <tr
+                    key={r.ym}
+                    id={`close-${r.ym}`}
+                    className={`border-t border-border hover:bg-accent ${
+                      r.ym === selYm ? 'bg-primary/10' : confirmed ? 'bg-muted' : ''
+                    }`}
+                  >
                     {canConfirm && (
                       <td className="px-2 py-2 text-center">
                         {!confirmed && ready && (

@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import MonthSidebar from './MonthSidebar';
 
 const toYm = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -29,23 +29,32 @@ export default function MonthShell({
   children,
   initialTodos,
   brand,
+  navigate = false,
 }: {
   children: React.ReactNode;
   // 서버 컴포넌트가 미리 집계한 월 배지 — 있으면 첫 진입 시 클라이언트 재조회를 생략한다.
   initialTodos?: Record<string, number>;
   // 페이지의 브랜드 — 배지를 이 브랜드 몫만 집계한다(미지정 = 전 브랜드 합산)
   brand?: string;
+  // true = 달 선택 시 router.replace 로 실제 내비게이션(서버 컴포넌트가 ?ym= 로 데이터를 다시 계산하는
+  // 페이지용 — 관리손익 등). false(기본) = replaceState 얕은 갱신(클라이언트 필터만 바뀌는 페이지).
+  navigate?: boolean;
 }) {
   // 선택 월을 URL(?ym=)에 반영 — 분류 화면에 다녀오거나 새로고침해도 보던 달 유지.
-  // replaceState(얕은 갱신)라 서버 재조회 없이 주소만 바뀐다.
+  const router = useRouter();
   const urlYm = useSearchParams().get('ym');
   const [ym, setYmState] = useState(() => (urlYm && /^\d{4}-\d{2}$/.test(urlYm) ? urlYm : defaultYm()));
   const setYm = (m: string) => {
     setYmState(m);
     const url = new URL(window.location.href);
     url.searchParams.set('ym', m);
-    window.history.replaceState(null, '', url);
+    if (navigate) router.replace(url.pathname + url.search, { scroll: false });
+    else window.history.replaceState(null, '', url);
   };
+  // 내비게이션(월 칩 링크·뒤로가기 등)으로 URL의 ym이 바뀌면 상태 동기화
+  useEffect(() => {
+    if (urlYm && /^\d{4}-\d{2}$/.test(urlYm)) setYmState((cur) => (cur === urlYm ? cur : urlYm));
+  }, [urlYm]);
   const [todos, setTodos] = useState<Record<string, number>>(initialTodos ?? {});
   const selectedRef = useRef<HTMLButtonElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
