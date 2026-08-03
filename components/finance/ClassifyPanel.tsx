@@ -657,33 +657,39 @@ export default function ClassifyPanel({
           </span>
         )}
         {!lockedBrand && !fixedUnit && (
-          // 브랜드 필터 — 실제 brand 컬럼 기준(전 소스). 회계가 브랜드별로 분리돼 있다.
-          <div className="inline-flex gap-1 rounded-md border border-border p-1">
+          // 회계 단위 필터 — 브랜드+지점 2단을 한 줄로 통합(2026-08-03). 클릭 1번에 brand·store 동시 설정.
+          // '가든 미지정' = 아직 지점이 안 찍힌 가든 공용(통장·카드) 거래 — 지점 지정·분할로 정리 대상.
+          <div className="inline-flex flex-wrap gap-1 rounded-md border border-border p-1">
             {[
-              { v: 'all', label: '전체 브랜드' },
-              { v: 'garden', label: '가든서비스' },
-              { v: 'staffmeal', label: '스탭밀' },
-            ].map(({ v, label }) => (
-              <button
-                key={v}
-                onClick={() => {
-                  setBrandFilter(v);
-                  setStoreFilter('all');
-                }}
-                className={`rounded-sm px-3 py-1 text-[13px] ${brandFilter === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                {label}
-              </button>
-            ))}
+              { label: '전체', brand: 'all', store: 'all' },
+              { label: '스탭밀', brand: 'staffmeal', store: 'all' },
+              { label: '가든서비스(양재천점)', brand: 'garden', store: 'yangjae' },
+              { label: '가든서비스(판교점)', brand: 'garden', store: 'pangyo' },
+              { label: '가든 미지정', brand: 'garden', store: 'none' },
+            ].map(({ label, brand, store }) => {
+              const on = brandFilter === brand && (brand === 'garden' ? storeFilter === store : true);
+              return (
+                <button
+                  key={label}
+                  onClick={() => {
+                    setBrandFilter(brand);
+                    setStoreFilter(store);
+                  }}
+                  className={`rounded-sm px-3 py-1 text-[13px] ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         )}
-        {!fixedUnit && (brandFilter === 'garden' || lockedBrand === 'garden') && (
-          // 가든서비스 지점(store) 필터 — 지점별 손익 분류용. '미지정'이 남지 않게 하는 게 목표.
-          <div className="inline-flex gap-1 rounded-md border border-border p-1">
+        {!fixedUnit && lockedBrand === 'garden' && (
+          // 가든 스코프 멤버 — 지점 단위만 선택(브랜드는 가든 고정).
+          <div className="inline-flex flex-wrap gap-1 rounded-md border border-border p-1">
             {[
               { v: 'all', label: '전체 지점' },
-              { v: 'pangyo', label: '판교' },
-              { v: 'yangjae', label: '양재천' },
+              { v: 'yangjae', label: '가든서비스(양재천점)' },
+              { v: 'pangyo', label: '가든서비스(판교점)' },
               { v: 'none', label: '미지정' },
             ].map(({ v, label }) => (
               <button
