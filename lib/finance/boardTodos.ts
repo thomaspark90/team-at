@@ -210,6 +210,23 @@ export async function computeBoardTodos(supabase: SupabaseClient, brand?: string
   return counts;
 }
 
+// ---------- 월별 미분류 건수 — 분류 화면 사이드바 배지용 ----------
+// 배지 의미를 화면 목적에 맞춘다(2026-08-03 대표 지시): 자료 입력=남은 업무 수,
+// 분류 화면=그 달의 미분류 '건수'(화면에서 실제로 처리할 개수와 일치).
+export async function computeUnclassifiedByMonth(
+  supabase: SupabaseClient,
+  brand?: string
+): Promise<Record<string, number>> {
+  const { data, error } = await fetchAll<{ ym: string }>((a, b) => {
+    const s = supabase.schema('finance').from('transactions').select('ym').is('category_id', null);
+    return (brand ? s.eq('brand', brand) : s).order('id').range(a, b);
+  });
+  if (error) throw new Error(error.message);
+  const counts: Record<string, number> = {};
+  for (const r of data ?? []) counts[String(r.ym)] = (counts[String(r.ym)] ?? 0) + 1;
+  return counts;
+}
+
 // ---------- 전체 현황 매트릭스 — 행=연·월, 열=자료 종류 ----------
 // 자료가 있는 첫 달부터 이번 달까지, 모든 칸의 상태를 한 번에 반환한다(자료 입력 페이지 조망용).
 export interface MatrixMonth {

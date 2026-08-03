@@ -90,7 +90,7 @@ export default function MonthSidebar({
 function Badge({ n }: { n: number }) {
   return (
     <span className="inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-none text-white">
-      {n}
+      {n > 999 ? '999+' : n}
     </span>
   );
 }

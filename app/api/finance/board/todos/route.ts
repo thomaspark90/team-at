@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
-import { computeBoardTodos } from '@/lib/finance/boardTodos';
+import { computeBoardTodos, computeUnclassifiedByMonth } from '@/lib/finance/boardTodos';
 
 export const runtime = 'nodejs';
 
@@ -19,11 +19,19 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: '회계 권한이 없습니다.' }, { status: 403 });
   }
 
-  const brandRaw = new URL(req.url).searchParams.get('brand');
+  const params = new URL(req.url).searchParams;
+  const brandRaw = params.get('brand');
   const brand = brandRaw && ['garden', 'staffmeal', 'personal'].includes(brandRaw) ? brandRaw : undefined;
+  // kind=uncl → 월별 미분류 '건수'(분류 화면 배지). 기본 = 남은 업무 수(자료 입력 배지)
+  const kind = params.get('kind') === 'uncl' ? 'uncl' : 'todos';
 
   try {
-    return NextResponse.json({ counts: await computeBoardTodos(supabase, brand) });
+    return NextResponse.json({
+      counts:
+        kind === 'uncl'
+          ? await computeUnclassifiedByMonth(supabase, brand)
+          : await computeBoardTodos(supabase, brand),
+    });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : '집계에 실패했어요.' }, { status: 500 });
   }

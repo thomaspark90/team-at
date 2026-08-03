@@ -30,6 +30,7 @@ export default function MonthShell({
   initialTodos,
   brand,
   navigate = false,
+  badgeKind = 'todos',
 }: {
   children: React.ReactNode;
   // 서버 컴포넌트가 미리 집계한 월 배지 — 있으면 첫 진입 시 클라이언트 재조회를 생략한다.
@@ -39,6 +40,8 @@ export default function MonthShell({
   // true = 달 선택 시 router.replace 로 실제 내비게이션(서버 컴포넌트가 ?ym= 로 데이터를 다시 계산하는
   // 페이지용 — 관리손익 등). false(기본) = replaceState 얕은 갱신(클라이언트 필터만 바뀌는 페이지).
   navigate?: boolean;
+  // 배지 의미 — 'todos'(기본): 남은 업무 수(자료 입력). 'uncl': 월별 미분류 건수(분류 화면).
+  badgeKind?: 'todos' | 'uncl';
 }) {
   // 선택 월을 URL(?ym=)에 반영 — 분류 화면에 다녀오거나 새로고침해도 보던 달 유지.
   const router = useRouter();
@@ -72,13 +75,16 @@ export default function MonthShell({
 
   const loadTodos = useCallback(async () => {
     try {
-      const res = await fetch(`/api/finance/board/todos${brand ? `?brand=${brand}` : ''}`);
+      const qs = new URLSearchParams();
+      if (brand) qs.set('brand', brand);
+      if (badgeKind !== 'todos') qs.set('kind', badgeKind);
+      const res = await fetch(`/api/finance/board/todos${qs.size ? `?${qs}` : ''}`);
       const j = await res.json();
       if (res.ok) setTodos((j.counts as Record<string, number>) ?? {});
     } catch {
       /* 배지는 부가 정보 — 실패해도 조용히 스킵 */
     }
-  }, [brand]);
+  }, [brand, badgeKind]);
 
   const hasInitial = initialTodos !== undefined;
   useEffect(() => {

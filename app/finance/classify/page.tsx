@@ -7,7 +7,7 @@ import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import ClassifyPanel, { type TxRow, type Cat, type SplitRule } from '@/components/finance/ClassifyPanel';
 import MonthShell from '@/components/finance/MonthShell';
-import { computeBoardTodos } from '@/lib/finance/boardTodos';
+import { computeUnclassifiedByMonth } from '@/lib/finance/boardTodos';
 import { unitOf } from '@/lib/finance/types';
 
 export default async function ClassifyPage({
@@ -65,7 +65,8 @@ export default async function ClassifyPage({
     unit?.brand ??
     brandScope ??
     (presetBrand && ['garden', 'staffmeal', 'personal'].includes(presetBrand) ? presetBrand : undefined);
-  const initialTodos = await computeBoardTodos(supabase, shellBrand ?? undefined).catch(() => undefined);
+  // 분류 화면 배지 = 월별 '미분류 건수' — 화면에서 실제로 처리할 개수와 일치(자료 입력의 '남은 업무 수'와 다름)
+  const initialTodos = await computeUnclassifiedByMonth(supabase, shellBrand ?? undefined).catch(() => undefined);
 
   // 학습된 규칙(정규화키→계정) — 미분류 행에 '추천'으로 미리 선택
   const ruleRows = unwrap(
@@ -100,7 +101,7 @@ export default async function ClassifyPage({
           </div>
         </div>
         {/* 좌측 연·월 사이드바 — 달을 고르면 그 달 거래만 분류(자료 입력과 동일 UX, 2026-08-03) */}
-        <MonthShell brand={shellBrand} initialTodos={initialTodos}>
+        <MonthShell brand={shellBrand} initialTodos={initialTodos} badgeKind="uncl">
           <ClassifyPanel
             txns={(txns as TxRow[]) ?? []}
             cats={(cats as Cat[]) ?? []}
