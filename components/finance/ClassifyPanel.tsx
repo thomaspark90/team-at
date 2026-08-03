@@ -827,7 +827,7 @@ export default function ClassifyPanel({
                         )}
                         <span className="line-clamp-2 min-w-0 break-all" title={tx.memo}>
                           {tx.memo || <span className="text-muted-foreground">(빈 내용)</span>}
-                          {tx.source === 'naverpay' && tx.channel && (
+                          {(tx.source === 'naverpay' || tx.source === 'coupang') && tx.channel && (
                             <span className="text-muted-foreground"> · {tx.channel}</span>
                           )}
                         </span>
