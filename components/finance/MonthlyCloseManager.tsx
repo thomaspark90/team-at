@@ -32,35 +32,47 @@ export default function MonthlyCloseManager({
   const [error, setError] = useState<string | null>(null);
   // 확정 게이트 — 업로드가 덜 된 달을 확정하려 하면 체크리스트로 한 번 더 확인
   const [gate, setGate] = useState<{ ym: string; issues: string[] } | null>(null);
+  // 일괄 확정(2026-08-03) — 확정 대기 달을 골라 한 번에. 진행 상황·자료 미비 달은 별도 게이트로
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState<string | null>(null); // 진행 문구
+  const [bulkGate, setBulkGate] = useState<{ ym: string; issues: string[] }[] | null>(null);
 
-  // 확정 전 커버리지 점검 — 슬롯별 업로드 상태를 확인해 빠진/부분 슬롯을 나열
-  async function requestConfirm(ym: string) {
-    setBusy(ym);
-    setError(null);
+  // 커버리지 점검 — 슬롯별 업로드 상태를 확인해 빠진/부분 슬롯을 나열. 실패 시 null(판정 불가)
+  async function checkIssues(ym: string): Promise<string[] | null> {
     try {
       const res = await fetch(`/api/finance/excel/status?ym=${ym}&brand=${brand}`);
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '업로드 현황 확인 실패');
       const slots = j.slots as Record<string, SlotStatus>;
       // 사용 은행 설정 반영 — 이 브랜드가 안 쓰는 은행 슬롯은 확정 점검에서 요구하지 않는다
-      const issues = slotsForBanks((j.banks as string[] | undefined) ?? null).flatMap((s) => {
+      return slotsForBanks((j.banks as string[] | undefined) ?? null).flatMap((s) => {
         const st = slots[s.key];
         if (!st?.done) return [`${s.label} — 업로드 안 됨`];
         if (!st.full) return [`${s.label} — ${st.range ?? '일부'} 구간만 올라옴 (부분)`];
         return [];
       });
-      setBusy(null);
-      if (issues.length === 0) return act(ym, 'confirm');
-      setGate({ ym, issues });
     } catch {
-      // 점검 실패가 확정을 영영 막으면 안 됨 — 재래식 확인으로 폴백
-      setBusy(null);
-      if (window.confirm(`${fmtYm(ym)} 업로드 현황을 확인하지 못했어요. 그래도 확정할까요?`)) act(ym, 'confirm');
+      return null;
     }
   }
 
-  async function act(ym: string, action: 'confirm' | 'reopen') {
-    if (action === 'reopen' && !window.confirm(`${fmtYm(ym)}을 다시 열까요? 확정이 해제되고 분류를 수정할 수 있어요.`)) return;
+  // 확정 전 커버리지 점검 — 빠진 자료가 있으면 게이트로 한 번 더 확인
+  async function requestConfirm(ym: string) {
+    setBusy(ym);
+    setError(null);
+    const issues = await checkIssues(ym);
+    setBusy(null);
+    if (issues === null) {
+      // 점검 실패가 확정을 영영 막으면 안 됨 — 재래식 확인으로 폴백
+      if (window.confirm(`${fmtYm(ym)} 업로드 현황을 확인하지 못했어요. 그래도 확정할까요?`)) act(ym, 'confirm');
+      return;
+    }
+    if (issues.length === 0) return void act(ym, 'confirm');
+    setGate({ ym, issues });
+  }
+
+  async function act(ym: string, action: 'confirm' | 'reopen'): Promise<boolean> {
+    if (action === 'reopen' && !window.confirm(`${fmtYm(ym)}을 다시 열까요? 확정이 해제되고 분류를 수정할 수 있어요.`)) return false;
     setBusy(ym);
     setError(null);
     try {
@@ -78,11 +90,49 @@ export default function MonthlyCloseManager({
             : r
         )
       );
+      setBusy(null);
+      return true;
     } catch (e) {
       setError((e as Error).message);
+      setBusy(null);
+      return false;
     }
-    setBusy(null);
   }
+
+  // 일괄 확정 — 선택한 달을 과거→최신 순으로 점검·확정. 자료가 덜 올라온 달은 건너뛰고
+  // 마지막에 모아 보여준 뒤(bulkGate) 원하면 그것까지 확정한다.
+  async function bulkConfirm(targets?: string[]) {
+    const yms = (targets ?? Array.from(selected)).sort();
+    if (yms.length === 0) return;
+    setError(null);
+    const skipped: { ym: string; issues: string[] }[] = [];
+    let done = 0;
+    for (let i = 0; i < yms.length; i++) {
+      const ym = yms[i];
+      setBulkBusy(`${i + 1}/${yms.length} — ${fmtYm(ym)} 처리 중…`);
+      if (!targets) {
+        const issues = await checkIssues(ym);
+        if (issues === null || issues.length > 0) {
+          skipped.push({ ym, issues: issues ?? ['업로드 현황을 확인하지 못했어요'] });
+          continue;
+        }
+      }
+      if (await act(ym, 'confirm')) {
+        done++;
+        setSelected((s) => {
+          const n = new Set(s);
+          n.delete(ym);
+          return n;
+        });
+      }
+    }
+    setBulkBusy(done > 0 ? `✓ ${done}개월 확정 완료${skipped.length ? ` · ${skipped.length}개월 보류` : ''}` : null);
+    if (skipped.length > 0) setBulkGate(skipped);
+  }
+
+  // 일괄 확정 대상 = 미확정 + 미분류 0 + 지점 미지정 0
+  const eligible = rows.filter((r) => r.status !== 'confirmed' && r.unclassified === 0 && (r.unassigned ?? 0) === 0);
+  const allSelected = eligible.length > 0 && eligible.every((r) => selected.has(r.ym));
 
   if (rows.length === 0) {
     return (
@@ -97,11 +147,35 @@ export default function MonthlyCloseManager({
   return (
     <div className="flex flex-col gap-3">
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
+
+      {/* 일괄 확정 툴바 — 확정 대기(미분류 0) 달을 골라 한 번에 */}
+      {canConfirm && eligible.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-[13px]">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={(e) => setSelected(e.target.checked ? new Set(eligible.map((r) => r.ym)) : new Set())}
+            />
+            확정 대기 전체 선택 ({eligible.length}개월)
+          </label>
+          <button
+            onClick={() => bulkConfirm()}
+            disabled={selected.size === 0 || !!bulkBusy?.includes('처리 중')}
+            className="ta-btn-primary text-[13px]"
+          >
+            선택 {selected.size}개월 일괄 확정
+          </button>
+          {bulkBusy && <span className="text-muted-foreground">{bulkBusy}</span>}
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-md border border-border bg-background">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] border-collapse text-[13px]">
             <thead>
               <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+                {canConfirm && <th className="w-8 px-2 py-2" aria-label="선택" />}
                 <Th>월</Th>
                 <Th right>거래수</Th>
                 <Th right>미분류</Th>
@@ -116,6 +190,25 @@ export default function MonthlyCloseManager({
                 const ready = r.unclassified === 0 && unassigned === 0;
                 return (
                   <tr key={r.ym} className={`border-t border-border hover:bg-accent ${confirmed ? 'bg-muted' : ''}`}>
+                    {canConfirm && (
+                      <td className="px-2 py-2 text-center">
+                        {!confirmed && ready && (
+                          <input
+                            type="checkbox"
+                            checked={selected.has(r.ym)}
+                            onChange={(e) =>
+                              setSelected((s) => {
+                                const n = new Set(s);
+                                if (e.target.checked) n.add(r.ym);
+                                else n.delete(r.ym);
+                                return n;
+                              })
+                            }
+                            aria-label={`${fmtYm(r.ym)} 선택`}
+                          />
+                        )}
+                      </td>
+                    )}
                     <Td>{fmtYm(r.ym)}</Td>
                     <Td right mono>
                       {won(r.total)}
@@ -177,6 +270,44 @@ export default function MonthlyCloseManager({
           </table>
         </div>
       </div>
+
+      {/* 일괄 확정 보류 게이트 — 자료가 덜 올라와 건너뛴 달 목록 + 강행 옵션 */}
+      {bulkGate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setBulkGate(null)}>
+          <div className="w-full max-w-[480px] rounded-2xl border border-border bg-card p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="m-0 text-[15px] font-medium">⚠ 자료가 덜 올라온 {bulkGate.length}개월은 보류했어요</h3>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              지금 확정하면 아래 자료가 빠진 채로 그 달 손익이 잠겨요. 자료 입력에서 마저 올린 뒤 다시 일괄
+              확정하는 걸 권해요.
+            </p>
+            <ul className="mt-3 flex max-h-[300px] list-none flex-col gap-1.5 overflow-y-auto p-0">
+              {bulkGate.map((g) => (
+                <li key={g.ym} className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[13px]">
+                  <b>{fmtYm(g.ym)}</b> — {g.issues.join(' · ')}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => setBulkGate(null)}
+                className="flex-[2] rounded-xl bg-foreground py-2.5 text-[14px] font-medium text-background"
+              >
+                자료 마저 올리고 확정할게요
+              </button>
+              <button
+                onClick={() => {
+                  const yms = bulkGate.map((g) => g.ym);
+                  setBulkGate(null);
+                  bulkConfirm(yms);
+                }}
+                className="flex-1 rounded-xl border border-border py-2.5 text-[14px] text-muted-foreground hover:text-foreground"
+              >
+                그래도 확정
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 확정 게이트 — 빠졌거나 부분인 업로드가 있는 달을 확정하기 전 마지막 확인 */}
       {gate && (

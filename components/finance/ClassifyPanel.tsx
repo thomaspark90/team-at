@@ -419,14 +419,46 @@ export default function ClassifyPanel({
 
   async function applyConfident() {
     setAiApplying(true);
+    setError(null);
+    // 브랜드별로 묶어 서버에 한 번에 적용(bulk API) — 그룹마다 왕복하던 방식은
+    // 2025 소급(그룹 수백 개)에서 분 단위로 걸려서 교체(2026-08-03).
+    const byBrand = new Map<string, { key: string; categoryId: number }[]>();
     const seen = new Set<string>();
     for (const tx of rows) {
       if (tx.category_id != null || !tx.normalized_key) continue;
       if (aiBrand && tx.brand !== aiBrand) continue; // 추천 스코프 밖 브랜드에 오적용 방지
       const s = suggestions[tx.normalized_key];
-      if (!s || s.confidence < CONF || seen.has(tx.normalized_key)) continue;
-      seen.add(tx.normalized_key);
-      await classify(tx, s.categoryId);
+      if (!s || s.confidence < CONF) continue;
+      const k = `${tx.brand}|${tx.normalized_key}`;
+      if (seen.has(k) || isLocked(tx)) continue;
+      seen.add(k);
+      if (!byBrand.has(tx.brand)) byBrand.set(tx.brand, []);
+      byBrand.get(tx.brand)!.push({ key: tx.normalized_key, categoryId: s.categoryId });
+    }
+    try {
+      let applied = 0;
+      for (const [b, items] of Array.from(byBrand.entries())) {
+        const res = await fetch('/api/finance/classify/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brand: b, items }),
+        });
+        const j = await res.json();
+        if (!res.ok) throw new Error(j.error || '일괄 적용에 실패했어요.');
+        applied += Number(j.updated ?? 0);
+        // 화면 반영 — 적용된 키의 미분류 행을 채운다(확정월 잠긴 행 제외, 서버도 동일 필터)
+        const catByKey = new Map<string, number>(items.map((i) => [i.key, i.categoryId] as [string, number]));
+        setRows((list) =>
+          list.map((r) =>
+            r.brand === b && r.category_id == null && r.normalized_key && catByKey.has(r.normalized_key) && !isLocked(r)
+              ? { ...r, category_id: catByKey.get(r.normalized_key)! }
+              : r
+          )
+        );
+      }
+      if (applied === 0 && byBrand.size === 0) setError('적용할 확신 항목이 없어요.');
+    } catch (e) {
+      setError((e as Error).message);
     }
     setAiApplying(false);
   }
