@@ -482,7 +482,8 @@ function PickOrType({
     if (custom && value && list.includes(value)) setCustom(false);
   }, [custom, value, list]);
 
-  const showSelect = list.length > 0 && !custom && (value === '' || list.includes(value));
+  // 명단이 비어 있어도 드롭다운은 항상 노출 — '＋ 직접 입력'으로 새 항목을 넣는다
+  const showSelect = !custom && (value === '' || list.includes(value));
   if (showSelect) {
     return (
       <select
@@ -514,18 +515,16 @@ function PickOrType({
         className="ta-input"
         style={{ flex: 1, minWidth: 0 }}
       />
-      {list.length > 0 && (
-        <button
-          onClick={() => {
-            setCustom(false);
-            onChange('');
-          }}
-          className="ta-btn"
-          style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0 }}
-        >
-          목록에서 선택
-        </button>
-      )}
+      <button
+        onClick={() => {
+          setCustom(false);
+          onChange('');
+        }}
+        className="ta-btn"
+        style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0 }}
+      >
+        목록에서 선택
+      </button>
     </div>
   );
 }
