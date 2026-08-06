@@ -11,6 +11,7 @@ const TABS = [
   { href: '/garden/pricing', label: '필터커피 가격 세팅' },
   { href: '/garden/calibration', label: '분쇄도 측정' },
   { href: '/garden/words', label: '제철 단어' },
+  { href: '/garden/reviews', label: '네이버 리뷰' },
   { href: '/garden/settings', label: '설정' },
 ];
 
