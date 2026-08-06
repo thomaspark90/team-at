@@ -35,6 +35,7 @@ export default function GardenService() {
   const [roastery, setRoastery] = useState('');
   const [roastDate, setRoastDate] = useState(''); // 로스팅 날짜 YYYY-MM-DD
   const [staffName, setStaffName] = useState(''); // 발주한 스탭이름 — 기록에 'OOO님'으로 표시
+  const [customStaff, setCustomStaff] = useState(false); // 드롭다운 대신 새 이름 직접 입력 모드
   const [price, setPrice] = useState<number>(0);
   // 원두봉투 스캔 상태 — 인식 결과로 원두명·로스팅사·용량 자동 기입
   const [scanning, setScanning] = useState(false);
@@ -88,6 +89,7 @@ export default function GardenService() {
     });
     await refreshPurchases();
     setSelectedMult(null);
+    setCustomStaff(false); // 새로 입력한 이름은 저장 후 드롭다운 후보에 포함됨
     setSaving(false);
   };
 
@@ -124,6 +126,12 @@ export default function GardenService() {
     });
     refreshPurchases();
   };
+
+  // 스탭이름 드롭다운 후보 — 발주 기록에 저장된 이름들 (최근 사용순, 새 이름은 직접 입력으로 추가)
+  const staffOptions = useMemo(() => {
+    const sorted = purchases.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return Array.from(new Set(sorted.map((r) => r.staffName).filter((n): n is string => !!n)));
+  }, [purchases]);
 
   // 카드 우측 상단 공유 대상 — 판매가가 책정된 가장 최근 기록
   const latestPriced = useMemo(
@@ -232,12 +240,48 @@ export default function GardenService() {
               placeholder="로스팅사 (예: 언스페셜티)"
               className="ta-input w-full"
             />
-            <input
-              value={staffName}
-              onChange={(e) => setStaffName(e.target.value)}
-              placeholder="스탭이름 (예: 홍길동)"
-              className="ta-input w-full"
-            />
+            {staffOptions.length > 0 && !customStaff ? (
+              <select
+                value={staffName}
+                onChange={(e) => {
+                  if (e.target.value === '__custom') {
+                    setCustomStaff(true);
+                    setStaffName('');
+                  } else {
+                    setStaffName(e.target.value);
+                  }
+                }}
+                className="ta-input w-full"
+              >
+                <option value="">스탭이름 선택</option>
+                {staffOptions.map((n) => (
+                  <option key={n} value={n}>{n}님</option>
+                ))}
+                <option value="__custom">＋ 새 스탭이름 입력</option>
+              </select>
+            ) : (
+              <div style={{ display: 'flex', gap: 8, minWidth: 0 }}>
+                <input
+                  value={staffName}
+                  onChange={(e) => setStaffName(e.target.value)}
+                  placeholder="스탭이름 (예: 홍길동)"
+                  className="ta-input"
+                  style={{ flex: 1, minWidth: 0 }}
+                />
+                {staffOptions.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setCustomStaff(false);
+                      setStaffName('');
+                    }}
+                    className="ta-btn"
+                    style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0 }}
+                  >
+                    목록에서 선택
+                  </button>
+                )}
+              </div>
+            )}
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
               <span className="text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>로스팅 날짜</span>
               <input
