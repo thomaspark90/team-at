@@ -49,6 +49,12 @@ export interface PurchaseRecord {
   createdBy?: string; // 저장한 사람 이메일 (구 기록엔 없음)
 }
 
+// 발주 입력 드롭다운 명단 — 설정에서 관리 (스탭이름·로스팅사)
+export interface GardenOptions {
+  staffNames: string[];
+  roasteries: string[];
+}
+
 export interface PurchaseStore {
   records: PurchaseRecord[];
 }

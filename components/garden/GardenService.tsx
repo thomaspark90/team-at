@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { PricingSettings, PurchaseRecord } from '@/lib/types';
+import type { GardenOptions, PricingSettings, PurchaseRecord } from '@/lib/types';
 import { DEFAULT_SETTINGS, computePricing, normalize, priceAtMult } from '@/lib/pricing';
 
 // 인라인 스타일에서 참조할 midday 토큰 (HSL 변수)
@@ -35,7 +35,8 @@ export default function GardenService() {
   const [roastery, setRoastery] = useState('');
   const [roastDate, setRoastDate] = useState(''); // 로스팅 날짜 YYYY-MM-DD
   const [staffName, setStaffName] = useState(''); // 발주한 스탭이름 — 기록에 'OOO님'으로 표시
-  const [customStaff, setCustomStaff] = useState(false); // 드롭다운 대신 새 이름 직접 입력 모드
+  // 드롭다운 명단(스탭이름·로스팅사) — 설정에서 관리, 새 이름 저장 시 자동 추가
+  const [options, setOptions] = useState<GardenOptions>({ staffNames: [], roasteries: [] });
   const [price, setPrice] = useState<number>(0);
   // 원두봉투 스캔 상태 — 인식 결과로 원두명·로스팅사·용량 자동 기입
   const [scanning, setScanning] = useState(false);
@@ -52,6 +53,9 @@ export default function GardenService() {
   };
   useEffect(() => {
     refreshPurchases();
+    fetch('/api/garden-options', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j && setOptions({ staffNames: j.staffNames ?? [], roasteries: j.roasteries ?? [] }));
   }, []);
 
   const result = useMemo(
@@ -87,9 +91,25 @@ export default function GardenService() {
         chosenPrice: selectedMult != null ? priceAtMult(price, selectedMult, settings) : null,
       }),
     });
+    // 직접 입력한 새 스탭이름·로스팅사는 드롭다운 명단에 자동 추가 (설정에서 관리)
+    const s = staffName.trim();
+    const r = roastery.trim();
+    const newStaff = s && !options.staffNames.includes(s);
+    const newRoastery = r && !options.roasteries.includes(r);
+    if (newStaff || newRoastery) {
+      const next: GardenOptions = {
+        staffNames: newStaff ? [s, ...options.staffNames] : options.staffNames,
+        roasteries: newRoastery ? [r, ...options.roasteries] : options.roasteries,
+      };
+      setOptions(next);
+      await fetch('/api/garden-options', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(next),
+      });
+    }
     await refreshPurchases();
     setSelectedMult(null);
-    setCustomStaff(false); // 새로 입력한 이름은 저장 후 드롭다운 후보에 포함됨
     setSaving(false);
   };
 
@@ -126,12 +146,6 @@ export default function GardenService() {
     });
     refreshPurchases();
   };
-
-  // 스탭이름 드롭다운 후보 — 발주 기록에 저장된 이름들 (최근 사용순, 새 이름은 직접 입력으로 추가)
-  const staffOptions = useMemo(() => {
-    const sorted = purchases.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    return Array.from(new Set(sorted.map((r) => r.staffName).filter((n): n is string => !!n)));
-  }, [purchases]);
 
   // 카드 우측 상단 공유 대상 — 판매가가 책정된 가장 최근 기록
   const latestPriced = useMemo(
@@ -234,54 +248,21 @@ export default function GardenService() {
               placeholder="원두명 (예: 에티오피아 게뎁)"
               className="ta-input w-full"
             />
-            <input
+            <PickOrType
               value={roastery}
-              onChange={(e) => setRoastery(e.target.value)}
-              placeholder="로스팅사 (예: 언스페셜티)"
-              className="ta-input w-full"
+              onChange={setRoastery}
+              list={options.roasteries}
+              selectPlaceholder="로스팅사 선택"
+              inputPlaceholder="로스팅사 (예: 언스페셜티)"
             />
-            {staffOptions.length > 0 && !customStaff ? (
-              <select
-                value={staffName}
-                onChange={(e) => {
-                  if (e.target.value === '__custom') {
-                    setCustomStaff(true);
-                    setStaffName('');
-                  } else {
-                    setStaffName(e.target.value);
-                  }
-                }}
-                className="ta-input w-full"
-              >
-                <option value="">스탭이름 선택</option>
-                {staffOptions.map((n) => (
-                  <option key={n} value={n}>{n}님</option>
-                ))}
-                <option value="__custom">＋ 새 스탭이름 입력</option>
-              </select>
-            ) : (
-              <div style={{ display: 'flex', gap: 8, minWidth: 0 }}>
-                <input
-                  value={staffName}
-                  onChange={(e) => setStaffName(e.target.value)}
-                  placeholder="스탭이름 (예: 홍길동)"
-                  className="ta-input"
-                  style={{ flex: 1, minWidth: 0 }}
-                />
-                {staffOptions.length > 0 && (
-                  <button
-                    onClick={() => {
-                      setCustomStaff(false);
-                      setStaffName('');
-                    }}
-                    className="ta-btn"
-                    style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0 }}
-                  >
-                    목록에서 선택
-                  </button>
-                )}
-              </div>
-            )}
+            <PickOrType
+              value={staffName}
+              onChange={setStaffName}
+              list={options.staffNames}
+              selectPlaceholder="스탭이름 선택"
+              inputPlaceholder="스탭이름 (예: 홍길동)"
+              optionLabel={(n) => `${n}님`}
+            />
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
               <span className="text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>로스팅 날짜</span>
               <input
@@ -477,6 +458,77 @@ export default function GardenService() {
 }
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+
+// 드롭다운 선택 + '＋ 직접 입력' 폴백 — 명단은 설정(/garden/settings)에서 관리.
+// 명단에 없는 값(원두봉투 스캔 결과 등)이 들어오면 자동으로 입력 모드로 전환된다.
+function PickOrType({
+  value,
+  onChange,
+  list,
+  selectPlaceholder,
+  inputPlaceholder,
+  optionLabel,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  list: string[];
+  selectPlaceholder: string;
+  inputPlaceholder: string;
+  optionLabel?: (v: string) => string;
+}) {
+  const [custom, setCustom] = useState(false);
+  // 직접 입력한 값이 명단에 추가되면(저장 후) 드롭다운 모드로 복귀
+  useEffect(() => {
+    if (custom && value && list.includes(value)) setCustom(false);
+  }, [custom, value, list]);
+
+  const showSelect = list.length > 0 && !custom && (value === '' || list.includes(value));
+  if (showSelect) {
+    return (
+      <select
+        value={value}
+        onChange={(e) => {
+          if (e.target.value === '__custom') {
+            setCustom(true);
+            onChange('');
+          } else {
+            onChange(e.target.value);
+          }
+        }}
+        className="ta-input w-full"
+      >
+        <option value="">{selectPlaceholder}</option>
+        {list.map((n) => (
+          <option key={n} value={n}>{optionLabel ? optionLabel(n) : n}</option>
+        ))}
+        <option value="__custom">＋ 직접 입력</option>
+      </select>
+    );
+  }
+  return (
+    <div style={{ display: 'flex', gap: 8, minWidth: 0 }}>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={inputPlaceholder}
+        className="ta-input"
+        style={{ flex: 1, minWidth: 0 }}
+      />
+      {list.length > 0 && (
+        <button
+          onClick={() => {
+            setCustom(false);
+            onChange('');
+          }}
+          className="ta-btn"
+          style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0 }}
+        >
+          목록에서 선택
+        </button>
+      )}
+    </div>
+  );
+}
 
 // 권장 구간 하한/상한 조절 화살표 토글
 function Stepper({ value, onDec, onInc }: { value: number; onDec: () => void; onInc: () => void }) {

@@ -8,6 +8,7 @@ import type { GardenTopicMap } from '@/lib/garden-notify-topics';
 import { GARDEN_TOPICS, EMPTY_TOPICS } from '@/lib/garden-notify-topics';
 import NotifyRecipients, { type RecipientRow } from '@/components/NotifyRecipients';
 import NotifySettings from '@/components/NotifySettings';
+import GardenOptionsManager from '@/components/garden/GardenOptionsManager';
 
 // 가든 설정 — 분쇄도 측정 요청(담당자 알림), 필터커피 투두리스트, 알림 수신자/채널 관리.
 
@@ -380,6 +381,8 @@ export default function GardenSettings() {
       <GrindRequestForm />
       <BeanCardRequestForm />
       <TodoList />
+      {/* 필터 원두 발주의 스탭이름·로스팅사 드롭다운 명단 */}
+      <GardenOptionsManager />
       {recipients && <NotifyRecipients initial={recipients} />}
       {/* 내 알림 채널(이메일·웹푸시) — 푸시를 켜야 담당자 알림을 기기에서 받는다 */}
       <NotifySettings />
