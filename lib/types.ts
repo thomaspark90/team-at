@@ -38,6 +38,7 @@ export interface PurchaseRecord {
   bean: string;
   roastery?: string; // 로스팅사 (구 기록엔 없음)
   roastDate?: string; // 로스팅 날짜 YYYY-MM-DD (구 기록엔 없음)
+  staffName?: string; // 발주한 스탭이름 — 'OOO님'으로 표시 (구 기록엔 없음)
   purchasePrice: number; // 구매가 (구매 용량 기준)
   settings: PricingSettings; // 당시 설정 스냅샷
   costPerCup: number; // 당시 잔당 재료비

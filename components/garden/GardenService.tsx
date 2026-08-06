@@ -34,6 +34,7 @@ export default function GardenService() {
   const [bean, setBean] = useState('');
   const [roastery, setRoastery] = useState('');
   const [roastDate, setRoastDate] = useState(''); // 로스팅 날짜 YYYY-MM-DD
+  const [staffName, setStaffName] = useState(''); // 발주한 스탭이름 — 기록에 'OOO님'으로 표시
   const [price, setPrice] = useState<number>(0);
   // 원두봉투 스캔 상태 — 인식 결과로 원두명·로스팅사·용량 자동 기입
   const [scanning, setScanning] = useState(false);
@@ -75,6 +76,7 @@ export default function GardenService() {
         bean: bean.trim(),
         roastery: roastery.trim() || undefined,
         roastDate: roastDate || undefined,
+        staffName: staffName.trim() || undefined,
         purchasePrice: price,
         settings,
         costPerCup: result.costPerCup,
@@ -230,6 +232,12 @@ export default function GardenService() {
               placeholder="로스팅사 (예: 언스페셜티)"
               className="ta-input w-full"
             />
+            <input
+              value={staffName}
+              onChange={(e) => setStaffName(e.target.value)}
+              placeholder="스탭이름 (예: 홍길동)"
+              className="ta-input w-full"
+            />
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
               <span className="text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>로스팅 날짜</span>
               <input
@@ -371,8 +379,11 @@ export default function GardenService() {
                         <div key={rec.id} className="gs-row">
                           <span className="gs-meta">
                             <span className="tabular text-muted-foreground" style={{ width: 64, flexShrink: 0 }}>{fmtDate(rec.createdAt)}</span>
-                            {rec.createdBy && (
-                              <span className="text-muted-foreground" style={{ flexShrink: 0 }}>{rec.createdBy.split('@')[0]}</span>
+                            {/* 스탭이름이 있으면 'OOO님' 우선, 없으면 저장 계정(구 기록) */}
+                            {(rec.staffName || rec.createdBy) && (
+                              <span className="text-muted-foreground" style={{ flexShrink: 0 }}>
+                                {rec.staffName ? `${rec.staffName}님` : rec.createdBy!.split('@')[0]}
+                              </span>
                             )}
                             {rec.roastDate && (
                               <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>로스팅 {fmtDate(rec.roastDate)}</span>
