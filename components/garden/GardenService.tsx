@@ -33,6 +33,7 @@ export default function GardenService() {
   const [settings, setSettings] = useState<PricingSettings>(DEFAULT_SETTINGS);
   const [bean, setBean] = useState('');
   const [roastery, setRoastery] = useState('');
+  const [roastDate, setRoastDate] = useState(''); // 로스팅 날짜 YYYY-MM-DD
   const [price, setPrice] = useState<number>(0);
   // 원두봉투 스캔 상태 — 인식 결과로 원두명·로스팅사·용량 자동 기입
   const [scanning, setScanning] = useState(false);
@@ -73,6 +74,7 @@ export default function GardenService() {
       body: JSON.stringify({
         bean: bean.trim(),
         roastery: roastery.trim() || undefined,
+        roastDate: roastDate || undefined,
         purchasePrice: price,
         settings,
         costPerCup: result.costPerCup,
@@ -228,6 +230,16 @@ export default function GardenService() {
               placeholder="로스팅사 (예: 언스페셜티)"
               className="ta-input w-full"
             />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              <span className="text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>로스팅 날짜</span>
+              <input
+                type="date"
+                value={roastDate}
+                onChange={(e) => setRoastDate(e.target.value)}
+                className="ta-input tabular"
+                style={{ flex: 1, minWidth: 0 }}
+              />
+            </label>
             <div style={{ display: 'flex', gap: 8, minWidth: 0 }}>
               <input
                 type="text"
@@ -361,6 +373,9 @@ export default function GardenService() {
                             <span className="tabular text-muted-foreground" style={{ width: 64, flexShrink: 0 }}>{fmtDate(rec.createdAt)}</span>
                             {rec.createdBy && (
                               <span className="text-muted-foreground" style={{ flexShrink: 0 }}>{rec.createdBy.split('@')[0]}</span>
+                            )}
+                            {rec.roastDate && (
+                              <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>로스팅 {fmtDate(rec.roastDate)}</span>
                             )}
                             <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>
                               원가 {won(rec.purchasePrice)}
