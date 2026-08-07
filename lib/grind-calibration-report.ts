@@ -89,6 +89,37 @@ export interface CurvePoint {
   pangyo: number;
 }
 
+// --- 2026-07-16 기준선을 캘리브레이션 차트에서 재사용하기 위한 내보내기 ---
+export const BASELINE_DATE_20260716 = '2026-07-16';
+export const BASELINE_DIAL_20260716 = 6.5;
+
+// 지점별 9샷(배전도 3종 × 3샷) 평탄화 — 다이얼 6.5 고정
+export function baselineShots(store: StoreId): Shot[] {
+  return ROASTS.flatMap((r) => SHOTS[store][r.key]);
+}
+
+// 임의 샷 집합들의 로그 격자 부피 분포 곡선 (컴퍼스와 같은 스케일) — 지점 간 시각 비교용
+export function curveFromShots(
+  series: Record<string, Shot[]>,
+  points = 48,
+  xMin = 200,
+  xMax = 2000
+): Array<Record<string, number>> {
+  const step = Math.pow(xMax / xMin, 1 / (points - 1));
+  const out: Array<Record<string, number>> = [];
+  for (let i = 0; i < points; i++) {
+    const x = xMin * Math.pow(step, i);
+    const row: Record<string, number> = { x: Math.round(x) };
+    for (const [key, shots] of Object.entries(series)) {
+      if (!shots.length) continue;
+      const pdf = shots.reduce((s, sh) => s + gammaPdf(x, sh.mean, sh.std), 0) / shots.length;
+      row[key] = Math.round(pdf * x * Math.log(BIN_RATIO) * 100 * 100) / 100;
+    }
+    out.push(row);
+  }
+  return out;
+}
+
 // 200~2000µm 로그 격자에서 지점별(3샷 평균) 분포 곡선 생성
 export function distributionCurve(roast: RoastKey, points = 48): CurvePoint[] {
   const xMin = 200;

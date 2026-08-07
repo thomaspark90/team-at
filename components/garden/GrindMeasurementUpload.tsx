@@ -101,8 +101,8 @@ export default function GrindMeasurementUpload() {
         throw new Error(body?.error ?? '저장에 실패했습니다.');
       }
       setItems(await res.json());
-      // 같은 세션에서 원두만 바꿔 연속 업로드하도록 지점·다이얼은 유지
-      setDraft((d) => ({ ...d, bean: '', mean: '', std: '', fines: '', shareUrl: '', memo: '' }));
+      // 같은 원두·다이얼로 샷을 연속 업로드하는 프로토콜이라 지점·원두·다이얼은 유지
+      setDraft((d) => ({ ...d, mean: '', std: '', fines: '', shareUrl: '', memo: '' }));
       setFiles([]);
     } catch (e) {
       setError((e as Error).message);
@@ -150,6 +150,10 @@ export default function GrindMeasurementUpload() {
           </a>
           에서 측정한 결과 화면을 캡처해 올려주세요. 원두·다이얼이 같아야 지점 간 비교가 됩니다. 평균
           µm 등 수치는 보이는 대로만 입력해도 충분해요 (이미지에서 나머지를 읽어냅니다).
+        </p>
+        <p className="text-[13px] text-foreground" style={{ margin: 0 }}>
+          이번 프로토콜 (2026-08-07 판교 재얼라인 이후): <strong>에티오피아 싱글 × 다이얼 6 / 8 / 10 × 각 3샷</strong>
+          (샷마다 촬영 각도 조금씩 회전, 이전 촬영 스펙과 동일) × 두 지점. 샷 1장 = 기록 1건으로 올려주세요.
         </p>
 
         {/* 지점 */}
@@ -237,7 +241,7 @@ export default function GrindMeasurementUpload() {
 
       {/* 측정 목록 — 원두별 그룹, 두 지점 모두 있으면 비교 가능 표시 */}
       {beans.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground">아직 측정 기록이 없어요. 오늘 프로토콜: 배전도별 원두 5종 × 동일 다이얼 × 두 지점.</p>
+        <p className="text-[13px] text-muted-foreground">아직 업로드된 측정 기록이 없어요. 프로토콜: 에티오피아 싱글 × 다이얼 6 / 8 / 10 × 각 3샷 × 두 지점.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {beans.map(([bean, list]) => {
