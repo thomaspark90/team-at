@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { isAllowedEmail, isOwner } from '@/lib/finance/access';
-import { firstAllowedHref, sectionForPath } from '@/lib/access/sections';
+import { SECTIONS, firstAllowedHref, sectionForPath } from '@/lib/access/sections';
 import { GARDEN_TABS, tabForPath } from '@/lib/garden/tabs';
 
 // 앱 전체 접근 통제의 단일 관문.
@@ -85,25 +85,32 @@ export async function middleware(request: NextRequest) {
     .maybeSingle();
   if (!access) return response; // 행 없음 = 전체 허용
 
-  const sections = (access.sections as string[] | null) ?? null;
-  if (sections && !sections.includes(section)) {
+  // 보낼 곳이 지금 경로와 같으면 무한 리다이렉트가 되므로, 그 경우엔 로그인 화면으로 돌린다.
+  const goTo = (href: string | null | undefined) => {
     const url = request.nextUrl.clone();
-    const href = firstAllowedHref(sections);
-    url.pathname = href ?? '/';
-    url.search = href ? '' : 'denied=1';
+    if (!href || href === path) {
+      url.pathname = '/';
+      url.search = 'denied=1';
+    } else {
+      url.pathname = href;
+      url.search = '';
+    }
     return NextResponse.redirect(url);
-  }
+  };
+
+  const sections = (access.sections as string[] | null) ?? null;
+  if (sections && !sections.includes(section)) return goTo(firstAllowedHref(sections));
 
   // 가든 하위 탭 권한 — 미허용 탭이면 허용된 첫 탭으로
   const tabs = (access.tabs as string[] | null) ?? null;
   if (section === 'garden' && tabs) {
     const current = tabForPath(path);
     if (current && !tabs.includes(current.key)) {
-      const url = request.nextUrl.clone();
       const first = GARDEN_TABS.find((t) => tabs.includes(t.key));
-      url.pathname = first?.href ?? firstAllowedHref(sections) ?? '/';
-      url.search = '';
-      return NextResponse.redirect(url);
+      // 허용된 가든 탭이 하나도 없으면 가든 밖의 허용 섹션으로 — 없으면 로그인 화면.
+      // (가든 안으로 되돌리면 같은 경로로 계속 튕겨 계정이 잠긴다)
+      const outside = SECTIONS.find((s) => s.key !== 'garden' && (!sections || sections.includes(s.key)));
+      return goTo(first?.href ?? outside?.href);
     }
   }
 
