@@ -228,9 +228,10 @@ export default function ReviewInbox() {
                               onChange={(e) =>
                                 setTexts((t) => ({ ...t, [r.id]: { ...t[r.id], [v.tone]: e.target.value } }))
                               }
-                              rows={2}
+                              rows={1}
                               className="w-full bg-transparent text-[13px] focus:outline-none"
-                              style={{ padding: 0, marginTop: 2, resize: 'vertical', border: 0 }}
+                              // field-sizing: 내용 높이만큼만 차지 (Chrome 123+) — 하단 빈 공간 제거
+                              style={{ padding: 0, marginTop: 2, resize: 'none', border: 0, fieldSizing: 'content' } as React.CSSProperties}
                             />
                           </div>
                         </div>
