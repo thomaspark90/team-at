@@ -1,7 +1,9 @@
 // 날씨 × 판매 상관 분석 — 순수 계산 모듈 (API 라우트에서 사용).
-// 모델: ln(일 판매) ~ 기온밴드 + 강수밴드 + 요일 + 선형 트렌드 (OLS).
+// 모델: ln(일 판매) ~ 기온밴드 + 강수밴드 + 공휴일 + 요일 + 선형 트렌드 (OLS).
 // 밴드 더미를 쓰는 이유: "기온 1°당 x%" 선형 가정 없이 구간별 효과를 그대로 보여주기 위해.
-// 기준(레퍼런스) = 일최고 10–20° · 비 안 온 날(<1mm) · 월요일.
+// 공휴일 더미: 명절·연휴가 특정 계절(겨울 설, 가을 추석)에 몰려 기온 계수를 왜곡하는 것을 막는다.
+// 기준(레퍼런스) = 일최고 10–20° · 비 안 온 날(<1mm) · 평일 월요일.
+import { isKrHoliday } from './krHolidays';
 
 export interface WeatherDay {
   date: string; // 'YYYY-MM-DD'
@@ -30,6 +32,9 @@ export interface RegressionResult {
   /** 트렌드: 기간 처음→끝 기준 % 변화 (신규 매장 성장 등) */
   trendPct: number;
   trendT: number;
+  /** 공휴일 효과 — 표본에 공휴일이 3일 미만이면 null(통제 불가) */
+  holidayPct: number | null;
+  holidayT: number | null;
 }
 
 const TEMP_BANDS: { key: string; label: string; test: (t: number) => boolean }[] = [
@@ -91,14 +96,26 @@ export function regressWeather(sales: SalesDay[], weather: Map<string, WeatherDa
     (band) => band.n >= 3,
   );
 
-  // 컬럼: 절편 + 기온밴드 + 강수밴드 + 요일(화~일, 월=기준) + 트렌드(0→1)
-  const labels = ['절편', ...tempCols.map((c) => c.key), ...rainCols.map((c) => c.key), 'dow:2', 'dow:3', 'dow:4', 'dow:5', 'dow:6', 'dow:0', 'trend'];
+  // 공휴일 더미 — 표본에 3일 미만이면 컬럼 제외(특이행렬 방지)
+  const holidayN = obs.filter((o) => isKrHoliday(o.date)).length;
+  const useHoliday = holidayN >= 3;
+
+  // 컬럼: 절편 + 기온밴드 + 강수밴드 + (공휴일) + 요일(화~일, 월=기준) + 트렌드(0→1)
+  const labels = [
+    '절편',
+    ...tempCols.map((c) => c.key),
+    ...rainCols.map((c) => c.key),
+    ...(useHoliday ? ['holiday'] : []),
+    'dow:2', 'dow:3', 'dow:4', 'dow:5', 'dow:6', 'dow:0',
+    'trend',
+  ];
   const X = obs.map((o, i) => {
-    const dow = new Date(o.date + 'T00:00:00+09:00').getDay();
+    const dow = new Date(o.date + 'T00:00:00Z').getUTCDay();
     return [
       1,
       ...tempCols.map((c) => (c.test(o.w.tmax) ? 1 : 0)),
       ...rainCols.map((c) => (c.test(o.w.rainMm) ? 1 : 0)),
+      ...(useHoliday ? [isKrHoliday(o.date) ? 1 : 0] : []),
       ...[2, 3, 4, 5, 6, 0].map((d) => (dow === d ? 1 : 0)),
       i / Math.max(1, obs.length - 1),
     ];
@@ -130,6 +147,7 @@ export function regressWeather(sales: SalesDay[], weather: Map<string, WeatherDa
   let j = 1;
   const temp = tempCols.map((c) => effectAt(j++, c.n, c.label, c.key));
   const rain = rainCols.map((c) => effectAt(j++, c.n, c.label, c.key));
+  const jHoliday = useHoliday ? j++ : -1;
   const jTrend = k - 1;
 
   return {
@@ -139,6 +157,8 @@ export function regressWeather(sales: SalesDay[], weather: Map<string, WeatherDa
     rain,
     trendPct: (Math.exp(beta[jTrend]) - 1) * 100,
     trendT: se(jTrend) > 0 ? beta[jTrend] / se(jTrend) : 0,
+    holidayPct: jHoliday >= 0 ? (Math.exp(beta[jHoliday]) - 1) * 100 : null,
+    holidayT: jHoliday >= 0 && se(jHoliday) > 0 ? beta[jHoliday] / se(jHoliday) : null,
   };
 }
 

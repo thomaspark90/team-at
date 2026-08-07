@@ -56,7 +56,9 @@ export async function GET() {
       .from('pos_sales')
       .select('sale_date,store,category,qty,supply')
       .eq('brand', 'garden')
+      // id 보조 정렬 — sale_date 만으로는 정렬이 유일하지 않아 페이지 경계에서 행이 중복/누락될 수 있다
       .order('sale_date')
+      .order('id')
       .range(from, from + 999);
     if (error) return NextResponse.json({ error: `POS 조회 실패: ${error.message}` }, { status: 500 });
     rows.push(...((data ?? []) as PosRow[]));

@@ -89,7 +89,14 @@ function SeriesCard({ s }: { s: Series }) {
           </div>
           <p className="m-0 text-[11px] text-muted-foreground/80">
             트렌드(기간 처음→끝): <span className="tabular">{pctText(s.result.trendPct)}</span>
-            {Math.abs(s.result.trendT) >= 2 ? ' (뚜렷)' : ' (불확실)'} — 요일·트렌드는 통제됨. 흐린 항목은 통계적으로 불확실(|t|&lt;2).
+            {Math.abs(s.result.trendT) >= 2 ? ' (뚜렷)' : ' (불확실)'}
+            {s.result.holidayPct != null && (
+              <>
+                {' '}· 공휴일: <span className="tabular">{pctText(s.result.holidayPct)}</span>
+                {Math.abs(s.result.holidayT ?? 0) >= 2 ? ' (뚜렷)' : ' (불확실)'}
+              </>
+            )}{' '}
+            — 요일·공휴일·트렌드는 통제됨. 흐린 항목은 통계적으로 불확실(|t|&lt;2).
           </p>
         </div>
       )}
