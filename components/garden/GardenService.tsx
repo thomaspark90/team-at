@@ -61,8 +61,12 @@ export default function GardenService() {
       .then((j) => j && setOptions({ staffNames: j.staffNames ?? [], roasteries: j.roasteries ?? [] }));
   }, []);
 
+  // 잔존율·투입량이 0이면(입력창 비움) 재료비 0원·판매가 0원이 그대로 저장되므로 결과 자체를 막는다
   const result = useMemo(
-    () => (price > 0 && settings.capacityG > 0 ? computePricing(price, settings) : null),
+    () =>
+      price > 0 && settings.capacityG > 0 && settings.yieldRate > 0 && settings.doseG > 0
+        ? computePricing(price, settings)
+        : null,
     [price, settings]
   );
 
@@ -183,7 +187,8 @@ export default function GardenService() {
           <p className="ta-label">판매가 산식 기준</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="구매 용량(g)" value={settings.capacityG} onChange={(v) => setNum('capacityG', v)} />
-            <Field label="로스율 제외(%)" value={Math.round(settings.yieldRate * 100)} onChange={(v) => setNum('yieldRate', v / 100)} />
+            {/* 값은 '남는 비율'(잔존율) — 로스율 10%면 90을 입력한다. 라벨 오독으로 10을 넣으면 재료비가 9배가 된다 */}
+            <Field label="로스 제외 잔존율(%)" value={Math.round(settings.yieldRate * 100)} onChange={(v) => setNum('yieldRate', v / 100)} />
             <Field label="추출 투입량(g)" value={settings.doseG} onChange={(v) => setNum('doseG', v)} />
           </div>
         </div>
@@ -439,7 +444,8 @@ export default function GardenService() {
                 <Cell label>원가율</Cell>
                 {SPREAD.map((m) => (
                   <Cell key={`r${m}`} pos="bottom" hi={m >= settings.minMult && m <= settings.maxMult} muted selected={selectedMult === m} onClick={() => setSelectedMult(m)}>
-                    {Math.round(100 / m)}%
+                    {/* 이론값(100/배수)이 아니라 100원 올림 반영 실제 원가율 — 저장 기록·대시보드와 같은 산식 */}
+                    {result ? Math.round((result.costPerCup / priceAtMult(price, m, settings)) * 100) : Math.round(100 / m)}%
                   </Cell>
                 ))}
               </div>
@@ -516,7 +522,7 @@ export default function GardenService() {
                             </span>
                           </span>
                           <span className="gs-price">
-                            {rec.chosenPrice != null ? (
+                            {rec.chosenPrice != null && rec.chosenPrice > 0 ? (
                               <span className="tabular text-foreground">
                                 책정 판매가 {won(rec.chosenPrice)}
                                 <span className="text-muted-foreground"> ({Math.round((rec.costPerCup / rec.chosenPrice) * 100)}%)</span>

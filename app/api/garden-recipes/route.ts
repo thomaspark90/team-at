@@ -135,7 +135,7 @@ export async function POST(req: Request) {
     isNew ? '가든서비스 레시피 등록' : '가든서비스 레시피 수정',
     `${recipe.bean} ${brewType.toUpperCase()}` +
       (recipe.doseG != null && recipe.waterG != null
-        ? ` · ${recipe.doseG}g : ${recipe.waterG}ml`
+        ? ` · ${recipe.doseG}g : ${recipe.waterG}g`
         : '')
   );
 
@@ -147,7 +147,7 @@ export async function POST(req: Request) {
       const by = (user.email ?? '').split('@')[0];
       const summary =
         `${recipe.bean} ${brewType.toUpperCase()}` +
-        (recipe.doseG != null && recipe.waterG != null ? ` · ${recipe.doseG}g : ${recipe.waterG}ml` : '') +
+        (recipe.doseG != null && recipe.waterG != null ? ` · ${recipe.doseG}g : ${recipe.waterG}g` : '') +
         (recipe.grindMesh != null ? ` · 분쇄도 ${recipe.grindMesh}` : '');
       await notifyGardenEvent(supabase, {
         emails,

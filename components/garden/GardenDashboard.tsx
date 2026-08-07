@@ -613,7 +613,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                 </button>
               )}
             </div>
-            {latest?.chosenPrice != null && (
+            {latest?.chosenPrice != null && latest.chosenPrice > 0 && (
               // 책정 판매가 / 재료비율(잔당 재료비 ÷ 판매가)
               <span className="tabular text-[13px] text-muted-foreground" style={{ flexShrink: 0 }}>
                 {won(latest.chosenPrice)} / {Math.round((latest.costPerCup / latest.chosenPrice) * 100)}%
@@ -695,7 +695,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                         value={
                           matCost != null
                             ? `${won(matCost)}${
-                                latest?.chosenPrice != null
+                                latest?.chosenPrice != null && latest.chosenPrice > 0
                                   ? ` / ${Math.round((matCost / latest.chosenPrice) * 100)}%`
                                   : ''
                               }`
@@ -754,7 +754,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                             <span className="tabular text-foreground" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {[
                                 s.doseG != null ? `${s.doseG}g` : null,
-                                s.waterG != null ? `${s.waterG}ml` : null,
+                                s.waterG != null ? `${s.waterG}g` : null,
                                 s.tempC != null ? `${s.tempC}°C` : null,
                                 s.grindMesh != null ? `mesh ${meshFmt(s.grindMesh)}` : null,
                                 s.totalTime || null,

@@ -79,7 +79,7 @@ export interface DripRecipe {
   brewType?: BrewType; // 없으면 ice (구 기록 호환)
   bean: string; // 표시용 원두명 (마지막 저장 시점 표기)
   doseG: number | null; // 투입량(g)
-  waterG: number | null; // 총 물량(ml) — 푸어링이 있으면 그 합
+  waterG: number | null; // 총 물량(g, 푸어링 합) — 물은 1g≈1ml지만 표기는 g로 통일
   pours?: PourStep[] | null; // 푸어링 단계 (구 기록엔 없음)
   tempC: number | null; // 물 온도(°C)
   grind: string; // 분쇄도 텍스트 (구 기록 호환 — grindMesh가 있으면 그쪽 우선)
