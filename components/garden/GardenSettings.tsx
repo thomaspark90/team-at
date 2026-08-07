@@ -16,7 +16,7 @@ import GardenTabAccess from '@/components/garden/GardenTabAccess';
 // 요청 내용 프리셋 — 캘리브레이션 운영에서 실제로 쓰는 두 가지 + 직접 입력
 const PRESETS = [
   { id: 'drift', label: '드리프트 체크 — 다이얼 6.5 · 1~2샷' },
-  { id: 'slope', label: '기울기 측정 — 다이얼 8.0 · 10.0 × 각 3샷' },
+  { id: 'slope', label: '기울기 측정 — 다이얼 6 · 8 · 10 × 각 3샷' },
   { id: 'custom', label: '직접 입력' },
 ];
 
@@ -330,7 +330,7 @@ function TodoList() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && add()}
-          placeholder="할 일 추가 (예: 판교 8.0·10.0 측정 결과 업로드)"
+          placeholder="할 일 추가 (예: 판교 6·8·10 측정 결과 업로드)"
           className="ta-input"
           style={{ flex: 1, minWidth: 0 }}
         />

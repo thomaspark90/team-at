@@ -19,7 +19,8 @@ import { STORES } from '@/lib/types';
 import type { GrindMeasurement } from '@/lib/grind-measurements';
 import type { AlignmentEvent } from '@/lib/grinder-alignments';
 import { isPostAlignment, latestAlignmentDate } from '@/lib/grinder-alignments';
-import { fitDialToMicron, dialToMicron } from '@/lib/grinder-calibration';
+import type { GrinderProfiles } from '@/lib/grinder-calibration';
+import { fitDialToMicron, dialToMicron, calibrationReady } from '@/lib/grinder-calibration';
 import { DRIFT_TOLERANCE_UM } from '@/lib/calibration-checks';
 import type { Shot } from '@/lib/grind-calibration-report';
 import {
@@ -87,6 +88,8 @@ function CurveTip({ active, payload, label }: any) {
 export default function GrindCalibrationCharts() {
   const [measurements, setMeasurements] = useState<GrindMeasurement[]>([]);
   const [alignments, setAlignments] = useState<AlignmentEvent[]>([]);
+  const [profiles, setProfiles] = useState<GrinderProfiles>({});
+  const [applying, setApplying] = useState<StoreId | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(() => {
@@ -94,10 +97,12 @@ export default function GrindCalibrationCharts() {
     Promise.all([
       fetch('/api/garden-grind-measurements', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
       fetch('/api/garden-grinder-alignments', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
+      fetch('/api/garden-grinders', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)),
     ])
-      .then(([m, a]) => {
+      .then(([m, a, p]) => {
         setMeasurements(Array.isArray(m) ? m : []);
         setAlignments(Array.isArray(a) ? a : []);
+        if (p && typeof p === 'object') setProfiles(p as GrinderProfiles);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -223,6 +228,29 @@ export default function GrindCalibrationCharts() {
 
   const hasStale = points.yangjae.stale.length > 0 || points.pangyo.stale.length > 0;
 
+  // 현행 측정점을 지점 그라인더 프로필로 승격 — 레시피 페이지의 다이얼 환산(convertDial)이
+  // 잠정 오프셋 범위 대신 이 실측 피팅을 쓰게 된다
+  const applyFit = async (id: StoreId) => {
+    const pts = points[id].current.map((p) => ({ dial: p.dial, micron: Math.round(p.mean) }));
+    if (pts.length < 2 || applying) return;
+    setApplying(id);
+    try {
+      const res = await fetch('/api/garden-grinders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ store: id, points: pts }),
+      });
+      if (res.ok) {
+        const p = await res.json();
+        if (p && typeof p === 'object') setProfiles(p as GrinderProfiles);
+      }
+    } finally {
+      setApplying(null);
+    }
+  };
+
+  const bothApplied = calibrationReady(profiles, 'yangjae', 'pangyo');
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* 요약 통계 */}
@@ -230,6 +258,13 @@ export default function GrindCalibrationCharts() {
         {STORES.map((s) => {
           const fit = fits[s.id];
           const last = latestAlignmentDate(alignments, s.id);
+          const profile = profiles[s.id];
+          const profileFit = fitDialToMicron(profile?.points);
+          // 프로필이 현행 피팅과 사실상 같으면(기울기·다이얼8 환산 1µm 이내) 이미 적용된 상태
+          const upToDate =
+            !!fit && !!profileFit &&
+            Math.abs(fit.a - profileFit.a) < 1 &&
+            Math.abs(dialToMicron(fit, 8) - dialToMicron(profileFit, 8)) < 1;
           return (
             <div key={s.id} className="ta-card bg-background" style={{ flex: 1, minWidth: 220 }}>
               <div className="text-[11px] text-muted-foreground" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -244,6 +279,24 @@ export default function GrindCalibrationCharts() {
                   ? `현행 측정 ${points[s.id].current.length}샷 피팅 · 다이얼 8 ≈ ${Math.round(dialToMicron(fit, 8))}µm`
                   : `서로 다른 다이얼 2개 이상 측정 필요 (현행 ${points[s.id].current.length}샷)`}
               </div>
+              {fit && (
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  {upToDate ? (
+                    <span className="tabular text-[11px]" style={{ color: 'hsl(150 60% 35%)' }}>
+                      레시피 환산에 적용됨{profile?.updatedAt ? ` · ${profile.updatedAt.slice(5, 10).replace('-', '.')}` : ''}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => applyFit(s.id)}
+                      disabled={applying != null}
+                      className="ta-btn"
+                      style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 12 }}
+                    >
+                      {applying === s.id ? '적용 중…' : profileFit ? '이 피팅으로 환산 갱신' : '레시피 환산에 적용'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -259,6 +312,11 @@ export default function GrindCalibrationCharts() {
                 : `±${DRIFT_TOLERANCE_UM}µm 초과 — 다이얼 환산 필요`
               : '두 지점이 같은 다이얼을 측정하면 계산됩니다'}
           </div>
+          {bothApplied && (
+            <div className="tabular text-[11px]" style={{ marginTop: 8, color: 'hsl(150 60% 35%)' }}>
+              두 지점 환산 적용됨 — 레시피의 판교 다이얼이 실측 확정값으로 표시됩니다
+            </div>
+          )}
         </div>
       </div>
 
