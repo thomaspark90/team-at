@@ -41,6 +41,22 @@ export default function GardenOptionsManager() {
     setBusy(false);
   };
 
+  // 로스터리 이름 변경 — 명단 교체 + 등록된 로고·QR 키도 새 이름으로 이동
+  const renameRoastery = async (from: string, to: string) => {
+    if (!options) return;
+    const next = to.trim();
+    if (!next || next === from || options.roasteries.includes(next)) return;
+    await save({ ...options, roasteries: options.roasteries.map((r) => (r === from ? next : r)) });
+    setBusy(true);
+    const res = await fetch('/api/garden-roastery-assets', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to: next }),
+    });
+    if (res.ok) setAssets(await res.json());
+    setBusy(false);
+  };
+
   const save = async (next: GardenOptions) => {
     setBusy(true);
     setOptions(next);
@@ -78,6 +94,7 @@ export default function GardenOptionsManager() {
         onChange={(roasteries) => save({ ...options, roasteries })}
         onUpload={uploadAsset}
         onRemoveAsset={removeAsset}
+        onRename={renameRoastery}
       />
     </div>
   );
@@ -91,6 +108,7 @@ function RoasteryList({
   onChange,
   onUpload,
   onRemoveAsset,
+  onRename,
 }: {
   items: string[];
   assets: RoasteryAssets;
@@ -98,8 +116,16 @@ function RoasteryList({
   onChange: (items: string[]) => void;
   onUpload: (roastery: string, kind: 'logo' | 'qr', file: File) => void;
   onRemoveAsset: (roastery: string, kind: 'logo' | 'qr') => void;
+  onRename: (from: string, to: string) => void;
 }) {
   const [input, setInput] = useState('');
+  const [editing, setEditing] = useState<string | null>(null); // 수정 중인 항목(원래 이름)
+  const [editValue, setEditValue] = useState('');
+
+  const commitEdit = () => {
+    if (editing) onRename(editing, editValue);
+    setEditing(null);
+  };
 
   const add = () => {
     const v = input.trim();
@@ -148,9 +174,55 @@ function RoasteryList({
               className="rounded-md border border-border"
               style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', minWidth: 0 }}
             >
-              <span className="text-[13px] text-foreground" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {v}
-              </span>
+              {editing === v ? (
+                <>
+                  <input
+                    type="text"
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') commitEdit();
+                      if (e.key === 'Escape') setEditing(null);
+                    }}
+                    autoFocus
+                    className="ta-input"
+                    style={{ flex: 1, minWidth: 0, height: 30 }}
+                  />
+                  <button
+                    onClick={commitEdit}
+                    disabled={busy || editValue.trim() === '' || (editValue.trim() !== v && items.includes(editValue.trim()))}
+                    className="ta-btn-primary"
+                    style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0 }}
+                  >
+                    저장
+                  </button>
+                  <button
+                    onClick={() => setEditing(null)}
+                    className="ta-btn"
+                    style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0 }}
+                  >
+                    취소
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-[13px] text-foreground" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {v}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setEditing(v);
+                      setEditValue(v);
+                    }}
+                    disabled={busy}
+                    className="text-muted-foreground hover:text-foreground"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, padding: 0, flexShrink: 0 }}
+                    title="이름 수정 — 등록된 로고·QR도 새 이름으로 유지"
+                  >
+                    수정
+                  </button>
+                </>
+              )}
               <AssetSlot label="로고" url={assets[v]?.logo} busy={busy} onUpload={(f) => onUpload(v, 'logo', f)} onRemove={() => onRemoveAsset(v, 'logo')} />
               <AssetSlot label="QR" url={assets[v]?.qr} busy={busy} onUpload={(f) => onUpload(v, 'qr', f)} onRemove={() => onRemoveAsset(v, 'qr')} />
               <button

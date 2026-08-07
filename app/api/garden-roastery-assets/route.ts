@@ -64,6 +64,28 @@ export async function POST(req: Request) {
   return NextResponse.json(assets);
 }
 
+// 로스터리 이름 변경 시 자산 키 이동: { from, to }
+export async function PATCH(req: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+
+  const { from, to } = await req.json();
+  const f = String(from ?? '').trim();
+  const t = String(to ?? '').trim();
+  if (!f || !t) return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+
+  const assets = await readAssets();
+  if (assets[f]) {
+    assets[t] = { ...assets[f], ...assets[t] };
+    delete assets[f];
+    await writeAssets(assets);
+  }
+  return NextResponse.json(assets);
+}
+
 // 이미지 제거: { roastery, kind }
 export async function DELETE(req: Request) {
   const supabase = await createClient();
