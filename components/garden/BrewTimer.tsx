@@ -122,7 +122,8 @@ export default function BrewTimer({
           recipe.doseG != null ? `도징 ${recipe.doseG}g` : null,
           totalWater ? `물 ${totalWater}g` : null,
           recipe.tempC != null ? `${recipe.tempC}°C` : null,
-          recipe.grindMesh != null ? `mesh ${recipe.grindMesh.toFixed(1)}` : null,
+          // 지점 라벨 필수 — 판교 다이얼로 오인해 그대로 복사하는 사고 방지 (레시피 mesh는 양재천 기준)
+          recipe.grindMesh != null ? `양재천 mesh ${recipe.grindMesh.toFixed(1)}` : null,
           maxSec ? `최대 ${recipe.totalTime}` : null,
         ]
           .filter(Boolean)

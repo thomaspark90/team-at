@@ -2,7 +2,8 @@ import { get, put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { STORES } from '@/lib/types';
 import type { CalibrationCheck, CheckStatus } from '@/lib/calibration-checks';
-import { periodOf, BASELINE_UM, DRIFT_TOLERANCE_UM, memoMicron } from '@/lib/calibration-checks';
+import { periodOf, BASELINE_UM, BASELINE_DATE, DRIFT_TOLERANCE_UM, memoMicron } from '@/lib/calibration-checks';
+import { latestAlignmentDate, type AlignmentEvent } from '@/lib/grinder-alignments';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { notifyGardenEvent } from '@/lib/notify';
@@ -10,7 +11,19 @@ import { topicEmails } from '@/lib/garden-notify-topics-server';
 import { requireGardenTab } from '@/lib/access/guard';
 
 const DATA_PATH = 'data/garden-calibration-checks.json';
+const ALIGN_PATH = 'data/garden-grinder-alignments.json';
 const STATUSES: CheckStatus[] = ['todo', 'doing', 'done'];
+
+async function readAlignments(): Promise<AlignmentEvent[]> {
+  const res = await get(ALIGN_PATH, { access: 'private', useCache: false });
+  if (!res) return [];
+  try {
+    const parsed = JSON.parse(await new Response(res.stream).text()) as { events?: AlignmentEvent[] };
+    return parsed.events ?? [];
+  } catch {
+    return [];
+  }
+}
 
 async function readStore(): Promise<{ checks: CalibrationCheck[] }> {
   const res = await get(DATA_PATH, { access: 'private', useCache: false });
@@ -107,15 +120,21 @@ export async function POST(req: Request) {
       const me = (user.email ?? '').toLowerCase();
       const emails = (await topicEmails(supabase, 'calibration')).filter((e) => e !== me);
       const um = memoMicron(check.memo);
+      // 기준선(07-16) 이후 해당 지점 얼라인이 있었으면 그라인더 상태가 바뀐 것 —
+      // 낡은 기준선과 비교해 오경보를 내지 않고 판정을 보류한다.
+      const lastAlign = latestAlignmentDate(await readAlignments(), check.store);
+      const baselineValid = !lastAlign || lastAlign <= BASELINE_DATE;
       const base = BASELINE_UM[check.store];
-      const drift = um != null ? Math.round((um - base) * 10) / 10 : null;
+      const drift = um != null && baselineValid ? Math.round((um - base) * 10) / 10 : null;
       const isDrift = drift != null && Math.abs(drift) > DRIFT_TOLERANCE_UM;
       const by = me.split('@')[0];
       const head = isDrift ? '⚠ 드리프트 감지' : '드리프트 체크 완료';
       const driftLine =
         drift != null
           ? `측정 ${um}µm — 기준선 ${base}µm 대비 ${drift > 0 ? '+' : ''}${drift}µm ${isDrift ? '(허용 ±' + DRIFT_TOLERANCE_UM + 'µm 초과, 재캘리브레이션 검토)' : '(정상 범위)'}`
-          : check.memo ?? '';
+          : um != null && !baselineValid
+            ? `측정 ${um}µm — ${lastAlign} 재얼라인 이후 새 기준선 미설정, 드리프트 판정 보류`
+            : check.memo ?? '';
       await notifyGardenEvent(supabase, {
         emails,
         subject: `[${head}] ${label} · ${check.periodLabel}`,

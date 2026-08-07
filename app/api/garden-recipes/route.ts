@@ -63,6 +63,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '원두 정보가 없습니다.' }, { status: 400 });
   }
 
+  // 분쇄도(양재천 EK43 다이얼) 서버 검증 — pangyo-mesh 라우트와 동일 정책(4.0~13.0, 0.1 단위).
+  // 구 기록 텍스트 파싱 오염('EK43'의 43 등) 같은 범위 밖 값이 영속되는 것을 막는다.
+  let grindMesh: number | null = null;
+  if (body.grindMesh != null && body.grindMesh !== '') {
+    const m = Number(body.grindMesh);
+    if (!Number.isFinite(m) || m < 4 || m > 13) {
+      return NextResponse.json({ error: '분쇄도(mesh)는 4.0~13.0 범위의 숫자여야 합니다.' }, { status: 400 });
+    }
+    grindMesh = Math.round(m * 10) / 10;
+  }
+
   const store = await readStore();
   const brewType = brewTypeOf(body.brewType);
   const recipe: DripRecipe = {
@@ -74,7 +85,7 @@ export async function POST(req: Request) {
     pours: Array.isArray(body.pours) && body.pours.length > 0 ? body.pours : null,
     tempC: body.tempC ?? null,
     grind: body.grind ?? '',
-    grindMesh: body.grindMesh ?? null,
+    grindMesh,
     totalTime: body.totalTime ?? '',
     notes: body.notes ?? '',
     presetId: body.presetId ?? null,

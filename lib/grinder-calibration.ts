@@ -66,7 +66,10 @@ export const calibrationReady = (profiles: GrinderProfiles, a: StoreId, b: Store
 // → 판교가 -186.6µm 가늘게 갈림 (docs/garden-grind-calibration-log.md).
 // 다이얼→µm 기울기는 미실측이라 EK43 통상 범위(90~120µm/다이얼 1.0)로 잠정 범위를 낸다.
 // 판교 8.0 실측으로 기울기가 확정되면 profiles 기반 convertDial이 우선 적용된다.
+// ⚠ 이 오프셋은 측정일(아래 상수) 기준 — 그 뒤에 어느 지점이든 얼라인먼트가 기록되면
+//   그라인더 상태가 바뀐 것이므로 폴백을 쓰지 않고 '재측정 필요'로 표시한다.
 export const MEASURED_OFFSET_UM_20260716 = 186.6;
+export const OFFSET_MEASURED_DATE = '2026-07-16';
 const EK43_SLOPE_RANGE: [number, number] = [120, 90]; // µm per 다이얼 1.0 (좁은 추정 → 넓은 추정)
 
 const round1 = (v: number) => Math.round(v * 10) / 10;
@@ -78,14 +81,22 @@ export function pangyoDialRange(yangjaeDial: number): { min: number; max: number
   };
 }
 
-// 표기용 판교 다이얼 — 피팅 준비 시 확정값(convertDial), 아니면 실측 오프셋 기반 잠정 범위
+// 지점별 최근 얼라인 날짜(YYYY-MM-DD) — 오프셋 측정일 이후 얼라인이 있으면 폴백 무효
+export type LatestAlignments = Partial<Record<StoreId, string | null>>;
+const offsetStale = (align?: LatestAlignments) =>
+  !!align && Object.values(align).some((d) => !!d && d > OFFSET_MEASURED_DATE);
+
+// 표기용 판교 다이얼 — 피팅 준비 시 확정값(convertDial), 아니면 실측 오프셋 기반 잠정 범위.
+// 오프셋 측정일 이후 얼라인이 있으면(stale) 낡은 값 대신 재측정 안내를 반환한다.
 export function pangyoDialText(
   profiles: GrinderProfiles,
-  yangjaeDial: number
-): { text: string; provisional: boolean } | null {
+  yangjaeDial: number,
+  latestAlignments?: LatestAlignments
+): { text: string; provisional: boolean; stale?: boolean } | null {
   if (!Number.isFinite(yangjaeDial)) return null;
   const exact = convertDial(profiles, 'yangjae', 'pangyo', yangjaeDial);
   if (exact != null) return { text: exact.toFixed(1), provisional: false };
+  if (offsetStale(latestAlignments)) return { text: '재측정 필요', provisional: true, stale: true };
   const { min, max } = pangyoDialRange(yangjaeDial);
   return { text: `${min.toFixed(1)}~${max.toFixed(1)}`, provisional: true };
 }

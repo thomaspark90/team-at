@@ -37,7 +37,8 @@ export async function GET() {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   {
-    const denied = await requireGardenTab(supabase, user, 'calibration');
+    // 조회는 대시보드·레시피도 허용 — 판교 환산 폴백(07-16 오프셋)의 유효성 판정에 필요
+    const denied = await requireGardenTab(supabase, user, ['calibration', 'dashboard', 'recipes']);
     if (denied) return denied;
   }
 

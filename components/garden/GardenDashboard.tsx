@@ -11,6 +11,7 @@ import BrewTimer from '@/components/garden/BrewTimer';
 import { toast } from '@/components/Toast';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import { pangyoDialText } from '@/lib/grinder-calibration';
+import { latestAlignmentDate, type AlignmentEvent } from '@/lib/grinder-alignments';
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 const fmtDate = (iso: string) => {
@@ -90,10 +91,13 @@ const houseHint = (bt: BrewType) => {
   return p ? applyPreset(p).notes : '';
 };
 
-// 구 기록의 분쇄도 텍스트(예: 'EK43(양재천) 6.5')에서 수치만 추출
+// 구 기록의 분쇄도 텍스트(예: 'EK43(양재천) 6.5')에서 수치만 추출.
+// 첫 숫자를 그대로 잡으면 'EK43'의 43이 걸리므로, EK43 다이얼로 말이 되는
+// 범위(4~13)의 숫자만 mesh로 인정한다.
 const meshFromLegacy = (grind: string) => {
-  const m = grind.match(/\d+(\.\d+)?/);
-  return m ? m[0] : '';
+  const nums = (grind.match(/\d+(\.\d+)?/g) ?? []).map(Number);
+  const mesh = nums.find((n) => n >= 4 && n <= 13);
+  return mesh != null ? String(mesh) : '';
 };
 
 const draftFromRecipe = (r: DripRecipe): Draft => ({
@@ -174,6 +178,8 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   const [timerFor, setTimerFor] = useState<{ bean: string; brewType: BrewType; recipe: DripRecipe } | null>(null);
   // 지점별 그라인더 측정 프로파일 (분쇄도 지점 간 환산용)
   const [grinderProfiles, setGrinderProfiles] = useState<GrinderProfiles>({});
+  // 얼라인먼트 이력 — 07-16 오프셋 폴백이 아직 유효한지 판정용 (실패해도 화면은 동작)
+  const [alignments, setAlignments] = useState<AlignmentEvent[]>([]);
   // 미설정 원두 삭제 진행 중인 beanKey
   const [deletingBean, setDeletingBean] = useState<string | null>(null);
   // 국가 필터 칩 (recipes 모드)
@@ -193,6 +199,9 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       if (gRes.ok) setGrinderProfiles(await gRes.json());
       // 조회 실패 시 빈 화면이 "레시피 없음"으로 오해되지 않게 알린다
       if (![pRes, rRes, bRes, gRes].every((r) => r.ok)) toast('일부 데이터를 불러오지 못했어요. 새로고침해 주세요.', 'error');
+      // 얼라인먼트는 부가 정보 — 권한이 없거나 실패해도 조용히 넘어간다
+      const aRes = await fetch('/api/garden-grinder-alignments', { cache: 'no-store' }).catch(() => null);
+      if (aRes?.ok) setAlignments(await aRes.json());
     } catch {
       toast('데이터를 불러오지 못했어요. 네트워크를 확인해 주세요.', 'error');
     }
@@ -237,11 +246,21 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   const stockOfBean = (beanKey: string, storeId: StoreId) => stockOf(metaByBean.get(beanKey), storeId);
 
   // 레시피 분쇄도(양재천 EK43 기준) → 판교 EK43 표기 — 피팅 준비 시 확정값,
-  // 아니면 2026-07-16 실측 오프셋 기반 잠정 범위(*)로 폴백
+  // 아니면 2026-07-16 실측 오프셋 기반 잠정 범위(*)로 폴백.
+  // 오프셋 측정일 이후 얼라인이 있으면 낡은 범위 대신 '재측정 필요'를 표시한다.
+  const latestAligns = useMemo(
+    () => ({
+      yangjae: latestAlignmentDate(alignments, 'yangjae'),
+      pangyo: latestAlignmentDate(alignments, 'pangyo'),
+    }),
+    [alignments]
+  );
   const pangyoMeshText = (mesh: number | null | undefined) => {
     if (mesh == null) return null;
-    const p = pangyoDialText(grinderProfiles, mesh);
-    return p ? `${p.text}${p.provisional ? '*' : ''}` : null;
+    const p = pangyoDialText(grinderProfiles, mesh, latestAligns);
+    if (!p) return null;
+    if (p.stale) return '재측정 필요';
+    return `${p.text}${p.provisional ? '*' : ''}`;
   };
 
   // 국가별 섹션 (recipes 모드) — 모든 레시피 원두(재고 유무 무관), 국가 가나다순 · '기타' 맨 뒤,
@@ -876,7 +895,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                   ›
                 </button>
               </div>
-              {draft.grindMesh && pangyoMeshText(Number(draft.grindMesh)) != null && (
+              {draft.grindMesh && pangyoMeshText(Number(draft.grindMesh)) === '재측정 필요' && (
+                <p className="text-[12px] text-muted-foreground" style={{ margin: '4px 0 0' }}>
+                  판교점 EK43 환산 — 재얼라인 이후 재측정 필요 (6/8/10 프로토콜 측정을 올려주세요)
+                </p>
+              )}
+              {draft.grindMesh && pangyoMeshText(Number(draft.grindMesh)) != null && pangyoMeshText(Number(draft.grindMesh)) !== '재측정 필요' && (
                 <span className="tabular text-[11px] text-muted-foreground">
                   판교점 EK43 환산 ≈ {pangyoMeshText(Number(draft.grindMesh))}
                 </span>
@@ -1030,8 +1054,8 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
           {!loading && beanGroups.length > 0 && (
             <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>
-              판교 분쇄도는 2026-07-16 지점 캘리브레이션 실측(동일 다이얼에서 판교가 약 187µm 가늘게 분쇄)
-              기반 환산값입니다. <strong>*</strong>는 잠정 범위(기울기 실측 전) —{' '}
+              판교 분쇄도는 지점 캘리브레이션 실측 기반 환산값입니다. <strong>*</strong>는 잠정 범위(기울기 실측 전),
+              &lsquo;재측정 필요&rsquo;는 재얼라인 이후 새 측정이 아직 없다는 뜻입니다 —{' '}
               <Link href="/garden/calibration/report" className="underline hover:text-foreground">
                 리포트 보기
               </Link>

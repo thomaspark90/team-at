@@ -22,8 +22,11 @@ export const CHECK_COLUMNS: { status: CheckStatus; label: string }[] = [
   { status: 'done', label: '완료' },
 ];
 
-// 2026-07-16 캘리브레이션 기준선 (다이얼 6.5, 배전도 3종 × 3샷 = 9샷 평균) — 드리프트 판정용
+// 2026-07-16 캘리브레이션 기준선 (다이얼 6.5, 배전도 3종 × 3샷 = 9샷 평균) — 드리프트 판정용.
+// ⚠ 이 기준선은 측정일(BASELINE_DATE) 기준 — 그 뒤에 해당 지점 얼라인먼트가 기록되면
+//   그라인더 상태가 바뀐 것이므로 비교하지 않는다(새 기준선 측정 전까지 판정 보류).
 export const BASELINE_UM: Record<StoreId, number> = { yangjae: 915.1, pangyo: 728.5 };
+export const BASELINE_DATE = '2026-07-16';
 // 샷 간 반복성(SD 8~15µm) 기준 정상 오차 한계 — 초과 시 드리프트 경고
 export const DRIFT_TOLERANCE_UM = 30;
 

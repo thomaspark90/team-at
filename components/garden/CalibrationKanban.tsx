@@ -65,10 +65,10 @@ export default function CalibrationKanban() {
       {open && (
         <div className="ta-card bg-background min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
-            버 마모로 캘리브레이션이 틀어지지 않는지 반월마다 확인합니다 — 기준 원두를{' '}
-            <strong>다이얼 6.5, 1~2샷</strong> 컴퍼스로 측정해{' '}
+            버 마모로 캘리브레이션이 틀어지지 않는지 반월마다 확인합니다 — 현행 프로토콜인{' '}
+            <strong>다이얼 6/8/10 × 3샷</strong>으로 측정해{' '}
             <a href="/garden/calibration" className="underline hover:text-foreground">분쇄도 측정</a>에 올린 뒤
-            카드를 완료로 옮겨주세요. (양재천 기준선 915µm, 판교 729µm — 2026-07-16)
+            카드를 완료로 옮겨주세요. (기준선은 각 지점의 최근 얼라인 이후 측정으로 갱신됩니다)
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
