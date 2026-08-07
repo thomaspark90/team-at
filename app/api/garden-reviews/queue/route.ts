@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { REVIEW_POST_GRACE_MS } from '@/lib/garden/review-constants';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -21,7 +22,7 @@ const authed = (req: Request) => {
 
 // 승인 후 이 시간이 지나야 게시 대상에 포함된다 — 그 사이 매니저가 수정·재승인할 수 있는 유예 창.
 // 재승인하면 approved_at이 갱신되어 유예도 다시 1시간부터 센다.
-const GRACE_MS = 60 * 60 * 1000;
+const GRACE_MS = REVIEW_POST_GRACE_MS;
 
 /** 게시 대기(승인 완료 + 유예 경과) 목록 */
 export async function GET(req: Request) {
@@ -55,7 +56,10 @@ export async function POST(req: Request) {
     ? { status: 'posted', posted_at: new Date().toISOString(), post_error: null }
     : { post_error: String(body?.error ?? '알 수 없는 오류').slice(0, 300) };
 
-  const { error } = await supabase.from('place_reviews').update(patch).eq('id', id);
+  // 게시 완료 보고는 여전히 승인 상태인 행에만 적용 — 그 사이 취소·재선택된 행을
+  // 무조건 posted로 덮어 '게시됐는데 확정 답글 없음' 상태가 생기는 것을 막는다.
+  const q = supabase.from('place_reviews').update(patch).eq('id', id);
+  const { error } = body?.ok ? await q.eq('status', 'approved') : await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

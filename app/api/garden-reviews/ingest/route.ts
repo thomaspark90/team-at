@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { draftReply } from '@/lib/garden/review-draft';
+import { classifyIssue } from '@/lib/garden/review-issue';
 import { notifyGardenEvent } from '@/lib/notify';
 import { topicEmails } from '@/lib/garden-notify-topics-server';
 
@@ -65,9 +66,15 @@ export async function POST(req: Request) {
     return true;
   });
 
-  if (fresh.length === 0) {
-    return NextResponse.json({ saved: 0, duplicates: valid.length, drafted: 0 });
-  }
+  // 이전 실행에서 초안을 만들지 못하고 남은 대기분(429·키 미설정·상한 초과) —
+  // 새 리뷰가 없어도 이번 실행 예산으로 재시도한다. (신규 적재 전에 조회하므로 신규분과 겹치지 않음)
+  const { data: leftoverData } = await supabase
+    .from('place_reviews')
+    .select('review_id, store_key, rating, content, keywords, visit_count, photo_count')
+    .eq('status', 'new')
+    .order('reviewed_at', { ascending: true })
+    .limit(DRAFT_LIMIT);
+  const leftover = leftoverData ?? [];
 
   const rows = fresh.map((r) => ({
     review_id: r.review_id,
@@ -85,17 +92,20 @@ export async function POST(req: Request) {
     status: r.had_reply ? 'replied_elsewhere' : 'new',
   }));
 
-  const { error: insErr } = await supabase.from('place_reviews').insert(rows);
-  if (insErr) {
-    return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
+  if (rows.length > 0) {
+    const { error: insErr } = await supabase.from('place_reviews').insert(rows);
+    if (insErr) {
+      return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
+    }
   }
 
-  // 답글 없는 신규 리뷰에 초안 생성 — 실패해도 적재는 유지(다음 실행에서 재시도 가능)
+  // 답글 없는 리뷰에 초안 생성 — 신규분 우선, 남는 예산으로 이전 실행의 대기분 재시도
   let drafted = 0;
   const issueFound: { store_key: string; rating: number | null; note: string | null; categories: string[] }[] = [];
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
-    const targets = rows.filter((r) => r.status === 'new').slice(0, DRAFT_LIMIT);
+    const freshNew = rows.filter((r) => r.status === 'new');
+    const targets = [...freshNew, ...leftover].slice(0, DRAFT_LIMIT);
     // 사장님이 확정해 게시한 최근 답글들 — 새 초안의 길이·결 기준으로 프롬프트에 전달
     const { data: exRows } = await supabase
       .from('place_reviews')
@@ -126,6 +136,23 @@ export async function POST(req: Request) {
         if (draft.issue) {
           issueFound.push({ store_key: r.store_key, rating: r.rating, note: draft.issueNote, categories: draft.issueCategories });
         }
+      }
+    }
+
+    // 이미 답글이 달린 채 수집된 리뷰(replied_elsewhere) — 답글 초안은 필요 없지만
+    // 본문에 불만이 담겼을 수 있으므로 이슈 분류·알림은 동일하게 태운다
+    const repliedTargets = rows
+      .filter((r) => r.status === 'replied_elsewhere' && (r.content ?? '').trim())
+      .slice(0, 5);
+    for (const r of repliedTargets) {
+      const result = await classifyIssue(r, geminiKey);
+      if (!result) continue; // 실패 — 미분류로 남겨 백필에서 재시도
+      const { error } = await supabase
+        .from('place_reviews')
+        .update({ issue: result.issue, issue_note: result.note, issue_categories: result.categories })
+        .eq('review_id', r.review_id);
+      if (!error && result.issue) {
+        issueFound.push({ store_key: r.store_key, rating: r.rating, note: result.note, categories: result.categories });
       }
     }
   }
@@ -166,6 +193,9 @@ export async function POST(req: Request) {
     saved: rows.length,
     duplicates: valid.length - rows.length,
     drafted,
-    pendingDraft: rows.filter((r) => r.status === 'new').length - drafted,
+    pendingDraft: Math.max(
+      0,
+      rows.filter((r) => r.status === 'new').length + leftover.length - drafted
+    ),
   });
 }

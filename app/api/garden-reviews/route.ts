@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { draftReply } from '@/lib/garden/review-draft';
+import { REVIEW_POST_GRACE_MS } from '@/lib/garden/review-constants';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -39,8 +40,9 @@ export async function GET(req: Request) {
     const db = g.supabase.schema('finance');
     const [{ count: nullCount }, { count: catCount }] = await Promise.all([
       db.from('place_reviews').select('id', { count: 'exact', head: true }).is('issue', null),
+      // 수동 정정 건은 카테고리 보완 대상이 아니므로 제외 (classify 라우트와 동일 기준)
       db.from('place_reviews').select('id', { count: 'exact', head: true })
-        .eq('issue', true).is('issue_categories', null).not('content', 'is', null),
+        .eq('issue', true).is('issue_categories', null).is('issue_source', null).not('content', 'is', null),
     ]);
     return NextResponse.json({ reviews: data ?? [], unclassified: (nullCount ?? 0) + (catCount ?? 0) });
   }
@@ -75,7 +77,17 @@ export async function PATCH(req: Request) {
   const { data: review } = await g.supabase
     .schema('finance').from('place_reviews').select('*').eq('id', id).single();
   if (!review) return NextResponse.json({ error: '리뷰를 찾을 수 없습니다.' }, { status: 404 });
-  if (review.status === 'posted') return NextResponse.json({ error: '이미 게시된 답글입니다.' }, { status: 409 });
+
+  // 답글 관련 액션의 상태 전이 가드 — 이슈 정정(set_issue)은 상태와 무관하게 허용.
+  // replied_elsewhere(외부에 이미 답글 있음)를 승인하면 중복 답글이 게시되므로 막는다.
+  if (['approve', 'skip', 'redraft', 'cancel'].includes(action)) {
+    if (review.status === 'posted') {
+      return NextResponse.json({ error: '이미 게시된 답글입니다.' }, { status: 409 });
+    }
+    if (action !== 'cancel' && !['new', 'drafted'].includes(review.status)) {
+      return NextResponse.json({ error: '이미 처리된 리뷰입니다. 새로고침 후 확인해주세요.' }, { status: 409 });
+    }
+  }
 
   if (action === 'redraft') {
     const key = process.env.GEMINI_API_KEY;
@@ -147,9 +159,14 @@ export async function PATCH(req: Request) {
   }
 
   // 승인 취소 — 게시 유예(1시간) 안에만 가능. 다시 선택·수정할 수 있는 상태로 되돌린다.
+  // 유예가 지나면 게시기가 이미 답글을 가져갔을 수 있어(경합) 서버에서도 시간을 검사한다.
   if (action === 'cancel') {
     if (review.status !== 'approved') {
       return NextResponse.json({ error: '승인 상태인 답글만 취소할 수 있습니다.' }, { status: 409 });
+    }
+    const approvedAt = review.approved_at ? new Date(review.approved_at).getTime() : 0;
+    if (Date.now() - approvedAt > REVIEW_POST_GRACE_MS) {
+      return NextResponse.json({ error: '게시 유예(1시간)가 지나 취소할 수 없습니다. 게시가 진행 중일 수 있어요.' }, { status: 409 });
     }
     const { data } = await g.supabase.schema('finance').from('place_reviews')
       .update({ status: 'drafted', reply_text: null, approved_by: null, approved_at: null, approved_tone: null, post_error: null })

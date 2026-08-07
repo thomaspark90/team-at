@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ISSUE_CATEGORIES } from '@/lib/garden/review-issue';
+import { REVIEW_POST_GRACE_MS } from '@/lib/garden/review-constants';
 
 type DraftVariant = { tone: string; label: string; text: string };
 
@@ -50,8 +51,8 @@ const TABS = [
 // 이슈 뱃지 색 — 경고성 정보라 에러(#c0392b)보다 낮은 온도의 앰버 계열
 const ISSUE_COLOR = '#b45309';
 
-// 승인 후 게시까지의 유예 시간 — 서버(queue API)의 GRACE_MS와 맞춘다
-const GRACE_MS = 60 * 60 * 1000;
+// 승인 후 게시까지의 유예 시간 — 서버(queue·cancel)와 단일 상수를 공유한다
+const GRACE_MS = REVIEW_POST_GRACE_MS;
 
 const postEta = (approvedAt: string | null) => {
   if (!approvedAt) return null;
