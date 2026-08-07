@@ -28,6 +28,7 @@ create table if not exists finance.place_reviews (
   draft_model   text,
   draft_at      timestamptz,
   reply_text    text,                          -- 매니저가 확정한 답글 본문
+  approved_tone text,                          -- 확정한 톤 (kind/plain/grateful)
   approved_by   text,
   approved_at   timestamptz,
   posted_at     timestamptz,
@@ -75,6 +76,7 @@ create policy "reviews team update" on finance.place_reviews
 
 -- 기존 테이블에 톤 3종 추천안 컬럼 추가 (2026-08-07)
 alter table finance.place_reviews add column if not exists draft_variants jsonb;
+alter table finance.place_reviews add column if not exists approved_tone text;
 
 -- status 값 오타 방지
 alter table finance.place_reviews drop constraint if exists place_reviews_status_chk;

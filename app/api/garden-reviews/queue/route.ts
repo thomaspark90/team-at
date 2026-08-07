@@ -19,7 +19,11 @@ const authed = (req: Request) => {
   return !!token && req.headers.get('x-review-token') === token;
 };
 
-/** 게시 대기(승인 완료) 목록 */
+// 승인 후 이 시간이 지나야 게시 대상에 포함된다 — 그 사이 매니저가 수정·재승인할 수 있는 유예 창.
+// 재승인하면 approved_at이 갱신되어 유예도 다시 1시간부터 센다.
+const GRACE_MS = 60 * 60 * 1000;
+
+/** 게시 대기(승인 완료 + 유예 경과) 목록 */
 export async function GET(req: Request) {
   if (!authed(req)) return NextResponse.json({ error: '인증 실패' }, { status: 401 });
   const supabase = client();
@@ -29,6 +33,7 @@ export async function GET(req: Request) {
     .from('place_reviews')
     .select('id, review_id, store_key, place_id, reply_text')
     .eq('status', 'approved')
+    .lte('approved_at', new Date(Date.now() - GRACE_MS).toISOString())
     .order('approved_at', { ascending: true })
     .limit(30);
 

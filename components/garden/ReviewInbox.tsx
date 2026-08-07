@@ -19,6 +19,8 @@ type Review = {
   draft_variants: DraftVariant[] | null;
   reply_text: string | null;
   status: string;
+  approved_tone: string | null;
+  approved_at: string | null;
   posted_at: string | null;
   post_error: string | null;
 };
@@ -39,13 +41,47 @@ const TABS = [
   { key: 'all', label: '전체' },
 ];
 
+// 승인 후 게시까지의 유예 시간 — 서버(queue API)의 GRACE_MS와 맞춘다
+const GRACE_MS = 60 * 60 * 1000;
+
+const postEta = (approvedAt: string | null) => {
+  if (!approvedAt) return null;
+  const eta = new Date(new Date(approvedAt).getTime() + GRACE_MS);
+  return `${String(eta.getHours()).padStart(2, '0')}:${String(eta.getMinutes()).padStart(2, '0')}`;
+};
+
 export default function ReviewInbox() {
   const [tab, setTab] = useState('open');
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [drafts, setDrafts] = useState<Record<number, string>>({});
+  // 톤별 편집 텍스트: texts[id][tone] / 톤 미제공(구형) 리뷰는 single[id]
+  const [texts, setTexts] = useState<Record<number, Record<string, string>>>({});
+  const [single, setSingle] = useState<Record<number, string>>({});
+  const [sel, setSel] = useState<Record<number, string | undefined>>({});
   const [busy, setBusy] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const seed = useCallback((list: Review[]) => {
+    const t: Record<number, Record<string, string>> = {};
+    const sg: Record<number, string> = {};
+    const s: Record<number, string | undefined> = {};
+    for (const r of list) {
+      if (r.draft_variants?.length) {
+        t[r.id] = Object.fromEntries(
+          r.draft_variants.map((v) => [
+            v.tone,
+            r.approved_tone === v.tone && r.reply_text ? r.reply_text : v.text,
+          ]),
+        );
+        if (r.approved_tone) s[r.id] = r.approved_tone;
+      } else {
+        sg[r.id] = r.reply_text ?? r.draft ?? '';
+      }
+    }
+    setTexts(t);
+    setSingle(sg);
+    setSel(s);
+  }, []);
 
   const load = useCallback(async (t: string) => {
     setLoading(true);
@@ -55,38 +91,45 @@ export default function ReviewInbox() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? '불러오지 못했습니다.');
       setReviews(json.reviews);
-      setDrafts(
-        Object.fromEntries(
-          (json.reviews as Review[]).map((r) => [r.id, r.reply_text ?? r.draft ?? '']),
-        ),
-      );
+      seed(json.reviews);
     } catch (e) {
       setError(e instanceof Error ? e.message : '불러오지 못했습니다.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [seed]);
 
   useEffect(() => { load(tab); }, [tab, load]);
 
-  const act = async (id: number, action: 'approve' | 'skip' | 'redraft') => {
-    setBusy(id);
+  const act = async (r: Review, action: 'approve' | 'skip' | 'redraft' | 'cancel') => {
+    setBusy(r.id);
     setError('');
     try {
+      const tone = sel[r.id];
+      const text = r.draft_variants?.length
+        ? (tone ? texts[r.id]?.[tone] ?? '' : '')
+        : single[r.id] ?? '';
       const res = await fetch('/api/garden-reviews', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id, action, text: drafts[id] ?? '' }),
+        body: JSON.stringify({ id: r.id, action, text, tone }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? '처리에 실패했습니다.');
       const updated: Review = json.review;
       setReviews((prev) =>
         tab === 'open' && ['skipped', 'posted'].includes(updated.status)
-          ? prev.filter((r) => r.id !== id)
-          : prev.map((r) => (r.id === id ? updated : r)),
+          ? prev.filter((x) => x.id !== r.id)
+          : prev.map((x) => (x.id === r.id ? updated : x)),
       );
-      if (action === 'redraft') setDrafts((d) => ({ ...d, [id]: updated.draft ?? '' }));
+      if (action === 'redraft' && updated.draft_variants?.length) {
+        setTexts((t) => ({
+          ...t,
+          [r.id]: Object.fromEntries(updated.draft_variants!.map((v) => [v.tone, v.text])),
+        }));
+        setSel((s) => ({ ...s, [r.id]: undefined }));
+      }
+      if (action === 'cancel') setSel((s) => ({ ...s, [r.id]: undefined }));
     } catch (e) {
       setError(e instanceof Error ? e.message : '처리에 실패했습니다.');
     } finally {
@@ -118,7 +161,9 @@ export default function ReviewInbox() {
 
       <div className="flex flex-col gap-3">
         {reviews.map((r) => {
-          const editable = !['posted', 'skipped', 'replied_elsewhere'].includes(r.status);
+          const pending = ['new', 'drafted'].includes(r.status);
+          const approved = r.status === 'approved';
+          const hasVariants = !!r.draft_variants?.length;
           return (
             <article key={r.id} className="rounded-lg border border-border bg-card/40" style={{ padding: 16 }}>
               <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground" style={{ marginBottom: 8 }}>
@@ -140,33 +185,81 @@ export default function ReviewInbox() {
                 </p>
               )}
 
-              {editable ? (
+              {/* 선택 모드 — 톤 3종을 나란히 보여주고 토글로 하나를 고른 뒤 확정 */}
+              {pending && hasVariants && (
                 <>
-                  {!!r.draft_variants?.length && (
-                    <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 8 }}>
-                      <span className="text-[12px] text-muted-foreground">추천 문구</span>
-                      {r.draft_variants.map((v) => {
-                        const selected = (drafts[r.id] ?? '') === v.text;
-                        return (
+                  <div className="grid gap-2 sm:grid-cols-3" style={{ marginBottom: 8 }}>
+                    {r.draft_variants!.map((v) => {
+                      const selected = sel[r.id] === v.tone;
+                      return (
+                        <div
+                          key={v.tone}
+                          className={`rounded-md border transition-colors ${
+                            selected ? 'border-foreground' : 'border-border'
+                          }`}
+                          style={{ padding: 10 }}
+                        >
                           <button
-                            key={v.tone}
-                            onClick={() => setDrafts((d) => ({ ...d, [r.id]: v.text }))}
+                            onClick={() => setSel((s) => ({ ...s, [r.id]: selected ? undefined : v.tone }))}
                             className={`rounded-full border text-[12px] transition-colors ${
                               selected
                                 ? 'border-foreground bg-foreground text-background'
                                 : 'border-border text-muted-foreground hover:text-foreground'
                             }`}
-                            style={{ padding: '3px 10px' }}
+                            style={{ padding: '3px 12px', marginBottom: 8 }}
                           >
                             {v.label}
                           </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                          <textarea
+                            value={texts[r.id]?.[v.tone] ?? ''}
+                            onChange={(e) =>
+                              setTexts((t) => ({ ...t, [r.id]: { ...t[r.id], [v.tone]: e.target.value } }))
+                            }
+                            rows={5}
+                            className="w-full rounded-md border border-border bg-background text-[13px]"
+                            style={{ padding: 8, resize: 'vertical' }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={() => act(r, 'approve')}
+                      disabled={busy === r.id || !sel[r.id] || !(texts[r.id]?.[sel[r.id]!] ?? '').trim()}
+                      className="rounded-md bg-foreground text-background text-[13px] disabled:opacity-40"
+                      style={{ padding: '6px 14px' }}
+                    >
+                      확정
+                    </button>
+                    <button
+                      onClick={() => act(r, 'redraft')}
+                      disabled={busy === r.id}
+                      className="text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40"
+                    >
+                      초안 다시 생성
+                    </button>
+                    <button
+                      onClick={() => act(r, 'skip')}
+                      disabled={busy === r.id}
+                      className="text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40"
+                    >
+                      답글 안 달기
+                    </button>
+                    {busy === r.id && <span className="text-[12px] text-muted-foreground">처리 중…</span>}
+                    {!sel[r.id] && (
+                      <span className="text-[12px] text-muted-foreground">톤을 선택하면 확정할 수 있습니다.</span>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* 구형(톤 없음) 리뷰 — 단일 텍스트 편집 */}
+              {pending && !hasVariants && (
+                <>
                   <textarea
-                    value={drafts[r.id] ?? ''}
-                    onChange={(e) => setDrafts((d) => ({ ...d, [r.id]: e.target.value }))}
+                    value={single[r.id] ?? ''}
+                    onChange={(e) => setSingle((d) => ({ ...d, [r.id]: e.target.value }))}
                     rows={3}
                     placeholder="답글 초안"
                     className="w-full rounded-md border border-border bg-background text-[13px]"
@@ -174,22 +267,22 @@ export default function ReviewInbox() {
                   />
                   <div className="flex flex-wrap items-center gap-3" style={{ marginTop: 8 }}>
                     <button
-                      onClick={() => act(r.id, 'approve')}
-                      disabled={busy === r.id || !(drafts[r.id] ?? '').trim()}
+                      onClick={() => act(r, 'approve')}
+                      disabled={busy === r.id || !(single[r.id] ?? '').trim()}
                       className="rounded-md bg-foreground text-background text-[13px] disabled:opacity-40"
                       style={{ padding: '6px 14px' }}
                     >
-                      {r.status === 'approved' ? '수정 후 재승인' : '승인'}
+                      확정
                     </button>
                     <button
-                      onClick={() => act(r.id, 'redraft')}
+                      onClick={() => act(r, 'redraft')}
                       disabled={busy === r.id}
                       className="text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40"
                     >
                       초안 다시 생성
                     </button>
                     <button
-                      onClick={() => act(r.id, 'skip')}
+                      onClick={() => act(r, 'skip')}
                       disabled={busy === r.id}
                       className="text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40"
                     >
@@ -198,12 +291,62 @@ export default function ReviewInbox() {
                     {busy === r.id && <span className="text-[12px] text-muted-foreground">처리 중…</span>}
                   </div>
                 </>
-              ) : (
-                r.reply_text && (
-                  <p className="text-[13px] rounded-md bg-muted/40 whitespace-pre-wrap" style={{ padding: 10, margin: 0 }}>
-                    {r.reply_text}
-                  </p>
-                )
+              )}
+
+              {/* 확정 모드 — 선택안만 블랙, 나머지는 비활성. 유예 안에는 취소 가능 */}
+              {approved && (
+                <>
+                  {hasVariants ? (
+                    <div className="grid gap-2 sm:grid-cols-3" style={{ marginBottom: 8 }}>
+                      {r.draft_variants!.map((v) => {
+                        const isSel = r.approved_tone === v.tone;
+                        return (
+                          <div
+                            key={v.tone}
+                            className={`rounded-md ${
+                              isSel
+                                ? 'bg-foreground text-background'
+                                : 'border border-border opacity-40'
+                            }`}
+                            style={{ padding: 10 }}
+                          >
+                            <p className="text-[12px] font-medium" style={{ margin: '0 0 6px' }}>{v.label}</p>
+                            <p className="text-[13px] whitespace-pre-wrap" style={{ margin: 0 }}>
+                              {isSel ? r.reply_text ?? v.text : v.text}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    r.reply_text && (
+                      <p className="text-[13px] rounded-md bg-foreground text-background whitespace-pre-wrap" style={{ padding: 10, margin: '0 0 8px' }}>
+                        {r.reply_text}
+                      </p>
+                    )
+                  )}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={() => act(r, 'cancel')}
+                      disabled={busy === r.id}
+                      className="rounded-md border border-border text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      style={{ padding: '6px 14px' }}
+                    >
+                      취소
+                    </button>
+                    {busy === r.id && <span className="text-[12px] text-muted-foreground">처리 중…</span>}
+                    <span className="text-[12px] text-muted-foreground">
+                      {postEta(r.approved_at)} 이후 게시 예정 — 취소하면 다시 선택할 수 있습니다.
+                    </span>
+                  </div>
+                </>
+              )}
+
+              {/* 종료 상태 — 게시 완료 등은 확정 답글만 표시 */}
+              {!pending && !approved && r.reply_text && (
+                <p className="text-[13px] rounded-md bg-muted/40 whitespace-pre-wrap" style={{ padding: 10, margin: 0 }}>
+                  {r.reply_text}
+                </p>
               )}
 
               {r.post_error && (

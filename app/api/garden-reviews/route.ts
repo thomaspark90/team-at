@@ -75,16 +75,30 @@ export async function PATCH(req: Request) {
   if (action === 'approve') {
     const text = String(body?.text ?? '').trim();
     if (!text) return NextResponse.json({ error: '답글 내용을 입력해주세요.' }, { status: 400 });
+    const tone = ['kind', 'plain', 'grateful'].includes(String(body?.tone)) ? String(body.tone) : null;
     const { data } = await g.supabase.schema('finance').from('place_reviews')
       .update({
         reply_text: text.slice(0, 500),
         status: 'approved',
         approved_by: g.user.email ?? '',
         approved_at: new Date().toISOString(),
+        approved_tone: tone,
         post_error: null,
       })
       .eq('id', id).select('*').single();
     await logActivity(g.supabase, g.user, '리뷰 답글 승인', `${review.store_key} · ${text.slice(0, 40)}`);
+    return NextResponse.json({ review: data });
+  }
+
+  // 승인 취소 — 게시 유예(1시간) 안에만 가능. 다시 선택·수정할 수 있는 상태로 되돌린다.
+  if (action === 'cancel') {
+    if (review.status !== 'approved') {
+      return NextResponse.json({ error: '승인 상태인 답글만 취소할 수 있습니다.' }, { status: 409 });
+    }
+    const { data } = await g.supabase.schema('finance').from('place_reviews')
+      .update({ status: 'drafted', reply_text: null, approved_by: null, approved_at: null, approved_tone: null, post_error: null })
+      .eq('id', id).select('*').single();
+    await logActivity(g.supabase, g.user, '리뷰 답글 승인 취소', `${review.store_key} · ${String(review.reply_text ?? '').slice(0, 40)}`);
     return NextResponse.json({ review: data });
   }
 

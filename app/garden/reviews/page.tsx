@@ -14,7 +14,7 @@ export default function GardenReviewsPage() {
           네이버 리뷰 답글
         </h1>
         <p className="text-[13px] text-muted-foreground" style={{ margin: '0 0 20px' }}>
-          수집된 리뷰의 AI 초안을 확인·수정하고 승인하면, 다음 게시 주기에 스마트플레이스에 등록됩니다.
+          톤 3종 초안 중 하나를 골라 확정하면 1시간 뒤 스마트플레이스에 등록됩니다. 그 전에는 취소하고 다시 선택할 수 있습니다.
         </p>
         <ReviewInbox />
       </div>
