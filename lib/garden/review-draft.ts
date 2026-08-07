@@ -1,5 +1,8 @@
 // 리뷰 답글 초안 생성 — Gemini (finance/ai-classify 와 동일한 모델 폴백 전략)
 // 톤 3종(친절·담백·감사)을 한 번의 호출로 생성해 매니저가 골라 쓰게 한다.
+// 같은 호출에서 이슈(불만·개선 지적) 여부도 함께 분류한다 — 기준은 review-issue.ts 참고.
+
+import { ISSUE_RULE } from './review-issue';
 
 const MODELS = [
   'gemini-2.5-flash',
@@ -57,7 +60,10 @@ const VOICE = `너는 카페 '가든서비스'의 사장님이다. 방문자 리
 - plain(담백): 사실 위주로 차분하게. 다만 말끝은 굳지 않게 부드럽게 내려놓는다.
 - grateful(감사): 손님이 남긴 구체적인 내용에 대한 고마움이 중심. 격식보다 진심이 느껴지게.
 
-JSON 으로만 출력해라: {"kind":"...","plain":"...","grateful":"..."}`;
+아울러 이 리뷰가 '이슈 리뷰'인지도 함께 판정해라.
+${ISSUE_RULE}
+
+JSON 으로만 출력해라: {"kind":"...","plain":"...","grateful":"...","issue":true|false,"issue_note":"..."}`;
 
 const buildPrompt = (r: ReviewForDraft) => {
   const store = STORE_NAME[r.store_key] ?? '가든서비스';
@@ -80,11 +86,11 @@ const clean = (v: unknown) =>
     .trim()
     .slice(0, 500);
 
-/** 톤 3종 초안 생성. 실패하면 null (수집 자체는 계속 진행). */
+/** 톤 3종 초안 + 이슈 분류 생성. 실패하면 null (수집 자체는 계속 진행). */
 export async function draftReply(
   review: ReviewForDraft,
   apiKey: string,
-): Promise<{ text: string; variants: DraftVariant[]; model: string } | null> {
+): Promise<{ text: string; variants: DraftVariant[]; model: string; issue: boolean | null; issueNote: string | null } | null> {
   // gemini-2.5-* 는 thinking이 기본 on이라 maxOutputTokens를 사고에 먼저 써버려
   // 답글이 중간에 잘린다(실측). 초안 생성에는 사고가 필요 없으므로 끈다.
   const bodyFor = (model: string) =>
@@ -119,7 +125,10 @@ export async function draftReply(
         { tone: 'grateful', label: '감사', text: clean(parsed.grateful) },
       ].filter((v) => v.text) as DraftVariant[];
       if (variants.length === 0) continue;
-      return { text: variants[0].text, variants, model };
+      // 이슈 판정 — boolean이 아니면 미분류(null)로 남겨 백필에서 다시 시도하게 한다
+      const issue = typeof parsed.issue === 'boolean' ? parsed.issue : null;
+      const note = String(parsed.issue_note ?? '').trim().slice(0, 120);
+      return { text: variants[0].text, variants, model, issue, issueNote: issue && note ? note : null };
     } catch {
       /* 다음 모델로 폴백 */
     }

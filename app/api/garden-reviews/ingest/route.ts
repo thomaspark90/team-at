@@ -98,7 +98,15 @@ export async function POST(req: Request) {
       if (!draft) continue;
       const { error } = await supabase
         .from('place_reviews')
-        .update({ draft: draft.text, draft_variants: draft.variants, draft_model: draft.model, draft_at: new Date().toISOString(), status: 'drafted' })
+        .update({
+          draft: draft.text,
+          draft_variants: draft.variants,
+          draft_model: draft.model,
+          draft_at: new Date().toISOString(),
+          status: 'drafted',
+          issue: draft.issue,
+          issue_note: draft.issueNote,
+        })
         .eq('review_id', r.review_id);
       if (!error) drafted++;
     }

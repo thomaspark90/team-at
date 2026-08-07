@@ -23,6 +23,27 @@ export async function GET(req: Request) {
   if ('error' in g) return g.error;
 
   const tab = new URL(req.url).searchParams.get('tab') ?? 'open';
+
+  // 이슈·개선 탭 — 상태와 무관하게 issue=true 리뷰를 전부 모아 보여준다
+  if (tab === 'issues') {
+    const { data, error } = await g.supabase
+      .schema('finance')
+      .from('place_reviews')
+      .select('*')
+      .eq('issue', true)
+      .order('reviewed_at', { ascending: false })
+      .limit(200);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // 미분류(백필 대상) 잔여 건수 — 분류 실행 버튼 노출용
+    const { count } = await g.supabase
+      .schema('finance')
+      .from('place_reviews')
+      .select('id', { count: 'exact', head: true })
+      .is('issue', null);
+    return NextResponse.json({ reviews: data ?? [], unclassified: count ?? 0 });
+  }
+
   const statuses =
     tab === 'posted' ? ['posted']
     : tab === 'all' ? ['new', 'drafted', 'approved', 'posted', 'skipped', 'replied_elsewhere']
@@ -61,7 +82,15 @@ export async function PATCH(req: Request) {
     const draft = await draftReply(review, key);
     if (!draft) return NextResponse.json({ error: '초안 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' }, { status: 502 });
     const { data } = await g.supabase.schema('finance').from('place_reviews')
-      .update({ draft: draft.text, draft_variants: draft.variants, draft_model: draft.model, draft_at: new Date().toISOString(), status: 'drafted' })
+      .update({
+        draft: draft.text,
+        draft_variants: draft.variants,
+        draft_model: draft.model,
+        draft_at: new Date().toISOString(),
+        status: 'drafted',
+        issue: draft.issue,
+        issue_note: draft.issueNote,
+      })
       .eq('id', id).select('*').single();
     return NextResponse.json({ review: data });
   }

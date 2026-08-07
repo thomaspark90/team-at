@@ -23,6 +23,8 @@ type Review = {
   approved_at: string | null;
   posted_at: string | null;
   post_error: string | null;
+  issue: boolean | null;
+  issue_note: string | null;
 };
 
 const STORE_LABEL: Record<string, string> = { yangjae: '양재천점', pangyo: '판교점' };
@@ -38,8 +40,12 @@ const STATUS_LABEL: Record<string, string> = {
 const TABS = [
   { key: 'open', label: '처리 대기' },
   { key: 'posted', label: '게시 완료' },
+  { key: 'issues', label: '이슈·개선' },
   { key: 'all', label: '전체' },
 ];
+
+// 이슈 뱃지 색 — 경고성 정보라 에러(#c0392b)보다 낮은 온도의 앰버 계열
+const ISSUE_COLOR = '#b45309';
 
 // 승인 후 게시까지의 유예 시간 — 서버(queue API)의 GRACE_MS와 맞춘다
 const GRACE_MS = 60 * 60 * 1000;
@@ -68,6 +74,9 @@ export default function ReviewInbox() {
   const [busy, setBusy] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // 이슈 미분류(백필 대상) 잔여 건수 — issues 탭에서만 내려온다
+  const [unclassified, setUnclassified] = useState(0);
+  const [classifying, setClassifying] = useState(false);
 
   const seed = useCallback((list: Review[]) => {
     const t: Record<number, Record<string, string>> = {};
@@ -99,6 +108,7 @@ export default function ReviewInbox() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? '불러오지 못했습니다.');
       setReviews(json.reviews);
+      setUnclassified(typeof json.unclassified === 'number' ? json.unclassified : 0);
       seed(json.reviews);
     } catch (e) {
       setError(e instanceof Error ? e.message : '불러오지 못했습니다.');
@@ -145,6 +155,27 @@ export default function ReviewInbox() {
     }
   };
 
+  // 기존 리뷰 이슈 분류 백필 — remaining=0 이 될 때까지 배치 호출을 반복한다.
+  // 한 번의 호출이 0건을 처리하면(연속 실패) 무한 반복을 막기 위해 중단한다.
+  const runClassify = async () => {
+    setClassifying(true);
+    setError('');
+    try {
+      for (;;) {
+        const res = await fetch('/api/garden-reviews/classify', { method: 'POST' });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? '분류에 실패했습니다.');
+        setUnclassified(json.remaining);
+        if (json.remaining <= 0 || json.classified === 0) break;
+      }
+      await load(tab);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '분류에 실패했습니다.');
+    } finally {
+      setClassifying(false);
+    }
+  };
+
   const shown = store === 'all' ? reviews : reviews.filter((r) => r.store_key === store);
 
   return (
@@ -180,9 +211,29 @@ export default function ReviewInbox() {
       </div>
 
       {error && <p className="text-[13px]" style={{ color: '#c0392b', marginBottom: 12 }}>{error}</p>}
+
+      {/* 이슈 탭 — 아직 분류되지 않은 과거 리뷰가 있으면 백필 실행을 안내 */}
+      {tab === 'issues' && !loading && unclassified > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/20 text-[13px]" style={{ padding: '10px 12px', marginBottom: 12 }}>
+          <span className="text-muted-foreground">
+            아직 분류되지 않은 리뷰가 {unclassified}건 있습니다. 분류를 실행하면 이슈 리뷰가 이 탭에 모입니다.
+          </span>
+          <button
+            onClick={runClassify}
+            disabled={classifying}
+            className="rounded-md bg-foreground text-background text-[13px] disabled:opacity-40"
+            style={{ padding: '4px 12px' }}
+          >
+            {classifying ? `분류 중… (남은 ${unclassified}건)` : '분류 실행'}
+          </button>
+        </div>
+      )}
+
       {loading && <p className="text-[13px] text-muted-foreground">불러오는 중…</p>}
       {!loading && shown.length === 0 && (
-        <p className="text-[13px] text-muted-foreground">표시할 리뷰가 없습니다.</p>
+        <p className="text-[13px] text-muted-foreground">
+          {tab === 'issues' ? '모아둔 이슈·개선 리뷰가 없습니다.' : '표시할 리뷰가 없습니다.'}
+        </p>
       )}
 
       <div className="flex flex-col gap-3">
@@ -200,6 +251,19 @@ export default function ReviewInbox() {
                 {!!r.photo_count && <span>사진 {r.photo_count}장</span>}
                 <span className="ml-auto">{STATUS_LABEL[r.status] ?? r.status}</span>
               </div>
+
+              {/* 이슈 리뷰 표시 — 어느 탭에서든 뱃지와 지적 요약을 보여준다 */}
+              {r.issue && (
+                <p className="text-[12px]" style={{ color: ISSUE_COLOR, margin: '0 0 6px' }}>
+                  <span
+                    className="rounded-sm font-medium"
+                    style={{ border: `1px solid ${ISSUE_COLOR}55`, padding: '1px 6px', marginRight: 6 }}
+                  >
+                    이슈
+                  </span>
+                  {r.issue_note}
+                </p>
+              )}
 
               <p className="text-[13px] whitespace-pre-wrap" style={{ margin: '0 0 8px' }}>
                 {r.content?.trim() || <span className="text-muted-foreground">(본문 없이 사진만 등록된 리뷰)</span>}

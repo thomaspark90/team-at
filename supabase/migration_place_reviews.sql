@@ -82,3 +82,11 @@ alter table finance.place_reviews add column if not exists approved_tone text;
 alter table finance.place_reviews drop constraint if exists place_reviews_status_chk;
 alter table finance.place_reviews add constraint place_reviews_status_chk
   check (status in ('new','drafted','approved','posted','skipped','replied_elsewhere'));
+
+-- 이슈·개선 리뷰 분류 (2026-08-07)
+-- issue: null=미분류 / true=불만·개선 지적 포함 / false=해당 없음
+-- issue_note: 지적 내용 한 줄 요약 ("매장 소음 울림 · 조리 위생" 등)
+alter table finance.place_reviews add column if not exists issue boolean;
+alter table finance.place_reviews add column if not exists issue_note text;
+create index if not exists place_reviews_issue_idx
+  on finance.place_reviews (issue, reviewed_at desc) where issue is true;
