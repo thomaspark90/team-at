@@ -20,6 +20,7 @@ const PUBLIC_API = [
   '/api/garden-reviews/queue',
   '/api/finance/naverpay/ingest',
   '/api/finance/naverpay/alert',
+  '/api/finance/naverpay/config', // 수집기가 실행 전 크롤 설정을 읽는다 — 토큰(x-naverpay-token) 자체 인증
   '/api/finance/coupang/ingest',
   '/api/finance/coupang/alert',
 ];
