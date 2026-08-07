@@ -185,40 +185,54 @@ export default function ReviewInbox() {
                 </p>
               )}
 
-              {/* 선택 모드 — 톤 3종을 나란히 보여주고 토글로 하나를 고른 뒤 확정 */}
+              {/* 선택 모드 — 톤 3종을 세로 라디오 목록으로 보여주고 하나를 고른 뒤 확정 */}
               {pending && hasVariants && (
                 <>
-                  <div className="grid gap-2 sm:grid-cols-3" style={{ marginBottom: 8 }}>
+                  <div className="flex flex-col gap-2" style={{ marginBottom: 8 }}>
                     {r.draft_variants!.map((v) => {
                       const selected = sel[r.id] === v.tone;
+                      const toggle = () =>
+                        setSel((s) => ({ ...s, [r.id]: selected ? undefined : v.tone }));
                       return (
                         <div
                           key={v.tone}
-                          className={`rounded-md border transition-colors ${
+                          className={`flex items-start gap-3 rounded-lg border bg-muted/20 transition-colors ${
                             selected ? 'border-foreground' : 'border-border'
                           }`}
-                          style={{ padding: 10 }}
+                          style={{ padding: '10px 12px' }}
                         >
                           <button
-                            onClick={() => setSel((s) => ({ ...s, [r.id]: selected ? undefined : v.tone }))}
-                            className={`rounded-full border text-[12px] transition-colors ${
-                              selected
-                                ? 'border-foreground bg-foreground text-background'
-                                : 'border-border text-muted-foreground hover:text-foreground'
+                            onClick={toggle}
+                            aria-pressed={selected}
+                            aria-label={`${v.label} 선택`}
+                            className={`flex shrink-0 items-center justify-center rounded-full border transition-colors ${
+                              selected ? 'border-foreground' : 'border-border hover:border-foreground'
                             }`}
-                            style={{ padding: '3px 12px', marginBottom: 8 }}
+                            style={{ width: 18, height: 18, marginTop: 3 }}
                           >
-                            {v.label}
+                            {selected && (
+                              <span className="rounded-full bg-foreground" style={{ width: 10, height: 10 }} />
+                            )}
                           </button>
-                          <textarea
-                            value={texts[r.id]?.[v.tone] ?? ''}
-                            onChange={(e) =>
-                              setTexts((t) => ({ ...t, [r.id]: { ...t[r.id], [v.tone]: e.target.value } }))
-                            }
-                            rows={5}
-                            className="w-full rounded-md border border-border bg-background text-[13px]"
-                            style={{ padding: 8, resize: 'vertical' }}
-                          />
+                          <div className="flex-1">
+                            <button
+                              onClick={toggle}
+                              className={`text-[12px] transition-colors ${
+                                selected ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
+                              }`}
+                            >
+                              {v.label}
+                            </button>
+                            <textarea
+                              value={texts[r.id]?.[v.tone] ?? ''}
+                              onChange={(e) =>
+                                setTexts((t) => ({ ...t, [r.id]: { ...t[r.id], [v.tone]: e.target.value } }))
+                              }
+                              rows={2}
+                              className="w-full bg-transparent text-[13px] focus:outline-none"
+                              style={{ padding: 0, marginTop: 2, resize: 'vertical', border: 0 }}
+                            />
+                          </div>
                         </div>
                       );
                     })}
@@ -297,23 +311,35 @@ export default function ReviewInbox() {
               {approved && (
                 <>
                   {hasVariants ? (
-                    <div className="grid gap-2 sm:grid-cols-3" style={{ marginBottom: 8 }}>
+                    <div className="flex flex-col gap-2" style={{ marginBottom: 8 }}>
                       {r.draft_variants!.map((v) => {
                         const isSel = r.approved_tone === v.tone;
                         return (
                           <div
                             key={v.tone}
-                            className={`rounded-md ${
+                            className={`flex items-start gap-3 rounded-lg ${
                               isSel
                                 ? 'bg-foreground text-background'
                                 : 'border border-border opacity-40'
                             }`}
-                            style={{ padding: 10 }}
+                            style={{ padding: '10px 12px' }}
                           >
-                            <p className="text-[12px] font-medium" style={{ margin: '0 0 6px' }}>{v.label}</p>
-                            <p className="text-[13px] whitespace-pre-wrap" style={{ margin: 0 }}>
-                              {isSel ? r.reply_text ?? v.text : v.text}
-                            </p>
+                            <span
+                              className={`flex shrink-0 items-center justify-center rounded-full border ${
+                                isSel ? 'border-background' : 'border-border'
+                              }`}
+                              style={{ width: 18, height: 18, marginTop: 3 }}
+                            >
+                              {isSel && (
+                                <span className="rounded-full bg-background" style={{ width: 10, height: 10 }} />
+                              )}
+                            </span>
+                            <div className="flex-1">
+                              <p className="text-[12px] font-medium" style={{ margin: 0 }}>{v.label}</p>
+                              <p className="text-[13px] whitespace-pre-wrap" style={{ margin: '2px 0 0' }}>
+                                {isSel ? r.reply_text ?? v.text : v.text}
+                              </p>
+                            </div>
                           </div>
                         );
                       })}
