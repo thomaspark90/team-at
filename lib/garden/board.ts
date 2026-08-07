@@ -1,5 +1,5 @@
 // 가든 작업 보드 — 앱에 흩어져 있는 일들을 한 보드의 카드로 모은다.
-// 새 데이터를 만들지 않고 기존 상태값(발주·레시피·측정·점검·리뷰·송금·투두)을 읽어 카드를 세우므로,
+// 새 데이터를 만들지 않고 기존 상태값(발주·레시피·측정·리뷰·송금·투두)을 읽어 카드를 세우므로,
 // 각자 자기 화면에서 일을 처리하면 보드가 자동으로 따라온다.
 
 export type BoardColumn = 'todo' | 'doing' | 'done';
@@ -7,12 +7,11 @@ export type BoardColumn = 'todo' | 'doing' | 'done';
 /** 보드는 브랜드별로 나뉜다 — 가든 화면엔 가든 일만, 스탭밀 화면엔 스탭밀 일만 */
 export type BoardScope = 'garden' | 'staffmeal';
 
-export type BoardType = 'order' | 'measure' | 'check' | 'review' | 'money' | 'todo' | 'meal';
+export type BoardType = 'order' | 'measure' | 'review' | 'money' | 'todo' | 'meal';
 
 export const BOARD_TYPES: { id: BoardType; label: string; color: string }[] = [
   { id: 'order', label: '발주', color: 'var(--chart-cat-1)' },
   { id: 'measure', label: '측정', color: 'var(--chart-cat-2)' },
-  { id: 'check', label: '점검', color: 'var(--chart-cat-8)' },
   { id: 'review', label: '리뷰', color: 'var(--chart-cat-7)' },
   { id: 'meal', label: '스탭밀', color: 'var(--chart-cat-4)' },
   { id: 'money', label: '송금', color: 'var(--chart-cat-3)' },
@@ -63,7 +62,6 @@ export interface BoardCard {
 export const TYPE_TAB: Record<BoardType, string | null> = {
   order: 'pricing',
   measure: 'calibration',
-  check: 'dashboard',
   review: 'reviews',
   money: 'dashboard', // 송금은 회계 화면이지만 카드 자체는 대시보드에 뜬다
   todo: 'settings',

@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import GrinderCalibration from '@/components/garden/GrinderCalibration';
-import CalibrationKanban from '@/components/garden/CalibrationKanban';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
 
-// 가든 대시보드의 운영 섹션 — 그라인더 캘리브레이션 + 드리프트 체크 칸반.
+// 가든 대시보드의 운영 섹션 — 그라인더 캘리브레이션.
 // 레시피 카드가 필터 레시피 탭으로 이동하면서 대시보드 전용으로 분리.
 export default function GardenOps() {
   const [profiles, setProfiles] = useState<GrinderProfiles>({});
@@ -22,7 +21,6 @@ export default function GardenOps() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <GrinderCalibration profiles={profiles} onSaved={refresh} />
-      <CalibrationKanban />
     </div>
   );
 }

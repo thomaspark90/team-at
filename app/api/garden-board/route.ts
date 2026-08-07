@@ -8,8 +8,6 @@ import { normalize } from '@/lib/pricing';
 import { STORES } from '@/lib/types';
 import type { DripRecipe } from '@/lib/types';
 import type { GardenTodo } from '@/lib/garden-todos';
-import type { CalibrationCheck } from '@/lib/calibration-checks';
-import { periodOf } from '@/lib/calibration-checks';
 import { fitDialToMicron } from '@/lib/grinder-calibration';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import type { StaffMealRecord } from '@/lib/types';
@@ -78,12 +76,11 @@ export async function GET(req: Request) {
   const owns = (emails: string[]) => emails.map((e) => e.toLowerCase()).includes(me);
 
   const isGarden = scope === 'garden';
-  const [purchases, recipesStore, measurements, checksStore, todosStore, profiles, mealsStore] =
+  const [purchases, recipesStore, measurements, todosStore, profiles, mealsStore] =
     await Promise.all([
       isGarden ? purchaseRecords.readAll().catch(() => []) : [],
       isGarden ? readJson<{ recipes: DripRecipe[] }>('data/garden-recipes.json') : null,
       isGarden ? grindMeasurementRecords.readAll().catch(() => []) : [],
-      isGarden ? readJson<{ checks: CalibrationCheck[] }>('data/garden-calibration-checks.json') : null,
       isGarden ? readJson<{ todos: GardenTodo[] }>('data/garden-todos.json') : null,
       isGarden ? readJson<{ profiles: GrinderProfiles }>('data/garden-grinders.json') : null,
       isGarden ? null : readJson<{ records: StaffMealRecord[] }>('data/staffmeals.json'),
@@ -183,33 +180,6 @@ export async function GET(req: Request) {
       progress: done / total,
       tab: TYPE_TAB.measure,
       sortAt: todayShots[0]?.createdAt ?? new Date().toISOString(),
-    });
-  }
-
-  // ── 드리프트 점검 : 이번 반월 카드 ──
-  const checks = checksStore?.checks ?? [];
-  const curPeriod = periodOf(new Date()).key;
-  for (const c of checks) {
-    if (c.period !== curPeriod && c.status === 'done') continue; // 지난 기간 완료분은 숨김
-    const stage = c.status === 'todo' ? 0 : c.status === 'doing' ? 1 : 2;
-    const overdue = c.period !== curPeriod && c.status !== 'done';
-    cards.push({
-      id: `check:${c.id}`,
-      type: 'check',
-      title: `${storeLabel(c.store)} EK43 · ${c.periodLabel}`,
-      column: c.status === 'done' ? 'done' : c.status === 'doing' ? 'doing' : 'todo',
-      steps: stepsAt(['측정', '기록', '판정'], stage),
-      meta: [
-        ...(overdue ? [{ text: `${c.periodLabel} 미완료 · 이월`, tone: 'late' as const }] : []),
-        ...(c.memo ? [{ text: c.memo }] : []),
-      ],
-      assignees: calOwners,
-      mine: c.status !== 'done' && owns(calOwners),
-      mineReason: '캘리브레이션 담당',
-      href: '/garden',
-      actionLabel: c.status === 'todo' ? '진행' : '완료 처리',
-      tab: TYPE_TAB.check,
-      sortAt: c.updatedAt ?? `${c.period}-01`,
     });
   }
 

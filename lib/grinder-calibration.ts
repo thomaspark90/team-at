@@ -4,6 +4,9 @@
 // "양재천 6.5 ↔ 판교 X.X"를 환산한다.
 import type { StoreId } from './types';
 
+// 샷 간 반복성(SD 8~15µm) 기준 정상 오차 한계 — 얼라인 일치 판정에 사용
+export const REPEATABILITY_TOLERANCE_UM = 30;
+
 export interface GrindPoint {
   dial: number; // EK43 다이얼 (0.1 단위)
   micron: number; // 평균 입자 크기 µm (컴퍼스 측정값)

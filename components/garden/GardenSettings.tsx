@@ -14,9 +14,8 @@ import GardenTabAccess from '@/components/garden/GardenTabAccess';
 // 가든 설정 — 알림(내 채널 + 항목별 담당자), 요청 보내기, 발주 명단, 접근 권한, 투두리스트.
 // 흩어져 있던 알림 3종(항목별 담당자·수신자 관리·내 채널)과 요청 폼 2종을 각각 하나로 합쳤다.
 
-// 요청 내용 프리셋 — 캘리브레이션 운영에서 실제로 쓰는 두 가지 + 직접 입력
+// 요청 내용 프리셋 — 캘리브레이션 운영에서 실제로 쓰는 것 + 직접 입력
 const PRESETS = [
-  { id: 'drift', label: '드리프트 체크 — 다이얼 6/8/10 × 각 3샷 (재얼라인 후 프로토콜)' },
   { id: 'slope', label: '기울기 측정 — 다이얼 6 · 8 · 10 × 각 3샷' },
   { id: 'custom', label: '직접 입력' },
 ];
@@ -228,7 +227,7 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
           )}
       </div>
       <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>
-        담당자를 지정하지 않으면 요청류·이슈 리뷰·측정 업로드·드리프트 체크 알림은 원두 알림
+        담당자를 지정하지 않으면 요청류·이슈 리뷰·측정 업로드 알림은 원두 알림
         수신자 전체에게 발송됩니다. 레시피 등록·수정만 담당자 지정 시에 발송됩니다(옵트인).
       </p>
       {error && <p className="text-[12px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{error}</p>}
@@ -247,7 +246,7 @@ function RequestForms() {
   const [note, setNote] = useState('');
   // 분쇄도 측정
   const [stores, setStores] = useState<StoreId[]>(['pangyo']);
-  const [preset, setPreset] = useState('drift');
+  const [preset, setPreset] = useState('slope');
   const [customDetail, setCustomDetail] = useState('');
   const [staff, setStaff] = useState<string[]>([]);
   const [picked, setPicked] = useState<string[]>([]);

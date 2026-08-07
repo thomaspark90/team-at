@@ -21,8 +21,8 @@ import { fetchGrindMeasurements } from '@/lib/garden/measurements-cache';
 import type { AlignmentEvent } from '@/lib/grinder-alignments';
 import { isPostAlignment, latestAlignmentDate } from '@/lib/grinder-alignments';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
-import { fitDialToMicron, dialToMicron, calibrationReady } from '@/lib/grinder-calibration';
-import { DRIFT_TOLERANCE_UM } from '@/lib/calibration-checks';
+import { fitDialToMicron, dialToMicron, calibrationReady, REPEATABILITY_TOLERANCE_UM } from '@/lib/grinder-calibration';
+
 import type { Shot } from '@/lib/grind-calibration-report';
 import {
   BASELINE_DATE_20260716,
@@ -317,9 +317,9 @@ export default function GrindCalibrationCharts() {
           </div>
           <div className="text-[11px] text-muted-foreground" style={{ marginTop: 2 }}>
             {meanOffset != null
-              ? Math.abs(meanOffset) <= DRIFT_TOLERANCE_UM
-                ? `±${DRIFT_TOLERANCE_UM}µm 이내 — 두 지점 얼라인 일치`
-                : `±${DRIFT_TOLERANCE_UM}µm 초과 — 다이얼 환산 필요`
+              ? Math.abs(meanOffset) <= REPEATABILITY_TOLERANCE_UM
+                ? `±${REPEATABILITY_TOLERANCE_UM}µm 이내 — 두 지점 얼라인 일치`
+                : `±${REPEATABILITY_TOLERANCE_UM}µm 초과 — 다이얼 환산 필요`
               : '두 지점이 같은 다이얼을 측정하면 계산됩니다'}
           </div>
           {bothApplied && (
@@ -416,7 +416,7 @@ export default function GrindCalibrationCharts() {
                     </td>
                     <td style={{ textAlign: 'right', padding: '3px 10px' }} className={r.offset == null ? 'text-muted-foreground' : ''}>
                       {r.offset != null
-                        ? Math.abs(r.offset) <= DRIFT_TOLERANCE_UM
+                        ? Math.abs(r.offset) <= REPEATABILITY_TOLERANCE_UM
                           ? '일치'
                           : '불일치'
                         : r.refOffset != null
@@ -429,7 +429,7 @@ export default function GrindCalibrationCharts() {
             </tbody>
           </table>
           <p className="text-[11px] text-muted-foreground" style={{ marginBottom: 0 }}>
-            판정 기준: 샷 간 반복성(±{DRIFT_TOLERANCE_UM}µm) 이내면 일치 — 현행(최근 얼라인 이후) 측정끼리만 판정.
+            판정 기준: 샷 간 반복성(±{REPEATABILITY_TOLERANCE_UM}µm) 이내면 일치 — 현행(최근 얼라인 이후) 측정끼리만 판정.
             현행이 없는 쪽은 얼라인 전 평균을 흐리게 참고용으로 표시하며 판정·평균 오프셋 계산에선 제외.
           </p>
         </div>
