@@ -96,8 +96,17 @@ export async function POST(req: Request) {
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
     const targets = rows.filter((r) => r.status === 'new').slice(0, DRAFT_LIMIT);
+    // 사장님이 확정해 게시한 최근 답글들 — 새 초안의 길이·결 기준으로 프롬프트에 전달
+    const { data: exRows } = await supabase
+      .from('place_reviews')
+      .select('reply_text')
+      .not('reply_text', 'is', null)
+      .in('status', ['approved', 'posted'])
+      .order('approved_at', { ascending: false })
+      .limit(8);
+    const examples = (exRows ?? []).map((e: { reply_text: string | null }) => String(e.reply_text ?? '').trim()).filter(Boolean);
     for (const r of targets) {
-      const draft = await draftReply(r, geminiKey);
+      const draft = await draftReply(r, geminiKey, examples);
       if (!draft) continue;
       const { error } = await supabase
         .from('place_reviews')

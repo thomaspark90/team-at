@@ -80,7 +80,17 @@ export async function PATCH(req: Request) {
   if (action === 'redraft') {
     const key = process.env.GEMINI_API_KEY;
     if (!key) return NextResponse.json({ error: 'GEMINI_API_KEY 미설정' }, { status: 500 });
-    const draft = await draftReply(review, key);
+    // 확정해 게시한 최근 답글들을 길이·결 기준으로 함께 전달
+    const { data: exRows } = await g.supabase
+      .schema('finance')
+      .from('place_reviews')
+      .select('reply_text')
+      .not('reply_text', 'is', null)
+      .in('status', ['approved', 'posted'])
+      .order('approved_at', { ascending: false })
+      .limit(8);
+    const examples = (exRows ?? []).map((e: { reply_text: string | null }) => String(e.reply_text ?? '').trim()).filter(Boolean);
+    const draft = await draftReply(review, key, examples);
     if (!draft) return NextResponse.json({ error: '초안 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' }, { status: 502 });
     // 매니저가 수동 정정한 이슈 판정은 재생성이 덮어쓰지 않는다
     const issuePatch = review.issue_source === 'manual'

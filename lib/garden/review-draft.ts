@@ -43,13 +43,12 @@ const VOICE = `너는 카페 '가든서비스'의 사장님이다. 방문자 리
   짧은 관찰 한 스푼과 함께 받는다. 계절이나 재료 얘기가 자연스러우면 살짝 얹어도 된다.
 - 이모지 금지. 느낌표 남발 금지. 과장된 감탄 금지.
 - "소중한 리뷰 감사합니다", "최선을 다하겠습니다" 같은 복붙 상투어를 쓰지 않는다.
-- 2~3문장, 100자 안팎. 짧아도 된다. 길게 늘리지 않는다.
+- 되도록 1문장. 길어야 2문장. 짧을수록 좋다.
+- 너무 세세하게 짚거나 정성이 과한 답글은 오히려 AI가 쓴 것처럼 보인다.
+  리뷰의 한 가지만 가볍게 받고 끝낸다. 언급된 모든 내용에 일일이 반응하지 않는다.
 - 손님의 성별을 단정하지 않는다. 재방문을 강요하거나 홍보 문구를 덧붙이지 않는다.
 
-결 참고용 예시 (표현을 그대로 베끼지 말고 호흡만 따를 것):
-- "당근을 안 좋아하셔도 괜찮습니다. 이 잔에서는 사과 뒤에 서 있어서요."
-- "계절을 붙잡을 수는 없어도, 이렇게 조금 담가 둘 수는 있더라고요."
-- "오늘 컵에 담긴 게, 지금 계절입니다."
+{EXAMPLES}
 
 부정적인 리뷰일 때:
 - 변명하거나 반박하지 않는다. 무엇이 아쉬웠는지 그대로 받고, 사실이면 인정한다.
@@ -68,8 +67,20 @@ ${ISSUE_RULE}
 
 JSON 으로만 출력해라: {"kind":"...","plain":"...","grateful":"...","issue":true|false,"issue_note":"...","issue_categories":["..."]}`;
 
-const buildPrompt = (r: ReviewForDraft) => {
+// 결 참고 — 확정 답글이 쌓이기 전(콜드스타트)에만 쓰는 에세이 예시
+const FALLBACK_EXAMPLES = `결 참고용 예시 (표현을 그대로 베끼지 말고 호흡만 따를 것):
+- "당근을 안 좋아하셔도 괜찮습니다. 이 잔에서는 사과 뒤에 서 있어서요."
+- "계절을 붙잡을 수는 없어도, 이렇게 조금 담가 둘 수는 있더라고요."
+- "오늘 컵에 담긴 게, 지금 계절입니다."`;
+
+const buildPrompt = (r: ReviewForDraft, examples: string[]) => {
   const store = STORE_NAME[r.store_key] ?? '가든서비스';
+  // 사장님이 실제로 골라 게시한 답글들이 길이·온도의 기준. 없으면 에세이 예시로 폴백.
+  const exampleBlock = examples.length
+    ? `사장님이 실제로 확정해 게시한 답글들 — 새 답글의 길이·온도·호흡은 이 기준을 따른다
+(내용·표현을 그대로 재사용하지 말 것. 특히 이 답글들의 길이를 넘기지 않는다):
+${examples.slice(0, 8).map((e) => `- "${e}"`).join('\n')}`
+    : FALLBACK_EXAMPLES;
   const lines = [
     `[매장] ${store}`,
     `[평점] ${r.rating ?? '없음'} / 5`,
@@ -78,7 +89,7 @@ const buildPrompt = (r: ReviewForDraft) => {
   ];
   if (r.keywords?.length) lines.push(`[선택 키워드] ${r.keywords.join(', ')}`);
   if (r.photo_count) lines.push(`[사진] ${r.photo_count}장`);
-  return `${VOICE}
+  return `${VOICE.replace('{EXAMPLES}', exampleBlock)}
 
 ${lines.join('\n')}`;
 };
@@ -89,16 +100,18 @@ const clean = (v: unknown) =>
     .trim()
     .slice(0, 500);
 
-/** 톤 3종 초안 + 이슈 분류 생성. 실패하면 null (수집 자체는 계속 진행). */
+/** 톤 3종 초안 + 이슈 분류 생성. 실패하면 null (수집 자체는 계속 진행).
+ *  examples: 사장님이 확정해 게시한 최근 답글들 — 새 초안의 길이·결 기준으로 프롬프트에 들어간다. */
 export async function draftReply(
   review: ReviewForDraft,
   apiKey: string,
+  examples: string[] = [],
 ): Promise<{ text: string; variants: DraftVariant[]; model: string; issue: boolean | null; issueNote: string | null; issueCategories: string[] } | null> {
   // gemini-2.5-* 는 thinking이 기본 on이라 maxOutputTokens를 사고에 먼저 써버려
   // 답글이 중간에 잘린다(실측). 초안 생성에는 사고가 필요 없으므로 끈다.
   const bodyFor = (model: string) =>
     JSON.stringify({
-      contents: [{ parts: [{ text: buildPrompt(review) }] }],
+      contents: [{ parts: [{ text: buildPrompt(review, examples) }] }],
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 1024,
