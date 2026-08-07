@@ -50,8 +50,9 @@ export function firstAllowedHref(sections: string[] | null): string | null {
  *  finance API 는 회계(기장)와 리포트(분석) 화면이 함께 쓰므로 둘 중 하나만 있어도 허용. */
 export function sectionsForApiPath(p: string): string[] | null {
   if (p.startsWith('/api/staffmeals') || p.startsWith('/api/backgrounds')) return ['studio'];
-  if (p.startsWith('/api/finance/') || p.startsWith('/api/purchases')) return ['accounting', 'report'];
+  if (p.startsWith('/api/finance/')) return ['accounting', 'report'];
   if (p.startsWith('/api/garden-share') || p.startsWith('/api/garden-tab-access')) return null;
-  if (p.startsWith('/api/garden-')) return ['garden'];
+  // purchases 는 이름과 달리 가든의 '원두 발주' 기록이다 — 회계가 아니라 가든 화면들이 쓴다
+  if (p.startsWith('/api/garden-') || p.startsWith('/api/purchases')) return ['garden'];
   return null;
 }
