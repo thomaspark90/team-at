@@ -32,6 +32,28 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
   const [beanEn, setBeanEn] = useState('');
   const [beanKo, setBeanKo] = useState('');
   const [notes, setNotes] = useState('');
+  const [translating, setTranslating] = useState(false); // 한글 원두명 → 영문 AI 변환 중
+  const [translateMsg, setTranslateMsg] = useState<string | null>(null);
+
+  const translateEn = async () => {
+    if (translating || !beanKo.trim()) return;
+    setTranslating(true);
+    setTranslateMsg(null);
+    try {
+      const res = await fetch('/api/garden-bean-translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bean: beanKo.trim() }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error ?? '영문 변환에 실패했어요.');
+      setBeanEn(j.beanEn);
+    } catch (err) {
+      setTranslateMsg(`⚠ ${(err as Error).message}`);
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   useEffect(() => {
     Promise.all([
@@ -100,7 +122,25 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
           </select>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <input value={roastery} onChange={(e) => setRoastery(e.target.value)} placeholder="로스터리 (예: UFO coffee)" className="ta-input w-full" />
-            <input value={beanEn} onChange={(e) => setBeanEn(e.target.value)} placeholder="영문 원두명 (예: Rwanda Bombo Honey)" className="ta-input w-full" />
+            <div style={{ display: 'flex', gap: 8, minWidth: 0 }}>
+              <input
+                value={beanEn}
+                onChange={(e) => setBeanEn(e.target.value)}
+                placeholder="영문 원두명 (예: Rwanda Bombo Honey)"
+                className="ta-input"
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              {/* 한글 원두명 → 영문 표기 AI 변환 */}
+              <button
+                onClick={translateEn}
+                disabled={translating || !beanKo.trim()}
+                className="ta-btn"
+                style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0 }}
+                title="한글 원두명을 업계 표준 영문 표기로 자동 변환"
+              >
+                {translating ? '변환 중…' : '영문 자동'}
+              </button>
+            </div>
             <input value={beanKo} onChange={(e) => setBeanKo(e.target.value)} placeholder="한글 원두명 (예: 르완다 봄보 허니)" className="ta-input w-full" />
             <textarea
               value={notes}
@@ -111,6 +151,9 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
               style={{ resize: 'vertical', height: 'auto', paddingTop: 8, paddingBottom: 8 }}
             />
           </div>
+          {translateMsg && (
+            <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>{translateMsg}</p>
+          )}
           <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>
             {asset.logo || asset.qr
               ? '로고·QR은 설정에 등록된 이미지가 자동 배치됩니다.'

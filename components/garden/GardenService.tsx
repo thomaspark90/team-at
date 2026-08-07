@@ -33,6 +33,7 @@ export default function GardenService() {
   const [settings, setSettings] = useState<PricingSettings>(DEFAULT_SETTINGS);
   const [bean, setBean] = useState('');
   const [beanEn, setBeanEn] = useState(''); // 영문 원두명 — 원두카드 인쇄용
+  const [translating, setTranslating] = useState(false); // 한글 원두명 → 영문 AI 변환 중
   const [tastingNotes, setTastingNotes] = useState(''); // 테이스팅 노트 — 원두카드 인쇄용
   const [roastery, setRoastery] = useState('');
   const [roastDate, setRoastDate] = useState(''); // 로스팅 날짜 YYYY-MM-DD
@@ -257,12 +258,43 @@ export default function GardenService() {
               placeholder="원두명 (예: 에티오피아 게뎁)"
               className="ta-input w-full"
             />
-            <input
-              value={beanEn}
-              onChange={(e) => setBeanEn(e.target.value)}
-              placeholder="영문 원두명 (예: Ethiopia Gedeb) — 원두카드용"
-              className="ta-input w-full"
-            />
+            <div style={{ display: 'flex', gap: 8, minWidth: 0 }}>
+              <input
+                value={beanEn}
+                onChange={(e) => setBeanEn(e.target.value)}
+                placeholder="영문 원두명 (예: Ethiopia Gedeb) — 원두카드용"
+                className="ta-input"
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              {/* 한글 원두명 → 영문 표기 AI 변환 */}
+              <button
+                onClick={async () => {
+                  if (translating || !bean.trim()) return;
+                  setTranslating(true);
+                  setScanMsg(null);
+                  try {
+                    const res = await fetch('/api/garden-bean-translate', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ bean: bean.trim() }),
+                    });
+                    const j = await res.json();
+                    if (!res.ok) throw new Error(j.error ?? '영문 변환에 실패했어요.');
+                    setBeanEn(j.beanEn);
+                  } catch (err) {
+                    setScanMsg(`⚠ ${(err as Error).message}`);
+                  } finally {
+                    setTranslating(false);
+                  }
+                }}
+                disabled={translating || !bean.trim()}
+                className="ta-btn"
+                style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0 }}
+                title="한글 원두명을 업계 표준 영문 표기로 자동 변환"
+              >
+                {translating ? '변환 중…' : '영문 자동'}
+              </button>
+            </div>
             <input
               value={tastingNotes}
               onChange={(e) => setTastingNotes(e.target.value)}
