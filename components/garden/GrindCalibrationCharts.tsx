@@ -150,7 +150,8 @@ export default function GrindCalibrationCharts() {
   const x0 = Math.floor((dialMin - 0.5) * 2) / 2;
   const x1 = Math.ceil((dialMax + 0.5) * 2) / 2;
 
-  // 다이얼별 지점 비교 (현행만) — 두 지점 모두 측정된 다이얼의 평균·오프셋
+  // 다이얼별 지점 비교 — 현행 평균이 기본, 현행이 없는 쪽은 얼라인 이전 평균을 참고용으로 채운다.
+  // 판정·평균 오프셋(offset)은 현행 대 현행일 때만, 참고 오프셋(refOffset)은 얼라인 이전이 섞인 경우.
   const dialRows = useMemo(() => {
     const group = (pts: Pt[]) => {
       const map = new Map<number, number[]>();
@@ -162,14 +163,33 @@ export default function GrindCalibrationCharts() {
     };
     const gy = group(points.yangjae.current);
     const gp = group(points.pangyo.current);
-    const dials = Array.from(new Set([...Array.from(gy.keys()), ...Array.from(gp.keys())])).sort((a, b) => a - b);
+    const gys = group(points.yangjae.stale);
+    const gps = group(points.pangyo.stale);
+    const dials = Array.from(
+      new Set([...Array.from(gy.keys()), ...Array.from(gp.keys()), ...Array.from(gys.keys()), ...Array.from(gps.keys())])
+    ).sort((a, b) => a - b);
     return dials.map((d) => {
-      const ys = gy.get(d);
-      const ps = gp.get(d);
       const avg = (v?: number[]) => (v && v.length ? v.reduce((s, x) => s + x, 0) / v.length : null);
-      const my = avg(ys);
-      const mp = avg(ps);
-      return { dial: d, yangjae: my, ny: ys?.length ?? 0, pangyo: mp, np: ps?.length ?? 0, offset: my != null && mp != null ? mp - my : null };
+      const my = avg(gy.get(d));
+      const mp = avg(gp.get(d));
+      const mys = avg(gys.get(d));
+      const mps = avg(gps.get(d));
+      const offset = my != null && mp != null ? mp - my : null;
+      const ery = my ?? mys;
+      const erp = mp ?? mps;
+      return {
+        dial: d,
+        yangjae: my,
+        ny: gy.get(d)?.length ?? 0,
+        yStale: mys,
+        nyStale: gys.get(d)?.length ?? 0,
+        pangyo: mp,
+        np: gp.get(d)?.length ?? 0,
+        pStale: mps,
+        npStale: gps.get(d)?.length ?? 0,
+        offset,
+        refOffset: offset == null && ery != null && erp != null ? erp - ery : null,
+      };
     });
   }, [points]);
 
@@ -283,7 +303,7 @@ export default function GrindCalibrationCharts() {
       {dialRows.length > 0 && (
         <div className="ta-card bg-background min-w-0" style={{ overflowX: 'auto' }}>
           <p className="text-[15px] font-medium text-foreground" style={{ marginTop: 0, marginBottom: 10 }}>
-            다이얼별 지점 비교 — 현행 측정 평균
+            다이얼별 지점 비교
           </p>
           <table className="tabular text-[13px]" style={{ borderCollapse: 'collapse', minWidth: 480, width: '100%', maxWidth: 680 }}>
             <thead>
@@ -294,21 +314,44 @@ export default function GrindCalibrationCharts() {
               </tr>
             </thead>
             <tbody className="text-foreground">
-              {dialRows.map((r) => (
-                <tr key={r.dial}>
-                  <td style={{ textAlign: 'right', padding: '3px 10px' }}>{r.dial.toFixed(1)}</td>
-                  <td style={{ textAlign: 'right', padding: '3px 10px' }}>{r.yangjae != null ? `${Math.round(r.yangjae)} (${r.ny}샷)` : '—'}</td>
-                  <td style={{ textAlign: 'right', padding: '3px 10px' }}>{r.pangyo != null ? `${Math.round(r.pangyo)} (${r.np}샷)` : '—'}</td>
-                  <td style={{ textAlign: 'right', padding: '3px 10px' }}>{r.offset != null ? `${r.offset > 0 ? '+' : ''}${Math.round(r.offset)}` : '—'}</td>
-                  <td style={{ textAlign: 'right', padding: '3px 10px' }} className={r.offset == null ? 'text-muted-foreground' : ''}>
-                    {r.offset == null ? '한쪽만 측정' : Math.abs(r.offset) <= DRIFT_TOLERANCE_UM ? '일치' : '불일치'}
-                  </td>
-                </tr>
-              ))}
+              {dialRows.map((r) => {
+                const cell = (mean: number | null, n: number, stale: number | null, nStale: number) =>
+                  mean != null ? (
+                    `${Math.round(mean)} (${n}샷)`
+                  ) : stale != null ? (
+                    <span className="text-muted-foreground">{Math.round(stale)} ({nStale}샷 · 얼라인 전)</span>
+                  ) : (
+                    '—'
+                  );
+                return (
+                  <tr key={r.dial}>
+                    <td style={{ textAlign: 'right', padding: '3px 10px' }}>{r.dial.toFixed(1)}</td>
+                    <td style={{ textAlign: 'right', padding: '3px 10px' }}>{cell(r.yangjae, r.ny, r.yStale, r.nyStale)}</td>
+                    <td style={{ textAlign: 'right', padding: '3px 10px' }}>{cell(r.pangyo, r.np, r.pStale, r.npStale)}</td>
+                    <td style={{ textAlign: 'right', padding: '3px 10px' }} className={r.offset == null ? 'text-muted-foreground' : ''}>
+                      {r.offset != null
+                        ? `${r.offset > 0 ? '+' : ''}${Math.round(r.offset)}`
+                        : r.refOffset != null
+                          ? `${r.refOffset > 0 ? '+' : ''}${Math.round(r.refOffset)} (참고)`
+                          : '—'}
+                    </td>
+                    <td style={{ textAlign: 'right', padding: '3px 10px' }} className={r.offset == null ? 'text-muted-foreground' : ''}>
+                      {r.offset != null
+                        ? Math.abs(r.offset) <= DRIFT_TOLERANCE_UM
+                          ? '일치'
+                          : '불일치'
+                        : r.refOffset != null
+                          ? '얼라인 전 비교 — 참고용'
+                          : '한쪽만 측정'}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           <p className="text-[11px] text-muted-foreground" style={{ marginBottom: 0 }}>
-            판정 기준: 샷 간 반복성(±{DRIFT_TOLERANCE_UM}µm) 이내면 일치. 얼라인 이전 측정은 제외.
+            판정 기준: 샷 간 반복성(±{DRIFT_TOLERANCE_UM}µm) 이내면 일치 — 현행(최근 얼라인 이후) 측정끼리만 판정.
+            현행이 없는 쪽은 얼라인 전 평균을 흐리게 참고용으로 표시하며 판정·평균 오프셋 계산에선 제외.
           </p>
         </div>
       )}
