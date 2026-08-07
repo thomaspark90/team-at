@@ -5,14 +5,11 @@
 -- ⚠️ 조건식의 대표 이메일은 lib/finance/access.ts 의 OWNER_EMAIL 과 동일하게 유지할 것.
 --    (그 파일 주석도 "RLS 정책(members read/manage)의 이메일과 반드시 동일하게 유지" 라고 명시)
 --
--- ⚠️ 아래 members manage / members read 의 대표 계정 예외 부분은 운영 DB 조회 결과가
---    그리드에서 잘려 보이는 상태에서 옮겨 적은 것이다. 운영 DB 에 실행하기 전에
---    아래 쿼리로 현재 정책과 같은지 먼저 대조할 것:
+-- 2026-08-07 운영 DB(pg_policies)와 대조 완료 — 조건식 일치 확인함.
+-- 정책을 대시보드에서 바꾸면 이 파일도 함께 갱신할 것. 현재 값 확인 방법:
 --
---      select policyname, cmd, qual, with_check
---      from pg_policies where schemaname='finance' and tablename='members';
---
---    다른 부분이 있으면 이 파일을 실제 값으로 고친 뒤 커밋한다.
+--   select policyname, cmd, qual, with_check
+--   from pg_policies where schemaname='finance' and tablename='members';
 
 alter table finance.members enable row level security;
 
