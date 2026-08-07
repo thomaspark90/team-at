@@ -13,7 +13,12 @@ const LON = 127.07;
 const API =
   `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
   '&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,relative_humidity_2m_mean' +
-  '&forecast_days=16&timezone=Asia%2FSeoul';
+  '&hourly=precipitation_probability&forecast_days=16&timezone=Asia%2FSeoul';
+
+// 강수확률은 영업시간대(11–20시) 최대를 쓴다 — 일 최대는 새벽 소나기까지 잡혀
+// '강수량 0mm · 확률 97%' 같은 혼란을 만든다(2026-08-08 대표 지적). 매장 판단엔 낮 시간이 중요.
+const BIZ_START = 11;
+const BIZ_END = 20;
 
 type Day = {
   date: Date;
@@ -53,6 +58,17 @@ export default function WeatherStrip() {
     fetch(API)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((j) => {
+        // 날짜별 영업시간대 최대 강수확률
+        const bizProb = new Map<string, number>();
+        const h = j.hourly;
+        for (let i = 0; i < (h?.time?.length ?? 0); i++) {
+          const hour = Number(h.time[i].slice(11, 13));
+          if (hour < BIZ_START || hour > BIZ_END) continue;
+          const p = h.precipitation_probability[i];
+          if (p == null) continue;
+          const date = h.time[i].slice(0, 10);
+          bizProb.set(date, Math.max(bizProb.get(date) ?? 0, p));
+        }
         const d = j.daily;
         const out: Day[] = [];
         for (let i = 0; i < d.time.length; i++) {
@@ -65,7 +81,7 @@ export default function WeatherStrip() {
             tMin: d.temperature_2m_min[i],
             feelMax: d.apparent_temperature_max[i] ?? d.temperature_2m_max[i],
             rainMm: d.precipitation_sum[i] ?? 0,
-            rainProb: d.precipitation_probability_max[i],
+            rainProb: bizProb.get(d.time[i]) ?? d.precipitation_probability_max[i],
             windMax: d.wind_speed_10m_max[i],
             humidity: d.relative_humidity_2m_mean[i],
           });
@@ -167,6 +183,7 @@ export default function WeatherStrip() {
               <span
                 className={`tabular text-[11px] ${rainy ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
                 style={{ whiteSpace: 'nowrap' }}
+                title="강수량 · 영업시간(11–20시) 최대 강수확률"
               >
                 {day.rainMm >= 0.1 ? `${day.rainMm.toFixed(1)}mm` : '0mm'}
                 {day.rainProb != null && ` · ${day.rainProb}%`}
