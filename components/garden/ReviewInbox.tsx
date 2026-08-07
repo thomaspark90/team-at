@@ -50,8 +50,16 @@ const postEta = (approvedAt: string | null) => {
   return `${String(eta.getHours()).padStart(2, '0')}:${String(eta.getMinutes()).padStart(2, '0')}`;
 };
 
+// 매장 필터 — 두 매장을 한 화면에서 나눠 관리
+const STORE_FILTERS = [
+  { key: 'all', label: '전체 매장' },
+  { key: 'yangjae', label: '양재천점' },
+  { key: 'pangyo', label: '판교점' },
+];
+
 export default function ReviewInbox() {
   const [tab, setTab] = useState('open');
+  const [store, setStore] = useState('all');
   const [reviews, setReviews] = useState<Review[]>([]);
   // 톤별 편집 텍스트: texts[id][tone] / 톤 미제공(구형) 리뷰는 single[id]
   const [texts, setTexts] = useState<Record<number, Record<string, string>>>({});
@@ -137,9 +145,11 @@ export default function ReviewInbox() {
     }
   };
 
+  const shown = store === 'all' ? reviews : reviews.filter((r) => r.store_key === store);
+
   return (
     <div>
-      <div className="flex gap-4" style={{ marginBottom: 16 }}>
+      <div className="flex flex-wrap items-center gap-4" style={{ marginBottom: 16 }}>
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -151,16 +161,32 @@ export default function ReviewInbox() {
             {t.label}
           </button>
         ))}
+        <span aria-hidden className="h-3 w-px bg-border" />
+        {STORE_FILTERS.map((s) => {
+          const count =
+            s.key === 'all' ? reviews.length : reviews.filter((r) => r.store_key === s.key).length;
+          return (
+            <button
+              key={s.key}
+              onClick={() => setStore(s.key)}
+              className={`text-[13px] transition-colors ${
+                store === s.key ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {s.label} {count > 0 && <span className="text-[12px] text-muted-foreground">{count}</span>}
+            </button>
+          );
+        })}
       </div>
 
       {error && <p className="text-[13px]" style={{ color: '#c0392b', marginBottom: 12 }}>{error}</p>}
       {loading && <p className="text-[13px] text-muted-foreground">불러오는 중…</p>}
-      {!loading && reviews.length === 0 && (
+      {!loading && shown.length === 0 && (
         <p className="text-[13px] text-muted-foreground">표시할 리뷰가 없습니다.</p>
       )}
 
       <div className="flex flex-col gap-3">
-        {reviews.map((r) => {
+        {shown.map((r) => {
           const pending = ['new', 'drafted'].includes(r.status);
           const approved = r.status === 'approved';
           const hasVariants = !!r.draft_variants?.length;
