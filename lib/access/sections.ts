@@ -51,6 +51,9 @@ export function firstAllowedHref(sections: string[] | null): string | null {
 export function sectionsForApiPath(p: string): string[] | null {
   if (p.startsWith('/api/staffmeals') || p.startsWith('/api/backgrounds')) return ['studio'];
   if (p.startsWith('/api/finance/')) return ['accounting', 'report'];
+  // 작업 보드는 scope(garden|staffmeal)에 따라 필요한 섹션이 달라 라우트가 직접 확인한다.
+  // 여기서 garden 으로 묶으면 스탭밀 전용 계정이 자기 보드도 못 연다.
+  if (p.startsWith('/api/garden-board')) return null;
   if (p.startsWith('/api/garden-share') || p.startsWith('/api/garden-tab-access')) return null;
   // purchases 는 이름과 달리 가든의 '원두 발주' 기록이다 — 회계가 아니라 가든 화면들이 쓴다
   if (p.startsWith('/api/garden-') || p.startsWith('/api/purchases')) return ['garden'];

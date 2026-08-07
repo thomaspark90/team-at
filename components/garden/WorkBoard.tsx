@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { BoardCard, BoardType } from '@/lib/garden/board';
+import type { BoardCard, BoardScope, BoardType } from '@/lib/garden/board';
 import { BOARD_COLUMNS, BOARD_TYPES } from '@/lib/garden/board';
 
-// 가든 작업 보드 — 발주·측정·점검·리뷰·송금·투두를 한 보드로.
-// 카드마다 흐름의 현재 단계를 표시하고, 내 차례인 일은 위쪽 '내 차례'에 먼저 모아준다.
-// 데이터는 /api/garden-board 가 권한(가든 탭·재무 역할)까지 적용해 내려준다.
+// 작업 보드 — 브랜드별로 나뉜다. 가든(scope='garden')은 발주·측정·점검·리뷰·송금·투두,
+// 스탭밀(scope='staffmeal')은 메뉴 스토리·송금. 카드마다 흐름의 현재 단계를 표시하고,
+// 내 차례인 일은 위쪽 '내 차례'에 먼저 모아준다.
+// 데이터는 /api/garden-board 가 권한(섹션·가든 탭·재무 역할)까지 적용해 내려준다.
 
 const typeOf = (t: BoardType) => BOARD_TYPES.find((x) => x.id === t)!;
 
@@ -144,16 +145,16 @@ function Card({ card }: { card: BoardCard }) {
   );
 }
 
-export default function WorkBoard() {
+export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) {
   const [cards, setCards] = useState<BoardCard[] | null>(null);
   const [filter, setFilter] = useState<'all' | 'mine' | BoardType>('all');
 
   useEffect(() => {
-    fetch('/api/garden-board', { cache: 'no-store' })
+    fetch(`/api/garden-board?scope=${scope}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : { cards: [] }))
       .then((j) => setCards(Array.isArray(j.cards) ? j.cards : []))
       .catch(() => setCards([]));
-  }, []);
+  }, [scope]);
 
   const mineCards = useMemo(() => (cards ?? []).filter((c) => c.mine && c.column !== 'done'), [cards]);
 

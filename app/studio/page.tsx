@@ -1,9 +1,19 @@
-import { redirect } from 'next/navigation';
+'use client';
 
-// 스탭밀 홈 — 송금 요청 기능이 전체 대시보드(/dashboard)로 이동해 IG 메뉴 업데이트로 보낸다.
+import TabNav from '@/components/TabNav';
+import StudioNav from '@/components/StudioNav';
+import WorkBoard from '@/components/garden/WorkBoard';
+
+// 스탭밀 대시보드 — 스탭밀 일만 보이는 작업 보드(메뉴 스토리·스탭밀 송금).
+// 가든 일은 /garden 보드에 따로 뜬다.
 export default function StudioHomePage() {
-  redirect('/studio/menu');
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <TabNav />
+      <StudioNav />
+      <div className="mx-auto max-w-[1100px] px-6 py-8">
+        <WorkBoard scope="staffmeal" />
+      </div>
+    </div>
+  );
 }
-
-// 브라우저 탭 제목 — 루트 템플릿(%s · team-at) 적용
-export const metadata = { title: 'Staff Meal' };

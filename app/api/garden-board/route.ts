@@ -12,7 +12,8 @@ import type { CalibrationCheck } from '@/lib/calibration-checks';
 import { periodOf } from '@/lib/calibration-checks';
 import { fitDialToMicron } from '@/lib/grinder-calibration';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
-import type { BoardCard } from '@/lib/garden/board';
+import type { StaffMealRecord } from '@/lib/types';
+import type { BoardCard, BoardScope } from '@/lib/garden/board';
 import { TYPE_TAB, daysAgo, shortDate, stepsAt, kstDay } from '@/lib/garden/board';
 
 export const runtime = 'nodejs';
@@ -39,12 +40,15 @@ const PROTOCOL_DIALS = [6, 8, 10];
 const SHOTS_PER_DIAL = 3;
 const storeLabel = (id: string) => STORES.find((s) => s.id === id)?.label ?? id;
 
-export async function GET() {
+export async function GET(req: Request) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+
+  // 브랜드별 보드 — 가든 화면은 가든 일만, 스탭밀 화면은 스탭밀 일만 받는다
+  const scope: BoardScope = new URL(req.url).searchParams.get('scope') === 'staffmeal' ? 'staffmeal' : 'garden';
 
   const me = (user.email ?? '').toLowerCase();
   const [topics, access, role] = await Promise.all([
@@ -58,21 +62,60 @@ export async function GET() {
       .then((r) => r.data),
     resolveRole(supabase, user),
   ]);
-  const allowedTabs = isOwner(user.email) ? null : ((access?.tabs as string[] | null) ?? null);
+  const owner = isOwner(user.email);
+  const allowedTabs = owner ? null : ((access?.tabs as string[] | null) ?? null);
+  const allowedSections = owner ? null : ((access?.sections as string[] | null) ?? null);
   const isFinance = ['admin', 'classifier'].includes(role ?? '');
+
+  // 섹션 권한 — 이 보드를 볼 수 있는 사람인지 (미들웨어는 라우트 단위라 scope 별 판단은 여기서)
+  const needSection = scope === 'staffmeal' ? 'studio' : 'garden';
+  if (allowedSections && !allowedSections.includes(needSection)) {
+    return NextResponse.json({ cards: [], me });
+  }
 
   const cards: BoardCard[] = [];
   // 담당자 판정 — 토픽에 지정된 사람. 비어 있으면 '누구나'(모두에게 내 차례로 보이지 않음)
   const owns = (emails: string[]) => emails.map((e) => e.toLowerCase()).includes(me);
 
-  const [purchases, recipesStore, measurements, checksStore, todosStore, profiles] = await Promise.all([
-    purchaseRecords.readAll().catch(() => []),
-    readJson<{ recipes: DripRecipe[] }>('data/garden-recipes.json'),
-    grindMeasurementRecords.readAll().catch(() => []),
-    readJson<{ checks: CalibrationCheck[] }>('data/garden-calibration-checks.json'),
-    readJson<{ todos: GardenTodo[] }>('data/garden-todos.json'),
-    readJson<{ profiles: GrinderProfiles }>('data/garden-grinders.json'),
-  ]);
+  const isGarden = scope === 'garden';
+  const [purchases, recipesStore, measurements, checksStore, todosStore, profiles, mealsStore] =
+    await Promise.all([
+      isGarden ? purchaseRecords.readAll().catch(() => []) : [],
+      isGarden ? readJson<{ recipes: DripRecipe[] }>('data/garden-recipes.json') : null,
+      isGarden ? grindMeasurementRecords.readAll().catch(() => []) : [],
+      isGarden ? readJson<{ checks: CalibrationCheck[] }>('data/garden-calibration-checks.json') : null,
+      isGarden ? readJson<{ todos: GardenTodo[] }>('data/garden-todos.json') : null,
+      isGarden ? readJson<{ profiles: GrinderProfiles }>('data/garden-grinders.json') : null,
+      isGarden ? null : readJson<{ records: StaffMealRecord[] }>('data/staffmeals.json'),
+    ]);
+
+  // ── 스탭밀 : 오늘 인스타 스토리 메뉴 등록 ──
+  if (!isGarden) {
+    const todayKst = kstDay(new Date().toISOString());
+    const records = mealsStore?.records ?? [];
+    const todayRec = records.find((r) => kstDay(r.createdAt) === todayKst);
+    const last = records.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    cards.push({
+      id: `meal:${todayKst}`,
+      type: 'meal',
+      title: '오늘 스탭밀 메뉴 스토리',
+      column: todayRec ? 'done' : 'todo',
+      steps: stepsAt(['메뉴 입력', '이미지 저장', '스토리 업로드'], todayRec ? 2 : 0),
+      meta: todayRec
+        ? [{ text: `${shortDate(todayRec.createdAt)} 등록`, tone: 'ok' as const }]
+        : [
+            ...(last
+              ? [{ text: `최근 등록 ${shortDate(last.createdAt)}`, ...(daysAgo(last.createdAt) >= 2 ? { tone: 'late' as const } : {}) }]
+              : [{ text: '등록 기록 없음' }]),
+          ],
+      assignees: [],
+      mine: false,
+      href: '/studio/menu',
+      actionLabel: todayRec ? '기록 보기' : '메뉴 만들기',
+      tab: null,
+      sortAt: last?.createdAt ?? new Date().toISOString(),
+    });
+  }
 
   // ── 발주 → 판매 준비 : 발주 · 레시피 · 원두카드 ──
   const recipes = recipesStore?.recipes ?? [];
@@ -111,7 +154,7 @@ export async function GET() {
   // ── 분쇄도 측정 : 요청 · 업로드 · 환산 적용 ──
   const calOwners = topics.calibration ?? [];
   const today = kstDay(new Date().toISOString());
-  for (const s of STORES) {
+  for (const s of isGarden ? STORES : []) {
     const mine = measurements.filter((m) => m.store === s.id);
     const todayShots = mine.filter(
       (m) => kstDay(m.createdAt) === today && PROTOCOL_DIALS.includes(Math.round(m.dial * 10) / 10)
@@ -172,14 +215,17 @@ export async function GET() {
 
   // ── 네이버 리뷰 : 수집 · 초안 · 승인 · 등록 ──
   const reviewOwners = topics.reviewIssue ?? [];
-  const { data: reviews } = await supabase
-    .schema('finance')
-    .from('place_reviews')
-    .select('id, store_key, rating, issue_note, status, reviewed_at')
-    .eq('issue', true)
-    .in('status', ['new', 'drafted', 'approved'])
-    .order('reviewed_at', { ascending: false })
-    .limit(20);
+  // 네이버 리뷰는 가든서비스 매장(양재천·판교) 것이라 가든 보드에만 올린다
+  const { data: reviews } = isGarden
+    ? await supabase
+        .schema('finance')
+        .from('place_reviews')
+        .select('id, store_key, rating, issue_note, status, reviewed_at')
+        .eq('issue', true)
+        .in('status', ['new', 'drafted', 'approved'])
+        .order('reviewed_at', { ascending: false })
+        .limit(20)
+    : { data: [] };
   for (const r of reviews ?? []) {
     const stage = r.status === 'new' ? 1 : r.status === 'drafted' ? 2 : 3;
     cards.push({
@@ -204,11 +250,13 @@ export async function GET() {
     const { data: transfers } = await supabase
       .schema('finance')
       .from('transfer_requests')
-      .select('id, vendor_name, amount, requester_email, status, created_at')
+      .select('id, vendor_name, amount, requester_email, status, created_at, brand')
       .eq('status', 'pending')
       .order('created_at', { ascending: true })
       .limit(20);
-    for (const t of transfers ?? []) {
+    // 브랜드가 지정된 건은 해당 보드에만. 미지정은 어느 쪽에서도 놓치지 않게 양쪽에 띄우고 표시한다.
+    const forThisBoard = (transfers ?? []).filter((t) => !t.brand || t.brand === scope);
+    for (const t of forThisBoard) {
       const d = daysAgo(t.created_at);
       cards.push({
         id: `money:${t.id}`,
@@ -219,6 +267,7 @@ export async function GET() {
         meta: [
           ...(d >= 2 ? [{ text: `${d}일 경과`, tone: 'late' as const }] : [{ text: shortDate(t.created_at) }]),
           { text: `요청: ${(t.requester_email ?? '').split('@')[0]}` },
+          ...(t.brand ? [] : [{ text: '브랜드 미지정' }]),
         ],
         assignees: [],
         mine: true,
@@ -251,8 +300,8 @@ export async function GET() {
     });
   }
 
-  // 권한 필터 — 열 수 없는 화면의 카드는 아예 보내지 않는다
-  const visible = cards.filter((c) => !allowedTabs || allowedTabs.includes(c.tab));
+  // 권한 필터 — 열 수 없는 화면의 카드는 아예 보내지 않는다 (tab null = 탭 체계 밖)
+  const visible = cards.filter((c) => c.tab === null || !allowedTabs || allowedTabs.includes(c.tab));
   visible.sort((a, b) => Number(b.mine) - Number(a.mine) || a.sortAt.localeCompare(b.sortAt));
 
   return NextResponse.json({ cards: visible, me });
