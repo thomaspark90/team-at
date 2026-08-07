@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { APP_URL } from '@/lib/app-url';
 import type { StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import type { GrindMeasurement, RoastLevel } from '@/lib/grind-measurements';
@@ -98,7 +99,7 @@ export async function POST(req: Request) {
         <p><strong>분쇄도 측정이 업로드됐어요</strong></p>
         <p>${summary}</p>
         ${by ? `<p>업로드: ${by}</p>` : ''}
-        <p><a href="https://team-at-apps.vercel.app/garden/calibration">분쇄도 측정 열기 →</a></p>
+        <p><a href="${APP_URL}/garden/calibration">분쇄도 측정 열기 →</a></p>
       </div>`,
       push: {
         title: `분쇄도 업로드 · ${label}`,

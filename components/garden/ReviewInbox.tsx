@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ISSUE_CATEGORIES } from '@/lib/garden/review-issue';
 import { REVIEW_POST_GRACE_MS } from '@/lib/garden/review-constants';
+import { STORES } from '@/lib/types';
 
 type DraftVariant = { tone: string; label: string; text: string };
 
@@ -31,7 +32,8 @@ type Review = {
   issue_source: string | null;
 };
 
-const STORE_LABEL: Record<string, string> = { yangjae: '양재천점', pangyo: '판교점' };
+// 매장 라벨·필터는 lib/types STORES 단일 정의에서 유도
+const STORE_LABEL: Record<string, string> = Object.fromEntries(STORES.map((s) => [s.id, s.label]));
 const STATUS_LABEL: Record<string, string> = {
   new: '초안 대기',
   drafted: '승인 대기',
@@ -63,8 +65,7 @@ const postEta = (approvedAt: string | null) => {
 // 매장 필터 — 두 매장을 한 화면에서 나눠 관리
 const STORE_FILTERS = [
   { key: 'all', label: '전체 매장' },
-  { key: 'yangjae', label: '양재천점' },
-  { key: 'pangyo', label: '판교점' },
+  ...STORES.map((s) => ({ key: s.id as string, label: s.label })),
 ];
 
 export default function ReviewInbox() {
@@ -305,6 +306,7 @@ export default function ReviewInbox() {
                 <span>{r.reviewed_at.slice(0, 10)}</span>
                 {r.rating != null && <span>★ {r.rating}</span>}
                 {r.author && <span>{r.author}</span>}
+                {r.visit_count != null && r.visit_count > 1 && <span>{r.visit_count}번째 방문</span>}
                 {!!r.photo_count && <span>사진 {r.photo_count}장</span>}
                 <span className="ml-auto">{STATUS_LABEL[r.status] ?? r.status}</span>
               </div>

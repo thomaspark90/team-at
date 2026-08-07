@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
+import { APP_URL } from '@/lib/app-url';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { STORES } from '@/lib/types';
 import { draftReply } from '@/lib/garden/review-draft';
 import { classifyIssue } from '@/lib/garden/review-issue';
 import { notifyGardenEvent } from '@/lib/notify';
@@ -47,7 +49,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'JSON 본문이 필요합니다.' }, { status: 400 });
   }
 
-  const valid = reviews.filter((r) => r?.review_id && r.store_key && r.place_id && r.reviewed_at);
+  // 매장 키 검증 — 수집기 오타 키가 적재되면 매장 필터에 안 잡히는 유령 매장이 된다
+  const validStores = new Set<string>(STORES.map((s) => s.id));
+  const valid = reviews.filter((r) => r?.review_id && validStores.has(r.store_key) && r.place_id && r.reviewed_at);
   if (valid.length === 0) return NextResponse.json({ saved: 0, duplicates: 0, drafted: 0 });
 
   const supabase = createServiceClient(url, serviceKey, { db: { schema: 'finance' } });
@@ -160,7 +164,7 @@ export async function POST(req: Request) {
   // 이슈 리뷰가 새로 잡히면 담당자에게 이메일+웹푸시 — 실패해도 적재 결과는 그대로 반환
   if (issueFound.length > 0) {
     try {
-      const storeLabel: Record<string, string> = { yangjae: '양재천점', pangyo: '판교점' };
+      const storeLabel = Object.fromEntries(STORES.map((s) => [s.id, s.label]));
       const lines = issueFound.map((i) => {
         const head = `[${storeLabel[i.store_key] ?? i.store_key}] ★${i.rating ?? '-'}`;
         const cats = i.categories.length ? ` (${i.categories.join(', ')})` : '';
@@ -176,7 +180,7 @@ export async function POST(req: Request) {
         <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
           <p><strong>불만·개선 지적이 담긴 리뷰 ${issueFound.length}건이 새로 수집됐어요.</strong></p>
           ${lines.map((l) => `<p>${l}</p>`).join('')}
-          <p><a href="https://team-at-apps.vercel.app/garden/reviews">이슈·개선 탭 열기 →</a></p>
+          <p><a href="${APP_URL}/garden/reviews">이슈·개선 탭 열기 →</a></p>
         </div>`,
         push: {
           title: `이슈 리뷰 ${issueFound.length}건`,

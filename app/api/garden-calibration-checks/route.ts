@@ -1,4 +1,5 @@
 import { get, put } from '@vercel/blob';
+import { APP_URL } from '@/lib/app-url';
 import { NextResponse } from 'next/server';
 import { STORES } from '@/lib/types';
 import type { CalibrationCheck, CheckStatus } from '@/lib/calibration-checks';
@@ -144,7 +145,7 @@ export async function POST(req: Request) {
           <p>${driftLine}</p>
           ${check.memo ? `<p>메모: ${check.memo}</p>` : ''}
           ${by ? `<p>완료: ${by}</p>` : ''}
-          <p><a href="https://team-at-apps.vercel.app/garden">가든 대시보드 열기 →</a></p>
+          <p><a href="${APP_URL}/garden">가든 대시보드 열기 →</a></p>
         </div>`,
         push: {
           title: `${head} · ${label}`,

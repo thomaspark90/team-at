@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { APP_URL } from '@/lib/app-url';
 import { createClient } from '@/lib/supabase/server';
 import { classifyIssue } from '@/lib/garden/review-issue';
 import { logActivity } from '@/lib/finance/activity';
@@ -6,6 +7,7 @@ import { checkAiQuota } from '@/lib/access/rate-limit';
 import { notifyGardenEvent } from '@/lib/notify';
 import { topicEmails } from '@/lib/garden-notify-topics-server';
 import { requireGardenTab } from '@/lib/access/guard';
+import { STORES } from '@/lib/types';
 
 const ACTION = '리뷰 AI 분류';
 
@@ -79,7 +81,7 @@ export async function POST() {
   // 알림을 못 받았던 리뷰가 조용히 지나가지 않게 한다. 실패해도 분류 결과는 유지.
   if (issueFound.length > 0) {
     try {
-      const storeLabel: Record<string, string> = { yangjae: '양재천점', pangyo: '판교점' };
+      const storeLabel = Object.fromEntries(STORES.map((s) => [s.id, s.label]));
       const lines = issueFound.map((i) => {
         const cats = i.categories.length ? ` (${i.categories.join(', ')})` : '';
         return `[${storeLabel[i.store_key] ?? i.store_key}] ★${i.rating ?? '-'} ${i.note ?? '지적 내용 확인 필요'}${cats}`;
@@ -92,7 +94,7 @@ export async function POST() {
         <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
           <p><strong>분류 실행에서 불만·개선 지적 리뷰 ${issueFound.length}건이 확인됐어요.</strong></p>
           ${lines.map((l) => `<p>${l}</p>`).join('')}
-          <p><a href="https://team-at-apps.vercel.app/garden/reviews">이슈·개선 탭 열기 →</a></p>
+          <p><a href="${APP_URL}/garden/reviews">이슈·개선 탭 열기 →</a></p>
         </div>`,
         push: { title: `이슈 리뷰 ${issueFound.length}건 (분류)`, body: lines[0].slice(0, 100), url: '/garden/reviews' },
       });

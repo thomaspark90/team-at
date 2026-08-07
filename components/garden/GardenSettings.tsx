@@ -16,7 +16,7 @@ import GardenTabAccess from '@/components/garden/GardenTabAccess';
 
 // 요청 내용 프리셋 — 캘리브레이션 운영에서 실제로 쓰는 두 가지 + 직접 입력
 const PRESETS = [
-  { id: 'drift', label: '드리프트 체크 — 다이얼 6.5 · 1~2샷' },
+  { id: 'drift', label: '드리프트 체크 — 다이얼 6/8/10 × 각 3샷 (재얼라인 후 프로토콜)' },
   { id: 'slope', label: '기울기 측정 — 다이얼 6 · 8 · 10 × 각 3샷' },
   { id: 'custom', label: '직접 입력' },
 ];
@@ -227,6 +227,10 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
             })
           )}
       </div>
+      <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>
+        담당자를 지정하지 않으면 요청류·이슈 리뷰·측정 업로드·드리프트 체크 알림은 원두 알림
+        수신자 전체에게 발송됩니다. 레시피 등록·수정만 담당자 지정 시에 발송됩니다(옵트인).
+      </p>
       {error && <p className="text-[12px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{error}</p>}
     </div>
   );

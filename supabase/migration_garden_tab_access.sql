@@ -20,3 +20,8 @@ create policy "own garden tab access" on finance.garden_tab_access
 
 grant usage on schema finance to service_role;
 grant all on all tables in schema finance to service_role;
+
+-- (2026-08-07) 섹션 권한 확장 — migration_page_access.sql 과 같은 내용의 멱등 반영.
+-- 두 파일 중 어느 쪽을 먼저 실행해도 tab-access API가 sections 컬럼 오류를 내지 않게 한다.
+alter table finance.garden_tab_access add column if not exists sections text[];
+alter table finance.garden_tab_access alter column tabs drop not null;

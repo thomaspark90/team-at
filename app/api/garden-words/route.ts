@@ -5,9 +5,10 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { isAllowedEmail } from '@/lib/finance/access';
 import { requireGardenTab } from '@/lib/access/guard';
+import { CURRENT_SEASON } from '@/lib/garden/season';
 
 // 제철 단어 API — GET(공개: 게시 단어 / scope=admin: 전체), POST(공개 제출), PATCH(팀: 상태 변경)
-const SEASON = '여름';
+const SEASON = CURRENT_SEASON;
 // 한글·영문·숫자·공백만, 1~10자 — "단어만" 원칙의 최소 방어선
 const WORD_RE = /^[가-힣a-zA-Z0-9 ]{1,10}$/;
 

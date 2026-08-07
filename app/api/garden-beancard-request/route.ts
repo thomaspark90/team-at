@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { APP_URL } from '@/lib/app-url';
 import { createClient } from '@/lib/supabase/server';
 import { notifyGardenEvent } from '@/lib/notify';
 import { topicEmails } from '@/lib/garden-notify-topics-server';
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
       <p>원두: ${bean}</p>
       ${note ? `<p>메모: ${note}</p>` : ''}
       ${by ? `<p>요청: ${by}</p>` : ''}
-      <p><a href="https://team-at-apps.vercel.app/garden/recipes">필터 레시피 열기 →</a></p>
+      <p><a href="${APP_URL}/garden/recipes">필터 레시피 열기 →</a></p>
     </div>`,
     push: {
       title: `원두카드 제작 요청 · ${bean}`,

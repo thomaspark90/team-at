@@ -2,9 +2,10 @@
 import webpush from 'web-push';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { OWNER_EMAIL } from '@/lib/finance/access';
+import { APP_URL } from '@/lib/app-url';
 
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
-const APP_URL = 'https://team-at-apps.vercel.app/dashboard/transfer';
+const TRANSFER_URL = `${APP_URL}/dashboard/transfer`;
 
 export interface TransferNotice {
   brandLabel?: string; // 스탭밀 | 가든서비스 — 구분 도입 전 호출부 호환 위해 선택
@@ -120,7 +121,7 @@ export async function notifyBeanStockLow(
     .map((a) => `${a.storeLabel} ${a.level === 0 ? '소진(0%)' : `재고 ${a.level}%`}`)
     .join(' · ');
   const by = n.byEmail ? n.byEmail.split('@')[0] : '';
-  const gardenUrl = 'https://team-at-apps.vercel.app/garden';
+  const gardenUrl = `${APP_URL}/garden`;
   const recipientsP = recipientEmails(supabase, 'stock');
   const results = await Promise.allSettled([
     recipientsP.then((to) =>
@@ -178,7 +179,7 @@ export async function notifyGrindRequest(
   n: { storeLabel: string; detail: string; note?: string; byEmail: string; emails?: string[] }
 ) {
   const by = n.byEmail ? n.byEmail.split('@')[0] : '';
-  const calUrl = 'https://team-at-apps.vercel.app/garden/calibration';
+  const calUrl = `${APP_URL}/garden/calibration`;
   const recipientsP = n.emails?.length
     ? Promise.resolve(n.emails)
     : recipientEmails(supabase, 'stock');
@@ -230,7 +231,7 @@ export async function notifyTransferRequest(supabase: SupabaseClient, n: Transfe
           <p>계좌: ${account || '미확인 (거래처에 확인 필요)'}</p>
           ${n.itemsSummary ? `<p>품목: ${n.itemsSummary}</p>` : ''}
           <p>요청: ${n.requesterEmail}</p>
-          <p><a href="${APP_URL}">송금 대시보드 열기 →</a></p>
+          <p><a href="${TRANSFER_URL}">송금 대시보드 열기 →</a></p>
         </div>`
       )
     ),
@@ -265,7 +266,7 @@ export async function notifyTransferDone(
         <p>요청하신 송금이 이체 완료됐어요.</p>
         <p><strong>${n.vendorName}</strong> — <strong>${won(n.amount)}</strong></p>
         <p>처리: ${doneBy}</p>
-        <p><a href="${APP_URL}">송금 대시보드 열기 →</a></p>
+        <p><a href="${TRANSFER_URL}">송금 대시보드 열기 →</a></p>
       </div>`
     ),
     sendPushTo(supabase, [requester], {

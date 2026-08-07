@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { SEED_WORDS } from '@/app/garden-service/words/seed-words';
+import { CURRENT_SEASON } from '@/lib/garden/season';
 
 // 제철 단어 검수 — 손님이 보낸 단어를 게시/반려한다. 게시된 단어는 /garden-service/words 에 뜬다.
 
@@ -72,6 +73,8 @@ export default function GardenWords() {
 
   const pending = (words ?? []).filter((w) => w.status === 'pending');
   const approved = (words ?? []).filter((w) => w.status === 'approved');
+  // 공개 페이지는 현재 시즌만 노출하므로, '떠 있는 단어' 집계도 같은 기준을 쓴다
+  const approvedLive = approved.filter((w) => w.season === CURRENT_SEASON);
   const rejected = (words ?? []).filter((w) => w.status === 'rejected');
 
   // 같은 제출자 묶기 — 세션 ID(없으면 IP 해시) 기준으로 ㄱ·ㄴ·ㄷ… 라벨을 붙인다.
@@ -114,7 +117,7 @@ export default function GardenWords() {
         <>
           <section>
             <h2 className="mb-3 text-[13px] font-medium text-muted-foreground">
-              지금 화면에 떠 있는 단어 {SEED_WORDS.length + approved.length}
+              지금 화면에 떠 있는 단어 {SEED_WORDS.length + approvedLive.length}
             </h2>
             <ul className="flex flex-wrap gap-2">
               {SEED_WORDS.map((w) => (
@@ -126,7 +129,7 @@ export default function GardenWords() {
                   {w.t}
                 </li>
               ))}
-              {approved.map((w) => (
+              {approvedLive.map((w) => (
                 <li
                   key={'live-' + w.id}
                   className="rounded-full border border-border bg-card px-3.5 py-1.5 text-[13px]"

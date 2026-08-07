@@ -3,6 +3,7 @@
 // 같은 호출에서 이슈(불만·개선 지적) 여부도 함께 분류한다 — 기준은 review-issue.ts 참고.
 
 import { ISSUE_RULE, sanitizeCategories } from './review-issue';
+import { STORES } from '@/lib/types';
 
 const MODELS = [
   'gemini-2.5-flash',
@@ -22,10 +23,10 @@ export type ReviewForDraft = {
 
 export type DraftVariant = { tone: 'kind' | 'plain' | 'grateful'; label: string; text: string };
 
-const STORE_NAME: Record<string, string> = {
-  yangjae: '가든서비스 양재천점',
-  pangyo: '가든서비스 판교점',
-};
+// 매장 라벨은 lib/types STORES 단일 정의에서 유도 — '가든서비스 ' 접두만 여기서 붙인다
+const STORE_NAME: Record<string, string> = Object.fromEntries(
+  STORES.map((s) => [s.id, `가든서비스 ${s.label}`])
+);
 
 // 매장 공통 보이스 — 사장님이 직접 쓴 에세이(단정한 생각들·가든서비스 슬립)의 결.
 // 딱딱한 격식체가 아니라, 관찰 하나를 부드럽게 받아 가볍게 내려놓는 문장.

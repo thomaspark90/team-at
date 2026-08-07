@@ -58,7 +58,7 @@ export default async function SharePage({ params }: { params: { token: string } 
       ) : (
         <div className="ta-card bg-background" style={{ width: '100%', maxWidth: 360, textAlign: 'center', padding: '36px 24px' }}>
           <p className="text-[14px] text-foreground" style={{ marginBottom: 6 }}>링크를 찾을 수 없어요</p>
-          <p className="text-[12px] text-muted-foreground">공유가 취소됐거나 주소가 잘못되었을 수 있습니다.</p>
+          <p className="text-[12px] text-muted-foreground">주소가 잘못되었거나 만료된 링크일 수 있습니다.</p>
         </div>
       )}
     </main>

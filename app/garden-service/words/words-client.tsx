@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { CURRENT_SEASON } from '@/lib/garden/season';
 
 // 제철 단어 — 손님이 익명으로 단어를 두고 가는 페이지의 프론트.
 // 디자인 원본: Figma '제철 단어 — Garden Service' (파일 47CQNr6kcEDVkpdH5YtYCK).
-// 아직 저장 백엔드 없음 — 제출은 화면 연출('놓아두는 중')까지만 동작한다.
+// 제출은 /api/garden-words 로 저장되고, 검수(/garden/words) 후 게시된다.
 
 import { SEED_WORDS as WORDS } from './seed-words';
 
@@ -469,7 +470,7 @@ export default function WordsClient() {
         <div className="logo" role="img" aria-label="Garden Service" />
         <h1>제철 단어</h1>
         <p className="season">
-          여름의 단어들이 놓여 있습니다.<br />당신의 단어도 하나 두고 가세요.
+          {CURRENT_SEASON}의 단어들이 놓여 있습니다.<br />당신의 단어도 하나 두고 가세요.
         </p>
       </header>
       <div className="field" ref={fieldRef} aria-label="이 계절의 단어들" />
@@ -492,16 +493,16 @@ export default function WordsClient() {
       )}
       <div className="leave">
         <form onSubmit={onSubmit} autoComplete="off">
-          <input ref={inputRef} type="text" maxLength={10} placeholder="여름이면 떠오르는 단어" aria-label="두고 갈 단어" />
+          <input ref={inputRef} type="text" maxLength={10} placeholder={`${CURRENT_SEASON}이면 떠오르는 단어`} aria-label="두고 갈 단어" />
           <button type="submit">보내기</button>
         </form>
-        <p className="hint">단어만 · 여덟 자 안팎 · 가든서비스가 읽어본 뒤 게시됩니다</p>
+        <p className="hint">단어만 · 열 자 안까지 · 가든서비스가 읽어본 뒤 게시됩니다</p>
         <p className="hint">도배 방지를 위해 익명 식별값이 저장돼요</p>
       </div>
       <div className={'received' + (toastMsg ? ' show' : '')} role="status">
         {toastMsg}
       </div>
-      <footer>양재천 · 여름</footer>
+      <footer>양재천 · {CURRENT_SEASON}</footer>
     </div>
   );
 }
