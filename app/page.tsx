@@ -34,6 +34,9 @@ export default async function LandingPage({ searchParams }: { searchParams: { de
             @team-at.space 팀 구글 계정으로 로그인하세요
           </p>
         )}
+        <a href="/install" className="mt-8 text-[12px] text-muted-foreground underline hover:text-foreground">
+          휴대폰·PC에 앱 설치하는 방법
+        </a>
       </div>
     </div>
   );
