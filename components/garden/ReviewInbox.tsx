@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+type DraftVariant = { tone: string; label: string; text: string };
+
 type Review = {
   id: number;
   review_id: string;
@@ -14,6 +16,7 @@ type Review = {
   photo_count: number | null;
   reviewed_at: string;
   draft: string | null;
+  draft_variants: DraftVariant[] | null;
   reply_text: string | null;
   status: string;
   posted_at: string | null;
@@ -139,6 +142,28 @@ export default function ReviewInbox() {
 
               {editable ? (
                 <>
+                  {!!r.draft_variants?.length && (
+                    <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 8 }}>
+                      <span className="text-[12px] text-muted-foreground">추천 문구</span>
+                      {r.draft_variants.map((v) => {
+                        const selected = (drafts[r.id] ?? '') === v.text;
+                        return (
+                          <button
+                            key={v.tone}
+                            onClick={() => setDrafts((d) => ({ ...d, [r.id]: v.text }))}
+                            className={`rounded-full border text-[12px] transition-colors ${
+                              selected
+                                ? 'border-foreground bg-foreground text-background'
+                                : 'border-border text-muted-foreground hover:text-foreground'
+                            }`}
+                            style={{ padding: '3px 10px' }}
+                          >
+                            {v.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                   <textarea
                     value={drafts[r.id] ?? ''}
                     onChange={(e) => setDrafts((d) => ({ ...d, [r.id]: e.target.value }))}

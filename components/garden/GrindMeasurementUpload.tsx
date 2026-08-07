@@ -117,16 +117,15 @@ export default function GrindMeasurementUpload() {
     if (res.ok) setItems(await res.json());
   };
 
-  // 원두별로 묶어 두 지점이 모두 측정됐는지(=비교 가능) 표시
-  const beans = useMemo(() => {
+  // 날짜별(측정 세션 단위)로 묶고, 각 날짜에 두 지점이 모두 측정됐는지(=비교 가능) 표시
+  // createdAt은 UTC ISO 문자열이라 KST(+9)로 옮긴 날짜로 묶는다
+  const days = useMemo(() => {
     const map = new Map<string, GrindMeasurement[]>();
     for (const m of items) {
-      const key = m.bean.trim();
+      const key = new Date(new Date(m.createdAt).getTime() + 9 * 3600_000).toISOString().slice(0, 10);
       map.set(key, [...(map.get(key) ?? []), m]);
     }
-    return Array.from(map.entries()).sort(
-      (a, b) => (b[1].at(-1)?.createdAt ?? '').localeCompare(a[1].at(-1)?.createdAt ?? '')
-    );
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
   }, [items]);
 
   const segBtn = (active: boolean): React.CSSProperties => ({
@@ -148,8 +147,9 @@ export default function GrindMeasurementUpload() {
           <a href={COMPASS_URL} target="_blank" rel="noreferrer" className="underline hover:text-foreground">
             언스페셜티 컴퍼스
           </a>
-          에서 측정한 결과 화면을 캡처해 올려주세요. 원두·다이얼이 같아야 지점 간 비교가 됩니다. 평균
-          µm 등 수치는 보이는 대로만 입력해도 충분해요 (이미지에서 나머지를 읽어냅니다).
+          에서 측정한 결과 화면을 캡처해 올려주세요. 원두·다이얼이 같아야 지점 간 비교가 됩니다.{' '}
+          <strong>평균 µm은 직접 입력해야 차트·기울기 계산에 반영됩니다</strong> — 이미지는 기록용으로만
+          저장돼요.
         </p>
         <p className="text-[13px] text-foreground" style={{ margin: 0 }}>
           이번 프로토콜 (2026-08-07 판교 재얼라인 이후): <strong>에티오피아 싱글 × 다이얼 6 / 8 / 10 × 각 3샷</strong>
@@ -239,30 +239,37 @@ export default function GrindMeasurementUpload() {
         </button>
       </div>
 
-      {/* 측정 목록 — 원두별 그룹, 두 지점 모두 있으면 비교 가능 표시 */}
-      {beans.length === 0 ? (
+      {/* 측정 목록 — 날짜별 그룹, 날짜 안에서 두 지점 모두 있으면 비교 가능 표시 */}
+      {days.length === 0 ? (
         <p className="text-[13px] text-muted-foreground">아직 업로드된 측정 기록이 없어요. 프로토콜: 에티오피아 싱글 × 다이얼 6 / 8 / 10 × 각 3샷 × 두 지점.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {beans.map(([bean, list]) => {
+          {days.map(([date, list]) => {
             const storesCovered = new Set(list.map((m) => m.store));
+            const beanNames = Array.from(new Set(list.map((m) => m.bean.trim())));
+            const roasts = Array.from(new Set(list.map((m) => m.roast)));
             return (
-              <div key={bean} className="ta-card bg-background" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div key={date} className="ta-card bg-background" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                  <span className="text-[14px] text-foreground" style={{ fontWeight: 500 }}>{bean}</span>
-                  {list[0]?.roast && <span className="text-[11px] text-muted-foreground">{roastLabel(list[0].roast)}</span>}
+                  <span className="tabular text-[14px] text-foreground" style={{ fontWeight: 500 }}>{date.replaceAll('-', '.')}</span>
+                  <span className="text-[12px] text-muted-foreground">
+                    {beanNames.join(' · ')}
+                    {roasts.length === 1 && ` (${roastLabel(roasts[0])})`}
+                  </span>
+                  <span className="tabular text-[11px] text-muted-foreground">{list.length}샷</span>
                   <span className="tabular text-[11px]" style={{ color: storesCovered.size === 2 ? 'hsl(150 60% 35%)' : 'hsl(var(--muted-foreground))' }}>
                     {storesCovered.size === 2 ? '두 지점 측정 완료 — 비교 가능' : `${storeLabel(Array.from(storesCovered)[0])}만 측정됨`}
                   </span>
                 </div>
                 {list
                   .slice()
-                  .sort((a, b) => a.store.localeCompare(b.store) || a.dial - b.dial)
+                  .sort((a, b) => a.store.localeCompare(b.store) || a.dial - b.dial || a.createdAt.localeCompare(b.createdAt))
                   .map((m) => (
                     <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <span className="tabular text-[13px] text-foreground" style={{ minWidth: 150 }}>
                         {storeLabel(m.store)} · 다이얼 {m.dial.toFixed(1)}
                       </span>
+                      {beanNames.length > 1 && <span className="text-[12px] text-muted-foreground">{m.bean.trim()}</span>}
                       <span className="tabular text-[13px] text-muted-foreground">
                         {m.mean ? `평균 ${m.mean}µm` : '수치 미입력'}
                         {m.std ? ` · σ ${m.std}` : ''}
@@ -271,11 +278,10 @@ export default function GrindMeasurementUpload() {
                       <div style={{ display: 'flex', gap: 6 }}>
                         {m.imageUrls.map((u, i) => (
                           <a key={i} href={u} target="_blank" rel="noreferrer">
-                            <Image src={u} alt={`${bean} 측정 이미지 ${i + 1}`} width={80} height={48} style={{ height: 48, width: 'auto', borderRadius: 4, border: '1px solid hsl(var(--border))' }} unoptimized />
+                            <Image src={u} alt={`${m.bean.trim()} 측정 이미지 ${i + 1}`} width={80} height={48} style={{ height: 48, width: 'auto', borderRadius: 4, border: '1px solid hsl(var(--border))' }} unoptimized />
                           </a>
                         ))}
                       </div>
-                      <span className="tabular text-[11px] text-muted-foreground">{m.createdAt.slice(5, 10).replace('-', '.')}</span>
                       <button onClick={() => remove(m.id)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }} title="측정 삭제">
                         ×
                       </button>

@@ -61,7 +61,7 @@ export async function PATCH(req: Request) {
     const draft = await draftReply(review, key);
     if (!draft) return NextResponse.json({ error: '초안 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' }, { status: 502 });
     const { data } = await g.supabase.schema('finance').from('place_reviews')
-      .update({ draft: draft.text, draft_model: draft.model, draft_at: new Date().toISOString(), status: 'drafted' })
+      .update({ draft: draft.text, draft_variants: draft.variants, draft_model: draft.model, draft_at: new Date().toISOString(), status: 'drafted' })
       .eq('id', id).select('*').single();
     return NextResponse.json({ review: data });
   }

@@ -23,7 +23,8 @@ create table if not exists finance.place_reviews (
   reviewed_at   timestamptz not null,          -- 리뷰 작성 시각
   had_reply     boolean not null default false,-- 수집 시점에 이미 답글이 있었는지
 
-  draft         text,                          -- AI 답글 초안
+  draft         text,                          -- AI 답글 초안 (기본 선택안)
+  draft_variants jsonb,                        -- 톤 3종 추천안 [{tone,label,text}]
   draft_model   text,
   draft_at      timestamptz,
   reply_text    text,                          -- 매니저가 확정한 답글 본문
@@ -71,6 +72,9 @@ create policy "reviews team read" on finance.place_reviews
 create policy "reviews team update" on finance.place_reviews
   for update using (auth.uid() is not null);
 -- insert/delete 정책은 의도적으로 없음 → 적재·삭제는 service_role(수집기)만 가능
+
+-- 기존 테이블에 톤 3종 추천안 컬럼 추가 (2026-08-07)
+alter table finance.place_reviews add column if not exists draft_variants jsonb;
 
 -- status 값 오타 방지
 alter table finance.place_reviews drop constraint if exists place_reviews_status_chk;
