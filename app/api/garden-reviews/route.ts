@@ -35,13 +35,14 @@ export async function GET(req: Request) {
       .limit(200);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // 미분류(백필 대상) 잔여 건수 — 분류 실행 버튼 노출용
-    const { count } = await g.supabase
-      .schema('finance')
-      .from('place_reviews')
-      .select('id', { count: 'exact', head: true })
-      .is('issue', null);
-    return NextResponse.json({ reviews: data ?? [], unclassified: count ?? 0 });
+    // 백필 대상 잔여 건수(미분류 + 카테고리 미보완 이슈) — 분류 실행 버튼 노출용
+    const db = g.supabase.schema('finance');
+    const [{ count: nullCount }, { count: catCount }] = await Promise.all([
+      db.from('place_reviews').select('id', { count: 'exact', head: true }).is('issue', null),
+      db.from('place_reviews').select('id', { count: 'exact', head: true })
+        .eq('issue', true).is('issue_categories', null).not('content', 'is', null),
+    ]);
+    return NextResponse.json({ reviews: data ?? [], unclassified: (nullCount ?? 0) + (catCount ?? 0) });
   }
 
   const statuses =

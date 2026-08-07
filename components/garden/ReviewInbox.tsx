@@ -250,7 +250,7 @@ export default function ReviewInbox() {
       {tab === 'issues' && !loading && unclassified > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/20 text-[13px]" style={{ padding: '10px 12px', marginBottom: 12 }}>
           <span className="text-muted-foreground">
-            아직 분류되지 않은 리뷰가 {unclassified}건 있습니다. 분류를 실행하면 이슈 리뷰가 이 탭에 모입니다.
+            분류가 필요한 리뷰가 {unclassified}건 있습니다(미분류·카테고리 보완 포함). 실행하면 이슈 리뷰가 이 탭에 모입니다.
           </span>
           <button
             onClick={runClassify}
