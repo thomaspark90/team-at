@@ -4,6 +4,7 @@ import TabNav from '@/components/TabNav';
 import GardenNav from '@/components/garden/GardenNav';
 import GardenDashboard from '@/components/garden/GardenDashboard';
 import GardenOps from '@/components/garden/GardenOps';
+import WeatherStrip from '@/components/garden/WeatherStrip';
 import WorkBoard from '@/components/garden/WorkBoard';
 
 // 가든 대시보드 — 팀 작업 보드가 첫 화면. 들어오면 '내 차례'가 먼저 보이고,
@@ -15,6 +16,7 @@ export default function GardenPage() {
       <TabNav />
       <GardenNav />
       <div className="mx-auto max-w-[1100px] px-6 py-8" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <WeatherStrip />
         <WorkBoard />
         <GardenDashboard section="unset" />
         <GardenOps />
