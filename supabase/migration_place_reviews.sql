@@ -58,3 +58,21 @@ $$ language plpgsql;
 drop trigger if exists place_reviews_touch on finance.place_reviews;
 create trigger place_reviews_touch before update on finance.place_reviews
   for each row execute function finance.touch_place_reviews();
+
+-- RLS — anon 키 직접 접근 차단. 수집기/게시기는 service_role이라 우회,
+-- 매니저 페이지는 로그인 세션(authenticated)이라 아래 정책으로 동작.
+alter table finance.place_reviews enable row level security;
+
+drop policy if exists "reviews team read"   on finance.place_reviews;
+drop policy if exists "reviews team update" on finance.place_reviews;
+
+create policy "reviews team read" on finance.place_reviews
+  for select using (auth.uid() is not null);
+create policy "reviews team update" on finance.place_reviews
+  for update using (auth.uid() is not null);
+-- insert/delete 정책은 의도적으로 없음 → 적재·삭제는 service_role(수집기)만 가능
+
+-- status 값 오타 방지
+alter table finance.place_reviews drop constraint if exists place_reviews_status_chk;
+alter table finance.place_reviews add constraint place_reviews_status_chk
+  check (status in ('new','drafted','approved','posted','skipped','replied_elsewhere'));
