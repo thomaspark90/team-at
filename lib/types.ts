@@ -36,8 +36,10 @@ export interface PurchaseRecord {
   id: string;
   createdAt: string; // ISO
   bean: string;
+  beanEn?: string; // 영문 원두명 — 원두카드 인쇄용 (구 기록엔 없음)
   roastery?: string; // 로스팅사 (구 기록엔 없음)
   roastDate?: string; // 로스팅 날짜 YYYY-MM-DD (구 기록엔 없음)
+  tastingNotes?: string; // 테이스팅 노트 — 원두카드 인쇄용 (구 기록엔 없음)
   staffName?: string; // 발주한 스탭이름 — 'OOO님'으로 표시 (구 기록엔 없음)
   purchasePrice: number; // 구매가 (구매 용량 기준)
   settings: PricingSettings; // 당시 설정 스냅샷
@@ -48,6 +50,9 @@ export interface PurchaseRecord {
   chosenPrice: number | null; // 선택한 배수의 책정 판매가
   createdBy?: string; // 저장한 사람 이메일 (구 기록엔 없음)
 }
+
+// 로스터리별 원두카드 이미지(로고·QR) — 설정에서 업로드, Blob public URL
+export type RoasteryAssets = Record<string, { logo?: string; qr?: string }>;
 
 // 발주 입력 드롭다운 명단 — 설정에서 관리 (스탭이름·로스팅사)
 export interface GardenOptions {

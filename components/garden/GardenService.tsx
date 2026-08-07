@@ -32,6 +32,8 @@ const SELECT_FILL = 'rgba(132, 204, 22, 0.14)';
 export default function GardenService() {
   const [settings, setSettings] = useState<PricingSettings>(DEFAULT_SETTINGS);
   const [bean, setBean] = useState('');
+  const [beanEn, setBeanEn] = useState(''); // 영문 원두명 — 원두카드 인쇄용
+  const [tastingNotes, setTastingNotes] = useState(''); // 테이스팅 노트 — 원두카드 인쇄용
   const [roastery, setRoastery] = useState('');
   const [roastDate, setRoastDate] = useState(''); // 로스팅 날짜 YYYY-MM-DD
   const [staffName, setStaffName] = useState(''); // 발주한 스탭이름 — 기록에 'OOO님'으로 표시
@@ -79,6 +81,8 @@ export default function GardenService() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         bean: bean.trim(),
+        beanEn: beanEn.trim() || undefined,
+        tastingNotes: tastingNotes.trim() || undefined,
         roastery: roastery.trim() || undefined,
         roastDate: roastDate || undefined,
         staffName: staffName.trim() || undefined,
@@ -214,7 +218,12 @@ export default function GardenService() {
                       roastLevel: string | null;
                       tastingNotes: string | null;
                     };
-                    if (x.beanName) setBean(x.beanName);
+                    // 영문 위주 이름이면 영문 원두명으로, 아니면 한글 원두명으로 기입
+                    if (x.beanName) {
+                      if (/^[\x00-\x7F]*$/.test(x.beanName)) setBeanEn(x.beanName);
+                      else setBean(x.beanName);
+                    }
+                    if (x.tastingNotes) setTastingNotes(x.tastingNotes);
                     if (x.roastery) setRoastery(x.roastery);
                     if (x.weightG) setSettings((s) => ({ ...s, capacityG: x.weightG! }));
                     const got = [
@@ -246,6 +255,18 @@ export default function GardenService() {
               value={bean}
               onChange={(e) => setBean(e.target.value)}
               placeholder="원두명 (예: 에티오피아 게뎁)"
+              className="ta-input w-full"
+            />
+            <input
+              value={beanEn}
+              onChange={(e) => setBeanEn(e.target.value)}
+              placeholder="영문 원두명 (예: Ethiopia Gedeb) — 원두카드용"
+              className="ta-input w-full"
+            />
+            <input
+              value={tastingNotes}
+              onChange={(e) => setTastingNotes(e.target.value)}
+              placeholder="테이스팅 노트 (예: 말린 무화과, 오렌지, 아카시아, 꿀) — 원두카드용"
               className="ta-input w-full"
             />
             <PickOrType
@@ -437,6 +458,14 @@ export default function GardenService() {
                               <span className="tabular text-muted-foreground">판매 {won(rec.rangeLow)}~{won(rec.rangeHigh)}</span>
                             )}
                           </span>
+                          <a
+                            href={`/garden/beancard?recordId=${rec.id}`}
+                            className="text-muted-foreground hover:text-foreground"
+                            style={{ fontSize: 11, flexShrink: 0, textDecoration: 'none' }}
+                            title="원두카드 인쇄 (A4 3×3)"
+                          >
+                            카드
+                          </a>
                           <button
                             onClick={() => deletePurchase(rec.id)}
                             className="gs-del text-muted-foreground hover:text-foreground"
