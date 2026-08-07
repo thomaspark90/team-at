@@ -1,9 +1,30 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { isAllowedEmail } from '@/lib/finance/access';
+import { isAllowedEmail, isOwner } from '@/lib/finance/access';
+import { firstAllowedHref, sectionForPath } from '@/lib/access/sections';
+import { GARDEN_TABS, tabForPath } from '@/lib/garden/tabs';
 
-// 로그인 필요한 경로(전체 구글 통일). 재무의 역할 체크는 /finance 페이지에서 추가로 함.
+// 앱 전체 접근 통제의 단일 관문.
+//  1) 보호 페이지: 로그인 + 팀 도메인(@team-at.space) + 사용자별 섹션/가든탭 권한
+//  2) /api/*     : 로그인 + 팀 도메인 (라우트마다 개별 확인하던 것을 여기서 일괄 강제)
+// 이렇게 두지 않으면 페이지는 막혀도 API 를 직접 호출해 같은 데이터를 가져갈 수 있다.
+
 const PROTECTED = ['/dashboard', '/studio', '/garden', '/finance'];
+
+// 세션 쿠키 없이 호출되는 API — 각 라우트가 토큰/서명으로 자체 인증한다.
+// (외부 수집기·Blob 완료 웹훅·공개 단어 페이지)
+const PUBLIC_API = [
+  '/api/upload', // Blob 완료 웹훅은 쿠키가 없음 — 토큰 발급 시점에 라우트가 직접 확인
+  '/api/garden-words', // 공개 제철 단어(익명 제출·조회) — 관리 동작은 라우트가 확인
+  '/api/garden-reviews/ingest',
+  '/api/garden-reviews/queue',
+  '/api/finance/naverpay/ingest',
+  '/api/finance/naverpay/alert',
+  '/api/finance/coupang/ingest',
+  '/api/finance/coupang/alert',
+];
+
+const isPublicApi = (p: string) => PUBLIC_API.some((a) => p === a || p.startsWith(a + '/'));
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -27,30 +48,69 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  const path = request.nextUrl.pathname;
+  const isApi = path.startsWith('/api/');
+  if (isApi && isPublicApi(path)) return response;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const path = request.nextUrl.pathname;
-  const needsAuth = PROTECTED.some((p) => path === p || path.startsWith(p + '/'));
-  if (!user && needsAuth) {
+  const needsAuth = isApi || PROTECTED.some((p) => path === p || path.startsWith(p + '/'));
+  if (!needsAuth) return response;
+
+  const deny = (status: number, message: string) => {
+    if (isApi) return NextResponse.json({ error: message }, { status });
     const url = request.nextUrl.clone();
     url.pathname = '/';
+    url.search = status === 403 ? 'denied=1' : '';
+    return NextResponse.redirect(url);
+  };
+
+  if (!user) return deny(401, '로그인이 필요합니다.');
+  // 로그인은 됐지만 팀 도메인(@team-at.space)/대표가 아니면 차단 — 페이지·API 모두.
+  if (!isAllowedEmail(user.email)) return deny(403, '팀 계정만 이용할 수 있습니다.');
+
+  // 여기부터는 페이지 전용 — 사용자별 섹션/가든탭 접근 권한
+  if (isApi || isOwner(user.email)) return response;
+
+  const section = sectionForPath(path);
+  if (!section) return response;
+
+  const { data: access } = await supabase
+    .schema('finance')
+    .from('garden_tab_access')
+    .select('tabs, sections')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!access) return response; // 행 없음 = 전체 허용
+
+  const sections = (access.sections as string[] | null) ?? null;
+  if (sections && !sections.includes(section)) {
+    const url = request.nextUrl.clone();
+    const href = firstAllowedHref(sections);
+    url.pathname = href ?? '/';
+    url.search = href ? '' : 'denied=1';
     return NextResponse.redirect(url);
   }
-  // 로그인은 됐지만 팀 도메인(@team-at.space)/대표가 아니면 보호 경로 차단(기존 세션 대비).
-  if (user && needsAuth && !isAllowedEmail(user.email)) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/';
-    url.search = 'denied=1';
-    return NextResponse.redirect(url);
+
+  // 가든 하위 탭 권한 — 미허용 탭이면 허용된 첫 탭으로
+  const tabs = (access.tabs as string[] | null) ?? null;
+  if (section === 'garden' && tabs) {
+    const current = tabForPath(path);
+    if (current && !tabs.includes(current.key)) {
+      const url = request.nextUrl.clone();
+      const first = GARDEN_TABS.find((t) => tabs.includes(t.key));
+      url.pathname = first?.href ?? firstAllowedHref(sections) ?? '/';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
   }
 
   return response;
 }
 
 export const config = {
-  // PROTECTED 경로에서만 실행 — 그 외(/, /api/*, /s/* 등)에서 매 요청 Supabase 인증 왕복이
-  // 발생하던 것을 제거. /api 는 각 라우트가, / 는 페이지가 자체 인증 확인.
-  matcher: ['/dashboard/:path*', '/studio/:path*', '/garden/:path*', '/finance/:path*'],
+  // 보호 페이지 + 모든 API. 정적 자산과 /, /s/*, /install, /garden-service/* 는 대상 아님.
+  matcher: ['/dashboard/:path*', '/studio/:path*', '/garden/:path*', '/finance/:path*', '/api/:path*'],
 };

@@ -12,6 +12,8 @@ type WordRow = {
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   decided_at: string | null;
+  submit_sid: string | null;
+  submit_iphash: string | null;
 };
 
 const PUBLIC_URL = '/garden-service/words';
@@ -71,6 +73,23 @@ export default function GardenWords() {
   const pending = (words ?? []).filter((w) => w.status === 'pending');
   const approved = (words ?? []).filter((w) => w.status === 'approved');
   const rejected = (words ?? []).filter((w) => w.status === 'rejected');
+
+  // 같은 제출자 묶기 — 세션 ID(없으면 IP 해시) 기준으로 ㄱ·ㄴ·ㄷ… 라벨을 붙인다.
+  // 식별값 도입 전의 단어는 라벨이 없다.
+  const submitterMap = new Map<string, string>();
+  const LABELS = 'ㄱㄴㄷㄹㅁㅂㅅㅇㅈㅊㅋㅌㅍㅎ';
+  for (const w of words ?? []) {
+    const k = w.submit_sid || w.submit_iphash;
+    if (k && !submitterMap.has(k)) submitterMap.set(k, LABELS[submitterMap.size % LABELS.length]);
+  }
+  const subLabel = (w: WordRow) => {
+    const k = w.submit_sid || w.submit_iphash;
+    return k ? submitterMap.get(k) ?? null : null;
+  };
+  const subTitle = (w: WordRow) => {
+    const s = subLabel(w);
+    return `${fmt(w.created_at)} 제출${s ? ` · 제출자 ${s}` : ''}`;
+  };
 
   return (
     <div className="space-y-8">
@@ -137,7 +156,10 @@ export default function GardenWords() {
                   >
                     <div className="min-w-0">
                       <span className="text-[17px]">{w.text}</span>
-                      <span className="ml-3 text-[12px] text-muted-foreground">{fmt(w.created_at)}</span>
+                      <span className="ml-3 text-[12px] text-muted-foreground">
+                        {fmt(w.created_at)}
+                        {subLabel(w) && ` · 제출자 ${subLabel(w)}`}
+                      </span>
                     </div>
                     <div className="flex shrink-0 gap-2">
                       <button
@@ -170,6 +192,7 @@ export default function GardenWords() {
                 {approved.map((w) => (
                   <li
                     key={w.id}
+                    title={subTitle(w)}
                     className="flex items-center gap-2 rounded-full border border-border bg-card py-1.5 pl-3.5 pr-2 text-[13px]"
                   >
                     {w.text}
@@ -194,9 +217,11 @@ export default function GardenWords() {
                 {rejected.map((w) => (
                   <li
                     key={w.id}
+                    title={subTitle(w)}
                     className="flex items-center gap-2 rounded-full border border-border py-1.5 pl-3.5 pr-2 text-[13px] text-muted-foreground"
                   >
                     <span className="line-through">{w.text}</span>
+                    {subLabel(w) && <span className="text-[11px]">{subLabel(w)}</span>}
                     <button
                       onClick={() => setStatus(w.id, 'pending')}
                       disabled={busyId === w.id}

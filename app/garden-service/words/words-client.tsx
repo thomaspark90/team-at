@@ -438,13 +438,24 @@ export default function WordsClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: t }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        // 속도 제한(429) 등 서버가 건네는 문장을 그대로 보여준다
+        let msg = '';
+        try {
+          msg = String((await res.json())?.error ?? '');
+        } catch {
+          /* 본문 없으면 기본 문구 */
+        }
+        throw new Error(msg);
+      }
       apiRef.current?.addPending(t);
       showToast(
         <>잘 받았습니다. 가든서비스에서 확인 후.<br />어딘가에 조용히 놓아두겠습니다.</>
       );
-    } catch {
-      showToast('지금은 단어를 받을 수 없어요. 잠시 후 다시 시도해주세요.');
+    } catch (e) {
+      showToast(
+        e instanceof Error && e.message ? e.message : '지금은 단어를 받을 수 없어요. 잠시 후 다시 시도해주세요.'
+      );
     } finally {
       sendingRef.current = false;
     }
@@ -485,6 +496,7 @@ export default function WordsClient() {
           <button type="submit">보내기</button>
         </form>
         <p className="hint">단어만 · 여덟 자 안팎 · 가든서비스가 읽어본 뒤 게시됩니다</p>
+        <p className="hint">도배 방지를 위해 익명 식별값이 저장돼요</p>
       </div>
       <div className={'received' + (toastMsg ? ' show' : '')} role="status">
         {toastMsg}

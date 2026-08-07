@@ -32,3 +32,10 @@ create policy "words team update" on public.garden_words
   for update using (auth.uid() is not null);
 create policy "words team delete" on public.garden_words
   for delete using (auth.uid() is not null);
+
+-- 도배 방지용 익명 식별값 (2026-08-07)
+-- submit_sid: 브라우저 익명 세션 ID(httpOnly 쿠키) / submit_iphash: 솔트 섞은 IP SHA-256 해시.
+-- 둘 다 역추적 불가 — 같은 제출자 묶기와 속도 제한에만 쓴다. 고지 문구는 공개 페이지 하단.
+alter table public.garden_words add column if not exists submit_sid text;
+alter table public.garden_words add column if not exists submit_iphash text;
+create index if not exists garden_words_sid_idx on public.garden_words (submit_sid);
