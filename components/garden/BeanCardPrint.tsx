@@ -14,10 +14,18 @@ const MARGIN_MM = 10; // 시트 바깥 여백
 const CELL_W = (210 - MARGIN_MM * 2) / COLS; // 63.33mm
 const CELL_H = (297 - MARGIN_MM * 2) / ROWS; // 92.33mm
 
+const fmtDate = (iso: string) => {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${String(d.getFullYear()).slice(2)}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
+};
+
 export default function BeanCardPrint({ recordId }: { recordId: string | null }) {
   const [records, setRecords] = useState<PurchaseRecord[]>([]);
   const [assets, setAssets] = useState<RoasteryAssets>({});
   const [loaded, setLoaded] = useState(false);
+  // 불러온 발주 기록 — URL(recordId)로 진입했거나 드롭다운에서 선택
+  const [selectedId, setSelectedId] = useState<string | null>(recordId);
 
   // 카드 문구 — 발주 기록으로 프리필, 인쇄 전 수정 가능
   const [roastery, setRoastery] = useState('');
@@ -37,8 +45,14 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
   }, []);
 
   const record = useMemo(
-    () => records.find((r) => r.id === recordId) ?? null,
-    [records, recordId]
+    () => records.find((r) => r.id === selectedId) ?? null,
+    [records, selectedId]
+  );
+
+  // 불러오기 목록 — 최근 발주순
+  const sortedRecords = useMemo(
+    () => records.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [records]
   );
 
   // 기록 로드 시 1회 프리필 — 노트는 원본 카드처럼 두 줄로 나눠 보여주기 좋게 쉼표 중간에서 줄바꿈
@@ -52,14 +66,6 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
 
   const asset = assets[roastery] ?? {};
 
-  if (loaded && recordId && !record) {
-    return (
-      <div className="mx-auto max-w-[1100px] px-6 py-8">
-        <p className="text-[13px] text-muted-foreground">발주 기록을 찾지 못했어요. 필터 원두 발주 탭에서 다시 진입해 주세요.</p>
-      </div>
-    );
-  }
-
   return (
     <div>
       {/* 편집 패널 — 화면 전용, 인쇄에는 안 나옴 */}
@@ -71,6 +77,27 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
               인쇄 (⌘P)
             </button>
           </div>
+          {/* 저장된 발주 원두 불러오기 — 선택하면 아래 칸이 자동 기입된다 */}
+          <select
+            value={selectedId ?? ''}
+            onChange={(e) => setSelectedId(e.target.value || null)}
+            className="ta-input w-full"
+            disabled={!loaded}
+          >
+            <option value="">
+              {!loaded
+                ? '발주 기록 불러오는 중…'
+                : sortedRecords.length
+                  ? '저장된 원두 불러오기 — 선택하면 자동 기입'
+                  : '저장된 발주 기록이 없어요 — 필터 원두 발주에서 먼저 저장하세요'}
+            </option>
+            {sortedRecords.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.bean}
+                {r.roastery ? ` · ${r.roastery}` : ''} · {fmtDate(r.createdAt)}
+              </option>
+            ))}
+          </select>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <input value={roastery} onChange={(e) => setRoastery(e.target.value)} placeholder="로스터리 (예: UFO coffee)" className="ta-input w-full" />
             <input value={beanEn} onChange={(e) => setBeanEn(e.target.value)} placeholder="영문 원두명 (예: Rwanda Bombo Honey)" className="ta-input w-full" />
