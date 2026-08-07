@@ -138,6 +138,13 @@ export const gardenTodoRecords = blobCollection<GardenTodo>({
   legacyKey: 'todos',
 });
 
+// 스탭밀 투두 — 가든과 같은 구조, 컬렉션만 분리 (보드·설정 화면이 브랜드별이라 데이터도 분리)
+export const staffmealTodoRecords = blobCollection<GardenTodo>({
+  name: 'staffmeal-todos',
+  legacyPath: 'data/staffmeal-todos.json', // 신설 컬렉션 — 구 단일 JSON 은 처음부터 없다
+  legacyKey: 'todos',
+});
+
 export const alignmentRecords = blobCollection<AlignmentEvent>({
   name: 'garden-grinder-alignments',
   legacyPath: 'data/garden-grinder-alignments.json',

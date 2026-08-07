@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fallbackRecipients } from '@/lib/notify';
+import { recordIngestFailure } from '@/lib/ingest-health';
 
 export const runtime = 'nodejs';
 
@@ -19,6 +20,8 @@ export async function POST(req: Request) {
     if (body?.reason) reason = String(body.reason).slice(0, 200);
     if (body?.detail) detail = String(body.detail).slice(0, 500);
   } catch { /* 본문 없이도 발송 */ }
+
+  await recordIngestFailure('naverpay', reason); // 회계 홈 상태 카드에 실패로 표시
 
   const key = process.env.RESEND_API_KEY;
   if (!key) return NextResponse.json({ emailed: 0, skipped: 'RESEND_API_KEY 없음' });

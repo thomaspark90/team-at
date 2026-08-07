@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { fallbackRecipients } from '@/lib/notify';
+import { recordIngestFailure } from '@/lib/ingest-health';
 
 export const runtime = 'nodejs';
 
 // 쿠팡 무인 수집기 실패 알림 — 수집기(로컬 Mac)가 실패 시 호출하면
 // Resend 로 대표(NOTIFY_EMAIL 폴백 수신자)에게 이메일을 보낸다. naverpay alert와 동일 패턴.
 export async function POST(req: Request) {
-  const token = process.env.COUPANG_INGEST_TOKEN || process.env.NAVERPAY_INGEST_TOKEN;
-  if (!token) return NextResponse.json({ error: 'COUPANG_INGEST_TOKEN(또는 NAVERPAY_INGEST_TOKEN) 설정 필요' }, { status: 500 });
+  const token = process.env.COUPANG_INGEST_TOKEN; // 전용 토큰 — 네이버페이 폴백 제거(2026-08-08)
+  if (!token) return NextResponse.json({ error: 'COUPANG_INGEST_TOKEN 설정 필요' }, { status: 500 });
   if (req.headers.get('x-coupang-token') !== token) {
     return NextResponse.json({ error: '인증 실패' }, { status: 401 });
   }
@@ -19,6 +20,8 @@ export async function POST(req: Request) {
     if (body?.reason) reason = String(body.reason).slice(0, 200);
     if (body?.detail) detail = String(body.detail).slice(0, 500);
   } catch { /* 본문 없이도 발송 */ }
+
+  await recordIngestFailure('coupang', reason); // 회계 홈 상태 카드에 실패로 표시
 
   const key = process.env.RESEND_API_KEY;
   if (!key) return NextResponse.json({ emailed: 0, skipped: 'RESEND_API_KEY 없음' });

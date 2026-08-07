@@ -6,6 +6,7 @@ import { draftReply } from '@/lib/garden/review-draft';
 import { classifyIssue } from '@/lib/garden/review-issue';
 import { notifyGardenEvent } from '@/lib/notify';
 import { topicEmails } from '@/lib/garden-notify-topics-server';
+import { recordIngestSuccess } from '@/lib/ingest-health';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -52,7 +53,10 @@ export async function POST(req: Request) {
   // 매장 키 검증 — 수집기 오타 키가 적재되면 매장 필터에 안 잡히는 유령 매장이 된다
   const validStores = new Set<string>(STORES.map((s) => s.id));
   const valid = reviews.filter((r) => r?.review_id && validStores.has(r.store_key) && r.place_id && r.reviewed_at);
-  if (valid.length === 0) return NextResponse.json({ saved: 0, duplicates: 0, drafted: 0 });
+  if (valid.length === 0) {
+    await recordIngestSuccess('reviews', '새 리뷰 없음'); // 빈 결과도 수집기가 돌았다는 신호
+    return NextResponse.json({ saved: 0, duplicates: 0, drafted: 0 });
+  }
 
   const supabase = createServiceClient(url, serviceKey, { db: { schema: 'finance' } });
 
@@ -193,6 +197,7 @@ export async function POST(req: Request) {
     }
   }
 
+  await recordIngestSuccess('reviews', `저장 ${rows.length} · 중복 ${valid.length - rows.length}`);
   return NextResponse.json({
     saved: rows.length,
     duplicates: valid.length - rows.length,

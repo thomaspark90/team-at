@@ -3,13 +3,14 @@ import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { normalizeKey } from '@/lib/finance/normalize';
 import { hash } from '@/lib/finance/dedup';
 import { resolvePersonalCat, applyPersonalCategory } from '@/lib/finance/personal';
+import { recordIngestSuccess } from '@/lib/ingest-health';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
 // 쿠팡 무인 수집기(로컬 Mac, launchd) 전용 적재 엔드포인트 — naverpay ingest와 동일 패턴.
 // 사용자 세션이 없으므로 비밀 토큰(x-coupang-token) + service role 클라이언트로 동작한다.
-// 토큰은 COUPANG_INGEST_TOKEN, 미설정 시 NAVERPAY_INGEST_TOKEN 폴백(수집기 한 대가 둘 다 운영).
+// 토큰은 COUPANG_INGEST_TOKEN 전용 — 네이버페이 토큰 폴백은 파이프라인 권한 분리를 위해 제거(2026-08-08).
 // 적재 규칙은 supabase/migration_coupang.sql 상단 주석 참조.
 
 type IngestRow = {
@@ -33,11 +34,11 @@ const toKstIso = (s: string) => {
 };
 
 export async function POST(req: Request) {
-  const token = process.env.COUPANG_INGEST_TOKEN || process.env.NAVERPAY_INGEST_TOKEN;
+  const token = process.env.COUPANG_INGEST_TOKEN;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!token || !url || !serviceKey) {
-    return NextResponse.json({ error: '서버에 COUPANG_INGEST_TOKEN(또는 NAVERPAY_INGEST_TOKEN) / SUPABASE_SERVICE_ROLE_KEY 설정이 필요합니다.' }, { status: 500 });
+    return NextResponse.json({ error: '서버에 COUPANG_INGEST_TOKEN / SUPABASE_SERVICE_ROLE_KEY 설정이 필요합니다.' }, { status: 500 });
   }
   if (req.headers.get('x-coupang-token') !== token) {
     return NextResponse.json({ error: '인증 실패' }, { status: 401 });
@@ -52,7 +53,10 @@ export async function POST(req: Request) {
   }
   // 금액 0(전량취소)도 통과시킨다 — 기존 적재분을 0으로 소급 정정하기 위해. 신규 0원 행은 아래 fresh에서 제외.
   const valid = rows.filter((r) => r && r.paid_at && Number(r.amount) >= 0);
-  if (valid.length === 0) return NextResponse.json({ saved: 0, duplicates: 0, autoClassified: 0 });
+  if (valid.length === 0) {
+    await recordIngestSuccess('coupang', '새 건 없음'); // 빈 결과도 수집기가 돌았다는 신호
+    return NextResponse.json({ saved: 0, duplicates: 0, autoClassified: 0 });
+  }
 
   const supabase = createServiceClient(url, serviceKey, { db: { schema: 'finance' } });
 
@@ -175,6 +179,7 @@ export async function POST(req: Request) {
   }
 
   if (fresh.length === 0) {
+    await recordIngestSuccess('coupang', `저장 0 · 중복 ${mapped.length}`);
     return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0, brandUpdated, personalCategorized, amountUpdated });
   }
 
@@ -226,5 +231,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
   }
 
+  await recordIngestSuccess('coupang', `저장 ${fresh.length} · 중복 ${mapped.length - fresh.length}`);
   return NextResponse.json({ saved: fresh.length, duplicates: mapped.length - fresh.length, autoClassified, brandUpdated, personalCategorized, amountUpdated });
 }

@@ -9,6 +9,7 @@ const ITEMS = [
   { href: '/studio', label: '대시보드' },
   { href: '/studio/menu', label: 'IG 메뉴 업데이트' },
   { href: '/studio/meals', label: '메뉴 기록' },
+  { href: '/studio/sales', label: '매출' },
   { href: '/studio/settings', label: '설정' },
 ];
 

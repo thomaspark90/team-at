@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isOwner, resolveRole } from '@/lib/finance/access';
 import { readGardenTopics } from '@/lib/garden-notify-topics-server';
-import { purchaseRecords, grindMeasurementRecords, gardenTodoRecords, alignmentRecords, dripRecipeRecords } from '@/lib/blob-records';
+import { purchaseRecords, grindMeasurementRecords, gardenTodoRecords, staffmealTodoRecords, alignmentRecords, dripRecipeRecords } from '@/lib/blob-records';
 import { normalize } from '@/lib/pricing';
 import { STORES } from '@/lib/types';
 import type { DripRecipe } from '@/lib/types';
@@ -112,7 +112,8 @@ export async function GET(req: Request) {
       isGarden ? purchaseRecords.readAll().catch(() => []) : [],
       isGarden ? dripRecipeRecords.readAll().catch(() => [] as DripRecipe[]) : [],
       isGarden ? grindMeasurementRecords.readAll().catch(() => []) : [],
-      isGarden ? gardenTodoRecords.readAll().catch(() => [] as GardenTodo[]) : [],
+      // 투두는 브랜드별 컬렉션 — 가든 보드엔 가든 투두, 스탭밀 보드엔 스탭밀 투두
+      (isGarden ? gardenTodoRecords : staffmealTodoRecords).readAll().catch(() => [] as GardenTodo[]),
       isGarden ? readJson<{ profiles: GrinderProfiles }>('data/garden-grinders.json') : null,
       isGarden ? null : readJson<{ records: StaffMealRecord[] }>('data/staffmeals.json'),
       isGarden ? alignmentRecords.readAll().catch(() => [] as AlignmentEvent[]) : [],
@@ -328,9 +329,10 @@ export async function GET(req: Request) {
       assignees: t.createdBy ? [t.createdBy] : [],
       mine: !t.done && (t.createdBy ?? '').toLowerCase() === me,
       mineReason: '내가 만든 할 일',
-      href: '/garden/settings',
+      href: isGarden ? '/garden/settings' : '/studio/settings',
       actionLabel: '열기',
-      tab: TYPE_TAB.todo,
+      // 스탭밀 투두는 가든 탭 체계 밖 — 섹션(studio) 권한으로만 판단한다 (meal 카드와 동일)
+      tab: isGarden ? TYPE_TAB.todo : null,
       sortAt: t.createdAt,
     });
   }

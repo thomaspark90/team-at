@@ -3,8 +3,8 @@ import GardenNav from '@/components/garden/GardenNav';
 import WeatherSalesReport from '@/components/garden/WeatherSalesReport';
 
 // 날씨 × 판매 분석 — 대시보드 날씨 스트립에서 진입하는 재무 권한자용 리포트.
-// 가든 탭 레지스트리(lib/garden/tabs)에 없는 경로라 탭 권한과 무관하게 가든 섹션 접근자면 열리고,
-// 데이터 자체는 API 의 재무 역할 확인 + pos_sales RLS 로 걸러진다.
+// 가든 탭 레지스트리(lib/garden/tabs)의 'weather' 탭 — 탭 권한으로 페이지를 거르고,
+// 데이터 자체는 API 의 재무 역할 확인 + pos_sales RLS 로 한 번 더 걸러진다.
 export default function GardenWeatherPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">

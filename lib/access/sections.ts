@@ -50,6 +50,7 @@ export function firstAllowedHref(sections: string[] | null): string | null {
  *  finance API 는 회계(기장)와 리포트(분석) 화면이 함께 쓰므로 둘 중 하나만 있어도 허용. */
 export function sectionsForApiPath(p: string): string[] | null {
   if (p.startsWith('/api/staffmeals') || p.startsWith('/api/backgrounds')) return ['studio'];
+  if (p.startsWith('/api/staffmeal-todos')) return ['studio'];
   if (p.startsWith('/api/finance/')) return ['accounting', 'report'];
   // 작업 보드는 scope(garden|staffmeal)에 따라 필요한 섹션이 달라 라우트가 직접 확인한다.
   // 여기서 garden 으로 묶으면 스탭밀 전용 계정이 자기 보드도 못 연다.

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { requireGardenTab } from '@/lib/access/guard';
 import { fetchWeatherArchive, regressWeather, type RegressionResult, type SalesDay } from '@/lib/garden/weatherSales';
 
 export const runtime = 'nodejs';
@@ -39,6 +40,9 @@ export async function GET() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  // 탭 권한('weather') — 페이지는 미들웨어가 거르지만 API 직접 호출도 같은 기준으로 막는다
+  const denied = await requireGardenTab(supabase, user, 'weather');
+  if (denied) return denied;
   const role = await resolveRole(supabase, user);
   if (!role || !['admin', 'classifier'].includes(role)) {
     return NextResponse.json({ error: '재무 권한(admin/classifier)이 있어야 볼 수 있어요.' }, { status: 403 });
