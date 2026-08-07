@@ -8,11 +8,83 @@ export interface TransferExtraction {
   vendor_name: string | null;
   doc_date: string | null; // YYYY-MM-DD
   amount: number | null; // 이번 거래 청구액
-  balance_total: number | null; // 전잔액 포함 총잔액(있을 때만)
+  prev_balance: number | null; // 이번 건 이전까지 남은 미수금(전잔액·전월이월)
+  balance_total: number | null; // 미수금 포함 총잔액(있을 때만)
   items_summary: string | null;
   bank: string | null;
   account_no: string | null;
   account_holder: string | null;
+}
+
+// ── 미수금 분해 ───────────────────────────────────────────────────────────────
+// 명세서마다 표기가 달라 '총잔액에 이번 발주가 포함돼 있는지'가 헷갈린다.
+// 세 값(이번 청구·전잔액·총잔액)의 관계로 판별해 지급 기준을 고를 수 있게 한다.
+
+export type PayBasis = 'current' | 'prev' | 'total';
+
+export interface PayOption {
+  key: PayBasis;
+  label: string;
+  amount: number;
+}
+
+export interface BalanceBreakdown {
+  /** 총잔액에 이번 발주가 포함돼 있는지. null = 판단 불가 */
+  totalIncludesCurrent: boolean | null;
+  current: number | null; // 이번 발주분
+  prev: number | null; // 이전 미수금
+  total: number | null; // 미수 포함 총액
+  options: PayOption[]; // 지급 기준 선택지 (중복 금액은 하나로)
+  /** 사람이 읽는 한 줄 설명 — 확인창에 그대로 노출 */
+  note: string | null;
+}
+
+const near = (a: number, b: number) => Math.abs(a - b) <= 1; // 원 단위 반올림 오차 허용
+
+export function breakdownBalance(x: {
+  amount: number | null;
+  prev_balance: number | null;
+  balance_total: number | null;
+}): BalanceBreakdown {
+  const cur = x.amount;
+  let prev = x.prev_balance;
+  let total = x.balance_total;
+
+  // 두 값만 읽혔으면 나머지 하나는 산술로 채운다(명세서가 늘 셋을 다 인쇄하진 않는다)
+  if (total == null && cur != null && prev != null) total = cur + prev;
+  if (prev == null && cur != null && total != null && total >= cur) prev = total - cur;
+
+  let totalIncludesCurrent: boolean | null = null;
+  let note: string | null = null;
+  if (cur != null && prev != null && total != null) {
+    if (near(prev + cur, total)) {
+      totalIncludesCurrent = true;
+      note = `총잔액 ${total.toLocaleString()}원 = 이전 미수 ${prev.toLocaleString()}원 + 이번 발주 ${cur.toLocaleString()}원`;
+    } else if (near(prev, total)) {
+      // 총잔액이 전잔액과 같다 = 이번 발주가 아직 잔액에 반영되지 않음
+      totalIncludesCurrent = false;
+      note = `총잔액 ${total.toLocaleString()}원에는 이번 발주 ${cur.toLocaleString()}원이 빠져 있어요`;
+    } else {
+      note = `읽어낸 금액이 서로 맞지 않아요 (이전 미수 ${prev.toLocaleString()} + 이번 ${cur.toLocaleString()} ≠ 총 ${total.toLocaleString()}). 명세서를 확인해 주세요`;
+    }
+  } else if (cur != null && total != null && total > cur) {
+    totalIncludesCurrent = true;
+    note = `총잔액 ${total.toLocaleString()}원에 이번 발주 ${cur.toLocaleString()}원이 포함된 것으로 보여요`;
+  } else if (prev != null && cur != null) {
+    note = `이전 미수 ${prev.toLocaleString()}원이 남아 있어요`;
+  }
+
+  const options: PayOption[] = [];
+  const push = (key: PayBasis, label: string, amount: number | null) => {
+    if (amount == null || amount <= 0) return;
+    if (options.some((o) => o.amount === amount)) return; // 같은 금액이면 선택지를 늘리지 않는다
+    options.push({ key, label, amount });
+  };
+  push('current', '이번 발주만', cur);
+  push('prev', '이전 미수만', prev);
+  push('total', totalIncludesCurrent === false ? '미수 + 이번 발주' : '미수 포함 총액', total ?? (cur != null && prev != null ? cur + prev : null));
+
+  return { totalIncludesCurrent, current: cur, prev, total, options, note };
 }
 
 export interface TransferRequestRow {
@@ -41,13 +113,20 @@ const PROMPT = `이 이미지는 한국의 거래명세서 또는 영수증이�
   "brand": "staffmeal"|"garden"|null, // 이 매입이 어느 브랜드 것인지. 구매자·고객명 칸에 '스탭밀'/'스텝밀'/'staff meal'이 보이면 staffmeal, '가든'/'garden'이 보이면 garden. 이름이 없으면 품목으로 추정: 원두·커피·시럽·우유 등 카페 재료면 garden, 식당 식자재(쌀·김치·정육·채소·소스 등)면 staffmeal. 애매하면 반드시 null
   "vendor_name": string|null,   // 돈을 받을 공급자 상호. 문서를 발행한 회사명. '고객명'·'거래처명' 칸(구매자, 예: 스텝밀·판교)이 아님에 주의
   "doc_date": string|null,      // 거래일자 YYYY-MM-DD
-  "amount": number|null,        // 이번 거래 청구 금액(합계·청구금액합계). 숫자만
-  "balance_total": number|null, // 전잔액(미수금) 포함 총잔액이 별도로 있으면 그 값, 없으면 null
+  "amount": number|null,        // 이번 거래 청구 금액만. '합계·공급가액+세액·당월매출·금일합계·청구금액' 등 이번 거래분. 숫자만
+  "prev_balance": number|null,  // 이번 거래 이전까지 남아 있던 미수금. 명세서에 '전잔액·전잔·이월잔액·전월이월·미수금·미수잔액·전기이월' 등으로 적힌 값. 없으면 null
+  "balance_total": number|null, // 미수금과 이번 거래를 합친 총잔액. '합계잔액·총잔액·당월잔액·인수잔액·미수합계·잔액' 등. 없으면 null
   "items_summary": string|null, // 품목을 "품목명 수량" 형태로 쉼표로 이어 한 줄 요약 (예: "코크제로 10BIB 2, 양상추 8BOX")
   "bank": string|null,          // 문서에 인쇄된 입금 계좌의 은행명 (예: 농협). 없으면 null
   "account_no": string|null,    // 계좌번호. 하이픈 포함 인쇄된 그대로. 없으면 null
   "account_holder": string|null // 예금주. 없으면 null
 }
+
+미수금 규칙(중요): 거래명세서 하단·우측에는 보통 '전잔액 / 당월매출 / 합계잔액(또는 입금액·잔액)'이 한 줄로 인쇄돼 있다.
+- amount 에는 이번 거래분만, prev_balance 에는 이전 미수금만, balance_total 에는 둘을 합친 잔액을 넣는다.
+- 셋 중 둘만 보이면 보이는 것만 넣고 나머지는 null (직접 계산해서 채우지 말 것).
+- 이번 거래분이 0원이고 미수금만 청구하는 명세서일 수도 있다. 그때 amount 는 0.
+- 표에 있는 값을 그대로 읽되, 라벨이 없으면 억지로 추측하지 말고 null.
 
 규칙: 숫자에 쉼표 넣지 말 것. 흐리거나 확실하지 않은 값은 null. JSON 외 다른 텍스트 금지.`;
 
@@ -135,6 +214,7 @@ export async function extractTransferInfo(
     vendor_name: str(raw.vendor_name),
     doc_date: str(raw.doc_date),
     amount: num(raw.amount),
+    prev_balance: num(raw.prev_balance),
     balance_total: num(raw.balance_total),
     items_summary: str(raw.items_summary),
     bank: str(raw.bank),

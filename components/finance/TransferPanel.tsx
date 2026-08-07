@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { TransferExtraction, TransferRequestRow } from '@/lib/finance/transfer';
+import type { BalanceBreakdown, PayBasis, TransferExtraction, TransferRequestRow } from '@/lib/finance/transfer';
+import { breakdownBalance } from '@/lib/finance/transfer';
 
 interface Props {
   role: string | null; // finance 역할 — 완료 처리는 admin/classifier 만
@@ -26,7 +27,7 @@ interface Draft {
 interface ParsedItem {
   file: File;
   draft: Draft;
-  balanceTotal: number | null;
+  breakdown: BalanceBreakdown;
   accountFromBook: boolean;
 }
 
@@ -102,7 +103,8 @@ export default function TransferPanel({ role, email, mode }: Props) {
   const [parsing, setParsing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [balanceTotal, setBalanceTotal] = useState<number | null>(null);
+  const [breakdown, setBreakdown] = useState<BalanceBreakdown | null>(null);
+  const [payBasis, setPayBasis] = useState<PayBasis | null>(null);
   const [accountFromBook, setAccountFromBook] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -210,7 +212,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
       }
       return {
         file: resized,
-        balanceTotal: ex.balance_total,
+        breakdown: breakdownBalance(ex),
         accountFromBook: !!j.savedAccount && !!ex.account_no,
         draft: {
           brand: ex.brand ?? '', // AI가 확신 못하면 '' — 확인창에서 직접 선택해야 등록됨
@@ -237,7 +239,8 @@ export default function TransferPanel({ role, email, mode }: Props) {
       return URL.createObjectURL(item.file);
     });
     setDraft(item.draft);
-    setBalanceTotal(item.balanceTotal);
+    setBreakdown(item.breakdown);
+    setPayBasis(null);
     setAccountFromBook(item.accountFromBook);
     setError(null);
   }
@@ -266,7 +269,8 @@ export default function TransferPanel({ role, email, mode }: Props) {
 
   function closeDraft() {
     setDraft(null);
-    setBalanceTotal(null);
+    setBreakdown(null);
+    setPayBasis(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     resizedRef.current = null;
@@ -285,9 +289,21 @@ export default function TransferPanel({ role, email, mode }: Props) {
     setSubmitting(true);
     setError(null);
     try {
+      // 이체하는 사람이 "이 금액이 무엇인지" 알 수 있게 지급 기준을 메모에 남긴다
+      const basisNote =
+        breakdown && payBasis && payBasis !== 'current'
+          ? payBasis === 'prev'
+            ? `이전 미수금만 지급${breakdown.current != null ? ` (이번 발주 ${won(breakdown.current)} 제외)` : ''}`
+            : `미수금 포함 총액 지급${
+                breakdown.prev != null && breakdown.current != null
+                  ? ` (미수 ${won(breakdown.prev)} + 이번 ${won(breakdown.current)})`
+                  : ''
+              }`
+          : '';
+      const memo = [draft.memo.trim(), basisNote].filter(Boolean).join(' · ');
       const fd = new FormData();
       if (resizedRef.current) fd.append('file', resizedRef.current);
-      fd.append('fields', JSON.stringify({ ...draft, amount }));
+      fd.append('fields', JSON.stringify({ ...draft, memo, amount }));
       const res = await fetch('/api/finance/transfer', { method: 'POST', body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '등록에 실패했어요.');
@@ -604,15 +620,43 @@ export default function TransferPanel({ role, email, mode }: Props) {
                 <span className={labelCls}>금액 (원)</span>
                 <input className={inputCls} inputMode="numeric" value={draft.amount} onChange={(e) => setDraft({ ...draft, amount: e.target.value })} />
               </div>
-              {balanceTotal != null && String(balanceTotal) !== draft.amount && (
-                <div className="col-span-2 -mt-1 flex items-center gap-2 text-[12px] text-muted-foreground">
-                  <span>명세서에 미수금 포함 총잔액 {won(balanceTotal)}이 있어요.</span>
-                  <button
-                    className="rounded border border-border px-2 py-0.5 hover:text-foreground"
-                    onClick={() => setDraft({ ...draft, amount: String(balanceTotal) })}
-                  >
-                    총잔액으로 변경
-                  </button>
+              {/* 미수금 — 이번 발주만/미수만/합계 중 무엇을 보낼지 고른다.
+                  명세서마다 총잔액에 이번 발주가 포함되기도 하고 아니기도 해서 계산식을 함께 보여준다 */}
+              {breakdown && breakdown.options.length > 1 && (
+                <div className="col-span-2 -mt-1 flex flex-col gap-1.5 rounded-lg border border-border bg-background px-3 py-2.5">
+                  <span className="text-[12px] font-medium">지급 기준</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {breakdown.options.map((o) => {
+                      const on = payBasis ? payBasis === o.key : String(o.amount) === draft.amount;
+                      return (
+                        <button
+                          key={o.key}
+                          onClick={() => {
+                            setPayBasis(o.key);
+                            setDraft({ ...draft, amount: String(o.amount) });
+                          }}
+                          className={`rounded-md border px-2.5 py-1 text-[12px] transition-colors ${
+                            on ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          {o.label} {won(o.amount)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {breakdown.note && (
+                    <span
+                      className="text-[11.5px]"
+                      style={{ color: breakdown.totalIncludesCurrent === null ? 'hsl(0 72% 45%)' : undefined }}
+                    >
+                      {breakdown.note}
+                    </span>
+                  )}
+                </div>
+              )}
+              {breakdown && breakdown.options.length <= 1 && breakdown.prev != null && breakdown.prev > 0 && (
+                <div className="col-span-2 -mt-1 text-[12px] text-muted-foreground">
+                  이전 미수금 {won(breakdown.prev)}이 함께 잡혀 있어요.
                 </div>
               )}
               <div className="flex flex-col gap-1">
