@@ -33,7 +33,10 @@ export async function GET(req: Request) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
+    // 이 라우트는 공개 제출·조회 때문에 미들웨어 검사에서 제외돼 있어 관리 조회는 여기서 직접 확인한다
     if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+    if (!isAllowedEmail(user.email))
+      return NextResponse.json({ error: '팀 계정만 조회할 수 있습니다.' }, { status: 403 });
     const { data, error } = await supabase
       .from('garden_words')
       .select('id, text, season, status, created_at, decided_at, submit_sid, submit_iphash')

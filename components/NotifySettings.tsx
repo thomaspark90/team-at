@@ -23,9 +23,10 @@ export default function NotifySettings({ variant = 'recipient' }: { variant?: 'r
 
   useEffect(() => {
     if (isRecipient) {
+      // 401/403 응답도 JSON 이라 .ok 확인 없이 파싱하면 "이메일 알림 꺼짐"으로 잘못 표시된다
       fetch('/api/notify/prefs')
-        .then((r) => r.json())
-        .then((j) => setEmailEnabled(!!j.emailEnabled))
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => setEmailEnabled(j ? !!j.emailEnabled : true))
         .catch(() => setEmailEnabled(true));
     }
 

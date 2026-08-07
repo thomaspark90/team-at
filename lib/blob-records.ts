@@ -61,20 +61,34 @@ export function blobCollection<T extends BlobRecord>(opts: {
     });
   };
 
+  // 정렬: 구 단일 파일의 append 순서와 동일하게 오래된 순. createdAt 이 없는 기록도 죽지 않게 방어.
+  const sorted = (records: T[]) =>
+    records.sort(
+      (a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? '') || (a.id ?? '').localeCompare(b.id ?? '')
+    );
+
   const readAll = async (): Promise<T[]> => {
-    const paths = await listPaths();
-    let records: T[];
-    if (paths.length === 0) {
-      // 기록별 blob이 아직 없으면 구 단일 JSON에서 이관 — 같은 id·경로라 동시 실행돼도 멱등
-      const legacy = await readJson<Record<string, unknown>>(opts.legacyPath);
-      const arr = legacy && Array.isArray(legacy[opts.legacyKey]) ? (legacy[opts.legacyKey] as T[]) : [];
+    // 이관 여부는 "기록 blob 개수"가 아니라 "구 단일 파일이 남아 있는지"로 판단한다.
+    // 개수로 판단하면 (1) 기록을 전부 지운 뒤 조회할 때 삭제한 기록이 되살아나고,
+    // (2) 이관이 중간에 실패하면 일부만 남은 상태가 완료로 오인돼 나머지가 영영 사라진다.
+    const legacy = await readJson<Record<string, unknown>>(opts.legacyPath);
+    if (legacy) {
+      const arr = Array.isArray(legacy[opts.legacyKey]) ? (legacy[opts.legacyKey] as T[]) : [];
+      // 같은 id·경로라 여러 번 실행돼도 멱등. 중간에 실패하면 원본이 남아 다음 요청이 다시 시도한다.
       if (arr.length > 0) await inChunks(arr, writeOne);
-      records = arr;
-    } else {
-      records = (await inChunks(paths, (p) => readJson<T>(p))).filter((r): r is T => r != null);
+      // 전부 옮긴 뒤에만 원본을 백업으로 넘기고 제거 — 이후 재이관이 일어나지 않는다
+      await put(`data/${opts.name}.legacy-backup.json`, JSON.stringify(legacy), {
+        access: 'private',
+        contentType: 'application/json',
+        addRandomSuffix: false,
+        allowOverwrite: true,
+      });
+      await del(opts.legacyPath);
+      // 방금 쓴 blob 은 목록 인덱스에 아직 안 보일 수 있어, 이관분은 메모리 값을 그대로 돌려준다
+      return sorted(arr);
     }
-    // 구 단일 파일의 append 순서와 동일하게 오래된 순 정렬
-    return records.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+    const paths = await listPaths();
+    return sorted((await inChunks(paths, (p) => readJson<T>(p))).filter((r): r is T => r != null));
   };
 
   const deleteOne = async (id: string): Promise<T | null> => {
@@ -84,8 +98,9 @@ export function blobCollection<T extends BlobRecord>(opts: {
       rec = (await readAll()).find((r) => r.id === id) ?? null;
       if (!rec) return null;
     }
-    const page = await list({ prefix: pathOf(id) });
-    await Promise.all(page.blobs.map((b) => del(b.url)));
+    // 경로가 정확하므로 목록 조회 없이 바로 삭제한다. list 는 인덱스 기반이라 방금 만든
+    // blob 이 아직 안 보일 수 있고, 그러면 삭제가 조용히 실패한다.
+    await del(pathOf(id));
     return rec;
   };
 

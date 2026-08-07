@@ -29,7 +29,8 @@ export async function POST(req: Request) {
 
   const body = await req.json();
   const record: PurchaseRecord = {
-    id: `${Date.now()}`,
+    // 같은 밀리초에 두 건이 저장되면 id 가 겹쳐 한쪽이 덮어써지므로 UUID 사용
+    id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
     bean: body.bean,
     beanEn: body.beanEn ? String(body.beanEn).trim() : undefined,
