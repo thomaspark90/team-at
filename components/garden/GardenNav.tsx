@@ -14,7 +14,7 @@ export default function GardenNav() {
   const [allowed, setAllowed] = useState<string[] | null | undefined>(undefined);
 
   useEffect(() => {
-    fetch('/api/garden-tab-access', { cache: 'no-store' })
+    fetch('/api/garden-tab-access?scope=mine', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : { mine: null }))
       .then((j) => setAllowed(j.mine ?? null))
       .catch(() => setAllowed(null)); // 조회 실패 시 막지 않는다 (내부 도구)

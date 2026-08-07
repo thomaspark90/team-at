@@ -133,7 +133,8 @@ export default function GrindCalibrationCharts() {
         dial: m.dial,
         mean: m.mean,
         std: m.std,
-        date: m.createdAt.slice(0, 10),
+        // 업로드 화면의 날짜 그룹과 같은 KST 기준 — UTC 로 자르면 오전 9시 이전 측정이 전날로 표시된다
+        date: new Date(new Date(m.createdAt).getTime() + 9 * 3600_000).toISOString().slice(0, 10),
         label: m.bean,
       });
     }
@@ -233,6 +234,12 @@ export default function GrindCalibrationCharts() {
   const applyFit = async (id: StoreId) => {
     const pts = points[id].current.map((p) => ({ dial: p.dial, micron: Math.round(p.mean) }));
     if (pts.length < 2 || applying) return;
+    // 이 저장은 해당 지점의 측정점 세트를 통째로 교체한다 — 대시보드에서 손으로 넣은 값이 있으면 사라진다
+    const had = profiles[id]?.points?.length ?? 0;
+    const warn = had
+      ? `${storeLabel(id)}에 저장된 측정점 ${had}개가 현행 측정 ${pts.length}개로 교체됩니다. 계속할까요?`
+      : `${storeLabel(id)}의 현행 측정 ${pts.length}개를 레시피 환산에 적용할까요?`;
+    if (!window.confirm(warn)) return;
     setApplying(id);
     try {
       const res = await fetch('/api/garden-grinders', {

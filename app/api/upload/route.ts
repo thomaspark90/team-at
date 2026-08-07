@@ -24,8 +24,9 @@ export async function POST(req: Request): Promise<NextResponse> {
         } = await supabase.auth.getUser();
         if (!user) throw new Error('로그인이 필요합니다.');
         if (!isAllowedEmail(user.email)) throw new Error('팀 계정만 업로드할 수 있습니다.');
-        // 경로를 클라이언트가 정하므로 접두사를 강제 — data/ 등 저장소 파일 덮어쓰기 방지
-        if (!ALLOWED_PREFIXES.some((p) => pathname.startsWith(p)) || pathname.includes('..')) {
+        // 경로를 클라이언트가 정하므로 접두사를 강제 — data/ 등 저장소 파일 덮어쓰기 방지.
+        // Blob 키는 파일 경로가 아니라 문자열이라 접두사 검사만으로 충분하다(상위 경로 탈출 불가).
+        if (!ALLOWED_PREFIXES.some((p) => pathname.startsWith(p))) {
           throw new Error('허용되지 않은 업로드 경로입니다.');
         }
         return {

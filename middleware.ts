@@ -59,12 +59,19 @@ export async function middleware(request: NextRequest) {
   const needsAuth = isApi || PROTECTED.some((p) => path === p || path.startsWith(p + '/'));
   if (!needsAuth) return response;
 
+  // getUser() 가 토큰을 갱신하면 새 쿠키가 response 에만 실린다. 리다이렉트·에러 응답을
+  // 새로 만들면 그 쿠키가 유실돼 간헐적으로 로그아웃되므로, 항상 옮겨 붙인다.
+  const withCookies = (res: NextResponse) => {
+    response.cookies.getAll().forEach((c) => res.cookies.set(c));
+    return res;
+  };
+
   const deny = (status: number, message: string) => {
-    if (isApi) return NextResponse.json({ error: message }, { status });
+    if (isApi) return withCookies(NextResponse.json({ error: message }, { status }));
     const url = request.nextUrl.clone();
     url.pathname = '/';
     url.search = status === 403 ? 'denied=1' : '';
-    return NextResponse.redirect(url);
+    return withCookies(NextResponse.redirect(url));
   };
 
   if (!user) return deny(401, '로그인이 필요합니다.');
@@ -95,7 +102,7 @@ export async function middleware(request: NextRequest) {
       url.pathname = href;
       url.search = '';
     }
-    return NextResponse.redirect(url);
+    return withCookies(NextResponse.redirect(url));
   };
 
   const sections = (access.sections as string[] | null) ?? null;

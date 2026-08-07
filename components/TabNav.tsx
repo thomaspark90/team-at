@@ -16,7 +16,7 @@ export default function TabNav() {
   const [allowed, setAllowed] = useState<string[] | null | undefined>(undefined);
 
   useEffect(() => {
-    fetch('/api/garden-tab-access', { cache: 'no-store' })
+    fetch('/api/garden-tab-access?scope=mine', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : { sections: null }))
       .then((j) => setAllowed(j.sections ?? null))
       .catch(() => setAllowed(null));

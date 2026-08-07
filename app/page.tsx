@@ -8,8 +8,10 @@ export default async function LandingPage({ searchParams }: { searchParams: { de
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user && isAllowedEmail(user.email)) redirect('/dashboard');
   const denied = searchParams.denied === '1' || (!!user && !isAllowedEmail(user.email));
+  // denied=1 로 되돌아온 경우엔 자동 이동하지 않는다 — 접근 권한이 하나도 없는 계정이
+  // 여기서 다시 /dashboard 로 튀면 미들웨어와 무한히 왕복해 아무 화면도 못 연다.
+  if (user && isAllowedEmail(user.email) && !denied) redirect('/dashboard');
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6">

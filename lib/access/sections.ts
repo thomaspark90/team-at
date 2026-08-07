@@ -17,7 +17,8 @@ export const SECTION_KEYS = SECTIONS.map((s) => s.key);
 export const ACCOUNTING_FINANCE = [
   '/finance',
   '/finance/classify',
-  '/finance/uploads',
+  '/finance/upload', // 자료 입력 — 회계의 주 진입 화면
+  '/finance/uploads', // 업로드 이력
   '/finance/close',
   '/finance/categories',
   '/finance/card',
