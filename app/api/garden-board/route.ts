@@ -38,6 +38,35 @@ const PROTOCOL_DIALS = [6, 8, 10];
 const SHOTS_PER_DIAL = 3;
 const storeLabel = (id: string) => STORES.find((s) => s.id === id)?.label ?? id;
 
+// 거래처명에서 법인격 표기를 걷어낸 핵심 이름 — 원장 적요는 '농협봉농 5/13' 처럼 적히므로
+// '주식회사 봉농' 그대로는 매칭되지 않는다.
+const coreVendor = (name: string) =>
+  name
+    .replace(/\(주\)|\(유\)|\(사\)|주식회사|유한회사|합자회사/g, '')
+    .replace(/[^가-힣a-zA-Z0-9]/g, '')
+    .trim();
+
+// 브랜드가 비어 있는 옛 송금 요청은 같은 거래처의 지출 원장 이력으로 브랜드를 추정한다.
+// (브랜드 컬럼이 생기기 전에 등록된 건들 — 지금은 등록 시 브랜드 선택이 필수다)
+async function inferBrand(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  vendorName: string
+): Promise<'garden' | 'staffmeal' | null> {
+  const core = coreVendor(vendorName ?? '');
+  if (core.length < 2) return null;
+  const { data } = await supabase
+    .schema('finance')
+    .from('transactions')
+    .select('brand')
+    .ilike('memo', `%${core}%`)
+    .not('brand', 'is', null)
+    .limit(100);
+  const tally = new Map<string, number>();
+  for (const r of data ?? []) tally.set(r.brand, (tally.get(r.brand) ?? 0) + 1);
+  const top = Array.from(tally.entries()).sort((a, b) => b[1] - a[1])[0];
+  return top && (top[0] === 'garden' || top[0] === 'staffmeal') ? top[0] : null;
+}
+
 export async function GET(req: Request) {
   const supabase = await createClient();
   const {
@@ -224,8 +253,16 @@ export async function GET(req: Request) {
       .eq('status', 'pending')
       .order('created_at', { ascending: true })
       .limit(20);
-    // 브랜드가 지정된 건은 해당 보드에만. 미지정은 어느 쪽에서도 놓치지 않게 양쪽에 띄우고 표시한다.
-    const forThisBoard = (transfers ?? []).filter((t) => !t.brand || t.brand === scope);
+    // 브랜드가 지정된 건은 해당 보드에만. 미지정(옛 기록)은 거래처의 지출 원장 이력으로 추정하고,
+    // 그래도 판별되지 않을 때만 양쪽에 띄워 놓치지 않게 한다.
+    const resolved = await Promise.all(
+      (transfers ?? []).map(async (t) => ({
+        ...t,
+        brand: t.brand ?? (await inferBrand(supabase, t.vendor_name ?? '')),
+        inferred: !t.brand,
+      }))
+    );
+    const forThisBoard = resolved.filter((t) => !t.brand || t.brand === scope);
     for (const t of forThisBoard) {
       const d = daysAgo(t.created_at);
       cards.push({
@@ -237,6 +274,7 @@ export async function GET(req: Request) {
         meta: [
           ...(d >= 2 ? [{ text: `${d}일 경과`, tone: 'late' as const }] : [{ text: shortDate(t.created_at) }]),
           { text: `요청: ${(t.requester_email ?? '').split('@')[0]}` },
+          ...(t.brand && t.inferred ? [{ text: '거래 이력으로 분류' }] : []),
           ...(t.brand ? [] : [{ text: '브랜드 미지정' }]),
         ],
         assignees: [],
