@@ -25,9 +25,11 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-// 시스템 다크모드를 따라 <html>에 .dark 를 붙인다(tailwind darkMode:'class').
+// <html>에 .dark 를 붙인다(tailwind darkMode:'class'). 수동 선택(localStorage 'theme':
+// 'light'|'dark')이 있으면 그걸 우선하고, 없으면 시스템을 따른다(components/ThemeToggle.tsx 참조).
 // 첫 페인트 전에 실행돼야 라이트로 번쩍이는 현상(FOUC)이 없어 인라인 스크립트로 넣는다.
-const themeScript = `(function(){try{var m=window.matchMedia('(prefers-color-scheme: dark)');var a=function(){document.documentElement.classList.toggle('dark',m.matches)};a();m.addEventListener('change',a);}catch(e){}})();`;
+// 시스템 변경 리스너도 매번 localStorage를 다시 읽어, 수동 선택 중엔 OS 변경을 무시한다.
+const themeScript = `(function(){try{var m=window.matchMedia('(prefers-color-scheme: dark)');var a=function(){var t=null;try{t=localStorage.getItem('theme')}catch(e){}document.documentElement.classList.toggle('dark',t==='dark'||(t!=='light'&&m.matches))};a();m.addEventListener('change',a);}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

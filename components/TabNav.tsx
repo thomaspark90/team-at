@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const TABS = [
   { href: '/studio', label: 'Staff Meal' },
@@ -63,12 +64,15 @@ export default function TabNav() {
           })}
         </nav>
 
-        <button
-          onClick={handleLogout}
-          className="shrink-0 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-        >
-          로그아웃
-        </button>
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <ThemeToggle />
+          <button
+            onClick={handleLogout}
+            className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            로그아웃
+          </button>
+        </div>
       </div>
     </header>
   );
