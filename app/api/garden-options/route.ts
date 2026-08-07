@@ -1,11 +1,11 @@
 import { get, put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
-import type { GardenOptions, PurchaseStore } from '@/lib/types';
+import type { GardenOptions } from '@/lib/types';
+import { purchaseRecords } from '@/lib/blob-records';
 import { createClient } from '@/lib/supabase/server';
 
 // 발주 입력 드롭다운 명단(스탭이름·로스팅사) — 설정에서 관리, 발주 화면에서 선택
 const DATA_PATH = 'data/garden-options.json';
-const PURCHASES_PATH = 'data/purchases.json';
 
 const clean = (arr: unknown): string[] =>
   Array.isArray(arr)
@@ -34,11 +34,8 @@ async function writeOptions(options: GardenOptions) {
 
 // 최초 1회 — 기존 발주 기록에 저장된 스탭이름·로스팅사로 명단을 시딩
 async function seedFromPurchases(): Promise<GardenOptions> {
-  const res = await get(PURCHASES_PATH, { access: 'private', useCache: false });
-  if (!res) return { staffNames: [], roasteries: [] };
   try {
-    const store = JSON.parse(await new Response(res.stream).text()) as PurchaseStore;
-    const sorted = store.records.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const sorted = (await purchaseRecords.readAll()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return {
       staffNames: clean(sorted.map((r) => r.staffName).filter(Boolean)),
       roasteries: clean(sorted.map((r) => r.roastery).filter(Boolean)),

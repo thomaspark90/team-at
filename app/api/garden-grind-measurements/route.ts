@@ -1,37 +1,16 @@
-import { get, put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import type { StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import type { GrindMeasurement, RoastLevel } from '@/lib/grind-measurements';
 import { ROAST_LEVELS } from '@/lib/grind-measurements';
+import { grindMeasurementRecords } from '@/lib/blob-records';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { notifyGardenEvent } from '@/lib/notify';
 import { topicEmails } from '@/lib/garden-notify-topics-server';
 
-const DATA_PATH = 'data/garden-grind-measurements.json';
 const STORE_IDS = STORES.map((s) => s.id);
 const ROAST_IDS = ROAST_LEVELS.map((r) => r.id);
-
-async function readStore(): Promise<{ measurements: GrindMeasurement[] }> {
-  const res = await get(DATA_PATH, { access: 'private', useCache: false });
-  if (!res) return { measurements: [] };
-  const text = await new Response(res.stream).text();
-  try {
-    return JSON.parse(text) as { measurements: GrindMeasurement[] };
-  } catch {
-    return { measurements: [] };
-  }
-}
-
-async function writeStore(store: { measurements: GrindMeasurement[] }) {
-  await put(DATA_PATH, JSON.stringify(store), {
-    access: 'private',
-    contentType: 'application/json',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-  });
-}
 
 export async function GET() {
   const supabase = await createClient();
@@ -40,8 +19,7 @@ export async function GET() {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
-  const store = await readStore();
-  return NextResponse.json(store.measurements);
+  return NextResponse.json(await grindMeasurementRecords.readAll());
 }
 
 const num = (v: unknown): number | undefined => {
@@ -88,9 +66,7 @@ export async function POST(req: Request) {
     createdBy: user.email ?? '',
   };
 
-  const data = await readStore();
-  data.measurements.push(measurement);
-  await writeStore(data);
+  await grindMeasurementRecords.writeOne(measurement);
 
   const label = STORES.find((s) => s.id === storeId)?.label ?? storeId;
   const summary =
@@ -124,7 +100,7 @@ export async function POST(req: Request) {
   } catch (e) {
     console.error('측정 업로드 알림 실패:', e);
   }
-  return NextResponse.json(data.measurements);
+  return NextResponse.json(await grindMeasurementRecords.readAll());
 }
 
 // 측정 삭제: ?id=<uuid>
@@ -138,13 +114,10 @@ export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id가 필요합니다.' }, { status: 400 });
 
-  const data = await readStore();
-  const target = data.measurements.find((m) => m.id === id);
+  const target = await grindMeasurementRecords.deleteOne(id);
   if (!target) return NextResponse.json({ error: '측정 기록을 찾을 수 없습니다.' }, { status: 404 });
-  data.measurements = data.measurements.filter((m) => m.id !== id);
-  await writeStore(data);
 
   const label = STORES.find((s) => s.id === target.store)?.label ?? target.store;
   await logActivity(supabase, user, '가든서비스 분쇄도 측정 삭제', `${label} · ${target.bean} · 다이얼 ${target.dial}`);
-  return NextResponse.json(data.measurements);
+  return NextResponse.json(await grindMeasurementRecords.readAll());
 }

@@ -1,11 +1,8 @@
-import { get } from '@vercel/blob';
 import { NextResponse } from 'next/server';
-import type { PurchaseStore } from '@/lib/types';
+import { purchaseRecords } from '@/lib/blob-records';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { readShares, writeShares, type GardenShare } from '@/lib/garden-share';
-
-const PURCHASES_PATH = 'data/purchases.json';
 
 // 발주 기록 1건 → 공유 링크 생성: { recordId }
 export async function POST(req: Request) {
@@ -16,11 +13,7 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
   const { recordId } = await req.json();
-  const purchasesRes = await get(PURCHASES_PATH, { access: 'private', useCache: false });
-  const purchases: PurchaseStore = purchasesRes
-    ? JSON.parse(await new Response(purchasesRes.stream).text())
-    : { records: [] };
-  const record = purchases.records.find((r) => r.id === recordId);
+  const record = (await purchaseRecords.readAll()).find((r) => r.id === recordId);
   if (!record) return NextResponse.json({ error: '기록을 찾을 수 없습니다.' }, { status: 404 });
   if (record.chosenPrice == null)
     return NextResponse.json({ error: '책정 판매가가 없는 기록입니다.' }, { status: 400 });

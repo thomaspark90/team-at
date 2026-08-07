@@ -1,6 +1,6 @@
-import { get, put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
-import type { PurchaseRecord, PurchaseStore } from '@/lib/types';
+import type { PurchaseRecord } from '@/lib/types';
+import { purchaseRecords } from '@/lib/blob-records';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { normalize } from '@/lib/pricing';
@@ -9,28 +9,6 @@ import { normalize } from '@/lib/pricing';
 // 같은 원두·같은 매입가·같은 날(KST)은 append 대신 대체한다.
 const kstDay = (iso: string) => new Date(new Date(iso).getTime() + 9 * 3600_000).toISOString().slice(0, 10);
 
-const DATA_PATH = 'data/purchases.json';
-
-async function readStore(): Promise<PurchaseStore> {
-  const res = await get(DATA_PATH, { access: 'private', useCache: false });
-  if (!res) return { records: [] };
-  const text = await new Response(res.stream).text();
-  try {
-    return JSON.parse(text) as PurchaseStore;
-  } catch {
-    return { records: [] };
-  }
-}
-
-async function writeStore(store: PurchaseStore) {
-  await put(DATA_PATH, JSON.stringify(store), {
-    access: 'private',
-    contentType: 'application/json',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-  });
-}
-
 export async function GET() {
   const supabase = await createClient();
   const {
@@ -38,8 +16,7 @@ export async function GET() {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
-  const store = await readStore();
-  return NextResponse.json(store.records);
+  return NextResponse.json(await purchaseRecords.readAll());
 }
 
 // 발주 기록 추가: { bean, purchasePrice, settings, costPerCup, rangeLow, rangeHigh }
@@ -51,7 +28,6 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
   const body = await req.json();
-  const store = await readStore();
   const record: PurchaseRecord = {
     id: `${Date.now()}`,
     createdAt: new Date().toISOString(),
@@ -74,7 +50,7 @@ export async function POST(req: Request) {
     normalize(r.bean) === normalize(record.bean) &&
     r.purchasePrice === record.purchasePrice &&
     kstDay(r.createdAt) === kstDay(record.createdAt);
-  const replaced = store.records.filter(dup);
+  const replaced = (await purchaseRecords.readAll()).filter(dup);
   // 책정가 없이 재저장해도 이미 책정된 판매가는 잃지 않는다
   if (record.chosenPrice == null) {
     const priced = replaced.filter((r) => r.chosenPrice != null).at(-1);
@@ -83,8 +59,8 @@ export async function POST(req: Request) {
       record.chosenMult = priced.chosenMult;
     }
   }
-  store.records = [...store.records.filter((r) => !dup(r)), record];
-  await writeStore(store);
+  await purchaseRecords.writeOne(record);
+  for (const r of replaced) await purchaseRecords.deleteOne(r.id);
   await logActivity(
     supabase,
     user,
@@ -103,10 +79,7 @@ export async function DELETE(req: Request) {
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
   const { id } = await req.json();
-  const store = await readStore();
-  const removed = store.records.find((r) => r.id === id);
-  store.records = store.records.filter((r) => r.id !== id);
-  await writeStore(store);
+  const removed = await purchaseRecords.deleteOne(id);
   await logActivity(supabase, user, '가든서비스 발주 삭제', removed ? removed.bean : null);
   return NextResponse.json({ ok: true });
 }

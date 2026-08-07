@@ -13,6 +13,11 @@ import { ROAST_LEVELS, roastLabel } from '@/lib/grind-measurements';
 
 const COMPASS_URL = 'https://community.unspecialty.com/compass/grinder';
 
+// 현행 측정 프로토콜 (2026-08-07 판교 재얼라인 이후) — 다이얼 6/8/10 × 각 3샷 × 두 지점
+const PROTOCOL_DIALS = [6, 8, 10];
+const SHOTS_PER_DIAL = 3;
+const kstDay = (iso: string) => new Date(new Date(iso).getTime() + 9 * 3600_000).toISOString().slice(0, 10);
+
 interface Draft {
   store: StoreId;
   bean: string;
@@ -117,6 +122,20 @@ export default function GrindMeasurementUpload() {
     if (res.ok) setItems(await res.json());
   };
 
+  // 오늘(KST) 프로토콜 진행률 — 지점×다이얼(6/8/10)별 업로드된 샷 수
+  const progress = useMemo(() => {
+    const today = kstDay(new Date().toISOString());
+    const m = new Map<string, number>();
+    for (const it of items) {
+      if (kstDay(it.createdAt) !== today) continue;
+      const d = Math.round(it.dial * 10) / 10;
+      if (!PROTOCOL_DIALS.includes(d)) continue;
+      const key = `${it.store}:${d}`;
+      m.set(key, (m.get(key) ?? 0) + 1);
+    }
+    return m;
+  }, [items]);
+
   // 날짜별(측정 세션 단위)로 묶고, 각 날짜에 두 지점이 모두 측정됐는지(=비교 가능) 표시
   // createdAt은 UTC ISO 문자열이라 KST(+9)로 옮긴 날짜로 묶는다
   const days = useMemo(() => {
@@ -155,6 +174,36 @@ export default function GrindMeasurementUpload() {
           이번 프로토콜 (2026-08-07 판교 재얼라인 이후): <strong>에티오피아 싱글 × 다이얼 6 / 8 / 10 × 각 3샷</strong>
           (샷마다 촬영 각도 조금씩 회전, 이전 촬영 스펙과 동일) × 두 지점. 샷 1장 = 기록 1건으로 올려주세요.
         </p>
+
+        {/* 오늘 진행률 — 지점×다이얼별 n/3 칩, 완료 시 ✓ */}
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          {STORES.map((s) => {
+            const total = PROTOCOL_DIALS.reduce((sum, d) => sum + Math.min(progress.get(`${s.id}:${d}`) ?? 0, SHOTS_PER_DIAL), 0);
+            return (
+              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span className="text-[11px] text-muted-foreground">
+                  {s.label} 오늘 {total}/{PROTOCOL_DIALS.length * SHOTS_PER_DIAL}
+                </span>
+                {PROTOCOL_DIALS.map((d) => {
+                  const n = progress.get(`${s.id}:${d}`) ?? 0;
+                  const done = n >= SHOTS_PER_DIAL;
+                  return (
+                    <span
+                      key={d}
+                      className={`tabular rounded-md border px-2 py-0.5 text-[11px] ${
+                        done ? 'border-foreground text-foreground' : 'border-border text-muted-foreground'
+                      }`}
+                    >
+                      {d} · {Math.min(n, SHOTS_PER_DIAL)}/{SHOTS_PER_DIAL}
+                      {done && ' ✓'}
+                      {n > SHOTS_PER_DIAL && ` (+${n - SHOTS_PER_DIAL})`}
+                    </span>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
 
         {/* 지점 */}
         <div style={{ display: 'flex', gap: 8 }}>
