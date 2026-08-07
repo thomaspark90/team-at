@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { ISSUE_CATEGORIES } from '@/lib/garden/review-issue';
 
 type DraftVariant = { tone: string; label: string; text: string };
 
@@ -25,6 +26,8 @@ type Review = {
   post_error: string | null;
   issue: boolean | null;
   issue_note: string | null;
+  issue_categories: string[] | null;
+  issue_source: string | null;
 };
 
 const STORE_LABEL: Record<string, string> = { yangjae: '양재천점', pangyo: '판교점' };
@@ -77,6 +80,8 @@ export default function ReviewInbox() {
   // 이슈 미분류(백필 대상) 잔여 건수 — issues 탭에서만 내려온다
   const [unclassified, setUnclassified] = useState(0);
   const [classifying, setClassifying] = useState(false);
+  // 이슈 탭 카테고리 필터
+  const [cat, setCat] = useState('all');
 
   const seed = useCallback((list: Review[]) => {
     const t: Record<number, Record<string, string>> = {};
@@ -176,7 +181,36 @@ export default function ReviewInbox() {
     }
   };
 
-  const shown = store === 'all' ? reviews : reviews.filter((r) => r.store_key === store);
+  // 이슈 판정 수동 정정 — 이슈 탭에서 아님 처리하면 목록에서 뺀다
+  const setIssue = async (r: Review, issue: boolean) => {
+    setBusy(r.id);
+    setError('');
+    try {
+      const res = await fetch('/api/garden-reviews', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: r.id, action: 'set_issue', issue }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? '처리에 실패했습니다.');
+      const updated: Review = json.review;
+      setReviews((prev) =>
+        tab === 'issues' && !issue
+          ? prev.filter((x) => x.id !== r.id)
+          : prev.map((x) => (x.id === r.id ? updated : x)),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '처리에 실패했습니다.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const byStore = store === 'all' ? reviews : reviews.filter((r) => r.store_key === store);
+  const shown =
+    tab === 'issues' && cat !== 'all'
+      ? byStore.filter((r) => r.issue_categories?.includes(cat))
+      : byStore;
 
   return (
     <div>
@@ -184,7 +218,7 @@ export default function ReviewInbox() {
         {TABS.map((t) => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => { setTab(t.key); setCat('all'); }}
             className={`text-[13px] transition-colors ${
               tab === t.key ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
             }`}
@@ -229,6 +263,28 @@ export default function ReviewInbox() {
         </div>
       )}
 
+      {/* 이슈 탭 카테고리 필터 — 로드된 이슈 리뷰 기준 건수 표시 */}
+      {tab === 'issues' && !loading && byStore.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 12 }}>
+          {['all', ...ISSUE_CATEGORIES].map((c) => {
+            const count = c === 'all' ? byStore.length : byStore.filter((r) => r.issue_categories?.includes(c)).length;
+            if (c !== 'all' && count === 0) return null;
+            return (
+              <button
+                key={c}
+                onClick={() => setCat(c)}
+                className={`rounded-full border text-[12px] transition-colors ${
+                  cat === c ? 'border-foreground font-medium text-foreground' : 'border-border text-muted-foreground hover:text-foreground'
+                }`}
+                style={{ padding: '3px 10px' }}
+              >
+                {c === 'all' ? '전체' : c} {count}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {loading && <p className="text-[13px] text-muted-foreground">불러오는 중…</p>}
       {!loading && shown.length === 0 && (
         <p className="text-[13px] text-muted-foreground">
@@ -252,16 +308,37 @@ export default function ReviewInbox() {
                 <span className="ml-auto">{STATUS_LABEL[r.status] ?? r.status}</span>
               </div>
 
-              {/* 이슈 리뷰 표시 — 어느 탭에서든 뱃지와 지적 요약을 보여준다 */}
+              {/* 이슈 리뷰 표시 — 어느 탭에서든 뱃지·카테고리·지적 요약을 보여주고, 수동 정정을 허용한다 */}
               {r.issue && (
-                <p className="text-[12px]" style={{ color: ISSUE_COLOR, margin: '0 0 6px' }}>
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]" style={{ color: ISSUE_COLOR, margin: '0 0 6px' }}>
                   <span
                     className="rounded-sm font-medium"
-                    style={{ border: `1px solid ${ISSUE_COLOR}55`, padding: '1px 6px', marginRight: 6 }}
+                    style={{ border: `1px solid ${ISSUE_COLOR}55`, padding: '1px 6px' }}
                   >
-                    이슈
+                    이슈{r.issue_source === 'manual' ? ' · 수동' : ''}
                   </span>
-                  {r.issue_note}
+                  {!!r.issue_categories?.length && (
+                    <span className="font-medium">{r.issue_categories.join(' · ')}</span>
+                  )}
+                  <span>{r.issue_note}</span>
+                  <button
+                    onClick={() => setIssue(r, false)}
+                    disabled={busy === r.id}
+                    className="text-muted-foreground hover:text-foreground disabled:opacity-40"
+                  >
+                    이슈 아님
+                  </button>
+                </p>
+              )}
+              {r.issue === false && (
+                <p className="text-[12px]" style={{ margin: '0 0 6px' }}>
+                  <button
+                    onClick={() => setIssue(r, true)}
+                    disabled={busy === r.id}
+                    className="text-muted-foreground hover:text-foreground disabled:opacity-40"
+                  >
+                    이슈로 표시
+                  </button>
                 </p>
               )}
 

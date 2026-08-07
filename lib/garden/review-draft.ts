@@ -2,7 +2,7 @@
 // 톤 3종(친절·담백·감사)을 한 번의 호출로 생성해 매니저가 골라 쓰게 한다.
 // 같은 호출에서 이슈(불만·개선 지적) 여부도 함께 분류한다 — 기준은 review-issue.ts 참고.
 
-import { ISSUE_RULE } from './review-issue';
+import { ISSUE_RULE, sanitizeCategories } from './review-issue';
 
 const MODELS = [
   'gemini-2.5-flash',
@@ -36,6 +36,9 @@ const VOICE = `너는 카페 '가든서비스'의 사장님이다. 방문자 리
 - 합니다체이되 굳지 않게. "~하죠", "~더라고요", "~인 것 같습니다", "~셔도 됩니다" 같은
   부드러운 종결을 자연스럽게 섞는다. 격식만 차린 안내문처럼 쓰지 않는다.
 - 문장 끝은 가볍게 내려놓는다: "~면 좋겠습니다", "~기를 바랍니다", "~는 셈입니다".
+- 어휘는 일상적이고 쉬운 말로 쓴다. "만족하셨다니", "머무르다", "음미하다", "평가해주셔서" 같은
+  문어체·격식어 대신 "방문해주셔서", "와주셔서", "괜찮으셨다니 감사합니다", "맛있게 드셨다니"처럼
+  평소 손님에게 말하듯 쓴다. 어렵거나 멋 부린 단어가 들어가면 쉬운 말로 바꾼다.
 - 리뷰에 실제로 언급된 것(메뉴, 공간, 날씨, 방문 맥락)을 한 가지 골라 구체적으로,
   짧은 관찰 한 스푼과 함께 받는다. 계절이나 재료 얘기가 자연스러우면 살짝 얹어도 된다.
 - 이모지 금지. 느낌표 남발 금지. 과장된 감탄 금지.
@@ -63,7 +66,7 @@ const VOICE = `너는 카페 '가든서비스'의 사장님이다. 방문자 리
 아울러 이 리뷰가 '이슈 리뷰'인지도 함께 판정해라.
 ${ISSUE_RULE}
 
-JSON 으로만 출력해라: {"kind":"...","plain":"...","grateful":"...","issue":true|false,"issue_note":"..."}`;
+JSON 으로만 출력해라: {"kind":"...","plain":"...","grateful":"...","issue":true|false,"issue_note":"...","issue_categories":["..."]}`;
 
 const buildPrompt = (r: ReviewForDraft) => {
   const store = STORE_NAME[r.store_key] ?? '가든서비스';
@@ -90,7 +93,7 @@ const clean = (v: unknown) =>
 export async function draftReply(
   review: ReviewForDraft,
   apiKey: string,
-): Promise<{ text: string; variants: DraftVariant[]; model: string; issue: boolean | null; issueNote: string | null } | null> {
+): Promise<{ text: string; variants: DraftVariant[]; model: string; issue: boolean | null; issueNote: string | null; issueCategories: string[] } | null> {
   // gemini-2.5-* 는 thinking이 기본 on이라 maxOutputTokens를 사고에 먼저 써버려
   // 답글이 중간에 잘린다(실측). 초안 생성에는 사고가 필요 없으므로 끈다.
   const bodyFor = (model: string) =>
@@ -128,7 +131,8 @@ export async function draftReply(
       // 이슈 판정 — boolean이 아니면 미분류(null)로 남겨 백필에서 다시 시도하게 한다
       const issue = typeof parsed.issue === 'boolean' ? parsed.issue : null;
       const note = String(parsed.issue_note ?? '').trim().slice(0, 120);
-      return { text: variants[0].text, variants, model, issue, issueNote: issue && note ? note : null };
+      const issueCategories = issue ? sanitizeCategories(parsed.issue_categories) : [];
+      return { text: variants[0].text, variants, model, issue, issueNote: issue && note ? note : null, issueCategories };
     } catch {
       /* 다음 모델로 폴백 */
     }

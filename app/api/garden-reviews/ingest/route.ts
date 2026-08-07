@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { draftReply } from '@/lib/garden/review-draft';
+import { notifyGardenEvent } from '@/lib/notify';
+import { topicEmails } from '@/lib/garden-notify-topics-server';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -90,6 +92,7 @@ export async function POST(req: Request) {
 
   // 답글 없는 신규 리뷰에 초안 생성 — 실패해도 적재는 유지(다음 실행에서 재시도 가능)
   let drafted = 0;
+  const issueFound: { store_key: string; rating: number | null; note: string | null; categories: string[] }[] = [];
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
     const targets = rows.filter((r) => r.status === 'new').slice(0, DRAFT_LIMIT);
@@ -106,9 +109,47 @@ export async function POST(req: Request) {
           status: 'drafted',
           issue: draft.issue,
           issue_note: draft.issueNote,
+          issue_categories: draft.issueCategories,
         })
         .eq('review_id', r.review_id);
-      if (!error) drafted++;
+      if (!error) {
+        drafted++;
+        if (draft.issue) {
+          issueFound.push({ store_key: r.store_key, rating: r.rating, note: draft.issueNote, categories: draft.issueCategories });
+        }
+      }
+    }
+  }
+
+  // 이슈 리뷰가 새로 잡히면 담당자에게 이메일+웹푸시 — 실패해도 적재 결과는 그대로 반환
+  if (issueFound.length > 0) {
+    try {
+      const storeLabel: Record<string, string> = { yangjae: '양재천점', pangyo: '판교점' };
+      const lines = issueFound.map((i) => {
+        const head = `[${storeLabel[i.store_key] ?? i.store_key}] ★${i.rating ?? '-'}`;
+        const cats = i.categories.length ? ` (${i.categories.join(', ')})` : '';
+        return `${head} ${i.note ?? '지적 내용 확인 필요'}${cats}`;
+      });
+      // notify 계열은 기본(public) 스코프 클라이언트를 받는다 — finance 스코프 클라이언트와 타입이 달라 별도 생성
+      const notifyClient = createServiceClient(url, serviceKey);
+      const emails = await topicEmails(notifyClient, 'reviewIssue');
+      await notifyGardenEvent(notifyClient, {
+        emails,
+        subject: `[이슈 리뷰] 새 지적 ${issueFound.length}건 — ${lines[0].slice(0, 60)}`,
+        html: `
+        <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
+          <p><strong>불만·개선 지적이 담긴 리뷰 ${issueFound.length}건이 새로 수집됐어요.</strong></p>
+          ${lines.map((l) => `<p>${l}</p>`).join('')}
+          <p><a href="https://team-at-apps.vercel.app/garden/reviews">이슈·개선 탭 열기 →</a></p>
+        </div>`,
+        push: {
+          title: `이슈 리뷰 ${issueFound.length}건`,
+          body: lines[0].slice(0, 100),
+          url: '/garden/reviews',
+        },
+      });
+    } catch (e) {
+      console.error('이슈 리뷰 알림 실패:', e);
     }
   }
 

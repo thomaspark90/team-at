@@ -90,3 +90,9 @@ alter table finance.place_reviews add column if not exists issue boolean;
 alter table finance.place_reviews add column if not exists issue_note text;
 create index if not exists place_reviews_issue_idx
   on finance.place_reviews (issue, reviewed_at desc) where issue is true;
+
+-- 이슈 카테고리·수동 정정 (2026-08-07)
+-- issue_categories: 고정 카테고리 배열 (맛·품질/위생/소음·환경/응대/가격/대기/시설)
+-- issue_source: null=AI 판정 / 'manual'=매니저 수동 정정 — manual은 재분류가 덮어쓰지 않는다
+alter table finance.place_reviews add column if not exists issue_categories text[];
+alter table finance.place_reviews add column if not exists issue_source text;

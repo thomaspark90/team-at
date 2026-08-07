@@ -81,6 +81,10 @@ export async function PATCH(req: Request) {
     if (!key) return NextResponse.json({ error: 'GEMINI_API_KEY 미설정' }, { status: 500 });
     const draft = await draftReply(review, key);
     if (!draft) return NextResponse.json({ error: '초안 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' }, { status: 502 });
+    // 매니저가 수동 정정한 이슈 판정은 재생성이 덮어쓰지 않는다
+    const issuePatch = review.issue_source === 'manual'
+      ? {}
+      : { issue: draft.issue, issue_note: draft.issueNote, issue_categories: draft.issueCategories };
     const { data } = await g.supabase.schema('finance').from('place_reviews')
       .update({
         draft: draft.text,
@@ -88,10 +92,22 @@ export async function PATCH(req: Request) {
         draft_model: draft.model,
         draft_at: new Date().toISOString(),
         status: 'drafted',
-        issue: draft.issue,
-        issue_note: draft.issueNote,
+        ...issuePatch,
       })
       .eq('id', id).select('*').single();
+    return NextResponse.json({ review: data });
+  }
+
+  // 이슈 판정 수동 정정 — { id, action: 'set_issue', issue: boolean }
+  // manual 표시가 붙으면 재생성·재분류가 덮어쓰지 않는다.
+  if (action === 'set_issue') {
+    const issue = !!body?.issue;
+    const { data } = await g.supabase.schema('finance').from('place_reviews')
+      .update(issue
+        ? { issue: true, issue_source: 'manual' }
+        : { issue: false, issue_note: null, issue_categories: [], issue_source: 'manual' })
+      .eq('id', id).select('*').single();
+    await logActivity(g.supabase, g.user, '리뷰 이슈 수동 정정', `${review.store_key} · ${issue ? '이슈로 표시' : '이슈 아님'} · ${String(review.content ?? '').slice(0, 30)}`);
     return NextResponse.json({ review: data });
   }
 

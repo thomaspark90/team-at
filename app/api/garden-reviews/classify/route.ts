@@ -51,7 +51,7 @@ export async function POST() {
     if (!result) continue; // 실패 — 미분류로 남겨 다음 호출에서 재시도
     const { error: upErr } = await db
       .from('place_reviews')
-      .update({ issue: result.issue, issue_note: result.note })
+      .update({ issue: result.issue, issue_note: result.note, issue_categories: result.categories })
       .eq('id', r.id);
     if (!upErr) classified++;
   }
