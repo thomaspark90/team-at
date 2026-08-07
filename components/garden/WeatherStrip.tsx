@@ -50,9 +50,30 @@ const wmo = (code: number): { glyph: string; label: string } => {
 
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
+// 뇌우 전용 번개 아이콘 — 유니코드 ⚡︎ 는 기기에 따라 렌더가 제각각이라 SVG 로 고정
+const Bolt = () => (
+  <svg width="11" height="13" viewBox="0 0 11 13" aria-hidden style={{ flexShrink: 0 }}>
+    <path d="M6.5 0 L0.5 7.5 H4 L2.8 13 L10.5 5 H6.6 L8.6 0 Z" fill="#f59e0b" />
+  </svg>
+);
+
+type WaveVariant = 'a' | 'b';
+
 export default function WeatherStrip() {
   const [days, setDays] = useState<Day[] | null>(null);
   const [failed, setFailed] = useState(false);
+  // 물결 디자인 비교용 토글 — A: 회전 타원(가운데 봉긋), B: 평평한 수면 + 흐르는 잔물결
+  const [variant, setVariant] = useState<WaveVariant>('b');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('ws-wave-variant');
+    if (saved === 'a' || saved === 'b') setVariant(saved);
+  }, []);
+  const cycleVariant = () => {
+    const next: WaveVariant = variant === 'a' ? 'b' : 'a';
+    setVariant(next);
+    localStorage.setItem('ws-wave-variant', next);
+  };
 
   useEffect(() => {
     fetch(API)
@@ -110,12 +131,43 @@ export default function WeatherStrip() {
           background: rgba(96, 165, 250, 0.16);
           animation: ws-slosh-b 13s linear infinite;
         }
-        @media (prefers-reduced-motion: reduce) { .ws-wave, .ws-wave-b { animation: none; } }
+        /* B안 — 평평한 수면 + 좌우로 흐르는 잔물결 두 겹 + 미세한 상하 출렁임 */
+        @keyframes ws2-bob { from { transform: translateY(0); } to { transform: translateY(2px); } }
+        @keyframes ws2-drift-a { from { transform: translateX(0); } to { transform: translateX(48px); } }
+        @keyframes ws2-drift-b { from { transform: translateX(0); } to { transform: translateX(-48px); } }
+        .ws2-bob { animation: ws2-bob 3.2s ease-in-out infinite alternate; }
+        .ws2-body { position: absolute; left: 0; right: 0; top: 9px; bottom: -3px; background: rgba(59, 130, 246, 0.20); }
+        .ws2-surf {
+          position: absolute; top: 0; left: -96px; width: calc(100% + 192px); height: 10px;
+          background-repeat: repeat-x; background-size: 48px 10px;
+        }
+        .ws2-surf-a {
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 10' preserveAspectRatio='none'%3E%3Cpath d='M0 5 Q12 0 24 5 T48 5 V10 H0 Z' fill='%233b82f6' fill-opacity='0.20'/%3E%3C/svg%3E");
+          animation: ws2-drift-a 3.6s linear infinite;
+        }
+        .ws2-surf-b {
+          top: 2px;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 10' preserveAspectRatio='none'%3E%3Cpath d='M0 5 Q12 10 24 5 T48 5 V10 H0 Z' fill='%2360a5fa' fill-opacity='0.14'/%3E%3C/svg%3E");
+          animation: ws2-drift-b 5.4s linear infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ws-wave, .ws-wave-b, .ws2-bob, .ws2-surf-a, .ws2-surf-b { animation: none; }
+        }
       `}</style>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
         <p className="ta-label" style={{ marginBottom: 0 }}>2주 날씨 — 판교·양재천</p>
         <span className="text-[11px] text-muted-foreground/70">
           Open-Meteo · 10일 이후는 경향 참고용 ·{' '}
+          <button
+            type="button"
+            onClick={cycleVariant}
+            title="비 오는 날 물결 디자인 전환 (A: 회전 타원 / B: 흐르는 잔물결)"
+            className="hover:text-foreground"
+            style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', font: 'inherit', color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2 }}
+          >
+            물결 {variant.toUpperCase()}
+          </button>{' '}
+          ·{' '}
           <Link href="/garden/weather" className="underline underline-offset-2 hover:text-foreground">
             판매 분석 →
           </Link>
@@ -158,9 +210,20 @@ export default function WeatherStrip() {
                   aria-hidden
                   style={{ position: 'absolute', inset: 0, borderRadius: 'inherit', overflow: 'hidden', pointerEvents: 'none' }}
                 >
-                  {/* 회전하는 비정형 타원 두 장 — 수면이 서로 어긋나며 찰랑거린다 */}
-                  <div className="ws-wave" style={{ top: `calc(${waterline}% - 8px)` }} />
-                  <div className="ws-wave ws-wave-b" style={{ top: `calc(${waterline}% - 8px)` }} />
+                  {variant === 'a' ? (
+                    <>
+                      {/* A안: 회전하는 비정형 타원 두 장 — 수면이 서로 어긋나며 찰랑거린다 */}
+                      <div className="ws-wave" style={{ top: `calc(${waterline}% - 8px)` }} />
+                      <div className="ws-wave ws-wave-b" style={{ top: `calc(${waterline}% - 8px)` }} />
+                    </>
+                  ) : (
+                    /* B안: 평평한 수면 위로 잔물결이 좌우로 흐르고 전체가 살짝 출렁인다 */
+                    <div className="ws2-bob" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: `${100 - waterline}%` }}>
+                      <div className="ws2-body" />
+                      <div className="ws2-surf ws2-surf-a" />
+                      <div className="ws2-surf ws2-surf-b" />
+                    </div>
+                  )}
                 </div>
               )}
               <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -170,7 +233,7 @@ export default function WeatherStrip() {
                 {today ? '오늘' : `${day.date.getMonth() + 1}/${day.date.getDate()} (${DOW[dow]})`}
               </span>
               <span className="text-[13px] text-foreground" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span aria-hidden>{w.glyph}</span>
+                {day.code >= 95 ? <Bolt /> : <span aria-hidden>{w.glyph}</span>}
                 <span style={{ whiteSpace: 'nowrap' }}>{w.label}</span>
               </span>
               <span className="tabular text-[13px]">
