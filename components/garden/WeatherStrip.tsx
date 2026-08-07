@@ -57,6 +57,23 @@ const Bolt = () => (
   </svg>
 );
 
+// 맑음(코드 0·1) 전용 해 아이콘 — 노란 태양이 은은하게 빛난다(글로우 펄스)
+const Sun = () => (
+  <svg className="ws-sun" width="13" height="13" viewBox="0 0 14 14" aria-hidden style={{ flexShrink: 0 }}>
+    <circle cx="7" cy="7" r="3" fill="#fbbf24" />
+    <g stroke="#fbbf24" strokeWidth="1.2" strokeLinecap="round">
+      <line x1="7" y1="0.6" x2="7" y2="2.2" />
+      <line x1="7" y1="11.8" x2="7" y2="13.4" />
+      <line x1="0.6" y1="7" x2="2.2" y2="7" />
+      <line x1="11.8" y1="7" x2="13.4" y2="7" />
+      <line x1="2.5" y1="2.5" x2="3.6" y2="3.6" />
+      <line x1="10.4" y1="10.4" x2="11.5" y2="11.5" />
+      <line x1="2.5" y1="11.5" x2="3.6" y2="10.4" />
+      <line x1="10.4" y1="3.6" x2="11.5" y2="2.5" />
+    </g>
+  </svg>
+);
+
 type WaveVariant = 'a' | 'b';
 
 export default function WeatherStrip() {
@@ -150,8 +167,14 @@ export default function WeatherStrip() {
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 10' preserveAspectRatio='none'%3E%3Cpath d='M0 5 Q12 10 24 5 T48 5 V10 H0 Z' fill='%2360a5fa' fill-opacity='0.14'/%3E%3C/svg%3E");
           animation: ws2-drift-b 5.4s linear infinite;
         }
+        /* 맑음 해 글로우 — 드롭섀도가 커졌다 작아지며 빛나는 느낌 */
+        @keyframes ws-sun-glow {
+          from { filter: drop-shadow(0 0 0.5px rgba(251, 191, 36, 0.6)); }
+          to { filter: drop-shadow(0 0 3.5px rgba(251, 191, 36, 0.95)); }
+        }
+        .ws-sun { animation: ws-sun-glow 2.6s ease-in-out infinite alternate; }
         @media (prefers-reduced-motion: reduce) {
-          .ws-wave, .ws-wave-b, .ws2-bob, .ws2-surf-a, .ws2-surf-b { animation: none; }
+          .ws-wave, .ws-wave-b, .ws2-bob, .ws2-surf-a, .ws2-surf-b, .ws-sun { animation: none; }
         }
       `}</style>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
@@ -233,7 +256,7 @@ export default function WeatherStrip() {
                 {today ? '오늘' : `${day.date.getMonth() + 1}/${day.date.getDate()} (${DOW[dow]})`}
               </span>
               <span className="text-[13px] text-foreground" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                {day.code >= 95 ? <Bolt /> : <span aria-hidden>{w.glyph}</span>}
+                {day.code <= 1 ? <Sun /> : day.code >= 95 ? <Bolt /> : <span aria-hidden>{w.glyph}</span>}
                 <span style={{ whiteSpace: 'nowrap' }}>{w.label}</span>
               </span>
               <span className="tabular text-[13px]">
