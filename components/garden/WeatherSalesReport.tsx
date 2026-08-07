@@ -25,6 +25,8 @@ interface Payload {
   weatherDays: number;
   series: Series[];
   categories: Record<string, { category: string; qty: number; supply: number }[]>;
+  computedAt?: string;
+  cached?: boolean;
 }
 
 const STORE_LABEL: Record<string, string> = { pangyo: '판교', yangjae: '양재천', '-': '(지점 미지정)' };
@@ -107,15 +109,24 @@ function SeriesCard({ s }: { s: Series }) {
 export default function WeatherSalesReport() {
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [recomputing, setRecomputing] = useState(false);
 
-  useEffect(() => {
-    fetch('/api/garden-weather-sales', { cache: 'no-store' })
+  const load = (refresh: boolean) => {
+    if (refresh) setRecomputing(true);
+    fetch(`/api/garden-weather-sales${refresh ? '?refresh=1' : ''}`, { cache: 'no-store' })
       .then(async (r) => {
         const j = await r.json();
         if (!r.ok) throw new Error(j.error ?? `조회 실패 (${r.status})`);
+        setError(null);
         setData(j);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : '조회 실패'));
+      .catch((e) => setError(e instanceof Error ? e.message : '조회 실패'))
+      .finally(() => setRecomputing(false));
+  };
+
+  useEffect(() => {
+    load(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (error) {
@@ -155,6 +166,21 @@ export default function WeatherSalesReport() {
           ))}
           <p className="m-0 mt-1 text-[11px] text-muted-foreground/80">
             날씨 조인 {data.weatherDays}일 (Open-Meteo Archive, 최근 약 5일은 아카이브 지연으로 제외)
+            {data.computedAt && (
+              <>
+                {' '}· 계산 {new Date(data.computedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                {data.cached && ' (캐시)'} ·{' '}
+                <button
+                  type="button"
+                  onClick={() => load(true)}
+                  disabled={recomputing}
+                  className="hover:text-foreground"
+                  style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', font: 'inherit', color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2 }}
+                >
+                  {recomputing ? '계산 중…' : '다시 계산'}
+                </button>
+              </>
+            )}
           </p>
         </div>
       </section>

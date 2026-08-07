@@ -1,3 +1,4 @@
+import { get, put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
@@ -34,7 +35,13 @@ const kstToday = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0
 const addDays = (ymd: string, d: number) =>
   new Date(new Date(ymd + 'T00:00:00Z').getTime() + d * 86400_000).toISOString().slice(0, 10);
 
-export async function GET() {
+// 결과 캐시 — POS 는 월 단위 업로드라 하루 한 번 계산이면 충분. 전체 스캔+아카이브 조회를
+// 매 조회마다 반복하지 않도록 계산 결과를 Blob 에 두고 24시간 재사용한다. ?refresh=1 로 강제 재계산.
+const CACHE_PATH = 'data/garden-weather-sales-cache.json';
+const CACHE_TTL_MS = 24 * 3600_000;
+
+export async function GET(req: Request) {
+  const refresh = new URL(req.url).searchParams.get('refresh') === '1';
   const supabase = await createClient();
   const {
     data: { user },
@@ -46,6 +53,21 @@ export async function GET() {
   const role = await resolveRole(supabase, user);
   if (!role || !['admin', 'classifier'].includes(role)) {
     return NextResponse.json({ error: '재무 권한(admin/classifier)이 있어야 볼 수 있어요.' }, { status: 403 });
+  }
+
+  // 캐시 확인은 권한 확인 뒤에 — 캐시가 있어도 무권한자에겐 안 나간다
+  if (!refresh) {
+    try {
+      const res = await get(CACHE_PATH, { access: 'private', useCache: false });
+      if (res) {
+        const cached = JSON.parse(await new Response(res.stream).text());
+        if (cached?.computedAt && Date.now() - Date.parse(cached.computedAt) < CACHE_TTL_MS) {
+          return NextResponse.json({ ...cached.payload, computedAt: cached.computedAt, cached: true });
+        }
+      }
+    } catch {
+      // 캐시 없음/손상 — 새로 계산
+    }
   }
 
   // 가든 POS 전체 — 페이지네이션으로 모두 수집
@@ -158,5 +180,17 @@ export async function GET() {
     ]),
   );
 
-  return NextResponse.json({ coverage, weatherDays: weather.size, series, categories });
+  const payload = { coverage, weatherDays: weather.size, series, categories };
+  const computedAt = new Date().toISOString();
+  try {
+    await put(CACHE_PATH, JSON.stringify({ computedAt, payload }), {
+      access: 'private',
+      contentType: 'application/json',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    });
+  } catch {
+    // 캐시 저장 실패는 무시 — 응답은 정상 반환
+  }
+  return NextResponse.json({ ...payload, computedAt, cached: false });
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { KR_HOLIDAYS } from '@/lib/garden/krHolidays';
+import { buildWeatherComments } from '@/lib/garden/weatherComment';
 
 // 2주 날씨 스트립 — 가든 대시보드 맨 위. 날씨가 원두 소진량에 영향이 커서 발주 판단 참고용.
 // 판교·양재천 중간 좌표(37.43, 127.07) 기준 단일 예보 — 두 매장은 직선 8km라 예보가 사실상 동일.
@@ -190,6 +191,7 @@ export default function WeatherStrip() {
   const todayYmd = kstTodayYmd();
   // 자정이 지나 재조회 전이라도 지난 날짜 카드는 걸러낸다
   const visible = days?.filter((day) => day.ymd >= todayYmd) ?? null;
+  const comments = visible ? buildWeatherComments(visible) : [];
 
   return (
     <section>
@@ -238,6 +240,11 @@ export default function WeatherStrip() {
         @media (prefers-reduced-motion: reduce) {
           .ws2-bob, .ws2-surf-a, .ws2-surf-b, .ws-sun-glow, .ws-snow-a, .ws-snow-b { animation: none; }
         }
+        /* 달력 관습 색 — 토요일 파랑, 일요일·공휴일 빨강. 다크 모드는 한 단계 밝게 */
+        .ws-day-red { color: hsl(0 72% 45%); }
+        .ws-day-blue { color: hsl(217 75% 48%); }
+        .dark .ws-day-red { color: hsl(0 84% 68%); }
+        .dark .ws-day-blue { color: hsl(217 90% 70%); }
       `}</style>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
         <p className="ta-label" style={{ marginBottom: 0 }}>2주 날씨 — 판교·양재천</p>
@@ -248,6 +255,15 @@ export default function WeatherStrip() {
           </Link>
         </span>
       </div>
+      {comments.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8 }}>
+          {comments.map((c) => (
+            <p key={c} className="m-0 text-[13px] text-foreground">
+              <span className="text-muted-foreground">▸</span> {c}
+            </p>
+          ))}
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
         {(visible ?? Array.from({ length: 16 })).map((day: Day | undefined, i) => {
           if (!day) {
@@ -312,7 +328,17 @@ export default function WeatherStrip() {
                 </div>
               )}
               <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span className={`text-[11px] ${dayOff || today ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                <span
+                  className={`text-[11px] ${dayOff || today ? 'font-medium' : ''} ${
+                    holiday || dow === 0
+                      ? 'ws-day-red'
+                      : dow === 6
+                        ? 'ws-day-blue'
+                        : dayOff || today
+                          ? 'text-foreground'
+                          : 'text-muted-foreground'
+                  }`}
+                >
                   {today ? '오늘' : `${Number(m)}/${Number(dd)} (${DOW[dow]}${holiday ? '·휴' : ''})`}
                 </span>
                 <span className="text-[13px] text-foreground" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
