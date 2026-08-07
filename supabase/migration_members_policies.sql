@@ -1,0 +1,42 @@
+-- finance.members RLS 정책 — 원래 Supabase 대시보드에서 직접 만들어져 레포에 기록이 없던 것을
+-- 코드로 옮겨 적은 파일(2026-08-07). DB 를 새로 만들거나 복구할 때 이 정책이 빠지면
+-- 멤버 테이블(역할·권한)이 무방비가 되므로 반드시 함께 실행한다.
+--
+-- ⚠️ 조건식의 대표 이메일은 lib/finance/access.ts 의 OWNER_EMAIL 과 동일하게 유지할 것.
+--    (그 파일 주석도 "RLS 정책(members read/manage)의 이메일과 반드시 동일하게 유지" 라고 명시)
+--
+-- ⚠️ 아래 members manage / members read 의 대표 계정 예외 부분은 운영 DB 조회 결과가
+--    그리드에서 잘려 보이는 상태에서 옮겨 적은 것이다. 운영 DB 에 실행하기 전에
+--    아래 쿼리로 현재 정책과 같은지 먼저 대조할 것:
+--
+--      select policyname, cmd, qual, with_check
+--      from pg_policies where schemaname='finance' and tablename='members';
+--
+--    다른 부분이 있으면 이 파일을 실제 값으로 고친 뒤 커밋한다.
+
+alter table finance.members enable row level security;
+
+-- 조회: 본인 행 또는 관리자·대표
+drop policy if exists "members read" on finance.members;
+create policy "members read" on finance.members
+  for select using (
+    id = auth.uid()
+    or finance.my_role() = 'admin'::finance.member_role
+    or (auth.jwt() ->> 'email') = 'thomas.in.park@gmail.com'
+  );
+
+-- 역할·권한 변경: 관리자·대표만. (설정 화면이 anon key 로 직접 update 하므로 이 정책이 유일한 방어선)
+drop policy if exists "members manage" on finance.members;
+create policy "members manage" on finance.members
+  for update using (
+    finance.my_role() = 'admin'::finance.member_role
+    or (auth.jwt() ->> 'email') = 'thomas.in.park@gmail.com'
+  ) with check (
+    finance.my_role() = 'admin'::finance.member_role
+    or (auth.jwt() ->> 'email') = 'thomas.in.park@gmail.com'
+  );
+
+-- 접근 요청: 본인 행만, 역할은 비운 채로만 생성 가능(스스로 admin 부여 차단)
+drop policy if exists "self request" on finance.members;
+create policy "self request" on finance.members
+  for insert with check (id = auth.uid() and role is null);
