@@ -5,7 +5,9 @@ import { resolveMember } from '@/lib/finance/access';
 import TabNav from '@/components/TabNav';
 import GardenNav from '@/components/garden/GardenNav';
 import SalesSummary from '@/components/SalesSummary';
+import ReviewSalesReport from '@/components/garden/ReviewSalesReport';
 import { fetchSalesRows, type SalesRow } from '@/lib/finance/sales-data';
+import { buildReviewSales, type ReviewRow, type StoreReviewSales } from '@/lib/garden/review-sales';
 import { STORES } from '@/lib/types';
 
 // 가든 매출 — 토스(양재천)/페이히어(판교) POS 업로드(발생주의) 요약. 스탭밀 매출과 같은 구조.
@@ -35,6 +37,25 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
     }).catch(() => []);
   }
   const shown = canSplitStore && storeParam !== 'all' ? rows.filter((r) => r.store === storeParam) : rows;
+
+  // 리뷰 × 매출 주간 리포트 — 지점 구분이 가능한 재무 권한자에게만 (rows 에 store 필요)
+  let reviewSales: StoreReviewSales[] = [];
+  if (canSplitStore && rows.length > 0) {
+    const reviews: ReviewRow[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase
+        .schema('finance')
+        .from('place_reviews')
+        .select('reviewed_at, rating, store_key')
+        .order('reviewed_at', { ascending: true })
+        .order('review_id', { ascending: true })
+        .range(from, from + 999);
+      if (error || !data) break;
+      reviews.push(...(data as ReviewRow[]));
+      if (data.length < 1000) break;
+    }
+    reviewSales = buildReviewSales(rows, reviews);
+  }
 
   const storeTabs = [
     { key: 'all', label: '전체' },
@@ -91,6 +112,7 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
               </p>
             )}
             <SalesSummary rows={shown} />
+            {reviewSales.length > 0 && <ReviewSalesReport data={reviewSales} />}
           </>
         )}
       </div>
