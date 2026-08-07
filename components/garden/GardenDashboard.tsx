@@ -746,6 +746,47 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     );
   };
 
+  // 레시피 미설정 원두 카드 — 대시보드(unset)와 필터 레시피 탭 양쪽에서 노출.
+  // 발주 직후 레시피 페이지에서도 바로 설정을 유도하기 위함.
+  const unsetCard = unsetBeans.length > 0 && (
+    <div className="ta-card bg-background min-w-0">
+      <p className="ta-label">레시피 미설정 원두 — 새 발주</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {unsetBeans.map((rec) => (
+          <div key={rec.id} style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <span className="text-[13px] text-foreground" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {rec.bean}
+            </span>
+            <span className="tabular text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>
+              {fmtDate(rec.createdAt)} 발주
+              {rec.chosenPrice != null && ` · ${won(rec.chosenPrice)}`}
+            </span>
+            <span style={{ flex: 1 }} />
+            {BREW_TYPES.map((bt) => (
+              <button
+                key={bt}
+                onClick={() => openEditor(normalize(rec.bean), rec.bean, bt)}
+                className="ta-btn"
+                style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 13, flexShrink: 0 }}
+              >
+                {btLabel(bt)} 설정
+              </button>
+            ))}
+            <button
+              onClick={() => deleteUnsetBean(rec)}
+              disabled={deletingBean === normalize(rec.bean)}
+              title="발주 기록 삭제"
+              className="text-muted-foreground hover:text-foreground"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     // unset(대시보드) 모드는 아래 캘리브레이션·드리프트 체크와 같은 풀폭, recipes 모드는 기존 720 유지
     <div style={{ width: '100%', maxWidth: section === 'unset' ? undefined : 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
@@ -913,11 +954,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       {section === 'recipes' && (
         <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           {loading && <p className="text-[13px] text-muted-foreground">불러오는 중…</p>}
-          {!loading && beanGroups.length === 0 && (
+          {/* 새 발주 원두 — 레시피 미설정이면 상단에서 바로 설정 유도 */}
+          {!loading && unsetCard}
+          {!loading && beanGroups.length === 0 && unsetBeans.length === 0 && (
             <p className="text-[13px] text-muted-foreground">
-              아직 레시피가 설정된 원두가 없어요.{' '}
-              <Link href="/garden" className="underline hover:text-foreground">대시보드</Link>의 미설정
-              원두에서 레시피를 만들어 보세요.
+              아직 레시피가 설정된 원두가 없어요. 가격 세팅에서 원두를 발주하면 여기에서 레시피를 만들 수
+              있어요.
             </p>
           )}
 
@@ -975,7 +1017,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
         </div>
       )}
 
-      {/* 레시피 미설정 원두 — 가격 세팅에서 저장한 원두 목록 (대시보드 전용) */}
+      {/* 레시피 미설정 원두 — 가격 세팅에서 저장한 원두 목록 (대시보드) */}
       {section === 'unset' && unsetBeans.length === 0 && !loading && (
         <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
           레시피 미설정 원두가 없어요. 레시피 카드는{' '}
@@ -983,44 +1025,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           에서 관리합니다.
         </p>
       )}
-      {section === 'unset' && unsetBeans.length > 0 && (
-        <div className="ta-card bg-background min-w-0">
-          <p className="ta-label">레시피 미설정 원두</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {unsetBeans.map((rec) => (
-              <div key={rec.id} style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                <span className="text-[13px] text-foreground" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {rec.bean}
-                </span>
-                <span className="tabular text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>
-                  {fmtDate(rec.createdAt)} 발주
-                  {rec.chosenPrice != null && ` · ${won(rec.chosenPrice)}`}
-                </span>
-                <span style={{ flex: 1 }} />
-                {BREW_TYPES.map((bt) => (
-                  <button
-                    key={bt}
-                    onClick={() => openEditor(normalize(rec.bean), rec.bean, bt)}
-                    className="ta-btn"
-                    style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 13, flexShrink: 0 }}
-                  >
-                    {btLabel(bt)} 설정
-                  </button>
-                ))}
-                <button
-                  onClick={() => deleteUnsetBean(rec)}
-                  disabled={deletingBean === normalize(rec.bean)}
-                  title="발주 기록 삭제"
-                  className="text-muted-foreground hover:text-foreground"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {section === 'unset' && unsetCard}
 
       {/* 추출 타이머 오버레이 — 카드의 ▶ 타이머로 열기 */}
       {timerFor && (
