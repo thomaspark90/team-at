@@ -5,7 +5,7 @@ import type { StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import type { GardenTodo } from '@/lib/garden-todos';
 import type { GardenTopicMap, GardenTopicId } from '@/lib/garden-notify-topics';
-import { GARDEN_TOPICS, EMPTY_TOPICS } from '@/lib/garden-notify-topics';
+import { EMPTY_TOPICS, topicsOfScope } from '@/lib/garden-notify-topics';
 import { type RecipientRow } from '@/components/NotifyRecipients';
 import NotifySettings from '@/components/NotifySettings';
 import GardenOptionsManager from '@/components/garden/GardenOptionsManager';
@@ -203,7 +203,8 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <p className="ta-label" style={{ margin: 0 }}>항목별 담당자</p>
-        {GARDEN_TOPICS.map((t) =>
+        {/* 가든 항목만 — 스탭밀 항목은 /studio/settings 에서 관리한다 */}
+        {topicsOfScope('garden').map((t) =>
           row({
             label: t.label,
             desc: t.desc,
