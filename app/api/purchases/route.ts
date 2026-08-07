@@ -3,6 +3,11 @@ import { NextResponse } from 'next/server';
 import type { PurchaseRecord, PurchaseStore } from '@/lib/types';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
+import { normalize } from '@/lib/pricing';
+
+// 같은 발주를 하루에 여러 번 저장(범위 확인 → 배수 책정)해도 기록이 한 건으로 정리되도록,
+// 같은 원두·같은 매입가·같은 날(KST)은 append 대신 대체한다.
+const kstDay = (iso: string) => new Date(new Date(iso).getTime() + 9 * 3600_000).toISOString().slice(0, 10);
 
 const DATA_PATH = 'data/purchases.json';
 
@@ -65,7 +70,20 @@ export async function POST(req: Request) {
     chosenPrice: body.chosenPrice ?? null,
     createdBy: user.email ?? '',
   };
-  store.records = [...store.records, record];
+  const dup = (r: PurchaseRecord) =>
+    normalize(r.bean) === normalize(record.bean) &&
+    r.purchasePrice === record.purchasePrice &&
+    kstDay(r.createdAt) === kstDay(record.createdAt);
+  const replaced = store.records.filter(dup);
+  // 책정가 없이 재저장해도 이미 책정된 판매가는 잃지 않는다
+  if (record.chosenPrice == null) {
+    const priced = replaced.filter((r) => r.chosenPrice != null).at(-1);
+    if (priced) {
+      record.chosenPrice = priced.chosenPrice;
+      record.chosenMult = priced.chosenMult;
+    }
+  }
+  store.records = [...store.records.filter((r) => !dup(r)), record];
   await writeStore(store);
   await logActivity(
     supabase,
