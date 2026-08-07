@@ -79,6 +79,23 @@ export default function WeatherStrip() {
 
   return (
     <section>
+      {/* 물결 애니메이션 — 이 컴포넌트 전용이라 globals 대신 여기 둔다 */}
+      <style>{`
+        @keyframes ws-slosh-a { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes ws-slosh-b { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+        .ws-wave {
+          position: absolute; left: 50%; width: 280px; height: 280px; margin-left: -140px;
+          border-radius: 46% 54% 50% 50% / 52% 48% 55% 45%;
+          background: rgba(59, 130, 246, 0.20);
+          animation: ws-slosh-a 9s linear infinite;
+        }
+        .ws-wave-b {
+          border-radius: 54% 46% 48% 52% / 46% 54% 47% 53%;
+          background: rgba(96, 165, 250, 0.16);
+          animation: ws-slosh-b 13s linear infinite;
+        }
+        @media (prefers-reduced-motion: reduce) { .ws-wave, .ws-wave-b { animation: none; } }
+      `}</style>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
         <p className="ta-label" style={{ marginBottom: 0 }}>2주 날씨 — 판교·양재천</p>
         <span className="text-[11px] text-muted-foreground/70">
@@ -104,6 +121,9 @@ export default function WeatherStrip() {
           const today = i === 0;
           const w = wmo(day.code);
           const rainy = day.rainMm >= 1 || (day.rainProb ?? 0) >= 40;
+          // 물 채움 — 비 계열(이슬비·비·소나기·뇌우)만, 수위 = 강수확률
+          const wet = (w.glyph === '☂︎' || w.glyph === '⚡︎') && (day.rainProb ?? 0) > 0;
+          const waterline = 100 - Math.min(96, day.rainProb ?? 0);
           return (
             <div
               key={day.date.toISOString()}
@@ -111,13 +131,23 @@ export default function WeatherStrip() {
               style={{
                 minWidth: 92,
                 padding: '9px 10px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4,
+                position: 'relative',
+                overflow: 'hidden',
                 flexShrink: 0,
                 borderColor: today ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
               }}
             >
+              {wet && (
+                <div
+                  aria-hidden
+                  style={{ position: 'absolute', inset: 0, borderRadius: 'inherit', overflow: 'hidden', pointerEvents: 'none' }}
+                >
+                  {/* 회전하는 비정형 타원 두 장 — 수면이 서로 어긋나며 찰랑거린다 */}
+                  <div className="ws-wave" style={{ top: `calc(${waterline}% - 8px)` }} />
+                  <div className="ws-wave ws-wave-b" style={{ top: `calc(${waterline}% - 8px)` }} />
+                </div>
+              )}
+              <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span
                 className={`text-[11px] ${weekend || today ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
               >
@@ -145,6 +175,7 @@ export default function WeatherStrip() {
                 {day.humidity != null && `${Math.round(day.humidity)}%`}
                 {day.windMax != null && ` · ${Math.round(day.windMax)}㎞/h`}
               </span>
+              </div>
             </div>
           );
         })}
