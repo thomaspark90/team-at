@@ -62,7 +62,7 @@ export default function GardenService() {
   }, []);
 
   const result = useMemo(
-    () => (price > 0 ? computePricing(price, settings) : null),
+    () => (price > 0 && settings.capacityG > 0 ? computePricing(price, settings) : null),
     [price, settings]
   );
 
@@ -326,6 +326,41 @@ export default function GardenService() {
                 style={{ flex: 1, minWidth: 0 }}
               />
             </label>
+            {/* 구매 용량 — 500g/1000g 프리셋 + 직접 입력 (잔당 재료비 계산 기준) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              <span className="text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>구매 용량</span>
+              <div className="inline-flex gap-1 rounded-md border border-border p-1" style={{ flexShrink: 0 }}>
+                {[500, 1000].map((g) => {
+                  const on = settings.capacityG === g;
+                  return (
+                    <button
+                      key={g}
+                      onClick={() => {
+                        setNum('capacityG', g);
+                        setSelectedMult(null);
+                      }}
+                      className={`rounded-sm px-2.5 py-1 text-[12px] transition-colors ${
+                        on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {g}g
+                    </button>
+                  );
+                })}
+              </div>
+              <input
+                type="number"
+                value={settings.capacityG || ''}
+                onChange={(e) => {
+                  setNum('capacityG', Number(e.target.value) || 0);
+                  setSelectedMult(null);
+                }}
+                placeholder="직접 입력"
+                className="ta-input tabular"
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              <span className="text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>g</span>
+            </div>
             <div style={{ display: 'flex', gap: 8, minWidth: 0 }}>
               <input
                 type="text"
