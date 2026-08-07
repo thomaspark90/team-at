@@ -75,6 +75,7 @@ export type BrewType = 'ice' | 'hot';
 
 // 원두별 드립 레시피 — 원두(normalize 키)마다 ICE/HOT 하나씩
 export interface DripRecipe {
+  id?: string; // 기록별 blob 저장 키 — beanKey+brewType 업서트 키와 별개의 영속 id (구 기록은 이관 시 주입)
   beanKey: string; // normalize(bean) — brewType과 함께 upsert 키
   brewType?: BrewType; // 없으면 ice (구 기록 호환)
   bean: string; // 표시용 원두명 (마지막 저장 시점 표기)

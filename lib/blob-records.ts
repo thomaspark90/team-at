@@ -1,6 +1,8 @@
 import { del, get, list, put } from '@vercel/blob';
 import type { GrindMeasurement } from '@/lib/grind-measurements';
-import type { PurchaseRecord } from '@/lib/types';
+import type { PurchaseRecord, DripRecipe } from '@/lib/types';
+import type { GardenTodo } from '@/lib/garden-todos';
+import type { AlignmentEvent } from '@/lib/grinder-alignments';
 
 // 컬렉션 저장 구조 — 기록 1건 = blob 1개 (data/<name>/records/<id>.json).
 // 기존 단일 JSON(전체 배열을 읽고-고쳐-다시쓰기)은 두 지점이 동시에 저장하면
@@ -10,7 +12,7 @@ import type { PurchaseRecord } from '@/lib/types';
 
 interface BlobRecord {
   id: string;
-  createdAt: string;
+  createdAt?: string; // 정렬용 — 없는 구 기록도 sorted()가 방어한다
 }
 
 const CHUNK = 30; // blob 병렬 요청 상한 — 대량 이관·조회 시 rate limit 보호
@@ -37,9 +39,11 @@ export function blobCollection<T extends BlobRecord>(opts: {
   name: string; // 컬렉션 이름 — data/<name>/records/ 아래에 저장
   legacyPath: string; // 구 단일 JSON 경로
   legacyKey: string; // 구 JSON에서 기록 배열이 담긴 키
+  normalize?: (record: T) => T; // 이관·저장 직전 보정 — 구 기록에 id 가 없는 컬렉션(레시피)의 id 주입용
 }) {
   const prefix = `data/${opts.name}/records/`;
   const pathOf = (id: string) => `${prefix}${id}.json`;
+  const norm = (r: T) => (opts.normalize ? opts.normalize(r) : r);
 
   const listPaths = async (): Promise<string[]> => {
     const paths: string[] = [];
@@ -53,7 +57,8 @@ export function blobCollection<T extends BlobRecord>(opts: {
   };
 
   const writeOne = async (record: T): Promise<void> => {
-    await put(pathOf(record.id), JSON.stringify(record), {
+    const r = norm(record);
+    await put(pathOf(r.id), JSON.stringify(r), {
       access: 'private',
       contentType: 'application/json',
       addRandomSuffix: false,
@@ -73,7 +78,7 @@ export function blobCollection<T extends BlobRecord>(opts: {
     // (2) 이관이 중간에 실패하면 일부만 남은 상태가 완료로 오인돼 나머지가 영영 사라진다.
     const legacy = await readJson<Record<string, unknown>>(opts.legacyPath);
     if (legacy) {
-      const arr = Array.isArray(legacy[opts.legacyKey]) ? (legacy[opts.legacyKey] as T[]) : [];
+      const arr = (Array.isArray(legacy[opts.legacyKey]) ? (legacy[opts.legacyKey] as T[]) : []).map(norm);
       // 같은 id·경로라 여러 번 실행돼도 멱등. 중간에 실패하면 원본이 남아 다음 요청이 다시 시도한다.
       if (arr.length > 0) await inChunks(arr, writeOne);
       // 전부 옮긴 뒤에만 원본을 백업으로 넘기고 제거 — 이후 재이관이 일어나지 않는다
@@ -91,6 +96,13 @@ export function blobCollection<T extends BlobRecord>(opts: {
     return sorted((await inChunks(paths, (p) => readJson<T>(p))).filter((r): r is T => r != null));
   };
 
+  // 단건 조회 — 경로 직조회 후, 이관 전 구 기록일 수 있으면 readAll(이관 포함)로 재시도
+  const readOne = async (id: string): Promise<T | null> => {
+    const rec = await readJson<T>(pathOf(id));
+    if (rec) return rec;
+    return (await readAll()).find((r) => r.id === id) ?? null;
+  };
+
   const deleteOne = async (id: string): Promise<T | null> => {
     let rec = await readJson<T>(pathOf(id));
     if (!rec) {
@@ -104,7 +116,7 @@ export function blobCollection<T extends BlobRecord>(opts: {
     return rec;
   };
 
-  return { readAll, writeOne, deleteOne };
+  return { readAll, readOne, writeOne, deleteOne };
 }
 
 // 앱에서 쓰는 컬렉션 인스턴스 — 라우트들이 공유
@@ -118,4 +130,25 @@ export const grindMeasurementRecords = blobCollection<GrindMeasurement>({
   name: 'garden-grind-measurements',
   legacyPath: 'data/garden-grind-measurements.json',
   legacyKey: 'measurements',
+});
+
+export const gardenTodoRecords = blobCollection<GardenTodo>({
+  name: 'garden-todos',
+  legacyPath: 'data/garden-todos.json',
+  legacyKey: 'todos',
+});
+
+export const alignmentRecords = blobCollection<AlignmentEvent>({
+  name: 'garden-grinder-alignments',
+  legacyPath: 'data/garden-grinder-alignments.json',
+  legacyKey: 'events',
+});
+
+// 레시피는 beanKey+brewType 업서트 구조라 구 기록에 id 가 없다 — 이관·저장 시 주입
+export type StoredDripRecipe = DripRecipe & { id: string };
+export const dripRecipeRecords = blobCollection<StoredDripRecipe>({
+  name: 'garden-recipes',
+  legacyPath: 'data/garden-recipes.json',
+  legacyKey: 'recipes',
+  normalize: (r) => (r.id ? r : { ...r, id: crypto.randomUUID() }),
 });

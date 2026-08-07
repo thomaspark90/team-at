@@ -6,22 +6,14 @@ import type { GrinderProfiles, GrindPoint } from '@/lib/grinder-calibration';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { requireGardenTab } from '@/lib/access/guard';
-import { latestAlignmentDate, kstDate, type AlignmentEvent } from '@/lib/grinder-alignments';
+import { latestAlignmentDate, kstDate } from '@/lib/grinder-alignments';
+import { alignmentRecords } from '@/lib/blob-records';
 
 const DATA_PATH = 'data/garden-grinders.json';
-const ALIGN_PATH = 'data/garden-grinder-alignments.json';
 const STORE_IDS = STORES.map((s) => s.id);
 
-async function readAlignments(): Promise<AlignmentEvent[]> {
-  const res = await get(ALIGN_PATH, { access: 'private', useCache: false });
-  if (!res) return [];
-  try {
-    const parsed = JSON.parse(await new Response(res.stream).text()) as { events?: AlignmentEvent[] };
-    return parsed.events ?? [];
-  } catch {
-    return [];
-  }
-}
+// 얼라인 이력은 기록별 blob 컬렉션에서 읽는다 (구 단일 파일은 이관 후 사라짐)
+const readAlignments = () => alignmentRecords.readAll();
 
 async function readStore(): Promise<{ profiles: GrinderProfiles }> {
   const res = await get(DATA_PATH, { access: 'private', useCache: false });

@@ -1,34 +1,15 @@
-import { get, put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import type { StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import type { AlignmentEvent } from '@/lib/grinder-alignments';
+import { alignmentRecords } from '@/lib/blob-records';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { requireGardenTab } from '@/lib/access/guard';
 
-const DATA_PATH = 'data/garden-grinder-alignments.json';
+// 기록별 blob 저장(lib/blob-records) — 동시 기록에도 유실이 없다.
+
 const STORE_IDS = STORES.map((s) => s.id);
-
-async function readStore(): Promise<{ events: AlignmentEvent[] }> {
-  const res = await get(DATA_PATH, { access: 'private', useCache: false });
-  if (!res) return { events: [] };
-  const text = await new Response(res.stream).text();
-  try {
-    return JSON.parse(text) as { events: AlignmentEvent[] };
-  } catch {
-    return { events: [] };
-  }
-}
-
-async function writeStore(store: { events: AlignmentEvent[] }) {
-  await put(DATA_PATH, JSON.stringify(store), {
-    access: 'private',
-    contentType: 'application/json',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-  });
-}
 
 export async function GET() {
   const supabase = await createClient();
@@ -42,8 +23,7 @@ export async function GET() {
     if (denied) return denied;
   }
 
-  const store = await readStore();
-  return NextResponse.json(store.events);
+  return NextResponse.json(await alignmentRecords.readAll());
 }
 
 // 얼라인먼트 1건 기록: { store, date: 'YYYY-MM-DD', kind?: 'align'|'check', memo? }
@@ -81,9 +61,7 @@ export async function POST(req: Request) {
     createdBy: user.email ?? '',
   };
 
-  const data = await readStore();
-  data.events.push(event);
-  await writeStore(data);
+  await alignmentRecords.writeOne(event);
 
   const label = STORES.find((s) => s.id === storeId)?.label ?? storeId;
   await logActivity(
@@ -92,7 +70,10 @@ export async function POST(req: Request) {
     kind === 'check' ? '가든서비스 그라인더 정기 점검 (이상 없음)' : '가든서비스 그라인더 얼라인먼트 기록',
     `${label} · ${date}${event.memo ? ` · ${event.memo}` : ''}`
   );
-  return NextResponse.json(data.events);
+  // 방금 쓴 blob 은 목록 인덱스에 아직 안 보일 수 있어 응답에 직접 포함한다
+  const events = await alignmentRecords.readAll();
+  if (!events.some((e) => e.id === event.id)) events.push(event);
+  return NextResponse.json(events);
 }
 
 // 기록 삭제: ?id=<uuid>
@@ -110,13 +91,12 @@ export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id가 필요합니다.' }, { status: 400 });
 
-  const data = await readStore();
-  const target = data.events.find((e) => e.id === id);
+  const target = await alignmentRecords.deleteOne(id);
   if (!target) return NextResponse.json({ error: '기록을 찾을 수 없습니다.' }, { status: 404 });
-  data.events = data.events.filter((e) => e.id !== id);
-  await writeStore(data);
 
   const label = STORES.find((s) => s.id === target.store)?.label ?? target.store;
-  await logActivity(supabase, user, '가든서비스 그라인더 얼라인먼트 기록 삭제', `${label} · ${target.date}`);
-  return NextResponse.json(data.events);
+  await logActivity(supabase, user, '가든서비스 그라인더 얼라인먼트 삭제', `${label} · ${target.date}`);
+  // 삭제 직후 목록 인덱스에 남아 있을 수 있어 응답에서 확실히 제외한다
+  const events = (await alignmentRecords.readAll()).filter((e) => e.id !== id);
+  return NextResponse.json(events);
 }

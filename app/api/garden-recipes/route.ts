@@ -1,34 +1,15 @@
-import { get, put } from '@vercel/blob';
 import { APP_URL } from '@/lib/app-url';
 import { NextResponse } from 'next/server';
-import type { DripRecipe, DripRecipeSnapshot, RecipeStore } from '@/lib/types';
+import type { DripRecipe, DripRecipeSnapshot } from '@/lib/types';
+import { dripRecipeRecords, type StoredDripRecipe } from '@/lib/blob-records';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { notifyGardenEvent } from '@/lib/notify';
 import { readGardenTopics } from '@/lib/garden-notify-topics-server';
 import { requireGardenTab } from '@/lib/access/guard';
 
-const DATA_PATH = 'data/garden-recipes.json';
-
-async function readStore(): Promise<RecipeStore> {
-  const res = await get(DATA_PATH, { access: 'private', useCache: false });
-  if (!res) return { recipes: [] };
-  const text = await new Response(res.stream).text();
-  try {
-    return JSON.parse(text) as RecipeStore;
-  } catch {
-    return { recipes: [] };
-  }
-}
-
-async function writeStore(store: RecipeStore) {
-  await put(DATA_PATH, JSON.stringify(store), {
-    access: 'private',
-    contentType: 'application/json',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-  });
-}
+// 기록별 blob 저장(lib/blob-records) — 레시피 1건 = 파일 1개라 서로 다른 레시피를
+// 동시에 저장해도 유실이 없다. (같은 레시피 동시 수정은 여전히 마지막 저장이 이긴다)
 
 export async function GET() {
   const supabase = await createClient();
@@ -41,8 +22,7 @@ export async function GET() {
     if (denied) return denied;
   }
 
-  const store = await readStore();
-  return NextResponse.json(store.recipes);
+  return NextResponse.json(await dripRecipeRecords.readAll());
 }
 
 const brewTypeOf = (v: unknown) => (v === 'hot' ? 'hot' : 'ice') as 'ice' | 'hot';
@@ -75,7 +55,7 @@ export async function POST(req: Request) {
     grindMesh = Math.round(m * 10) / 10;
   }
 
-  const store = await readStore();
+  const all = await dripRecipeRecords.readAll();
   const brewType = brewTypeOf(body.brewType);
   const recipe: DripRecipe = {
     beanKey: body.beanKey,
@@ -94,8 +74,9 @@ export async function POST(req: Request) {
     updatedBy: user.email ?? '',
   };
   const same = (r: DripRecipe) => r.beanKey === recipe.beanKey && brewTypeOf(r.brewType) === brewType;
-  const prev = store.recipes.find(same);
+  const prev = all.find(same);
   const isNew = !prev;
+  recipe.id = prev?.id ?? crypto.randomUUID(); // 업서트 — 기존 기록의 id 를 이어받아 같은 파일에 덮어쓴다
   // 최초 등록 시점 보존 — 구 기록(createdAt 없음)은 이력 최초 저장 시각으로 백필
   recipe.createdAt = prev
     ? prev.createdAt ??
@@ -128,8 +109,7 @@ export async function POST(req: Request) {
       recipe.pangyoMeshHistory = prev.pangyoMeshHistory;
     }
   }
-  store.recipes = [...store.recipes.filter((r) => !same(r)), recipe];
-  await writeStore(store);
+  await dripRecipeRecords.writeOne(recipe as StoredDripRecipe);
   await logActivity(
     supabase,
     user,
@@ -186,11 +166,9 @@ export async function DELETE(req: Request) {
 
   const { beanKey, brewType: bt } = await req.json();
   const brewType = brewTypeOf(bt);
-  const store = await readStore();
   const same = (r: DripRecipe) => r.beanKey === beanKey && brewTypeOf(r.brewType) === brewType;
-  const removed = store.recipes.find(same);
-  store.recipes = store.recipes.filter((r) => !same(r));
-  await writeStore(store);
+  const removed = (await dripRecipeRecords.readAll()).find(same);
+  if (removed) await dripRecipeRecords.deleteOne(removed.id);
   await logActivity(
     supabase,
     user,

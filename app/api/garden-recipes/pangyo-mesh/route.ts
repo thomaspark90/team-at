@@ -1,31 +1,10 @@
-import { get, put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
-import type { DripRecipe, RecipeStore } from '@/lib/types';
+import type { DripRecipe } from '@/lib/types';
+import { dripRecipeRecords, type StoredDripRecipe } from '@/lib/blob-records';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { requireGardenTab } from '@/lib/access/guard';
 
-const DATA_PATH = 'data/garden-recipes.json';
-
-async function readStore(): Promise<RecipeStore> {
-  const res = await get(DATA_PATH, { access: 'private', useCache: false });
-  if (!res) return { recipes: [] };
-  const text = await new Response(res.stream).text();
-  try {
-    return JSON.parse(text) as RecipeStore;
-  } catch {
-    return { recipes: [] };
-  }
-}
-
-async function writeStore(store: RecipeStore) {
-  await put(DATA_PATH, JSON.stringify(store), {
-    access: 'private',
-    contentType: 'application/json',
-    addRandomSuffix: false,
-    allowOverwrite: true,
-  });
-}
 
 const brewTypeOf = (v: unknown) => (v === 'hot' ? 'hot' : 'ice') as 'ice' | 'hot';
 
@@ -51,8 +30,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '판교 다이얼은 4.0~13.0 사이여야 합니다.' }, { status: 400 });
   }
 
-  const store = await readStore();
-  const recipe = store.recipes.find(
+  const recipe = (await dripRecipeRecords.readAll()).find(
     (r: DripRecipe) => r.beanKey === beanKey && brewTypeOf(r.brewType) === brewType
   );
   if (!recipe) return NextResponse.json({ error: '레시피를 찾을 수 없습니다.' }, { status: 404 });
@@ -68,7 +46,7 @@ export async function POST(req: Request) {
     },
     ...(recipe.pangyoMeshHistory ?? []),
   ].slice(0, 20);
-  await writeStore(store);
+  await dripRecipeRecords.writeOne(recipe as StoredDripRecipe);
 
   await logActivity(
     supabase,

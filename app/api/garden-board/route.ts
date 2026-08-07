@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isOwner, resolveRole } from '@/lib/finance/access';
 import { readGardenTopics } from '@/lib/garden-notify-topics-server';
-import { purchaseRecords, grindMeasurementRecords } from '@/lib/blob-records';
+import { purchaseRecords, grindMeasurementRecords, gardenTodoRecords, alignmentRecords, dripRecipeRecords } from '@/lib/blob-records';
 import { normalize } from '@/lib/pricing';
 import { STORES } from '@/lib/types';
 import type { DripRecipe } from '@/lib/types';
@@ -107,15 +107,15 @@ export async function GET(req: Request) {
   const owns = (emails: string[]) => emails.map((e) => e.toLowerCase()).includes(me);
 
   const isGarden = scope === 'garden';
-  const [purchases, recipesStore, measurements, todosStore, profiles, mealsStore, alignStore] =
+  const [purchases, recipes, measurements, todos, profiles, mealsStore, alignEvents] =
     await Promise.all([
       isGarden ? purchaseRecords.readAll().catch(() => []) : [],
-      isGarden ? readJson<{ recipes: DripRecipe[] }>('data/garden-recipes.json') : null,
+      isGarden ? dripRecipeRecords.readAll().catch(() => [] as DripRecipe[]) : [],
       isGarden ? grindMeasurementRecords.readAll().catch(() => []) : [],
-      isGarden ? readJson<{ todos: GardenTodo[] }>('data/garden-todos.json') : null,
+      isGarden ? gardenTodoRecords.readAll().catch(() => [] as GardenTodo[]) : [],
       isGarden ? readJson<{ profiles: GrinderProfiles }>('data/garden-grinders.json') : null,
       isGarden ? null : readJson<{ records: StaffMealRecord[] }>('data/staffmeals.json'),
-      isGarden ? readJson<{ events: AlignmentEvent[] }>('data/garden-grinder-alignments.json') : null,
+      isGarden ? alignmentRecords.readAll().catch(() => [] as AlignmentEvent[]) : [],
     ]);
 
   // ── 스탭밀 : 오늘 인스타 스토리 메뉴 등록 ──
@@ -147,7 +147,6 @@ export async function GET(req: Request) {
   }
 
   // ── 발주 → 판매 준비 : 발주 · 레시피 · 원두카드 ──
-  const recipes = recipesStore?.recipes ?? [];
   const recipeKeys = new Set(recipes.map((r) => r.beanKey));
   const latestByBean = new Map<string, (typeof purchases)[number]>();
   for (const p of purchases) {
@@ -216,7 +215,6 @@ export async function GET(req: Request) {
   }
 
   // ── 정기 얼라인 점검 : 마지막 확인(재정렬·점검) 후 3개월 지나면 리마인더 ──
-  const alignEvents = alignStore?.events ?? [];
   for (const s of isGarden ? STORES : []) {
     const { due, last } = alignmentOverdue(alignEvents, s.id);
     if (!due) continue;
@@ -318,7 +316,7 @@ export async function GET(req: Request) {
   }
 
   // ── 투두 ──
-  for (const t of todosStore?.todos ?? []) {
+  for (const t of todos) {
     if (t.done && daysAgo(t.doneAt ?? t.createdAt) > 7) continue; // 완료는 최근 7일만
     cards.push({
       id: `todo:${t.id}`,
