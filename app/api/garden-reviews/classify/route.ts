@@ -5,6 +5,7 @@ import { logActivity } from '@/lib/finance/activity';
 import { checkAiQuota } from '@/lib/access/rate-limit';
 import { notifyGardenEvent } from '@/lib/notify';
 import { topicEmails } from '@/lib/garden-notify-topics-server';
+import { requireGardenTab } from '@/lib/access/guard';
 
 const ACTION = '리뷰 AI 분류';
 
@@ -24,6 +25,10 @@ export async function POST() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, 'reviews');
+    if (denied) return denied;
+  }
   // UI 가 remaining=0 이 될 때까지 반복 호출하는 배치라 상한을 넉넉히 둔다
   const over = await checkAiQuota(supabase, user, ACTION, 300);
   if (over) return over;

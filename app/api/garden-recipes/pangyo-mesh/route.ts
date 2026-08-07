@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import type { DripRecipe, RecipeStore } from '@/lib/types';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
+import { requireGardenTab } from '@/lib/access/guard';
 
 const DATA_PATH = 'data/garden-recipes.json';
 
@@ -36,6 +37,11 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    // 본 레시피 라우트(garden-recipes)와 동일한 탭 권한 — 보정값도 레시피 데이터다
+    const denied = await requireGardenTab(supabase, user, ['recipes', 'dashboard']);
+    if (denied) return denied;
+  }
 
   const body = await req.json();
   const beanKey = String(body.beanKey ?? '');

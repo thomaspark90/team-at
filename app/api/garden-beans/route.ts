@@ -5,6 +5,7 @@ import { STORES, STOCK_LEVELS, stockOf } from '@/lib/types';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { notifyBeanStockLow } from '@/lib/notify';
+import { requireGardenTab } from '@/lib/access/guard';
 
 const DATA_PATH = 'data/garden-beans.json';
 
@@ -49,6 +50,11 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    // 재고·테이스팅 변경은 대시보드에서만 이뤄진다 — 쓰기는 해당 탭 권한으로 엄격하게
+    const denied = await requireGardenTab(supabase, user, 'dashboard');
+    if (denied) return denied;
+  }
 
   const body = await req.json();
   if (!body.beanKey || !body.bean) {

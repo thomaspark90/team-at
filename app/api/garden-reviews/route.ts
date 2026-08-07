@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { draftReply } from '@/lib/garden/review-draft';
 import { REVIEW_POST_GRACE_MS } from '@/lib/garden/review-constants';
+import { requireGardenTab } from '@/lib/access/guard';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -14,6 +15,9 @@ async function requireUser() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 }) };
+  // 리뷰 열람·승인은 reviews 탭 권한 필요 — 승인은 1시간 뒤 실제 게시로 이어지므로 서버에서 막는다
+  const denied = await requireGardenTab(supabase, user, 'reviews');
+  if (denied) return { error: denied };
   return { supabase, user };
 }
 

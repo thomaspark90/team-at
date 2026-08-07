@@ -39,3 +39,9 @@ create policy "words team delete" on public.garden_words
 alter table public.garden_words add column if not exists submit_sid text;
 alter table public.garden_words add column if not exists submit_iphash text;
 create index if not exists garden_words_sid_idx on public.garden_words (submit_sid);
+
+-- 익명 직접 insert 차단 (2026-08-07)
+-- 제출은 API(service role)가 문자셋 검증·속도 제한·익명 식별값 기록을 거쳐 수행한다.
+-- anon 키로 DB에 직접 insert하면 그 방어를 전부 우회할 수 있으므로 권한 자체를 회수한다.
+-- (기존 "words public insert pending" 정책은 남아 있어도 권한이 없어 무력화됨)
+revoke insert on public.garden_words from anon;

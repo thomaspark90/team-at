@@ -4,6 +4,7 @@ import { createHash, randomUUID } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { isAllowedEmail } from '@/lib/finance/access';
+import { requireGardenTab } from '@/lib/access/guard';
 
 // 제철 단어 API — GET(공개: 게시 단어 / scope=admin: 전체), POST(공개 제출), PATCH(팀: 상태 변경)
 const SEASON = '여름';
@@ -37,6 +38,11 @@ export async function GET(req: Request) {
     if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     if (!isAllowedEmail(user.email))
       return NextResponse.json({ error: '팀 계정만 조회할 수 있습니다.' }, { status: 403 });
+    {
+      // 미들웨어 우회 경로이므로 섹션·words 탭 권한도 여기서 직접 강제한다
+      const denied = await requireGardenTab(supabase, user, 'words');
+      if (denied) return denied;
+    }
     const { data, error } = await supabase
       .from('garden_words')
       .select('id, text, season, status, created_at, decided_at, submit_sid, submit_iphash')
@@ -137,6 +143,11 @@ export async function PATCH(req: Request) {
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   if (!isAllowedEmail(user.email))
     return NextResponse.json({ error: '팀 계정만 검수할 수 있습니다.' }, { status: 403 });
+  {
+    // 미들웨어 우회 경로이므로 섹션·words 탭 권한도 여기서 직접 강제한다
+    const denied = await requireGardenTab(supabase, user, 'words');
+    if (denied) return denied;
+  }
 
   let body: { id?: unknown; status?: unknown } = {};
   try {
