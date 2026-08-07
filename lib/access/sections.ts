@@ -43,3 +43,15 @@ export function firstAllowedHref(sections: string[] | null): string | null {
   const found = SECTIONS.find((s) => sections.includes(s.key));
   return found?.href ?? null;
 }
+
+/** API 경로가 속한 섹션 후보 — 이 중 하나라도 허용이면 통과, 매핑 없으면 null(팀 확인까지만).
+ *  페이지에서 숨긴 데이터를 API 직접 호출로 가져가는 걸 막는다(설정 화면의 안내 문구와 일치).
+ *  여러 섹션이 공유하거나 자체 인증하는 경로(log·notify·push·upload·share·관리자 전용)는 매핑하지 않는다.
+ *  finance API 는 회계(기장)와 리포트(분석) 화면이 함께 쓰므로 둘 중 하나만 있어도 허용. */
+export function sectionsForApiPath(p: string): string[] | null {
+  if (p.startsWith('/api/staffmeals') || p.startsWith('/api/backgrounds')) return ['studio'];
+  if (p.startsWith('/api/finance/') || p.startsWith('/api/purchases')) return ['accounting', 'report'];
+  if (p.startsWith('/api/garden-share') || p.startsWith('/api/garden-tab-access')) return null;
+  if (p.startsWith('/api/garden-')) return ['garden'];
+  return null;
+}

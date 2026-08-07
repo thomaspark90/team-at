@@ -292,12 +292,15 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   // 미설정 원두의 "레시피 설정" — ICE 편집을 열고, 저장하면 같은 원두의 HOT 편집이 자동으로 이어진다
   const [chainHotFor, setChainHotFor] = useState<string | null>(null);
   const startUnsetSetup = (beanKey: string, bean: string) => {
-    setChainHotFor(beanKey);
+    // openEditor가 이전 연결 플래그를 지우므로, 연 뒤에 설정해야 이번 연결이 살아남는다
     openEditor(beanKey, bean, 'ice');
+    setChainHotFor(beanKey);
   };
 
   // 편집 열기 — 기존 레시피가 있으면 불러오고, 없으면 매장 기준 프리셋으로 시작
   const openEditor = (beanKey: string, bean: string, brewType: BrewType) => {
+    // 다른 편집을 열면 이전 ICE→HOT 연결은 무효 — 남아 있으면 나중에 엉뚱한 HOT 편집이 이어진다
+    setChainHotFor(null);
     const existing = recipes.find((r) => r.beanKey === beanKey && btOf(r) === brewType);
     const base = existing ? draftFromRecipe(existing) : presetDraft(beanKey, bean, brewType);
     setDraft({ ...base, tasting: tastingByBean.get(beanKey) ?? '' });
@@ -306,6 +309,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
   // 이력 스냅샷을 편집 폼에 불러오기 — 저장을 눌러야 실제 복원됨
   const restoreSnapshot = (beanKey: string, bean: string, brewType: BrewType, s: DripRecipeSnapshot) => {
+    setChainHotFor(null);
     const base = draftFromRecipe({
       beanKey,
       bean,

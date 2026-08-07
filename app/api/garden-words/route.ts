@@ -107,12 +107,15 @@ export async function POST(req: Request) {
     );
   }
 
-  // 같은 단어가 이미 있으면(대기 포함) 새로 쌓지 않고 접수한 것으로 응답
+  // 게시된 단어와 같을 때만 중복 처리 — 게시 단어는 공개 화면에 이미 보이므로 정보 노출이 아니다.
+  // 대기·반려까지 걸러버리면 ①반려 단어가 영영 재검수 못 받고 ②행이 안 쌓여 속도 제한을 안 받는
+  // 채로 숨은 단어 존재 여부를 무한히 찔러볼 수 있다. 대기 중복은 검수 화면에서 사람이 거른다.
   const { data: dup } = await db
     .from('garden_words')
     .select('id')
     .eq('text', text)
     .eq('season', SEASON)
+    .eq('status', 'approved')
     .limit(1);
   if (dup && dup.length > 0) return withSid(NextResponse.json({ ok: true, dedup: true }));
 

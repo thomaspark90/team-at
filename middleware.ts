@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { isAllowedEmail, isOwner } from '@/lib/finance/access';
-import { SECTIONS, firstAllowedHref, sectionForPath } from '@/lib/access/sections';
+import { SECTIONS, firstAllowedHref, sectionForPath, sectionsForApiPath } from '@/lib/access/sections';
 import { GARDEN_TABS, tabForPath } from '@/lib/garden/tabs';
 
 // 앱 전체 접근 통제의 단일 관문.
@@ -79,8 +79,26 @@ export async function middleware(request: NextRequest) {
   // 로그인은 됐지만 팀 도메인(@team-at.space)/대표가 아니면 차단 — 페이지·API 모두.
   if (!isAllowedEmail(user.email)) return deny(403, '팀 계정만 이용할 수 있습니다.');
 
-  // 여기부터는 페이지 전용 — 사용자별 섹션/가든탭 접근 권한
-  if (isApi || isOwner(user.email)) return response;
+  // 여기부터는 사용자별 섹션/가든탭 접근 권한 — 대표는 항상 전체
+  if (isOwner(user.email)) return response;
+
+  // API 도 섹션 권한을 따른다 — 페이지에서 숨긴 데이터를 API 직접 호출로 가져가지 못하게.
+  // 매핑되지 않은 공용 API(log·notify·push·upload 등)는 팀 확인까지만 하고 통과.
+  if (isApi) {
+    const needed = sectionsForApiPath(path);
+    if (!needed) return response;
+    const { data: apiAccess } = await supabase
+      .schema('finance')
+      .from('garden_tab_access')
+      .select('sections')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    const allowed = (apiAccess?.sections as string[] | null) ?? null; // 행 없음/null = 전체 허용
+    if (allowed && !needed.some((k) => allowed.includes(k))) {
+      return withCookies(NextResponse.json({ error: '접근 권한이 없는 섹션입니다.' }, { status: 403 }));
+    }
+    return response;
+  }
 
   const section = sectionForPath(path);
   if (!section) return response;

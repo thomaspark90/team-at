@@ -93,7 +93,8 @@ ${examples.slice(0, 8).map((e) => `- "${e}"`).join('\n')}`
   ];
   if (r.keywords?.length) lines.push(`[선택 키워드] ${r.keywords.join(', ')}`);
   if (r.photo_count) lines.push(`[사진] ${r.photo_count}장`);
-  return `${VOICE.replace('{EXAMPLES}', exampleBlock)}
+  // 함수 치환자 — 답글 속 $&, $' 같은 문자가 JS 치환 패턴으로 해석돼 프롬프트가 깨지는 것 방지
+  return `${VOICE.replace('{EXAMPLES}', () => exampleBlock)}
 
 ${lines.join('\n')}`;
 };

@@ -30,7 +30,8 @@ export async function POST(req: Request): Promise<NextResponse> {
           throw new Error('허용되지 않은 업로드 경로입니다.');
         }
         return {
-          allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+          // heic/heif — iPhone 기본 카메라 포맷. 픽커가 image/* 를 받으므로 함께 허용한다
+          allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'],
           maximumSizeInBytes: MAX_UPLOAD_BYTES,
           addRandomSuffix: false,
           tokenPayload: JSON.stringify({ pathname }),
