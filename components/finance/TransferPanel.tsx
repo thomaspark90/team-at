@@ -28,6 +28,7 @@ interface ParsedItem {
   file: File;
   draft: Draft;
   breakdown: BalanceBreakdown;
+  otherAmounts: { label: string; amount: number }[];
   accountFromBook: boolean;
 }
 
@@ -105,6 +106,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [breakdown, setBreakdown] = useState<BalanceBreakdown | null>(null);
   const [payBasis, setPayBasis] = useState<PayBasis | null>(null);
+  const [otherAmounts, setOtherAmounts] = useState<{ label: string; amount: number }[]>([]);
   const [accountFromBook, setAccountFromBook] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -213,6 +215,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
       return {
         file: resized,
         breakdown: breakdownBalance(ex),
+        otherAmounts: ex.other_amounts ?? [],
         accountFromBook: !!j.savedAccount && !!ex.account_no,
         draft: {
           brand: ex.brand ?? '', // AI가 확신 못하면 '' — 확인창에서 직접 선택해야 등록됨
@@ -241,6 +244,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
     setDraft(item.draft);
     setBreakdown(item.breakdown);
     setPayBasis(null);
+    setOtherAmounts(item.otherAmounts);
     setAccountFromBook(item.accountFromBook);
     setError(null);
   }
@@ -271,6 +275,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
     setDraft(null);
     setBreakdown(null);
     setPayBasis(null);
+    setOtherAmounts([]);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     resizedRef.current = null;
@@ -657,6 +662,27 @@ export default function TransferPanel({ role, email, mode }: Props) {
               {breakdown && breakdown.options.length <= 1 && breakdown.prev != null && breakdown.prev > 0 && (
                 <div className="col-span-2 -mt-1 text-[12px] text-muted-foreground">
                   이전 미수금 {won(breakdown.prev)}이 함께 잡혀 있어요.
+                </div>
+              )}
+              {/* 우리 항목에 없는 금액 — 담당자에게 알림도 나가지만 올린 사람도 바로 보게 한다 */}
+              {otherAmounts.length > 0 && (
+                <div
+                  className="col-span-2 -mt-1 flex flex-col gap-1 rounded-lg border px-3 py-2.5"
+                  style={{ borderColor: 'hsl(0 72% 45% / 0.4)' }}
+                >
+                  <span className="text-[12px] font-medium" style={{ color: 'hsl(0 72% 45%)' }}>
+                    명세서에 확인이 필요한 금액이 있어요
+                  </span>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    {otherAmounts.map((o, i) => (
+                      <span key={i} className="text-[12px]">
+                        {o.label} <b>{won(o.amount)}</b>
+                      </span>
+                    ))}
+                  </div>
+                  <span className="text-[11.5px] text-muted-foreground">
+                    금액에 반영할지 확인해 주세요. 담당자에게 알림도 보냈어요.
+                  </span>
                 </div>
               )}
               <div className="flex flex-col gap-1">

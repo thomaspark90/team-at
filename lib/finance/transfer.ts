@@ -10,6 +10,8 @@ export interface TransferExtraction {
   amount: number | null; // 이번 거래 청구액
   prev_balance: number | null; // 이번 건 이전까지 남은 미수금(전잔액·전월이월)
   balance_total: number | null; // 미수금 포함 총잔액(있을 때만)
+  /** 우리 항목(이번 청구·전잔액·총잔액)에 해당하지 않는 금액 표기 — 할인·반품·선입금 등 */
+  other_amounts: { label: string; amount: number }[];
   items_summary: string | null;
   bank: string | null;
   account_no: string | null;
@@ -116,6 +118,7 @@ const PROMPT = `이 이미지는 한국의 거래명세서 또는 영수증이�
   "amount": number|null,        // 이번 거래 청구 금액만. '합계·공급가액+세액·당월매출·금일합계·청구금액' 등 이번 거래분. 숫자만
   "prev_balance": number|null,  // 이번 거래 이전까지 남아 있던 미수금. 명세서에 '전잔액·전잔·이월잔액·전월이월·미수금·미수잔액·전기이월' 등으로 적힌 값. 없으면 null
   "balance_total": number|null, // 미수금과 이번 거래를 합친 총잔액. '합계잔액·총잔액·당월잔액·인수잔액·미수합계·잔액' 등. 없으면 null
+  "other_amounts": [{"label": string, "amount": number}], // 위 세 항목(이번 청구·전잔액·총잔액)에 해당하지 않는데 금액이 적힌 칸이 있으면 라벨과 값을 그대로. 예: 할인, 반품, 에누리, 선입금, 입금액, 보증금, 공병, 운임, 봉사료, 조정, 연체료, 부가세 별도 표기 등. 없으면 []
   "items_summary": string|null, // 품목을 "품목명 수량" 형태로 쉼표로 이어 한 줄 요약 (예: "코크제로 10BIB 2, 양상추 8BOX")
   "bank": string|null,          // 문서에 인쇄된 입금 계좌의 은행명 (예: 농협). 없으면 null
   "account_no": string|null,    // 계좌번호. 하이픈 포함 인쇄된 그대로. 없으면 null
@@ -216,6 +219,15 @@ export async function extractTransferInfo(
     amount: num(raw.amount),
     prev_balance: num(raw.prev_balance),
     balance_total: num(raw.balance_total),
+    other_amounts: Array.isArray(raw.other_amounts)
+      ? (raw.other_amounts as unknown[])
+          .map((o) => {
+            const r = o as Record<string, unknown>;
+            return { label: str(r.label) ?? '', amount: num(r.amount) };
+          })
+          .filter((o): o is { label: string; amount: number } => !!o.label && o.amount != null)
+          .slice(0, 8)
+      : [],
     items_summary: str(raw.items_summary),
     bank: str(raw.bank),
     account_no: str(raw.account_no),

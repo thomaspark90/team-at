@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { extractTransferInfo } from '@/lib/finance/transfer';
+import { extractTransferInfo, breakdownBalance } from '@/lib/finance/transfer';
 import { logActivity } from '@/lib/finance/activity';
 import { checkAiQuota } from '@/lib/access/rate-limit';
+import { notifyGardenEvent } from '@/lib/notify';
+import { topicEmails } from '@/lib/garden-notify-topics-server';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -65,5 +67,48 @@ export async function POST(req: Request) {
 
   await logActivity(supabase, user, '영수증 AI 인식', extraction.vendor_name ?? '(거래처 미인식)');
 
-  return NextResponse.json({ extraction, savedAccount });
+  // 우리 항목에 없는 금액이 보이거나 금액 계산이 맞지 않으면 담당자에게 알린다.
+  // 돈이 걸린 부분이라 조용히 지나가면 안 되고, 확인창을 닫아버려도 기록이 남아야 한다.
+  const bd = breakdownBalance(extraction);
+  const mismatch = bd.totalIncludesCurrent === null && bd.current != null && bd.prev != null && bd.total != null;
+  const anomalies = [
+    ...extraction.other_amounts.map((o) => `${o.label} ${o.amount.toLocaleString()}원`),
+    ...(mismatch ? ['금액 합계가 맞지 않음'] : []),
+  ];
+  if (anomalies.length > 0) {
+    try {
+      const vendor = extraction.vendor_name ?? '거래처 미인식';
+      const lines = [
+        `거래처: ${vendor}`,
+        extraction.doc_date ? `거래일자: ${extraction.doc_date}` : '',
+        extraction.amount != null ? `이번 청구: ${extraction.amount.toLocaleString()}원` : '',
+        extraction.prev_balance != null ? `이전 미수: ${extraction.prev_balance.toLocaleString()}원` : '',
+        extraction.balance_total != null ? `총잔액: ${extraction.balance_total.toLocaleString()}원` : '',
+        `확인 필요: ${anomalies.join(', ')}`,
+        bd.note ?? '',
+      ].filter(Boolean);
+      const emails = await topicEmails(supabase, 'receiptAnomaly');
+      await notifyGardenEvent(supabase, {
+        emails,
+        subject: `[영수증 확인 필요] ${vendor} — ${anomalies[0]}`,
+        html: `
+        <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
+          <p><strong>명세서에서 확인이 필요한 금액이 보여요.</strong></p>
+          ${lines.map((l) => `<p>${l}</p>`).join('')}
+          <p>올린 사람: ${(user.email ?? '').split('@')[0]}</p>
+          <p><a href="https://team-at-apps.vercel.app/dashboard">송금 요청 화면 열기 →</a></p>
+        </div>`,
+        push: {
+          title: `영수증 확인 필요 · ${vendor}`,
+          body: anomalies.join(', ').slice(0, 100),
+          url: '/dashboard',
+        },
+      });
+      await logActivity(supabase, user, '영수증 확인 필요 금액', `${vendor} · ${anomalies.join(', ')}`);
+    } catch (e) {
+      console.error('영수증 이상 금액 알림 실패:', e);
+    }
+  }
+
+  return NextResponse.json({ extraction, savedAccount, anomalies });
 }
