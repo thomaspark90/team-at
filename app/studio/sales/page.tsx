@@ -3,8 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveMember } from '@/lib/finance/access';
 import TabNav from '@/components/TabNav';
 import StudioNav from '@/components/StudioNav';
-import StaffmealSales from '@/components/studio/StaffmealSales';
-import type { PosRow } from '@/components/studio/StaffmealSales';
+import SalesSummary from '@/components/SalesSummary';
+import { fetchSalesRows, type SalesRow } from '@/lib/finance/sales-data';
 
 // 스탭밀 매출 — 페이히어 POS 업로드(발생주의)의 staffmeal 매출 요약.
 // 데이터는 dashboard_pos 뷰로 읽는다: pos_sales 는 admin/classifier RLS 라 그대로 읽으면
@@ -23,17 +23,10 @@ export default async function StudioSalesPage() {
 
   // 최근 13개월 — 월 카드·30일 막대·카테고리 요약에 충분한 범위만 가져온다
   const since = new Date(Date.now() - 396 * 86_400_000).toISOString().slice(0, 10);
-  const { data } = isMember && !scopedOut
-    ? await supabase
-        .schema('finance')
-        .from('dashboard_pos')
-        .select('sale_date, ym, category, supply')
-        .eq('brand', 'staffmeal')
-        .gte('sale_date', since)
-        .order('sale_date', { ascending: true })
-        .limit(10000)
-    : { data: [] as PosRow[] };
-  const rows = (data ?? []) as PosRow[];
+  let rows: SalesRow[] = [];
+  if (isMember && !scopedOut) {
+    rows = await fetchSalesRows(supabase, { table: 'dashboard_pos', brand: 'staffmeal', since }).catch(() => []);
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -61,7 +54,7 @@ export default async function StudioSalesPage() {
             </p>
           </section>
         ) : (
-          <StaffmealSales rows={rows} />
+          <SalesSummary rows={rows} />
         )}
       </div>
     </div>

@@ -7,7 +7,7 @@ export type BoardColumn = 'todo' | 'doing' | 'done';
 /** 보드는 브랜드별로 나뉜다 — 가든 화면엔 가든 일만, 스탭밀 화면엔 스탭밀 일만 */
 export type BoardScope = 'garden' | 'staffmeal';
 
-export type BoardType = 'order' | 'measure' | 'align' | 'review' | 'money' | 'todo' | 'meal';
+export type BoardType = 'order' | 'measure' | 'align' | 'review' | 'money' | 'todo' | 'meal' | 'upload';
 
 export const BOARD_TYPES: { id: BoardType; label: string; color: string }[] = [
   { id: 'order', label: '발주', color: 'var(--chart-cat-1)' },
@@ -16,6 +16,7 @@ export const BOARD_TYPES: { id: BoardType; label: string; color: string }[] = [
   { id: 'review', label: '리뷰', color: 'var(--chart-cat-7)' },
   { id: 'meal', label: '스탭밀', color: 'var(--chart-cat-4)' },
   { id: 'money', label: '송금', color: 'var(--chart-cat-3)' },
+  { id: 'upload', label: '자료', color: 'var(--chart-cat-5)' },
   { id: 'todo', label: '투두', color: 'var(--chart-cat-other)' },
 ];
 
@@ -66,6 +67,7 @@ export const TYPE_TAB: Record<BoardType, string | null> = {
   align: 'calibration',
   review: 'reviews',
   money: 'dashboard', // 송금은 회계 화면이지만 카드 자체는 대시보드에 뜬다
+  upload: 'dashboard', // 월 자료 마감 리마인더 — 송금과 같은 기준
   todo: 'settings',
   meal: null,
 };

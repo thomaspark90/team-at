@@ -1,3 +1,9 @@
 {
-  "regions": ["icn1"]
+  "regions": ["icn1"],
+  "crons": [
+    {
+      "path": "/api/cron/ingest-health",
+      "schedule": "0 1 * * *"
+    }
+  ]
 }

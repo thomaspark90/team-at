@@ -1,18 +1,13 @@
-// 스탭밀 매출 요약 — dashboard_pos(발생주의 POS 매출)의 staffmeal 행을 집계해 보여준다.
-// 서버 컴포넌트: 페이지가 조회한 행을 받아 렌더만 한다. 금액은 전부 공급가액(VAT 제외) 기준.
-// 페이히어 원본의 수량(qty)은 결제 건수라 품목 수량으로 오해되기 쉬워 아예 쓰지 않는다.
+import type { SalesRow } from '@/lib/finance/sales-data';
 
-export interface PosRow {
-  sale_date: string; // 'YYYY-MM-DD'
-  ym: string; // 'YYYY-MM'
-  category: string;
-  supply: number;
-}
+// 매출 요약 — POS 발생주의 매출 행(일×카테고리)을 받아 합계 카드·30일 막대·카테고리 요약을 그린다.
+// 스탭밀(/studio/sales)과 가든(/garden/sales)이 공유하는 서버 컴포넌트. 금액은 전부 공급가액(VAT 제외).
+// POS 원본의 수량(qty)은 페이히어에선 결제 건수라 품목 수량으로 오해되기 쉬워 아예 쓰지 않는다.
 
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 const monthLabel = (ym: string) => `${Number(ym.slice(5, 7))}월`;
 
-export default function StaffmealSales({ rows }: { rows: PosRow[] }) {
+export default function SalesSummary({ rows }: { rows: SalesRow[] }) {
   const kstToday = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
   const thisYm = kstToday.slice(0, 7);
   const lastYm = new Date(new Date(thisYm + '-15').getTime() - 30 * 86_400_000).toISOString().slice(0, 7);

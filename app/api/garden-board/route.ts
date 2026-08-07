@@ -316,6 +316,54 @@ export async function GET(req: Request) {
     }
   }
 
+  // ── 지난달 자료 마감 리마인더 : 매월 5일부터, 전월이 미확정인 단위별로 카드 (재무 담당만) ──
+  // 무엇이 얼마나 남았는지(업로드·분류·확정)는 무거운 집계라 여기선 확정 여부만 본다 —
+  // 세부는 카드가 여는 자료 입력 화면이 보여준다.
+  if (isFinance) {
+    const kstNow = new Date(Date.now() + 9 * 3600_000);
+    const dayOfMonth = kstNow.getUTCDate();
+    if (dayOfMonth >= 5) {
+      const prev = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth() - 1, 1));
+      const prevYm = `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, '0')}`;
+      const monthNo = prev.getUTCMonth() + 1;
+      const { data: closes } = await supabase
+        .schema('finance')
+        .from('monthly_close')
+        .select('status, store')
+        .eq('brand', scope)
+        .eq('ym', prevYm);
+      const confirmedStores = new Set(
+        (closes ?? []).filter((c) => c.status === 'confirmed').map((c) => String(c.store ?? ''))
+      );
+      // 가든은 지점별 확정(양재천·판교), 스탭밀은 단일 확정
+      const targets = isGarden
+        ? [
+            { unit: 'yangjae', store: 'yangjae', label: '가든 양재천' },
+            { unit: 'pangyo', store: 'pangyo', label: '가든 판교' },
+          ].filter((t) => !confirmedStores.has(t.store))
+        : confirmedStores.size > 0
+          ? []
+          : [{ unit: 'staffmeal', store: '', label: '스탭밀' }];
+      for (const t of targets) {
+        cards.push({
+          id: `close:${prevYm}:${t.unit}`,
+          type: 'upload',
+          title: `${monthNo}월 ${t.label} 자료 마감`,
+          column: 'todo',
+          steps: stepsAt(['자료 업로드·분류', '월 확정'], 0),
+          meta: [{ text: `${monthNo}월분 미확정`, ...(dayOfMonth >= 15 ? { tone: 'late' as const } : {}) }],
+          assignees: [],
+          mine: true,
+          mineReason: '재무 담당',
+          href: `/finance/upload/${t.unit}`,
+          actionLabel: '자료 입력 열기',
+          tab: isGarden ? TYPE_TAB.upload : null,
+          sortAt: `${prevYm}-28`,
+        });
+      }
+    }
+  }
+
   // ── 투두 ──
   for (const t of todos) {
     if (t.done && daysAgo(t.doneAt ?? t.createdAt) > 7) continue; // 완료는 최근 7일만

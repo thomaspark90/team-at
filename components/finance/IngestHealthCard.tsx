@@ -1,20 +1,9 @@
-import { PIPELINES, STALE_HOURS, type IngestHealth } from '@/lib/ingest-health';
+import { PIPELINES, STALE_HOURS, judgeIngest, type IngestHealth, type IngestStatus } from '@/lib/ingest-health';
 
 // 무인 수집기 상태 카드 — 회계 홈에서 쿠팡·네이버페이·리뷰 파이프라인의 마지막 수신을 보여준다.
-// 판정: 실패가 성공보다 최근이면 '실패', 마지막 성공이 STALE_HOURS 를 넘으면 '지연',
-// 기록 자체가 없으면 '기록 없음'(기능 도입 직후이거나 수집기가 한 번도 안 돈 상태).
+// 판정 규칙은 lib/ingest-health.judgeIngest — 크론 알림과 같은 기준을 쓴다.
 
-type Status = 'ok' | 'late' | 'failed' | 'none';
-
-function judge(h: IngestHealth): { status: Status; note: string } {
-  const success = h.lastSuccessAt ? new Date(h.lastSuccessAt).getTime() : 0;
-  const failure = h.lastFailureAt ? new Date(h.lastFailureAt).getTime() : 0;
-  if (!success && !failure) return { status: 'none', note: '수신 기록 없음' };
-  if (failure > success) return { status: 'failed', note: h.lastFailureReason ?? '수집 실패' };
-  const hours = (Date.now() - success) / 3_600_000;
-  if (hours > STALE_HOURS) return { status: 'late', note: `${Math.floor(hours / 24) >= 1 ? `${Math.floor(hours / 24)}일` : `${Math.round(hours)}시간`} 무소식` };
-  return { status: 'ok', note: h.lastSummary ?? '정상' };
-}
+type Status = IngestStatus;
 
 const ago = (iso?: string) => {
   if (!iso) return '—';
@@ -44,7 +33,7 @@ export default function IngestHealthCard({ health }: { health: IngestHealth[] })
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         {PIPELINES.map(({ key, label }) => {
           const h = byKey.get(key) ?? { pipeline: key };
-          const { status, note } = judge(h);
+          const { status, note } = judgeIngest(h);
           return (
             <div key={key} className="rounded-xl border border-border bg-background px-3 py-2.5">
               <div className="flex items-center gap-2">

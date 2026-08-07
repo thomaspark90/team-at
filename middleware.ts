@@ -17,12 +17,14 @@ const PUBLIC_API = [
   '/api/upload', // Blob 완료 웹훅은 쿠키가 없음 — 토큰 발급 시점에 라우트가 직접 확인
   '/api/garden-words', // 공개 제철 단어(익명 제출·조회) — 관리 동작은 라우트가 확인
   '/api/garden-reviews/ingest',
+  '/api/garden-reviews/alert',
   '/api/garden-reviews/queue',
   '/api/finance/naverpay/ingest',
   '/api/finance/naverpay/alert',
   '/api/finance/naverpay/config', // 수집기가 실행 전 크롤 설정을 읽는다 — 토큰(x-naverpay-token) 자체 인증
   '/api/finance/coupang/ingest',
   '/api/finance/coupang/alert',
+  '/api/cron/ingest-health', // Vercel 크론 — CRON_SECRET Bearer 로 자체 인증
 ];
 
 const isPublicApi = (p: string) => PUBLIC_API.some((a) => p === a || p.startsWith(a + '/'));

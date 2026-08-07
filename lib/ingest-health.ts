@@ -69,3 +69,56 @@ export async function recordIngestFailure(pipeline: IngestPipeline, reason: stri
 export async function readIngestHealth(): Promise<IngestHealth[]> {
   return Promise.all(PIPELINES.map((p) => readOne(p.key)));
 }
+
+// ── 상태 판정 — 회계 홈 카드와 크론 알림이 같은 규칙을 쓴다 ──
+
+export type IngestStatus = 'ok' | 'late' | 'failed' | 'none';
+
+/** 실패가 성공보다 최근이면 실패, 성공이 STALE_HOURS 를 넘으면 지연, 기록 없으면 none. */
+export function judgeIngest(h: IngestHealth, now = Date.now()): { status: IngestStatus; note: string } {
+  const success = h.lastSuccessAt ? new Date(h.lastSuccessAt).getTime() : 0;
+  const failure = h.lastFailureAt ? new Date(h.lastFailureAt).getTime() : 0;
+  if (!success && !failure) return { status: 'none', note: '수신 기록 없음' };
+  if (failure > success) return { status: 'failed', note: h.lastFailureReason ?? '수집 실패' };
+  const hours = (now - success) / 3_600_000;
+  if (hours > STALE_HOURS) {
+    const label = hours >= 48 ? `${Math.floor(hours / 24)}일` : `${Math.round(hours)}시간`;
+    return { status: 'late', note: `${label} 무소식` };
+  }
+  return { status: 'ok', note: h.lastSummary ?? '정상' };
+}
+
+// ── 크론 알림 중복 방지 — 같은 문제로 매일 알리지 않도록 마지막 발송 시각을 기록 ──
+
+const ALERT_STATE_PATH = 'data/ingest-health/alert-state.json';
+const REALERT_HOURS = 20; // 하루 1회 크론 기준, 같은 문제는 하루 한 번만
+
+export async function shouldAlert(pipeline: IngestPipeline): Promise<boolean> {
+  try {
+    const res = await get(ALERT_STATE_PATH, { access: 'private', useCache: false });
+    if (!res) return true;
+    const state = JSON.parse(await new Response(res.stream).text()) as Record<string, string>;
+    const last = state[pipeline] ? new Date(state[pipeline]).getTime() : 0;
+    return Date.now() - last > REALERT_HOURS * 3_600_000;
+  } catch {
+    return true;
+  }
+}
+
+export async function markAlerted(pipelines: IngestPipeline[]): Promise<void> {
+  try {
+    let state: Record<string, string> = {};
+    const res = await get(ALERT_STATE_PATH, { access: 'private', useCache: false });
+    if (res) state = JSON.parse(await new Response(res.stream).text()) as Record<string, string>;
+    const now = new Date().toISOString();
+    for (const p of pipelines) state[p] = now;
+    await put(ALERT_STATE_PATH, JSON.stringify(state), {
+      access: 'private',
+      contentType: 'application/json',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    });
+  } catch {
+    /* 중복 방지 기록 실패 = 다음 날 한 번 더 알릴 뿐 — 치명적이지 않다 */
+  }
+}
