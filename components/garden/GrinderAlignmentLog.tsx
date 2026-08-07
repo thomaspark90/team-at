@@ -4,16 +4,18 @@ import { useEffect, useState } from 'react';
 import type { StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import type { AlignmentEvent } from '@/lib/grinder-alignments';
-import { kstDate, latestAlignmentDate } from '@/lib/grinder-alignments';
+import { kstDate, latestAlignmentDate, latestInspectionDate, ALIGN_REMINDER_MONTHS } from '@/lib/grinder-alignments';
 
 // 그라인더 얼라인먼트 기록 — 지점별 "마지막으로 그라인더를 열어 정렬을 본 날"을 남긴다.
 // 이 날짜 이전의 측정은 캘리브레이션 차트에서 현행 데이터와 구분(흐림)된다.
+// '정기 점검(이상 없음)'은 3개월 리마인더 주기만 리셋하고 측정 유효성엔 영향이 없다.
 
 const today = () => kstDate();
 
 export default function GrinderAlignmentLog() {
   const [events, setEvents] = useState<AlignmentEvent[]>([]);
   const [store, setStore] = useState<StoreId>('pangyo');
+  const [kind, setKind] = useState<'align' | 'check'>('align');
   const [date, setDate] = useState(today());
   const [memo, setMemo] = useState('');
   const [saving, setSaving] = useState(false);
@@ -34,7 +36,7 @@ export default function GrinderAlignmentLog() {
       const res = await fetch('/api/garden-grinder-alignments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ store, date, memo: memo.trim() || undefined }),
+        body: JSON.stringify({ store, date, kind, memo: memo.trim() || undefined }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -81,6 +83,7 @@ export default function GrinderAlignmentLog() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
         {STORES.map((s) => {
           const last = latestAlignmentDate(events, s.id);
+          const checked = latestInspectionDate(events, s.id);
           return (
             <div key={s.id} style={{ border: '1px solid hsl(var(--border))', borderRadius: 6, padding: '10px 14px' }}>
               <div className="text-[11px] text-muted-foreground">{s.label} 마지막 얼라인먼트</div>
@@ -88,6 +91,9 @@ export default function GrinderAlignmentLog() {
                 {last ?? '기록 없음'}
                 {last === today() && <span className="text-[11px] text-muted-foreground"> (오늘)</span>}
               </div>
+              {checked && checked !== last && (
+                <div className="text-[11px] text-muted-foreground" style={{ marginTop: 2 }}>점검 {checked} 이상 없음</div>
+              )}
             </div>
           );
         })}
@@ -102,17 +108,29 @@ export default function GrinderAlignmentLog() {
             </button>
           ))}
         </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => setKind('align')} style={segBtn(kind === 'align')} title="버 정렬·제로포인트 등 물리적 조정">
+            재정렬
+          </button>
+          <button
+            onClick={() => setKind('check')}
+            style={segBtn(kind === 'check')}
+            title={`정기 점검 결과 이상 없음 — ${ALIGN_REMINDER_MONTHS}개월 리마인더만 리셋됩니다`}
+          >
+            점검 · 이상 없음
+          </button>
+        </div>
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="ta-input" style={{ width: 150 }} />
         <input
           type="text"
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
-          placeholder="메모 (예: 버 틀어짐 발견, 재정렬 완료)"
+          placeholder={kind === 'check' ? '메모 (예: 분쇄 상태 정상, 특이사항 없음)' : '메모 (예: 버 틀어짐 발견, 재정렬 완료)'}
           className="ta-input"
           style={{ flex: 1, minWidth: 220 }}
         />
         <button onClick={save} disabled={saving} className="ta-btn-primary" style={{ height: 34, paddingLeft: 14, paddingRight: 14, fontSize: 13, opacity: saving ? 0.5 : 1 }}>
-          {saving ? '저장 중…' : '얼라인 기록'}
+          {saving ? '저장 중…' : kind === 'check' ? '점검 기록' : '얼라인 기록'}
         </button>
       </div>
       {error && <p className="text-[13px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{error}</p>}
@@ -126,6 +144,11 @@ export default function GrinderAlignmentLog() {
               <span className="text-[13px] text-muted-foreground" style={{ minWidth: 56 }}>
                 {STORES.find((s) => s.id === e.store)?.label ?? e.store}
               </span>
+              {e.kind === 'check' && (
+                <span className="text-[11px] text-muted-foreground" style={{ border: '1px solid hsl(var(--border))', borderRadius: 4, padding: '1px 6px' }}>
+                  점검
+                </span>
+              )}
               {e.memo && <span className="text-[13px] text-muted-foreground" style={{ flex: 1 }}>{e.memo}</span>}
               <button onClick={() => remove(e.id)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }} title="기록 삭제">
                 ×

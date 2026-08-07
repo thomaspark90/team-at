@@ -9,6 +9,8 @@ import { STORES } from '@/lib/types';
 import type { DripRecipe } from '@/lib/types';
 import type { GardenTodo } from '@/lib/garden-todos';
 import { fitDialToMicron } from '@/lib/grinder-calibration';
+import type { AlignmentEvent } from '@/lib/grinder-alignments';
+import { alignmentOverdue, ALIGN_REMINDER_MONTHS } from '@/lib/grinder-alignments';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import type { StaffMealRecord } from '@/lib/types';
 import type { BoardCard, BoardScope } from '@/lib/garden/board';
@@ -105,7 +107,7 @@ export async function GET(req: Request) {
   const owns = (emails: string[]) => emails.map((e) => e.toLowerCase()).includes(me);
 
   const isGarden = scope === 'garden';
-  const [purchases, recipesStore, measurements, todosStore, profiles, mealsStore] =
+  const [purchases, recipesStore, measurements, todosStore, profiles, mealsStore, alignStore] =
     await Promise.all([
       isGarden ? purchaseRecords.readAll().catch(() => []) : [],
       isGarden ? readJson<{ recipes: DripRecipe[] }>('data/garden-recipes.json') : null,
@@ -113,6 +115,7 @@ export async function GET(req: Request) {
       isGarden ? readJson<{ todos: GardenTodo[] }>('data/garden-todos.json') : null,
       isGarden ? readJson<{ profiles: GrinderProfiles }>('data/garden-grinders.json') : null,
       isGarden ? null : readJson<{ records: StaffMealRecord[] }>('data/staffmeals.json'),
+      isGarden ? readJson<{ events: AlignmentEvent[] }>('data/garden-grinder-alignments.json') : null,
     ]);
 
   // ── 스탭밀 : 오늘 인스타 스토리 메뉴 등록 ──
@@ -209,6 +212,32 @@ export async function GET(req: Request) {
       progress: done / total,
       tab: TYPE_TAB.measure,
       sortAt: todayShots[0]?.createdAt ?? new Date().toISOString(),
+    });
+  }
+
+  // ── 정기 얼라인 점검 : 마지막 확인(재정렬·점검) 후 3개월 지나면 리마인더 ──
+  const alignEvents = alignStore?.events ?? [];
+  for (const s of isGarden ? STORES : []) {
+    const { due, last } = alignmentOverdue(alignEvents, s.id);
+    if (!due) continue;
+    cards.push({
+      id: `align:${s.id}`,
+      type: 'align',
+      title: `${s.label} EK43 · 정기 얼라인 점검`,
+      column: 'todo',
+      steps: stepsAt(['점검', '기록'], 0),
+      meta: [
+        last
+          ? { text: `마지막 확인 ${last} — ${ALIGN_REMINDER_MONTHS}개월 경과`, tone: 'late' as const }
+          : { text: '점검 기록 없음', tone: 'late' as const },
+      ],
+      assignees: calOwners,
+      mine: owns(calOwners),
+      mineReason: '캘리브레이션 담당',
+      href: '/garden/calibration',
+      actionLabel: '점검 기록',
+      tab: TYPE_TAB.align,
+      sortAt: last ?? '2000-01-01',
     });
   }
 

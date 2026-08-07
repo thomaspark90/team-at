@@ -46,7 +46,8 @@ export async function GET() {
   return NextResponse.json(store.events);
 }
 
-// 얼라인먼트 1건 기록: { store, date: 'YYYY-MM-DD', memo? }
+// 얼라인먼트 1건 기록: { store, date: 'YYYY-MM-DD', kind?: 'align'|'check', memo? }
+// kind 'check' = 정기 점검 결과 이상 없음 — 리마인더 주기만 리셋하고 측정 유효성엔 영향 없음
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -68,10 +69,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '날짜는 YYYY-MM-DD 형식이어야 합니다.' }, { status: 400 });
   }
 
+  const kind = body.kind === 'check' ? 'check' : 'align';
+
   const event: AlignmentEvent = {
     id: crypto.randomUUID(),
     store: storeId,
     date,
+    kind,
     memo: body.memo ? String(body.memo).trim() : undefined,
     createdAt: new Date().toISOString(),
     createdBy: user.email ?? '',
@@ -82,7 +86,12 @@ export async function POST(req: Request) {
   await writeStore(data);
 
   const label = STORES.find((s) => s.id === storeId)?.label ?? storeId;
-  await logActivity(supabase, user, '가든서비스 그라인더 얼라인먼트 기록', `${label} · ${date}${event.memo ? ` · ${event.memo}` : ''}`);
+  await logActivity(
+    supabase,
+    user,
+    kind === 'check' ? '가든서비스 그라인더 정기 점검 (이상 없음)' : '가든서비스 그라인더 얼라인먼트 기록',
+    `${label} · ${date}${event.memo ? ` · ${event.memo}` : ''}`
+  );
   return NextResponse.json(data.events);
 }
 
