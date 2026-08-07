@@ -9,6 +9,8 @@ export default function LoginButton() {
   const signIn = async () => {
     setLoading(true);
     const supabase = createClient();
+    // 구글 hd(도메인 제한)는 쓰지 않는다 — 대표 계정이 gmail 이라 함께 막힌다.
+    // 비팀 계정 차단은 auth/callback 의 즉시 로그아웃 + middleware 의 팀 도메인 검사로 처리.
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback` },

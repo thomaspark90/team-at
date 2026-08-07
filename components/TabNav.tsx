@@ -1,26 +1,26 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import ThemeToggle from '@/components/ThemeToggle';
+import { SECTIONS, inAccounting } from '@/lib/access/sections';
 
-const TABS = [
-  { href: '/studio', label: 'Staff Meal' },
-  { href: '/garden', label: 'Garden Service' },
-  { href: '/dashboard', label: '회계' },
-  { href: '/finance/dashboard', label: '리포트' },
-];
-
-// 회계 탭에 속하는 /finance 하위 페이지(기장·결산) — 나머지 /finance 는 리포트(분석) 탭.
-const ACCOUNTING_FINANCE = ['/finance', '/finance/classify', '/finance/uploads', '/finance/close', '/finance/categories', '/finance/card'];
-const inAccounting = (p: string) =>
-  p.startsWith('/dashboard') ||
-  ACCOUNTING_FINANCE.some((h) => p === h || (h !== '/finance' && p.startsWith(h + '/')));
+const TABS = SECTIONS.map((s) => ({ href: s.href, label: s.label, key: s.key }));
 
 export default function TabNav() {
   const pathname = usePathname();
   const router = useRouter();
+  // undefined = 로딩 중, null = 전체 허용. 실제 차단은 미들웨어가 하고 여기선 숨김만.
+  const [allowed, setAllowed] = useState<string[] | null | undefined>(undefined);
+
+  useEffect(() => {
+    fetch('/api/garden-tab-access', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : { sections: null }))
+      .then((j) => setAllowed(j.sections ?? null))
+      .catch(() => setAllowed(null));
+  }, []);
   // 회계·리포트 화면에서는 하위 내비(max-w-1680)와 좌우 끝을 맞춘다
   const wide = pathname?.startsWith('/finance') || pathname?.startsWith('/dashboard');
 
@@ -39,7 +39,7 @@ export default function TabNav() {
         {/* 모바일에선 좌측 정렬 — justify-center+overflow 조합은 넘친 왼쪽이 스크롤 불가로 잘리고,
             오른쪽 탭이 반쯤 걸쳐 보이는 것이 "더 있다"는 스크롤 단서가 된다 */}
         <nav className="scrollbar-hide flex flex-1 items-center justify-start gap-1 overflow-x-auto sm:justify-center">
-          {TABS.map((tab) => {
+          {TABS.filter((t) => !Array.isArray(allowed) || allowed.includes(t.key)).map((tab) => {
             const p = pathname ?? '';
             const active =
               tab.href === '/dashboard'

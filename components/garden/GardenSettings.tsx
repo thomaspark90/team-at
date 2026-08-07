@@ -368,8 +368,10 @@ function TodoList() {
 export default function GardenSettings() {
   // 알림 수신자 관리는 admin 전용 — 403이면 섹션 숨김
   const [recipients, setRecipients] = useState<RecipientRow[] | null>(null);
-  // 가든 탭 권한 — admin 응답에만 users 가 포함되고, 아니면 섹션 숨김
-  const [tabUsers, setTabUsers] = useState<{ id: string; email: string; tabs: string[] | null }[] | null>(null);
+  // 페이지 접근 권한 — admin 응답에만 users 가 포함되고, 아니면 섹션 숨김
+  const [tabUsers, setTabUsers] = useState<
+    { id: string; email: string; tabs: string[] | null; sections: string[] | null }[] | null
+  >(null);
 
   useEffect(() => {
     fetch('/api/notify/recipients', { cache: 'no-store' })
@@ -390,7 +392,7 @@ export default function GardenSettings() {
       <TodoList />
       {/* 필터 원두 발주의 스탭이름·로스팅사 드롭다운 명단 */}
       <GardenOptionsManager />
-      {/* 가든 하위 탭별 접근 권한 — admin 전용 */}
+      {/* 계정별 페이지 접근 권한(상위 메뉴 + 가든 하위 탭) — admin 전용 */}
       {tabUsers && <GardenTabAccess initial={tabUsers} />}
       {recipients && <NotifyRecipients initial={recipients} />}
       {/* 내 알림 채널(이메일·웹푸시) — 푸시를 켜야 담당자 알림을 기기에서 받는다 */}
