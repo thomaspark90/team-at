@@ -289,6 +289,13 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     }
   };
 
+  // 미설정 원두의 "레시피 설정" — ICE 편집을 열고, 저장하면 같은 원두의 HOT 편집이 자동으로 이어진다
+  const [chainHotFor, setChainHotFor] = useState<string | null>(null);
+  const startUnsetSetup = (beanKey: string, bean: string) => {
+    setChainHotFor(beanKey);
+    openEditor(beanKey, bean, 'ice');
+  };
+
   // 편집 열기 — 기존 레시피가 있으면 불러오고, 없으면 매장 기준 프리셋으로 시작
   const openEditor = (beanKey: string, bean: string, brewType: BrewType) => {
     const existing = recipes.find((r) => r.beanKey === beanKey && btOf(r) === brewType);
@@ -404,6 +411,15 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       if (!tRes?.ok) toast('레시피는 저장됐지만 테이스팅 노트 저장에 실패했어요.', 'error');
     }
     await refresh();
+    // 미설정 원두에서 시작한 경우 ICE 저장 후 같은 원두의 HOT 편집으로 자동 전환
+    if (draft.brewType === 'ice' && chainHotFor === draft.beanKey) {
+      setChainHotFor(null);
+      setDraft({ ...presetDraft(draft.beanKey, draft.bean, 'hot'), tasting: draft.tasting });
+      setSaving(false);
+      toast('ICE 레시피 저장 완료 — 이어서 HOT 레시피를 설정하세요.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     setDraft(null);
     setSaving(false);
     toast('레시피를 저장했어요.');
@@ -762,16 +778,13 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
               {rec.chosenPrice != null && ` · ${won(rec.chosenPrice)}`}
             </span>
             <span style={{ flex: 1 }} />
-            {BREW_TYPES.map((bt) => (
-              <button
-                key={bt}
-                onClick={() => openEditor(normalize(rec.bean), rec.bean, bt)}
-                className="ta-btn"
-                style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 13, flexShrink: 0 }}
-              >
-                {btLabel(bt)} 설정
-              </button>
-            ))}
+            <button
+              onClick={() => startUnsetSetup(normalize(rec.bean), rec.bean)}
+              className="ta-btn"
+              style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 13, flexShrink: 0 }}
+            >
+              레시피 설정 (ICE→HOT)
+            </button>
             <button
               onClick={() => deleteUnsetBean(rec)}
               disabled={deletingBean === normalize(rec.bean)}
@@ -943,7 +956,13 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             <button onClick={saveDraft} disabled={saving} className="ta-btn-primary" style={{ flex: 1 }}>
               {saving ? '저장 중…' : `${btLabel(draft.brewType)} 레시피 저장`}
             </button>
-            <button onClick={() => setDraft(null)} className="ta-btn">
+            <button
+              onClick={() => {
+                setDraft(null);
+                setChainHotFor(null);
+              }}
+              className="ta-btn"
+            >
               취소
             </button>
           </div>
