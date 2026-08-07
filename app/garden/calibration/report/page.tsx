@@ -9,6 +9,13 @@ const GrindCalibrationReport = dynamic(() => import('@/components/garden/GrindCa
   ssr: false,
   loading: () => <p className="text-[13px] text-muted-foreground">리포트 불러오는 중…</p>,
 });
+const GrindCalibrationReportLive = dynamic(
+  () => import('@/components/garden/GrindCalibrationReportLive'),
+  {
+    ssr: false,
+    loading: () => <p className="text-[13px] text-muted-foreground">현행 측정 불러오는 중…</p>,
+  }
+);
 
 export default function GrindCalibrationReportPage() {
   return (
@@ -20,7 +27,16 @@ export default function GrindCalibrationReportPage() {
           EK43 지점 캘리브레이션 리포트 — 양재천 vs 판교
         </h1>
         <p className="text-[13px] text-muted-foreground" style={{ marginTop: 0, marginBottom: 20 }}>
-          2026-07-16 측정 · 교육용 자료 · 문의는 대표에게
+          최근 얼라인 이후 측정을 자동 반영 · 문의는 대표에게
+        </p>
+        <GrindCalibrationReportLive />
+
+        <h2 className="text-[16px] font-medium" style={{ marginTop: 40, marginBottom: 4 }}>
+          아카이브 — 2026-07-16 기준선 리포트
+        </h2>
+        <p className="text-[13px] text-muted-foreground" style={{ marginTop: 0, marginBottom: 20 }}>
+          판교 재정렬(2026-08-07) 이전 측정 기록입니다. 왜 다이얼을 그대로 옮기면 안 되는지 보여주는
+          교육 자료로 남겨두며, 현행 수치는 위 섹션이 기준입니다.
         </p>
         <GrindCalibrationReport />
       </div>
