@@ -12,6 +12,11 @@ export interface AlignmentEvent {
   createdBy?: string;
 }
 
+// 얼라인 날짜는 매장(KST) 기준 날짜로 입력·비교한다 — 측정 createdAt(UTC ISO)을 그대로
+// 자르면 KST 오전 9시 이전 업로드가 전날로 분류되는 오류가 생긴다.
+export const kstDate = (isoOrDate: string | Date = new Date()) =>
+  new Date(isoOrDate).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+
 export function latestAlignmentDate(events: AlignmentEvent[], store: StoreId): string | null {
   const dates = events
     .filter((e) => e.store === store)
@@ -20,10 +25,10 @@ export function latestAlignmentDate(events: AlignmentEvent[], store: StoreId): s
   return dates.at(-1) ?? null;
 }
 
-// 측정(ISO 일시)이 해당 지점의 최근 얼라인 이후인지 — 얼라인 당일 측정은 이후로 간주.
+// 측정(ISO 일시)이 해당 지점의 최근 얼라인 이후인지 — 얼라인 당일(KST) 측정은 이후로 간주.
 // 얼라인 기록이 없으면 전부 현행으로 본다.
 export function isPostAlignment(events: AlignmentEvent[], store: StoreId, isoDateTime: string): boolean {
   const last = latestAlignmentDate(events, store);
   if (!last) return true;
-  return isoDateTime.slice(0, 10) >= last;
+  return kstDate(isoDateTime) >= last;
 }

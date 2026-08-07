@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react';
 import type { StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import type { AlignmentEvent } from '@/lib/grinder-alignments';
-import { latestAlignmentDate } from '@/lib/grinder-alignments';
+import { kstDate, latestAlignmentDate } from '@/lib/grinder-alignments';
 
 // 그라인더 얼라인먼트 기록 — 지점별 "마지막으로 그라인더를 열어 정렬을 본 날"을 남긴다.
 // 이 날짜 이전의 측정은 캘리브레이션 차트에서 현행 데이터와 구분(흐림)된다.
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => kstDate();
 
 export default function GrinderAlignmentLog() {
   const [events, setEvents] = useState<AlignmentEvent[]>([]);

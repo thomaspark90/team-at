@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '지점 정보가 올바르지 않습니다.' }, { status: 400 });
   }
   const date = String(body.date ?? '').trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) {
     return NextResponse.json({ error: '날짜는 YYYY-MM-DD 형식이어야 합니다.' }, { status: 400 });
   }
 

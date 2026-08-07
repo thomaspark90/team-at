@@ -266,8 +266,8 @@ export default function GrindCalibrationCharts() {
                   />
                 ) : null
               )}
-              <Scatter name="양재천점" data={points.yangjae.current} fill={C.yangjae} />
-              <Scatter name="판교점" data={points.pangyo.current} fill={C.pangyo} />
+              {points.yangjae.current.length > 0 && <Scatter name="양재천점" data={points.yangjae.current} fill={C.yangjae} />}
+              {points.pangyo.current.length > 0 && <Scatter name="판교점" data={points.pangyo.current} fill={C.pangyo} />}
               {points.yangjae.stale.length > 0 && (
                 <Scatter name="양재천 (얼라인 이전)" data={points.yangjae.stale.map((p) => ({ ...p, stale: true }))} fill={C.yangjae} opacity={0.25} />
               )}
