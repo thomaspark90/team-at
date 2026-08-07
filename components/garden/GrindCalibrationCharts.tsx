@@ -17,6 +17,7 @@ import {
 import type { StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import type { GrindMeasurement } from '@/lib/grind-measurements';
+import { fetchGrindMeasurements } from '@/lib/garden/measurements-cache';
 import type { AlignmentEvent } from '@/lib/grinder-alignments';
 import { isPostAlignment, latestAlignmentDate } from '@/lib/grinder-alignments';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
@@ -92,10 +93,12 @@ export default function GrindCalibrationCharts() {
   const [applying, setApplying] = useState<StoreId | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(() => {
+  // force=true 면 캐시를 건너뛴다 — 새로고침 버튼은 항상 최신을 받아야 한다
+  const refresh = useCallback((force = false) => {
     setLoading(true);
     Promise.all([
-      fetch('/api/garden-grind-measurements', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
+      fetchGrindMeasurements(force), // 업로드 폼과 공유하는 캐시 — 같은 화면에서 두 번 조회하지 않는다
+
       fetch('/api/garden-grinder-alignments', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])),
       fetch('/api/garden-grinders', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)),
     ])
@@ -331,7 +334,7 @@ export default function GrindCalibrationCharts() {
       <div className="ta-card bg-background min-w-0">
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
           <span className="text-[15px] font-medium text-foreground">다이얼 → 입자 크기 — 측정 전체</span>
-          <button onClick={refresh} className="text-[11px] text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+          <button onClick={() => refresh(true)} className="text-[11px] text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
             {loading ? '불러오는 중…' : '새로고침'}
           </button>
         </div>

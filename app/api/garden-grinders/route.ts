@@ -5,6 +5,7 @@ import { STORES } from '@/lib/types';
 import type { GrinderProfiles, GrindPoint } from '@/lib/grinder-calibration';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
+import { requireGardenTab } from '@/lib/access/guard';
 
 const DATA_PATH = 'data/garden-grinders.json';
 const STORE_IDS = STORES.map((s) => s.id);
@@ -35,6 +36,10 @@ export async function GET() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, ['calibration', 'dashboard', 'recipes', 'beancard']);
+    if (denied) return denied;
+  }
 
   const store = await readStore();
   return NextResponse.json(store.profiles);
@@ -47,6 +52,10 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, ['calibration', 'dashboard']);
+    if (denied) return denied;
+  }
 
   const body = await req.json();
   const storeId = body.store as StoreId;

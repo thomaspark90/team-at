@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { notifyGardenEvent } from '@/lib/notify';
 import { topicEmails } from '@/lib/garden-notify-topics-server';
+import { requireGardenTab } from '@/lib/access/guard';
 
 const STORE_IDS = STORES.map((s) => s.id);
 const ROAST_IDS = ROAST_LEVELS.map((r) => r.id);
@@ -18,6 +19,10 @@ export async function GET() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, 'calibration');
+    if (denied) return denied;
+  }
 
   return NextResponse.json(await grindMeasurementRecords.readAll());
 }
@@ -34,6 +39,10 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, 'calibration');
+    if (denied) return denied;
+  }
 
   const body = await req.json();
   const storeId = body.store as StoreId;
@@ -110,6 +119,10 @@ export async function DELETE(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, 'calibration');
+    if (denied) return denied;
+  }
 
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id가 필요합니다.' }, { status: 400 });

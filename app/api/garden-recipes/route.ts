@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { notifyGardenEvent } from '@/lib/notify';
 import { readGardenTopics } from '@/lib/garden-notify-topics-server';
+import { requireGardenTab } from '@/lib/access/guard';
 
 const DATA_PATH = 'data/garden-recipes.json';
 
@@ -34,6 +35,10 @@ export async function GET() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, ['recipes', 'dashboard', 'recommended', 'beancard']);
+    if (denied) return denied;
+  }
 
   const store = await readStore();
   return NextResponse.json(store.recipes);
@@ -48,6 +53,10 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, ['recipes', 'dashboard']);
+    if (denied) return denied;
+  }
 
   const body = await req.json();
   if (!body.beanKey || !body.bean) {
@@ -158,6 +167,10 @@ export async function DELETE(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, ['recipes', 'dashboard']);
+    if (denied) return denied;
+  }
 
   const { beanKey, brewType: bt } = await req.json();
   const brewType = brewTypeOf(bt);

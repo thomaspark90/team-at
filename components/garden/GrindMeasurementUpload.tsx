@@ -7,6 +7,7 @@ import type { StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import type { GrindMeasurement, RoastLevel } from '@/lib/grind-measurements';
 import { ROAST_LEVELS, roastLabel } from '@/lib/grind-measurements';
+import { fetchGrindMeasurements, primeGrindMeasurements } from '@/lib/garden/measurements-cache';
 
 // 분쇄도 측정 업로드 — 언스페셜티 컴퍼스 결과(캡처 이미지+수치)를 지점·원두·다이얼 단위로
 // 등록한다. 같은 원두·같은 다이얼을 두 지점에서 측정해 쌓으면 환산 산식의 원천 데이터가 된다.
@@ -52,10 +53,8 @@ export default function GrindMeasurementUpload() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = () =>
-    fetch('/api/garden-grind-measurements', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => setItems(Array.isArray(d) ? d : []));
+  // 같은 화면의 차트도 같은 목록을 쓰므로 공유 캐시를 거친다(중복 조회 방지)
+  const refresh = () => fetchGrindMeasurements().then(setItems);
 
   useEffect(() => {
     refresh();
@@ -105,7 +104,9 @@ export default function GrindMeasurementUpload() {
         const body = await res.json().catch(() => null);
         throw new Error(body?.error ?? '저장에 실패했습니다.');
       }
-      setItems(await res.json());
+      const next = await res.json();
+      setItems(next);
+      primeGrindMeasurements(next); // 차트도 최신 목록을 쓰도록 캐시 갱신
       // 같은 원두·다이얼로 샷을 연속 업로드하는 프로토콜이라 지점·원두·다이얼은 유지
       setDraft((d) => ({ ...d, mean: '', std: '', fines: '', shareUrl: '', memo: '' }));
       setFiles([]);
@@ -119,7 +120,11 @@ export default function GrindMeasurementUpload() {
   const remove = async (id: string) => {
     if (!confirm('이 측정 기록을 삭제할까요?')) return;
     const res = await fetch(`/api/garden-grind-measurements?id=${id}`, { method: 'DELETE' });
-    if (res.ok) setItems(await res.json());
+    if (res.ok) {
+      const next = await res.json();
+      setItems(next);
+      primeGrindMeasurements(next);
+    }
   };
 
   // 오늘(KST) 프로토콜 진행률 — 지점×다이얼(6/8/10)별 업로드된 샷 수

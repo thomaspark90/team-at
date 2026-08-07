@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { extractBeanBagInfo } from '@/lib/garden-bean-scan';
 import { logActivity } from '@/lib/finance/activity';
+import { checkAiQuota } from '@/lib/access/rate-limit';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -14,6 +15,8 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  const over = await checkAiQuota(supabase, user, '원두봉투 AI 인식');
+  if (over) return over;
 
   const key = process.env.GEMINI_API_KEY;
   if (!key) {

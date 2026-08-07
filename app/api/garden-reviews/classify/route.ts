@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { classifyIssue } from '@/lib/garden/review-issue';
+import { logActivity } from '@/lib/finance/activity';
+import { checkAiQuota } from '@/lib/access/rate-limit';
+
+const ACTION = '리뷰 AI 분류';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -18,6 +22,9 @@ export async function POST() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  // UI 가 remaining=0 이 될 때까지 반복 호출하는 배치라 상한을 넉넉히 둔다
+  const over = await checkAiQuota(supabase, user, ACTION, 300);
+  if (over) return over;
 
   const key = process.env.GEMINI_API_KEY;
   if (!key) return NextResponse.json({ error: 'GEMINI_API_KEY 미설정' }, { status: 500 });
@@ -89,5 +96,7 @@ export async function POST() {
       .eq('issue', true).is('issue_categories', null).not('content', 'is', null),
   ]);
 
+  // 사용량 상한이 이 로그 건수를 세므로 호출마다 남긴다
+  await logActivity(supabase, user, ACTION, `${classified}건 분류`);
   return NextResponse.json({ classified, remaining: (nullCount ?? 0) + (catCount ?? 0) });
 }

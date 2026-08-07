@@ -4,6 +4,11 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { notifyTransferRequest } from '@/lib/notify';
 import { logActivity } from '@/lib/finance/activity';
+import { resolveRole } from '@/lib/finance/access';
+
+// 계좌번호·예금주·영수증이 담긴 자료라 재무 담당(admin·classifier)만 전체를 본다.
+// 그 외 팀원은 자기가 올린 요청만 — 상태 확인은 되고 남의 계좌는 안 보인다.
+const FINANCE_ROLES = ['admin', 'classifier'];
 
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 
@@ -20,7 +25,7 @@ const friendly = (e: { code?: string; message: string }) => {
     : e.message;
 };
 
-// 송금 요청 목록 — 로그인한 누구나 열람
+// 송금 요청 목록 — 재무 담당은 전체, 그 외는 본인이 올린 요청만
 export async function GET(req: Request) {
   const supabase = await createClient();
   const {
@@ -28,6 +33,7 @@ export async function GET(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
+  const role = await resolveRole(supabase, user);
   const status = new URL(req.url).searchParams.get('status');
   let q = supabase
     .schema('finance')
@@ -37,6 +43,7 @@ export async function GET(req: Request) {
     )
     .order('created_at', { ascending: false })
     .limit(300);
+  if (!FINANCE_ROLES.includes(role ?? '')) q = q.eq('requester_email', user.email ?? '');
   if (status === 'pending' || status === 'done') q = q.eq('status', status);
 
   const { data, error } = await q;

@@ -4,6 +4,7 @@ import { purchaseRecords } from '@/lib/blob-records';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { normalize } from '@/lib/pricing';
+import { requireGardenTab } from '@/lib/access/guard';
 
 // 같은 발주를 하루에 여러 번 저장(범위 확인 → 배수 책정)해도 기록이 한 건으로 정리되도록,
 // 같은 원두·같은 매입가·같은 날(KST)은 append 대신 대체한다.
@@ -15,6 +16,10 @@ export async function GET() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, ['pricing', 'recipes', 'dashboard', 'beancard']);
+    if (denied) return denied;
+  }
 
   return NextResponse.json(await purchaseRecords.readAll());
 }
@@ -26,6 +31,10 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, 'pricing');
+    if (denied) return denied;
+  }
 
   const body = await req.json();
   const record: PurchaseRecord = {
@@ -78,6 +87,10 @@ export async function DELETE(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, ['pricing', 'recipes', 'dashboard']);
+    if (denied) return denied;
+  }
 
   const { id } = await req.json();
   const removed = await purchaseRecords.deleteOne(id);
