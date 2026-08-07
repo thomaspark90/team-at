@@ -154,10 +154,10 @@ export default function GrindCalibrationCharts() {
   // 판정·평균 오프셋(offset)은 현행 대 현행일 때만, 참고 오프셋(refOffset)은 얼라인 이전이 섞인 경우.
   const dialRows = useMemo(() => {
     const group = (pts: Pt[]) => {
-      const map = new Map<number, number[]>();
+      const map = new Map<number, Pt[]>();
       for (const p of pts) {
         const key = Math.round(p.dial * 10) / 10;
-        map.set(key, [...(map.get(key) ?? []), p.mean]);
+        map.set(key, [...(map.get(key) ?? []), p]);
       }
       return map;
     };
@@ -168,8 +168,15 @@ export default function GrindCalibrationCharts() {
     const dials = Array.from(
       new Set([...Array.from(gy.keys()), ...Array.from(gp.keys()), ...Array.from(gys.keys()), ...Array.from(gps.keys())])
     ).sort((a, b) => a - b);
+    const avg = (v?: Pt[]) => (v && v.length ? v.reduce((s, p) => s + p.mean, 0) / v.length : null);
+    // 그룹의 측정 날짜 표기 — 하루면 MM.DD, 여러 날이면 MM.DD~MM.DD
+    const dateSpan = (v?: Pt[]) => {
+      if (!v || !v.length) return null;
+      const ds = Array.from(new Set(v.map((p) => p.date))).sort();
+      const fmt = (d: string) => d.slice(5).replace('-', '.');
+      return ds.length === 1 ? fmt(ds[0]) : `${fmt(ds[0])}~${fmt(ds[ds.length - 1])}`;
+    };
     return dials.map((d) => {
-      const avg = (v?: number[]) => (v && v.length ? v.reduce((s, x) => s + x, 0) / v.length : null);
       const my = avg(gy.get(d));
       const mp = avg(gp.get(d));
       const mys = avg(gys.get(d));
@@ -181,12 +188,16 @@ export default function GrindCalibrationCharts() {
         dial: d,
         yangjae: my,
         ny: gy.get(d)?.length ?? 0,
+        yDate: dateSpan(gy.get(d)),
         yStale: mys,
         nyStale: gys.get(d)?.length ?? 0,
+        yStaleDate: dateSpan(gys.get(d)),
         pangyo: mp,
         np: gp.get(d)?.length ?? 0,
+        pDate: dateSpan(gp.get(d)),
         pStale: mps,
         npStale: gps.get(d)?.length ?? 0,
+        pStaleDate: dateSpan(gps.get(d)),
         offset,
         refOffset: offset == null && ery != null && erp != null ? erp - ery : null,
       };
@@ -315,19 +326,19 @@ export default function GrindCalibrationCharts() {
             </thead>
             <tbody className="text-foreground">
               {dialRows.map((r) => {
-                const cell = (mean: number | null, n: number, stale: number | null, nStale: number) =>
+                const cell = (mean: number | null, n: number, date: string | null, stale: number | null, nStale: number, staleDate: string | null) =>
                   mean != null ? (
-                    `${Math.round(mean)} (${n}샷)`
+                    `${Math.round(mean)} (${n}샷 · ${date})`
                   ) : stale != null ? (
-                    <span className="text-muted-foreground">{Math.round(stale)} ({nStale}샷 · 얼라인 전)</span>
+                    <span className="text-muted-foreground">{Math.round(stale)} ({nStale}샷 · {staleDate} · 얼라인 전)</span>
                   ) : (
                     '—'
                   );
                 return (
                   <tr key={r.dial}>
                     <td style={{ textAlign: 'right', padding: '3px 10px' }}>{r.dial.toFixed(1)}</td>
-                    <td style={{ textAlign: 'right', padding: '3px 10px' }}>{cell(r.yangjae, r.ny, r.yStale, r.nyStale)}</td>
-                    <td style={{ textAlign: 'right', padding: '3px 10px' }}>{cell(r.pangyo, r.np, r.pStale, r.npStale)}</td>
+                    <td style={{ textAlign: 'right', padding: '3px 10px' }}>{cell(r.yangjae, r.ny, r.yDate, r.yStale, r.nyStale, r.yStaleDate)}</td>
+                    <td style={{ textAlign: 'right', padding: '3px 10px' }}>{cell(r.pangyo, r.np, r.pDate, r.pStale, r.npStale, r.pStaleDate)}</td>
                     <td style={{ textAlign: 'right', padding: '3px 10px' }} className={r.offset == null ? 'text-muted-foreground' : ''}>
                       {r.offset != null
                         ? `${r.offset > 0 ? '+' : ''}${Math.round(r.offset)}`
