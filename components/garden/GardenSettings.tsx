@@ -9,6 +9,7 @@ import { GARDEN_TOPICS, EMPTY_TOPICS } from '@/lib/garden-notify-topics';
 import NotifyRecipients, { type RecipientRow } from '@/components/NotifyRecipients';
 import NotifySettings from '@/components/NotifySettings';
 import GardenOptionsManager from '@/components/garden/GardenOptionsManager';
+import GardenTabAccess from '@/components/garden/GardenTabAccess';
 
 // 가든 설정 — 분쇄도 측정 요청(담당자 알림), 필터커피 투두리스트, 알림 수신자/채널 관리.
 
@@ -367,12 +368,18 @@ function TodoList() {
 export default function GardenSettings() {
   // 알림 수신자 관리는 admin 전용 — 403이면 섹션 숨김
   const [recipients, setRecipients] = useState<RecipientRow[] | null>(null);
+  // 가든 탭 권한 — admin 응답에만 users 가 포함되고, 아니면 섹션 숨김
+  const [tabUsers, setTabUsers] = useState<{ id: string; email: string; tabs: string[] | null }[] | null>(null);
 
   useEffect(() => {
     fetch('/api/notify/recipients', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => setRecipients(j?.recipients ?? null))
       .catch(() => setRecipients(null));
+    fetch('/api/garden-tab-access', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setTabUsers(j?.isAdmin && Array.isArray(j.users) ? j.users : null))
+      .catch(() => setTabUsers(null));
   }, []);
 
   return (
@@ -383,6 +390,8 @@ export default function GardenSettings() {
       <TodoList />
       {/* 필터 원두 발주의 스탭이름·로스팅사 드롭다운 명단 */}
       <GardenOptionsManager />
+      {/* 가든 하위 탭별 접근 권한 — admin 전용 */}
+      {tabUsers && <GardenTabAccess initial={tabUsers} />}
       {recipients && <NotifyRecipients initial={recipients} />}
       {/* 내 알림 채널(이메일·웹푸시) — 푸시를 켜야 담당자 알림을 기기에서 받는다 */}
       <NotifySettings />
