@@ -8,6 +8,8 @@ import type { GardenOptions, RoasteryAssets } from '@/lib/types';
 export default function GardenOptionsManager() {
   const [options, setOptions] = useState<GardenOptions | null>(null);
   const [assets, setAssets] = useState<RoasteryAssets>({});
+  // 로스터리별 발주 카톡방 이름 — [발주] 버튼이 이 매핑으로 방을 찾아 전송한다
+  const [rooms, setRooms] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -17,7 +19,23 @@ export default function GardenOptionsManager() {
     fetch('/api/garden-roastery-assets', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : {}))
       .then((j) => setAssets(j ?? {}));
+    fetch('/api/kakao-notify/rooms', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((j) => setRooms(j ?? {}));
   }, []);
+
+  // 카톡방 매핑 저장 — 빈 값은 서버가 매핑 해제로 처리
+  const saveRoom = async (roastery: string, room: string) => {
+    const next = { ...rooms, [roastery]: room };
+    setRooms(next);
+    const res = await fetch('/api/kakao-notify/rooms', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(next),
+    });
+    if (res.ok) setRooms(await res.json());
+    else alert((await res.json().catch(() => null))?.error ?? '카톡방 저장에 실패했습니다.');
+  };
 
   // 로스터리 로고·QR 업로드/삭제 — 원두카드 인쇄 시 자동 배치
   const uploadAsset = async (roastery: string, kind: 'logo' | 'qr', file: File) => {
@@ -54,6 +72,18 @@ export default function GardenOptionsManager() {
       body: JSON.stringify({ from, to: next }),
     });
     if (res.ok) setAssets(await res.json());
+    // 카톡방 매핑 키도 새 이름으로 이동
+    if (rooms[from]) {
+      const moved = { ...rooms, [next]: rooms[from] };
+      delete moved[from];
+      setRooms(moved);
+      const rr = await fetch('/api/kakao-notify/rooms', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(moved),
+      });
+      if (rr.ok) setRooms(await rr.json());
+    }
     setBusy(false);
   };
 
@@ -90,33 +120,39 @@ export default function GardenOptionsManager() {
       <RoasteryList
         items={options.roasteries}
         assets={assets}
+        rooms={rooms}
         busy={busy}
         onChange={(roasteries) => save({ ...options, roasteries })}
         onUpload={uploadAsset}
         onRemoveAsset={removeAsset}
         onRename={renameRoastery}
+        onRoomChange={saveRoom}
       />
     </div>
   );
 }
 
-// 로스팅사 목록 — 이름 + 원두카드용 로고·QR 이미지 슬롯
+// 로스팅사 목록 — 이름 + 원두카드용 로고·QR 이미지 슬롯 + 발주 카톡방
 function RoasteryList({
   items,
   assets,
+  rooms,
   busy,
   onChange,
   onUpload,
   onRemoveAsset,
   onRename,
+  onRoomChange,
 }: {
   items: string[];
   assets: RoasteryAssets;
+  rooms: Record<string, string>;
   busy: boolean;
   onChange: (items: string[]) => void;
   onUpload: (roastery: string, kind: 'logo' | 'qr', file: File) => void;
   onRemoveAsset: (roastery: string, kind: 'logo' | 'qr') => void;
   onRename: (from: string, to: string) => void;
+  onRoomChange: (roastery: string, room: string) => void;
 }) {
   const [input, setInput] = useState('');
   const [editing, setEditing] = useState<string | null>(null); // 수정 중인 항목(원래 이름)
@@ -172,8 +208,9 @@ function RoasteryList({
             <div
               key={v}
               className="rounded-md border border-border"
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', minWidth: 0 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 10px', minWidth: 0 }}
             >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
               {editing === v ? (
                 <>
                   <input
@@ -235,10 +272,38 @@ function RoasteryList({
                 ×
               </button>
             </div>
+            <RoomInput value={rooms[v] ?? ''} busy={busy} onSave={(room) => onRoomChange(v, room)} />
+            </div>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+// 발주 카톡방 입력 — [발주] 버튼이 이 이름으로 맥 카톡앱에서 방을 검색해 전송한다.
+// 카톡 채팅 리스트의 표시 이름과 '정확히' 일치해야 하며, 비우면 매핑 해제(전송 차단).
+function RoomInput({ value, busy, onSave }: { value: string; busy: boolean; onSave: (room: string) => void }) {
+  const [v, setV] = useState(value);
+  useEffect(() => setV(value), [value]);
+  const commit = () => {
+    if (v.trim() !== value.trim()) onSave(v.trim());
+  };
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+      <span className="text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>발주 카톡방</span>
+      <input
+        type="text"
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === 'Enter' && commit()}
+        placeholder="카톡 채팅방 표시 이름 (정확히 일치해야 전송됨)"
+        className="ta-input"
+        style={{ flex: 1, minWidth: 0, height: 28, fontSize: 12 }}
+        disabled={busy}
+      />
+    </label>
   );
 }
 

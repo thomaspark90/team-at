@@ -3,7 +3,15 @@ import { createClient } from '@/lib/supabase/server';
 import { requireGardenTab } from '@/lib/access/guard';
 import { logActivity } from '@/lib/finance/activity';
 import { purchaseRecords } from '@/lib/blob-records';
-import { buildOrderMessage, canSendKakaoOrder, kakaoNotifyJobs, type KakaoNotifyJob } from '@/lib/kakao-notify';
+import { buildOrderMessage, canSendKakaoOrder, kakaoNotifyJobs, readKakaoRooms, type KakaoNotifyJob } from '@/lib/kakao-notify';
+
+// 기록의 로스터리로 대상 카톡방을 확정한다 — 매핑이 없으면 전송 자체를 막는다.
+async function resolveRoom(record: { roastery?: string }): Promise<{ room: string } | { error: string }> {
+  if (!record.roastery) return { error: '로스터리가 없는 기록은 발주 카톡을 보낼 수 없습니다.' };
+  const room = (await readKakaoRooms())[record.roastery];
+  if (!room) return { error: `'${record.roastery}'의 발주 카톡방이 설정되지 않았습니다 — 가든 설정 > 발주 드롭다운 관리에서 지정하세요.` };
+  return { room };
+}
 
 // 발주 화면 [발주] 버튼용 — 카톡 전송 잡 등록.
 // GET: 내 버튼 노출 여부 + 발주기록별 전송 상태 (UI 표시용)
@@ -28,7 +36,9 @@ export async function GET(req: Request) {
   if (purchaseId) {
     const record = await purchaseRecords.readOne(purchaseId);
     if (!record) return NextResponse.json({ error: '발주 기록을 찾을 수 없습니다.' }, { status: 404 });
-    return NextResponse.json({ message: buildOrderMessage(record) });
+    const target = await resolveRoom(record);
+    if ('error' in target) return NextResponse.json({ error: target.error }, { status: 400 });
+    return NextResponse.json({ message: buildOrderMessage(record), room: target.room });
   }
 
   // readAll 은 오래된순 — 같은 발주의 잡이 여러 개면(실패 후 재시도) 최신 상태가 남는다
@@ -64,10 +74,14 @@ export async function POST(req: Request) {
   const active = existing.find((j) => j.status === 'pending' || j.status === 'sent');
   if (active) return NextResponse.json({ job: active, duplicated: true });
 
+  const target = await resolveRoom(record);
+  if ('error' in target) return NextResponse.json({ error: target.error }, { status: 400 });
+
   const job: KakaoNotifyJob = {
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
     purchaseId: record.id,
+    room: target.room,
     message: buildOrderMessage(record),
     status: 'pending',
     requestedBy: user.email ?? '',

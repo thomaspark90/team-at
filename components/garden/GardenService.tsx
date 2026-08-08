@@ -140,7 +140,7 @@ export default function GardenService() {
         alert(pj?.error ?? '미리보기를 불러오지 못했습니다.');
         return;
       }
-      if (!confirm(`카톡방에 아래 발주 메시지를 전송할까요?\n\n${pj.message}`)) return;
+      if (!confirm(`[${pj.room}] 방으로 아래 발주 메시지를 전송할까요?\n\n${pj.message}`)) return;
       const res = await fetch('/api/kakao-notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

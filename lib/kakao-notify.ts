@@ -1,3 +1,4 @@
+import { get, put } from '@vercel/blob';
 import { blobCollection } from '@/lib/blob-records';
 import type { PurchaseRecord } from '@/lib/types';
 import { isOwner } from '@/lib/finance/access';
@@ -11,12 +12,37 @@ export type KakaoNotifyJob = {
   id: string;
   createdAt: string; // ISO
   purchaseId: string; // 발주 기록(PurchaseRecord) id
+  room: string; // 대상 카톡방 표시 이름 — 로스터리별 매핑에서 확정 (구 잡엔 없을 수 있음)
   message: string; // 전송기가 그대로 붙여넣는 완성 문구 — 서버에서 확정한다
   status: 'pending' | 'sent' | 'failed';
   requestedBy: string; // [발주] 버튼을 누른 계정 이메일
   sentAt?: string;
   error?: string;
 };
+
+// 로스터리 → 발주 카톡방 표시 이름 매핑 — 가든 설정(발주 드롭다운 관리)에서 입력.
+// 방 이름은 맥 카톡앱 채팅 검색의 표시 이름과 '정확히' 일치해야 전송된다.
+export type KakaoRooms = Record<string, string>;
+const ROOMS_PATH = 'data/kakao-rooms.json';
+
+export async function readKakaoRooms(): Promise<KakaoRooms> {
+  const res = await get(ROOMS_PATH, { access: 'private', useCache: false });
+  if (!res) return {};
+  try {
+    return JSON.parse(await new Response(res.stream).text()) as KakaoRooms;
+  } catch {
+    return {};
+  }
+}
+
+export async function writeKakaoRooms(rooms: KakaoRooms): Promise<void> {
+  await put(ROOMS_PATH, JSON.stringify(rooms), {
+    access: 'private',
+    contentType: 'application/json',
+    addRandomSuffix: false,
+    allowOverwrite: true,
+  });
+}
 
 export const kakaoNotifyJobs = blobCollection<KakaoNotifyJob>({
   name: 'kakao-notify',
