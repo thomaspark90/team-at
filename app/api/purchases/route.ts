@@ -5,6 +5,9 @@ import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { normalize, computePricing, priceAtMult, DEFAULT_SETTINGS } from '@/lib/pricing';
 import { requireGardenTab } from '@/lib/access/guard';
+import { topicEmails } from '@/lib/garden-notify-topics-server';
+import { notifyGardenEvent } from '@/lib/notify';
+import { APP_URL } from '@/lib/app-url';
 
 // 같은 발주를 하루에 여러 번 저장(범위 확인 → 배수 책정)해도 기록이 한 건으로 정리되도록,
 // 같은 원두·같은 매입가·같은 날(KST)은 append 대신 대체한다.
@@ -96,6 +99,35 @@ export async function POST(req: Request) {
     `${record.bean} · 매입 ${Number(record.purchasePrice).toLocaleString()}원` +
       (record.chosenPrice != null ? ` · 판매가 ${Number(record.chosenPrice).toLocaleString()}원` : '')
   );
+
+  // 발주 → 판매가 책정 담당자 호출(권한 분리된 2단계 플로 연결). 책정 대기 건이 새로
+  // 생겼을 때만 — 같은 날 재저장(대체)이나 책정가를 상속한 건은 제외해 중복 알림을 막는다.
+  // 담당자 미지정이면 topicEmails 가 원두 알림 수신자로 폴백. 실패해도 발주 저장은 막지 않는다.
+  if (record.chosenPrice == null && replaced.length === 0) {
+    try {
+      const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
+      const by = record.staffName ? `${record.staffName}님` : (user.email ?? '').split('@')[0];
+      const salepriceUrl = `${APP_URL}/garden/saleprice`;
+      await notifyGardenEvent(supabase, {
+        emails: await topicEmails(supabase, 'salePriceRequest'),
+        subject: `[판매가 책정 대기] ${record.bean}`,
+        html: `
+        <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
+          <p><strong>${record.bean}</strong>${record.roastery ? ` · ${record.roastery}` : ''} 발주가 저장됐어요. 판매가를 책정해 주세요.</p>
+          <p>매입 ${won(record.purchasePrice)} · 잔당 재료비 ${won(record.costPerCup)} · 권장 판매 ${won(record.rangeLow)}~${won(record.rangeHigh)}</p>
+          <p>발주: ${by}</p>
+          <p><a href="${salepriceUrl}">판매가 설정 열기 →</a></p>
+        </div>`,
+        push: {
+          title: `판매가 책정 대기 · ${record.bean}`,
+          body: `재료비 ${won(record.costPerCup)} · 권장 ${won(record.rangeLow)}~${won(record.rangeHigh)} — ${by} 발주`,
+          url: '/garden/saleprice',
+        },
+      });
+    } catch (e) {
+      console.error('saleprice request notify 실패:', e);
+    }
+  }
   return NextResponse.json(record);
 }
 

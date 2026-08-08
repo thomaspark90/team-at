@@ -5,6 +5,7 @@ export type GardenTopicId =
   | 'recipeEdit'
   | 'calibration'
   | 'beanCard'
+  | 'salePriceRequest' // 발주 저장 → 판매가 설정(saleprice 탭) 담당자에게 책정 요청
   | 'reviewIssue' // (구) 지점 공통 — 화면에서 제거, 지점 토픽 미지정 시 폴백으로만 읽는다(2026-08-08 지점 분리)
   | 'reviewIssueYangjae'
   | 'reviewIssuePangyo'
@@ -19,6 +20,13 @@ export const GARDEN_TOPICS: { id: GardenTopicId; label: string; desc: string; sc
   { id: 'recipeEdit', label: '기존 레시피 수정', desc: '기존 레시피가 수정되면 알림', scope: 'garden' },
   { id: 'calibration', label: 'EK43 캘리브레이션 요청', desc: '분쇄도 측정 요청의 기본 수신자', scope: 'garden' },
   { id: 'beanCard', label: '원두카드 제작 요청', desc: '원두카드 제작 요청의 기본 수신자', scope: 'garden' },
+  // 발주·판매가 책정이 권한 분리된 2단계 플로라, 발주가 저장되면 책정 담당자를 호출한다(2026-08-08)
+  {
+    id: 'salePriceRequest',
+    label: '판매가 책정 대기',
+    desc: '새 발주가 저장되면 판매가 설정 담당자에게 알림',
+    scope: 'garden',
+  },
   // 이슈 리뷰는 지점별 담당자 — 그 지점 리뷰만 그 지점 담당자에게 간다(2026-08-08)
   {
     id: 'reviewIssueYangjae',
@@ -50,6 +58,7 @@ export const EMPTY_TOPICS: GardenTopicMap = {
   recipeEdit: [],
   calibration: [],
   beanCard: [],
+  salePriceRequest: [],
   reviewIssue: [],
   reviewIssueYangjae: [],
   reviewIssuePangyo: [],
