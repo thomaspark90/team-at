@@ -4,7 +4,17 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { KR_HOLIDAYS } from '@/lib/garden/krHolidays';
 import { buildWeatherComments } from '@/lib/garden/weatherComment';
-import { fetchForecastDays, isRainCode, isSnowCode, wmoLabel, type ForecastDay } from '@/lib/garden/weatherForecast';
+import {
+  fetchForecast,
+  fetchPm25,
+  isRainCode,
+  isSnowCode,
+  PM25_BAD,
+  PM25_VERY_BAD,
+  wmoLabel,
+  type ForecastDay,
+  type HourPoint,
+} from '@/lib/garden/weatherForecast';
 
 // 2주 날씨 스트립 — 가든 대시보드 맨 위. 날씨가 원두 소진량에 영향이 커서 발주 판단 참고용.
 // 예보 조회·매핑 규칙은 lib/garden/weatherForecast(주간 브리핑 크론과 공유)에 있다.
@@ -82,22 +92,30 @@ const iconOf = (code: number) => {
 
 export default function WeatherStrip() {
   const [days, setDays] = useState<ForecastDay[] | null>(null);
+  const [hours, setHours] = useState<Map<string, HourPoint[]>>(new Map());
+  const [pm25, setPm25] = useState<Map<string, number>>(new Map());
+  const [selected, setSelected] = useState<string | null>(null); // 카드 클릭 → 시간대별 상세
   const [failed, setFailed] = useState(false);
   const hasData = useRef(false);
   const lastFetch = useRef(0);
 
   const load = () => {
     lastFetch.current = Date.now();
-    fetchForecastDays()
-      .then((out) => {
+    fetchForecast()
+      .then((r) => {
         hasData.current = true;
         setFailed(false);
-        setDays(out);
+        setDays(r.days);
+        setHours(r.hours);
       })
       .catch(() => {
         // 재조회 실패면 기존 데이터 유지 — 첫 조회부터 실패했을 때만 숨긴다
         if (!hasData.current) setFailed(true);
       });
+    // 미세먼지는 부가 정보 — 실패해도 스트립엔 영향 없음
+    fetchPm25()
+      .then(setPm25)
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -220,18 +238,27 @@ export default function WeatherStrip() {
           ]
             .filter(Boolean)
             .join(' · ');
+          const pm = pm25.get(day.ymd);
+          const isSelected = selected === day.ymd;
           const [, m, dd] = day.ymd.split('-');
           return (
             <div
               key={day.ymd}
               className={`rounded-md border ${dayOff ? 'bg-muted' : 'bg-background'}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelected(isSelected ? null : day.ymd)}
+              onKeyDown={(e) => e.key === 'Enter' && setSelected(isSelected ? null : day.ymd)}
+              title="클릭하면 시간대별 상세"
               style={{
                 minWidth: 92,
                 padding: '9px 10px',
                 position: 'relative',
                 overflow: 'hidden',
                 flexShrink: 0,
+                cursor: 'pointer',
                 borderColor: today ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
+                boxShadow: isSelected ? '0 0 0 1px hsl(var(--foreground))' : undefined,
               }}
             >
               {wet && (
@@ -293,11 +320,67 @@ export default function WeatherStrip() {
                     {humidWind}
                   </span>
                 )}
+                {pm != null && pm >= PM25_BAD && (
+                  <span
+                    className="tabular text-[11px] font-medium"
+                    style={{ whiteSpace: 'nowrap', color: pm >= PM25_VERY_BAD ? 'hsl(var(--destructive))' : 'hsl(25 85% 45%)' }}
+                    title="영업시간(11–20시) 최대 PM2.5"
+                  >
+                    미세 {pm >= PM25_VERY_BAD ? '매우 나쁨' : '나쁨'} {Math.round(pm)}
+                  </span>
+                )}
               </div>
             </div>
           );
         })}
       </div>
+      {selected && hours.get(selected) && (
+        <div className="rounded-md border border-border bg-background" style={{ marginTop: 6, padding: '10px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+            <p className="ta-label" style={{ marginBottom: 0 }}>
+              {Number(selected.slice(5, 7))}/{Number(selected.slice(8, 10))} 시간대별 — 기온 · 강수확률
+            </p>
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              className="text-[11px] text-muted-foreground hover:text-foreground"
+              style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer' }}
+            >
+              닫기 ✕
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: 4, overflowX: 'auto', alignItems: 'flex-end' }}>
+            {(hours.get(selected) ?? [])
+              .filter((p) => p.hour >= 8 && p.hour <= 21)
+              .map((p) => (
+                <div
+                  key={p.hour}
+                  title={`${p.hour}시 · ${Math.round(p.temp)}° · 비 ${p.prob}%${p.mm >= 0.1 ? ` ${p.mm.toFixed(1)}mm` : ''}`}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 34, flexShrink: 0 }}
+                >
+                  <span className="tabular text-[11px] text-foreground">{Math.round(p.temp)}°</span>
+                  <div style={{ position: 'relative', width: 14, height: 44, background: 'hsl(var(--muted))', borderRadius: 2, overflow: 'hidden' }}>
+                    <span
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: `${p.prob}%`,
+                        background: 'rgba(59, 130, 246, 0.55)',
+                      }}
+                    />
+                  </div>
+                  <span className={`tabular text-[11px] ${p.prob >= 40 ? 'text-foreground' : 'text-muted-foreground/70'}`}>
+                    {p.prob}
+                  </span>
+                  <span className="tabular text-[11px] text-muted-foreground">{p.hour}시</span>
+                </div>
+              ))}
+          </div>
+          <p className="m-0 mt-2 text-[11px] text-muted-foreground/70">막대 = 강수확률(%) · 8–21시 · 회색 영역이 100%</p>
+        </div>
+      )}
     </section>
   );
 }
