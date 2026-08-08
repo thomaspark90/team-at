@@ -38,7 +38,8 @@ export default function TabNav() {
   };
 
   return (
-    <header className="border-b border-border bg-background">
+    // relative — 모바일 햄버거 패널(absolute)이 헤더 바로 아래에 겹쳐 뜨는 기준
+    <header className="relative border-b border-border bg-background">
       <div className={`mx-auto flex h-12 items-center justify-between gap-2 px-4 sm:gap-6 sm:px-6 ${wide ? 'max-w-[1680px]' : 'max-w-[1100px]'}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-team-at.png" alt="TEAM at" className="h-6 w-auto shrink-0 dark:invert" />
@@ -100,9 +101,24 @@ export default function TabNav() {
         </button>
       </div>
 
-      {/* 모바일 햄버거 패널 — 섹션 링크 + 테마 + 로그아웃 */}
+      {/* 열려 있을 때 패널 바깥(본문)을 살짝 어둡게 — 탭하면 닫힌다 */}
       {menuOpen && (
-        <nav className="border-t border-border sm:hidden" aria-label="모바일 메뉴">
+        <div
+          aria-hidden
+          onClick={() => setMenuOpen(false)}
+          className="fixed inset-0 top-12 z-30 bg-black/20 sm:hidden"
+        />
+      )}
+
+      {/* 모바일 햄버거 패널 — 본문을 밀어내지 않게 헤더 아래 겹치는 레이어로 띄우고,
+          접힘/펼침을 트랜지션으로 처리(닫힘 애니메이션을 위해 항상 렌더) */}
+      <nav
+        aria-label="모바일 메뉴"
+        aria-hidden={!menuOpen}
+        className={`absolute left-0 right-0 top-full z-40 border-b border-border bg-background shadow-md transition-all duration-150 ease-out sm:hidden ${
+          menuOpen ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-2 opacity-0'
+        }`}
+      >
           <div className="flex flex-col px-4 py-2">
             {TABS.filter((t) => !Array.isArray(allowed) || allowed.includes(t.key)).map((tab) => {
               const p = pathname ?? '';
@@ -137,8 +153,7 @@ export default function TabNav() {
               로그아웃
             </button>
           </div>
-        </nav>
-      )}
+      </nav>
     </header>
   );
 }
