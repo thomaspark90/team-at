@@ -51,6 +51,8 @@ export default function GrindMeasurementUpload() {
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  // 이미지 업로드 진행률 — 여러 장을 순차 업로드하므로 전체 기준(장수+현재 장 %)으로 환산해 표시
+  const [uploadState, setUploadState] = useState<{ done: number; total: number; pct: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // 같은 화면의 차트도 같은 목록을 쓰므로 공유 캐시를 거친다(중복 조회 방지)
@@ -77,13 +79,19 @@ export default function GrindMeasurementUpload() {
     setError(null);
     try {
       const imageUrls: string[] = [];
-      for (const file of files) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setUploadState({ done: i, total: files.length, pct: Math.round((i / files.length) * 100) });
         const blob = await upload(`grind-measurements/${Date.now()}-${file.name}`, file, {
           access: 'public',
           handleUploadUrl: '/api/upload',
+          onUploadProgress: ({ percentage }) => {
+            setUploadState({ done: i, total: files.length, pct: Math.round(((i + percentage / 100) / files.length) * 100) });
+          },
         });
         imageUrls.push(blob.url);
       }
+      setUploadState(null); // 이미지 끝 — 이후는 수치 저장(짧음)이라 '저장 중…'으로 전환
       const res = await fetch('/api/garden-grind-measurements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -114,6 +122,7 @@ export default function GrindMeasurementUpload() {
       setError((e as Error).message);
     } finally {
       setSaving(false);
+      setUploadState(null);
     }
   };
 
@@ -289,7 +298,11 @@ export default function GrindMeasurementUpload() {
         {error && <p className="text-[13px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{error}</p>}
 
         <button onClick={save} disabled={!canSave || saving} className="ta-btn-primary" style={{ height: 38, fontSize: 14, opacity: !canSave || saving ? 0.5 : 1 }}>
-          {saving ? '업로드 중…' : '측정 기록 저장'}
+          {saving
+            ? uploadState
+              ? `업로드 중… ${Math.min(uploadState.done + 1, uploadState.total)}/${uploadState.total}장 · ${uploadState.pct}%`
+              : '저장 중…'
+            : '측정 기록 저장'}
         </button>
       </div>
 
