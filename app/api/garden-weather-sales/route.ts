@@ -101,6 +101,9 @@ export async function GET(req: Request) {
   type Daily = { qty: number; supply: number };
   const byStore = new Map<string, Map<string, Daily>>(); // store → date → 합계
   const coffeeYangjae = new Map<string, number>(); // date → COFFEE qty
+  // 판교는 카테고리=메뉴명(페이히어) — 커피 메뉴만 선별. qty 가 결제건수라 '커피 포함 결제' 프록시임에 유의
+  const PANGYO_COFFEE_RE = /아메리카노|라떼|브루잉|커피|에스프레소|콜드브루|하프|플랫화이트|카푸치노|아인슈페너/i;
+  const coffeePangyo = new Map<string, number>();
   const catTotals = new Map<string, Map<string, { qty: number; supply: number }>>();
   for (const r of rows) {
     const store = r.store || '-';
@@ -120,6 +123,9 @@ export async function GET(req: Request) {
     catTotals.set(store, cats);
     if (store === 'yangjae' && /coffee/i.test(r.category)) {
       coffeeYangjae.set(r.sale_date, (coffeeYangjae.get(r.sale_date) ?? 0) + qty);
+    }
+    if (store === 'pangyo' && PANGYO_COFFEE_RE.test(r.category)) {
+      coffeePangyo.set(r.sale_date, (coffeePangyo.get(r.sale_date) ?? 0) + qty);
     }
   }
 
@@ -175,6 +181,15 @@ export async function GET(req: Request) {
         weather,
       ),
     },
+    {
+      key: 'pangyo-coffee',
+      label: '판교 · 커피 포함 결제(건수 프록시)',
+      metric: '건',
+      result: regressWeather(
+        Array.from(coffeePangyo.entries()).map(([date, qty]) => ({ date, y: qty })),
+        weather,
+      ),
+    },
   ];
 
   const categories = Object.fromEntries(
@@ -206,6 +221,14 @@ export async function GET(req: Request) {
   const computedAt = new Date().toISOString();
   try {
     await put(CACHE_PATH, JSON.stringify({ computedAt, payload }), {
+      access: 'private',
+      contentType: 'application/json',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    });
+    // 기준잔수는 별도 Blob 에도 기록 — 날씨 스트립(재무 권한 불필요)이 garden-weather-baselines
+    // API 로 읽어 '내일 예상 잔수'를 자동 최신화한다(분기 수동 갱신 제거).
+    await put('data/garden-weather-baselines.json', JSON.stringify({ computedAt, yangjaeCoffeeCupsByDow }), {
       access: 'private',
       contentType: 'application/json',
       addRandomSuffix: false,

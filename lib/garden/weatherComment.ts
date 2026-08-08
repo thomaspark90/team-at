@@ -72,12 +72,13 @@ export function buildWeatherComments(days: ForecastDay[]): string[] {
   return out.slice(0, 2);
 }
 
-/** 내일 예상 잔수·원두(양재천) — 요일 기준 잔수 × 날씨 배율. 휴무(기준 0)면 null. */
-export function buildTomorrowForecast(days: ForecastDay[]): string | null {
+/** 내일 예상 잔수·원두(양재천) — 요일 기준 잔수 × 날씨 배율. 휴무(기준 0)면 null.
+ *  cupsByDow: 분석이 갱신한 최신 기준(garden-weather-baselines API) — 없으면 내장 상수 폴백. */
+export function buildTomorrowForecast(days: ForecastDay[], cupsByDow?: number[]): string | null {
   const t = days[1];
   if (!t) return null;
   const dow = dowOf(t.ymd);
-  const base = YANGJAE_COFFEE_CUPS_BY_DOW[dow];
+  const base = (cupsByDow && cupsByDow.length === 7 ? cupsByDow : YANGJAE_COFFEE_CUPS_BY_DOW)[dow];
   if (!base) return null; // 정기휴무(월)
   const cups = Math.round((base * cupsWeatherFactor(t)) / 5) * 5;
   const kg = (cups * DOSE_G_PER_CUP) / 1000;

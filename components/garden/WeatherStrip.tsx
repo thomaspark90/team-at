@@ -94,6 +94,8 @@ export default function WeatherStrip() {
   const [days, setDays] = useState<ForecastDay[] | null>(null);
   const [hours, setHours] = useState<Map<string, HourPoint[]>>(new Map());
   const [pm25, setPm25] = useState<Map<string, number>>(new Map());
+  // 요일별 기준 잔수 — 분석이 갱신한 최신값(실패 시 weatherImpact 내장 상수 폴백)
+  const [cupsByDow, setCupsByDow] = useState<number[] | undefined>(undefined);
   const [selected, setSelected] = useState<string | null>(null); // 카드 클릭 → 시간대별 상세
   const [failed, setFailed] = useState(false);
   const hasData = useRef(false);
@@ -115,6 +117,15 @@ export default function WeatherStrip() {
     // 미세먼지는 부가 정보 — 실패해도 스트립엔 영향 없음
     fetchPm25()
       .then(setPm25)
+      .catch(() => {});
+    // 최신 기준 잔수 — 없으면(404 등) 내장 상수로 폴백
+    fetch('/api/garden-weather-baselines', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (Array.isArray(j?.yangjaeCoffeeCupsByDow) && j.yangjaeCoffeeCupsByDow.length === 7) {
+          setCupsByDow(j.yangjaeCoffeeCupsByDow as number[]);
+        }
+      })
       .catch(() => {});
   };
 
@@ -138,7 +149,7 @@ export default function WeatherStrip() {
   // 자정이 지나 재조회 전이라도 지난 날짜 카드는 걸러낸다
   const visible = days?.filter((day) => day.ymd >= todayYmd) ?? null;
   const comments = visible ? buildWeatherComments(visible) : [];
-  const tomorrow = visible ? buildTomorrowForecast(visible) : null;
+  const tomorrow = visible ? buildTomorrowForecast(visible, cupsByDow) : null;
 
   return (
     <section>

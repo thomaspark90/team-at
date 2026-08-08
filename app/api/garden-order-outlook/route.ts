@@ -10,10 +10,11 @@ import { cupsWeatherFactor } from '@/lib/garden/weatherImpact';
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-// 발주 참고 — 원두별 잔여 추정(날씨 보정) v1.
-// 데이터: 원두 재고 %(garden-beans) + 마지막 발주(purchases: 용량 capacityG·시점).
-// 소비 속도 = (용량 × 소진된 %) ÷ 발주 후 경과일 — 발주 1회=1봉(capacityG) 가정의 거친 추정이라
-// '참고용'으로만 표시한다. 다음 7일 날씨 배율로 잔여일을 보정한다.
+// 발주 참고 — 원두별 잔여 추정(날씨 보정) v2.
+// 추정 방법 두 갈래:
+//   '주기' — 같은 원두의 발주 간격 중앙값 × 재고% (발주 2회 이상이면 우선. 봉지 수 가정 불필요)
+//   '용량' — (마지막 발주 capacityG × 소진%) ÷ 경과일 (발주 1회뿐일 때 폴백, 1회=1봉 가정)
+// 어느 쪽이든 참고치 — 다음 7일 날씨 배율로 잔여일을 보정한다.
 
 interface OutlookRow {
   bean: string;
@@ -22,8 +23,16 @@ interface OutlookRow {
   lastPurchaseAt: string; // YYYY-MM-DD
   daysSince: number;
   estDaysLeft: number | null; // null = 추정 불가(소진 이력 부족)
+  method: '주기' | '용량' | null; // 어떤 방식으로 추정했는지
   weatherFactor: number; // 다음 7일 평균 잔수 배율
 }
+
+const median = (nums: number[]): number | null => {
+  if (nums.length === 0) return null;
+  const s = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+};
 
 export async function GET() {
   const supabase = await createClient();
@@ -55,26 +64,46 @@ export async function GET() {
   }
 
   const now = Date.now();
-  const latestByBean = new Map<string, PurchaseRecord>();
+  const byBean = new Map<string, PurchaseRecord[]>();
   for (const p of purchases) {
-    const cur = latestByBean.get(p.bean);
-    if (!cur || (p.createdAt ?? '') > (cur.createdAt ?? '')) latestByBean.set(p.bean, p);
+    if (!p.createdAt) continue;
+    const list = byBean.get(p.bean) ?? [];
+    list.push(p);
+    byBean.set(p.bean, list);
   }
 
   const rows: OutlookRow[] = [];
   for (const meta of beans.beans) {
-    const p = latestByBean.get(meta.bean);
-    if (!p?.createdAt) continue; // 발주 기록 없으면 추정 불가
+    const history = (byBean.get(meta.bean) ?? []).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const p = history[history.length - 1];
+    if (!p) continue; // 발주 기록 없으면 추정 불가
     const daysSince = Math.max(0, Math.floor((now - Date.parse(p.createdAt)) / 86400_000));
+    // 발주 주기 — 연속 발주 간격(1일 이하 중복 입력 제외)의 중앙값
+    const intervals: number[] = [];
+    for (let i = 1; i < history.length; i++) {
+      const d = (Date.parse(history[i].createdAt) - Date.parse(history[i - 1].createdAt)) / 86400_000;
+      if (d > 1) intervals.push(d);
+    }
+    const cycleDays = median(intervals);
     for (const store of ['pangyo', 'yangjae'] as StoreId[]) {
       const stockPct = stockOf(meta, store);
       if (stockPct >= 100) continue; // 소진 이력 없음 — 표시 대상 아님
-      const capacity = p.settings?.capacityG ?? 0;
-      const usedG = (capacity * (100 - stockPct)) / 100;
-      const remainG = (capacity * stockPct) / 100;
-      // 경과 3일 미만·소진 0 은 속도 추정이 불안정
-      const dailyG = daysSince >= 3 && usedG > 0 ? usedG / daysSince : 0;
-      const estDaysLeft = dailyG > 0 ? Math.round(remainG / (dailyG * weatherFactor)) : null;
+      let estDaysLeft: number | null = null;
+      let method: OutlookRow['method'] = null;
+      if (cycleDays != null) {
+        // 주기 기반 — 봉지 수 가정 없이 실제 재발주 패턴 사용
+        estDaysLeft = Math.round((cycleDays * (stockPct / 100)) / weatherFactor);
+        method = '주기';
+      } else {
+        const capacity = p.settings?.capacityG ?? 0;
+        const usedG = (capacity * (100 - stockPct)) / 100;
+        const remainG = (capacity * stockPct) / 100;
+        const dailyG = daysSince >= 3 && usedG > 0 ? usedG / daysSince : 0; // 경과 3일 미만·소진 0 은 불안정
+        if (dailyG > 0) {
+          estDaysLeft = Math.round(remainG / (dailyG * weatherFactor));
+          method = '용량';
+        }
+      }
       rows.push({
         bean: meta.bean,
         store,
@@ -82,6 +111,7 @@ export async function GET() {
         lastPurchaseAt: p.createdAt.slice(0, 10),
         daysSince,
         estDaysLeft,
+        method,
         weatherFactor: Math.round(weatherFactor * 100) / 100,
       });
     }
