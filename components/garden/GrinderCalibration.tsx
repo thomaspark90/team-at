@@ -87,8 +87,8 @@ export default function GrinderCalibration({
             에서 각 지점 EK43을 측정해 다이얼별 <span className="tabular">평균 입자(µm)</span>를 지점마다{' '}
             <strong>2개 이상</strong> 등록하세요. 측정 원본(분포도 캡처)은{' '}
             <a href="/garden/calibration" className="underline hover:text-foreground">분쇄도 측정</a>
-            에 올려두면 산식 고도화에 쓰입니다. 두 지점 모두 채워지면 레시피 분쇄도가 상대 지점 다이얼로 자동
-            환산됩니다. (측정은 같은 원두로, 굵기 구간을 벌려서 — 예: 6.0과 8.0)
+            에 올려두면 산식 고도화에 쓰입니다. 두 지점 모두 채워지면 레시피 분쇄도에 같은 메쉬가 되는 상대
+            지점 다이얼이 자동 표시됩니다. (측정은 같은 원두로, 굵기 구간을 벌려서 — 예: 6.0과 8.0)
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
@@ -169,7 +169,7 @@ export default function GrinderCalibration({
           {/* 환산 미리보기 — 레시피 기준(양재천) → 판교 */}
           {ready ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span className="text-[11px] text-muted-foreground">환산 미리보기 (양재천 → 판교)</span>
+              <span className="text-[11px] text-muted-foreground">다이얼 대응 미리보기 (양재천 → 판교, 같은 메쉬 기준)</span>
               <div className="rounded-md border border-border" style={{ display: 'grid', gridTemplateColumns: `repeat(${SAMPLE_DIALS.length}, 1fr)`, textAlign: 'center' }}>
                 {SAMPLE_DIALS.map((d) => (
                   <div key={`y${d}`} className="tabular text-[13px] text-muted-foreground" style={{ padding: '6px 4px', borderBottom: '1px solid hsl(var(--border))' }}>
@@ -188,7 +188,7 @@ export default function GrinderCalibration({
             </div>
           ) : (
             <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>
-              아직 환산 불가 — 두 지점 모두 측정점이 2개 이상이어야 해요.
+              아직 다이얼 대응 계산 불가 — 두 지점 모두 측정점이 2개 이상이어야 해요.
             </p>
           )}
         </div>

@@ -923,12 +923,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
               </div>
               {draft.grindMesh && pangyoMeshText(Number(draft.grindMesh)) === '재측정 필요' && (
                 <p className="text-[12px] text-muted-foreground" style={{ margin: '4px 0 0' }}>
-                  판교점 EK43 환산 — 재얼라인 이후 재측정 필요 (6/8/10 프로토콜 측정을 올려주세요)
+                  판교점 EK43 메쉬 — 재얼라인 이후 재측정 필요 (6/8/10 프로토콜 측정을 올려주세요)
                 </p>
               )}
               {draft.grindMesh && pangyoMeshText(Number(draft.grindMesh)) != null && pangyoMeshText(Number(draft.grindMesh)) !== '재측정 필요' && (
                 <span className="tabular text-[11px] text-muted-foreground">
-                  판교점 EK43 환산 ≈ {pangyoMeshText(Number(draft.grindMesh))}
+                  판교점 EK43 메쉬 ≈ {pangyoMeshText(Number(draft.grindMesh))}
                 </span>
               )}
             </div>
@@ -1080,7 +1080,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
           {!loading && beanGroups.length > 0 && (
             <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>
-              판교 분쇄도는 지점 캘리브레이션 실측 기반 환산값입니다. <strong>*</strong>는 잠정 범위(환산 실측 전),
+              판교 분쇄도는 지점 캘리브레이션 실측 기반 메쉬 값입니다. <strong>*</strong>는 잠정 범위(메쉬 실측 전),
               &lsquo;재측정 필요&rsquo;는 재얼라인 이후 새 측정이 아직 없다는 뜻입니다 —{' '}
               <Link href="/garden/calibration/report" className="underline hover:text-foreground">
                 리포트 보기

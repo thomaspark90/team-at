@@ -241,7 +241,7 @@ export default function GrindCalibrationCharts() {
     const had = profiles[id]?.points?.length ?? 0;
     const warn = had
       ? `${storeLabel(id)}에 저장된 측정점 ${had}개가 현행 측정 ${pts.length}개로 교체됩니다. 계속할까요?`
-      : `${storeLabel(id)}의 현행 측정 ${pts.length}개를 레시피 환산에 적용할까요?`;
+      : `${storeLabel(id)}의 현행 측정 ${pts.length}개를 레시피 메쉬 기준에 적용할까요?`;
     if (!window.confirm(warn)) return;
     setApplying(id);
     try {
@@ -284,18 +284,18 @@ export default function GrindCalibrationCharts() {
               {/* '기울기(µm/다이얼)' 통계 용어는 화면에서 제거(2026-08-08 대표 지시 — 물리적
                   기울어짐으로 오독됨). 바리스타에게 유효한 다이얼 8 환산값을 헤드라인으로. */}
               <div className="tabular text-[22px] text-foreground" style={{ marginTop: 4 }}>
-                {fit ? `다이얼 8 ≈ ${Math.round(dialToMicron(fit, 8))}µm` : '환산 미확정'}
+                {fit ? `다이얼 8 ≈ ${Math.round(dialToMicron(fit, 8))}µm` : '메쉬 기준 미확정'}
               </div>
               <div className="text-[11px] text-muted-foreground" style={{ marginTop: 2 }}>
                 {fit
-                  ? `현행 측정 ${points[s.id].current.length}샷 기준 환산`
+                  ? `현행 측정 ${points[s.id].current.length}샷 기준`
                   : `서로 다른 다이얼 2개 이상 측정 필요 (현행 ${points[s.id].current.length}샷)`}
               </div>
               {fit && (
                 <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   {upToDate ? (
                     <span className="tabular text-[11px]" style={{ color: 'hsl(150 60% 35%)' }}>
-                      레시피 환산에 적용됨{profile?.updatedAt ? ` · ${profile.updatedAt.slice(5, 10).replace('-', '.')}` : ''}
+                      레시피 메쉬 기준에 적용됨{profile?.updatedAt ? ` · ${profile.updatedAt.slice(5, 10).replace('-', '.')}` : ''}
                     </span>
                   ) : (
                     <button
@@ -304,7 +304,7 @@ export default function GrindCalibrationCharts() {
                       className="ta-btn"
                       style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 12 }}
                     >
-                      {applying === s.id ? '적용 중…' : profileFit ? '이 피팅으로 환산 갱신' : '레시피 환산에 적용'}
+                      {applying === s.id ? '적용 중…' : profileFit ? '이 측정으로 메쉬 기준 갱신' : '레시피 메쉬 기준에 적용'}
                     </button>
                   )}
                 </div>
@@ -321,12 +321,12 @@ export default function GrindCalibrationCharts() {
             {meanOffset != null
               ? Math.abs(meanOffset) <= REPEATABILITY_TOLERANCE_UM
                 ? `±${REPEATABILITY_TOLERANCE_UM}µm 이내 — 두 지점 얼라인 일치`
-                : `±${REPEATABILITY_TOLERANCE_UM}µm 초과 — 다이얼 환산 필요`
+                : `±${REPEATABILITY_TOLERANCE_UM}µm 초과 — 지점 간 메쉬 맞춤 필요`
               : '두 지점이 같은 다이얼을 측정하면 계산됩니다'}
           </div>
           {bothApplied && (
             <div className="tabular text-[11px]" style={{ marginTop: 8, color: 'hsl(150 60% 35%)' }}>
-              두 지점 환산 적용됨 — 레시피의 판교 다이얼이 실측 확정값으로 표시됩니다
+              두 지점 메쉬 기준 적용됨 — 레시피의 판교 다이얼이 실측 확정값으로 표시됩니다
             </div>
           )}
         </div>

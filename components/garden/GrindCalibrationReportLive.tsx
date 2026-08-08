@@ -143,7 +143,7 @@ export default function GrindCalibrationReportLive() {
           }
         />
         <Stat
-          value={meanOffset == null ? '측정 대기' : aligned ? '얼라인 일치' : '환산 필요'}
+          value={meanOffset == null ? '측정 대기' : aligned ? '얼라인 일치' : '메쉬 맞춤 필요'}
           tone={meanOffset == null ? undefined : aligned ? 'ok' : 'warn'}
           label={`판정 기준: 샷 간 반복성 ±${REPEATABILITY_TOLERANCE_UM}µm 이내면 두 지점 일치`}
         />
