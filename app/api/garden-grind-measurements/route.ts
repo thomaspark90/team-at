@@ -60,8 +60,14 @@ export async function POST(req: Request) {
     .map((u: unknown) => String(u))
     .filter((u: string) => u.startsWith('https://'));
 
+  // id는 클라이언트가 미리 만들어 보낼 수 있다 — 수치를 이미지 업로드 전에 먼저 저장하고
+  // (2026-08-08 대표 지적: 이미지 업로드가 느려 저장 버튼이 오래 막혀 있던 문제),
+  // 이미지는 백그라운드로 올린 뒤 이 id로 PATCH 해 붙인다. 형식이 아니면 서버가 새로 발급.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const clientId = typeof body.id === 'string' && UUID_RE.test(body.id) ? body.id : null;
+
   const measurement: GrindMeasurement = {
-    id: crypto.randomUUID(),
+    id: clientId ?? crypto.randomUUID(),
     store: storeId,
     bean,
     roast: ROAST_IDS.includes(body.roast) ? (body.roast as RoastLevel) : undefined,
@@ -110,6 +116,33 @@ export async function POST(req: Request) {
   } catch (e) {
     console.error('측정 업로드 알림 실패:', e);
   }
+  return NextResponse.json(await grindMeasurementRecords.readAll());
+}
+
+// 이미지 붙이기: { id, imageUrls } — 수치를 먼저 저장(POST)한 뒤, 백그라운드 업로드가
+// 끝나면 여기로 imageUrls를 채운다. 수치 저장이 이미지 업로드를 기다리지 않게 하는 목적.
+export async function PATCH(req: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, 'calibration');
+    if (denied) return denied;
+  }
+
+  const body = await req.json();
+  const id = String(body.id ?? '');
+  if (!id) return NextResponse.json({ error: 'id가 필요합니다.' }, { status: 400 });
+  const imageUrls = (Array.isArray(body.imageUrls) ? body.imageUrls : [])
+    .map((u: unknown) => String(u))
+    .filter((u: string) => u.startsWith('https://'));
+
+  const target = await grindMeasurementRecords.readOne(id);
+  if (!target) return NextResponse.json({ error: '측정 기록을 찾을 수 없습니다.' }, { status: 404 });
+
+  await grindMeasurementRecords.writeOne({ ...target, imageUrls: [...target.imageUrls, ...imageUrls] });
   return NextResponse.json(await grindMeasurementRecords.readAll());
 }
 

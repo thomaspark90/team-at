@@ -81,8 +81,10 @@ export default function GrindMeasurementUpload() {
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
-  // 이미지 업로드 진행률 — 여러 장을 순차 업로드하므로 전체 기준(장수+현재 장 %)으로 환산해 표시
-  const [uploadState, setUploadState] = useState<{ done: number; total: number; pct: number } | null>(null);
+  // 이미지 업로드는 백그라운드(2026-08-08 대표 지적 — 업로드가 느려 저장 버튼이 오래 막힘).
+  // 수치 저장은 즉시 끝나고, 이미지는 뒤에서 올라가며 이 상태만 별도로 진행률을 보여준다.
+  const [bgUpload, setBgUpload] = useState<{ done: number; total: number; pct: number } | null>(null);
+  const [bgError, setBgError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // 같은 화면의 차트도 같은 목록을 쓰므로 공유 캐시를 거친다(중복 조회 방지)
@@ -148,44 +150,69 @@ export default function GrindMeasurementUpload() {
 
   const canSave = draft.bean.trim() !== '' && draft.dial.trim() !== '' && (files.length > 0 || draft.mean.trim() !== '');
 
-  const save = async () => {
-    if (!canSave || saving) return;
-    setSaving(true);
-    setError(null);
+  // 이미지를 병렬 업로드(파일은 선택 시 이미 compressCapture 로 축소됨) 후 PATCH 로 붙인다.
+  // save() 가 기다리지 않는 백그라운드 작업 — 실패해도 이미 저장된 수치 기록은 그대로 남는다.
+  const uploadImagesInBackground = async (id: string, toUpload: File[]) => {
+    if (toUpload.length === 0) return;
+    setBgError(null);
     try {
-      // 병렬 업로드 — 파일은 이미 선택 시 압축돼 있다(compressCapture). 순차보다 왕복 지연이
-      // 줄어 체감 속도가 빠르다. 진행률은 파일별 퍼센트 배열의 평균으로 집계.
-      const perFilePct = new Array(files.length).fill(0);
-      const reportProgress = () =>
-        setUploadState({
+      const perFilePct = new Array(toUpload.length).fill(0);
+      const report = () =>
+        setBgUpload({
           done: perFilePct.filter((p) => p >= 100).length,
-          total: files.length,
-          pct: Math.round(perFilePct.reduce((s, p) => s + p, 0) / files.length),
+          total: toUpload.length,
+          pct: Math.round(perFilePct.reduce((s, p) => s + p, 0) / toUpload.length),
         });
-      reportProgress();
+      report();
       const uploaded = await Promise.all(
-        files.map((file, i) =>
+        toUpload.map((file, i) =>
           upload(`grind-measurements/${Date.now()}-${i}-${file.name}`, file, {
             access: 'public',
             handleUploadUrl: '/api/upload',
             onUploadProgress: ({ percentage }) => {
               perFilePct[i] = percentage;
-              reportProgress();
+              report();
             },
           }),
         ),
       );
-      const imageUrls = uploaded.map((b) => b.url);
-      setUploadState(null); // 이미지 끝 — 이후는 수치 저장(짧음)이라 '저장 중…'으로 전환
+      const res = await fetch('/api/garden-grind-measurements', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, imageUrls: uploaded.map((b) => b.url) }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? '이미지 첨부에 실패했습니다.');
+      }
+      const next = await res.json();
+      setItems(next);
+      primeGrindMeasurements(next);
+    } catch (e) {
+      setBgError(`이미지 업로드 실패(측정값은 저장됨) — ${(e as Error).message}`);
+    } finally {
+      setBgUpload(null);
+    }
+  };
+
+  const save = async () => {
+    if (!canSave || saving) return;
+    setSaving(true);
+    setError(null);
+    // 저장 시점의 파일 스냅샷 — 아래에서 폼을 바로 비우므로 배경 업로드용으로 먼저 떼어둔다
+    const toUpload = files;
+    try {
+      const id = crypto.randomUUID();
       const res = await fetch('/api/garden-grind-measurements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id,
           store: draft.store,
           bean: draft.bean.trim(),
           roast: draft.roast,
           dial: Number(draft.dial),
-          imageUrls,
+          imageUrls: [], // 이미지는 이 요청을 기다리지 않고 아래에서 백그라운드로 붙는다
           mean: draft.mean.trim() === '' ? undefined : Number(draft.mean),
           std: draft.std.trim() === '' ? undefined : Number(draft.std),
           fines: draft.fines.trim() === '' ? undefined : Number(draft.fines),
@@ -203,11 +230,12 @@ export default function GrindMeasurementUpload() {
       // 같은 원두·다이얼로 샷을 연속 업로드하는 프로토콜이라 지점·원두·다이얼은 유지
       setDraft((d) => ({ ...d, mean: '', std: '', fines: '', shareUrl: '', memo: '' }));
       setFiles([]);
+      setScanNote(null);
+      void uploadImagesInBackground(id, toUpload); // 기다리지 않음 — 다음 측정을 바로 이어 입력 가능
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setSaving(false);
-      setUploadState(null);
     }
   };
 
@@ -421,12 +449,21 @@ export default function GrindMeasurementUpload() {
         )}
 
         <button onClick={save} disabled={!canSave || saving} className="ta-btn-primary" style={{ height: 38, fontSize: 13, opacity: !canSave || saving ? 0.5 : 1 }}>
-          {saving
-            ? uploadState
-              ? `업로드 중… ${Math.min(uploadState.done + 1, uploadState.total)}/${uploadState.total}장 · ${uploadState.pct}%`
-              : '저장 중…'
-            : '측정 기록 저장'}
+          {saving ? '저장 중…' : '측정 기록 저장'}
         </button>
+
+        {/* 이미지는 백그라운드로 올라간다 — 저장 버튼을 막지 않는다(2026-08-08 대표 지적) */}
+        {bgUpload && (
+          <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+            ⏳ 이미지 배경 업로드 중… {Math.min(bgUpload.done + 1, bgUpload.total)}/{bgUpload.total}장 ·{' '}
+            {bgUpload.pct}% (측정값은 이미 저장됐어요)
+          </p>
+        )}
+        {bgError && (
+          <p className="text-[13px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>
+            {bgError}
+          </p>
+        )}
       </div>
 
       {/* 측정 목록 — 날짜별 그룹, 날짜 안에서 두 지점 모두 있으면 비교 가능 표시 */}
