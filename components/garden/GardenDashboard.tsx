@@ -823,6 +823,32 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     </div>
   );
 
+  // 판매가 미책정 카드 — 발주는 됐는데 판매가가 아직 없는 기록. 책정은 권한이 분리된
+  // '판매가 설정' 탭(saleprice) 담당이라 여기서는 건수·원두명만 보여주고 링크로 유도한다.
+  const unpriced = purchases.filter((r) => r.chosenPrice == null);
+  const unpricedCard = unpriced.length > 0 && (
+    <div className="ta-card bg-background min-w-0">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <p className="ta-label" style={{ margin: 0 }}>판매가 미책정 — {unpriced.length}건</p>
+        <span
+          className="text-[12px] text-muted-foreground"
+          style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+        >
+          {unpriced.slice(0, 3).map((r) => r.bean).join(' · ')}
+          {unpriced.length > 3 && ' 외'}
+        </span>
+        <span style={{ flex: 1 }} />
+        <Link
+          href="/garden/saleprice"
+          className="ta-btn"
+          style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 13, flexShrink: 0, textDecoration: 'none' }}
+        >
+          판매가 설정 열기 →
+        </Link>
+      </div>
+    </div>
+  );
+
   return (
     // unset(대시보드) 모드는 아래 캘리브레이션과 같은 풀폭, recipes 모드는 기존 720 유지
     <div style={{ width: '100%', maxWidth: section === 'unset' ? undefined : 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
@@ -1072,6 +1098,8 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           에서 관리합니다.
         </p>
       )}
+      {/* 판매가 미책정 — 책정 담당자가 대시보드만 봐도 대기 건을 알 수 있게 */}
+      {section === 'unset' && unpricedCard}
       {section === 'unset' && unsetCard}
 
       {/* 추출 타이머 오버레이 — 카드의 ▶ 타이머로 열기 */}

@@ -14,6 +14,8 @@ export default function GardenNav() {
   const [allowed, setAllowed] = useState<string[] | null | undefined>(undefined);
   // 네이버 리뷰 탭 배지 — 액션 필요 건수. 부가 정보라 실패해도 조용히 스킵
   const [reviewCount, setReviewCount] = useState(0);
+  // 판매가 설정 탭 배지 — 책정 대기(판매가 미책정) 발주 건수
+  const [unpricedCount, setUnpricedCount] = useState(0);
 
   useEffect(() => {
     fetch('/api/garden-tab-access?scope=mine', { cache: 'no-store' })
@@ -27,6 +29,14 @@ export default function GardenNav() {
     fetch('/api/garden-reviews/count', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : { count: 0 }))
       .then((j) => setReviewCount(j.count ?? 0))
+      .catch(() => {});
+  }, [allowed, pathname]);
+
+  useEffect(() => {
+    if (Array.isArray(allowed) && !allowed.includes('saleprice')) return;
+    fetch('/api/purchases?scope=unpriced-count', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : { count: 0 }))
+      .then((j) => setUnpricedCount(j.count ?? 0))
       .catch(() => {});
   }, [allowed, pathname]);
 
@@ -54,7 +64,8 @@ export default function GardenNav() {
               {i > 0 && <span aria-hidden className="hidden h-3 w-px bg-border sm:block" />}
               {shown.map(({ key, href, label }) => {
                 const active = pathname === href;
-                const badge = key === 'reviews' && reviewCount > 0 ? reviewCount : 0;
+                const badge =
+                  key === 'reviews' ? reviewCount : key === 'saleprice' ? unpricedCount : 0;
                 return (
                   <Link
                     key={href}

@@ -13,7 +13,7 @@ import { APP_URL } from '@/lib/app-url';
 // 같은 원두·같은 매입가·같은 날(KST)은 append 대신 대체한다.
 const kstDay = (iso: string) => new Date(new Date(iso).getTime() + 9 * 3600_000).toISOString().slice(0, 10);
 
-export async function GET() {
+export async function GET(req: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,6 +22,12 @@ export async function GET() {
   {
     const denied = await requireGardenTab(supabase, user, ['pricing', 'saleprice', 'recipes', 'dashboard', 'beancard']);
     if (denied) return denied;
+  }
+
+  // 나비 배지용 경량 응답 — 판매가 미책정 건수만 (매 페이지 로드에 전체 레코드를 내리지 않게)
+  if (new URL(req.url).searchParams.get('scope') === 'unpriced-count') {
+    const count = (await purchaseRecords.readAll()).filter((r) => r.chosenPrice == null).length;
+    return NextResponse.json({ count });
   }
 
   return NextResponse.json(await purchaseRecords.readAll());
