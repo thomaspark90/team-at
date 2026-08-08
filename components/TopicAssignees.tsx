@@ -51,7 +51,7 @@ export default function TopicAssignees({
     save(topic, Array.from(new Set([...map[topic], email])));
 
   return (
-    <div className="ta-card bg-background min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
         <p className="text-[14px] font-medium text-foreground" style={{ margin: 0 }}>{title}</p>
         <p className="text-[12px] text-muted-foreground" style={{ margin: '2px 0 0' }}>

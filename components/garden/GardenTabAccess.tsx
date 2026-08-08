@@ -248,7 +248,7 @@ export default function GardenTabAccess({
   };
 
   return (
-    <section className="rounded-lg border border-border bg-card/40" style={{ padding: 16 }}>
+    <section className="min-w-0">
       <h2 className="text-[14px] font-medium" style={{ margin: '0 0 4px' }}>
         페이지 접근 권한
       </h2>

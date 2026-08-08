@@ -12,7 +12,8 @@ export default function StudioSettingsPage() {
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <StudioNav />
-      <div className="mx-auto max-w-[1100px] px-6 py-8" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* 카드 해체(2026-08-08) — 가든 설정과 동일하게 섹션 경계는 제목+넓은 여백으로 */}
+      <div className="mx-auto max-w-[1100px] px-6 py-8" style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
         <TopicAssignees
           scope="staffmeal"
           intro="스탭밀 관련 알림을 누가 받을지 정합니다. 특히 '영수증 확인 필요 금액'은 명세서에서 우리 항목에 없는 금액(할인·반품·선입금 등)이나 계산이 맞지 않는 값이 보일 때 즉시 알려주는 항목이라, 돈을 관리하는 사람을 꼭 지정해 두세요."

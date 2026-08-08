@@ -102,7 +102,7 @@ export default function GardenOptionsManager() {
   if (!options) return null;
 
   return (
-    <div className="ta-card bg-background min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
         <p className="text-[14px] font-medium text-foreground" style={{ margin: 0 }}>발주 드롭다운 관리</p>
         <p className="text-[12px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
@@ -203,12 +203,12 @@ function RoasteryList({
           아직 등록된 항목이 없어요. 발주 화면에서 직접 입력해 저장해도 여기에 추가됩니다.
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        // 항목 박스의 보더 제거 — 카톡방 인풋이 자체 보더를 가져 3겹이 됐었다. 가는 구분선 행으로 (2026-08-08)
+        <div className="divide-y divide-border/60">
           {items.map((v) => (
             <div
               key={v}
-              className="rounded-md border border-border"
-              style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 10px', minWidth: 0 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 0', minWidth: 0 }}
             >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
               {editing === v ? (

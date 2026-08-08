@@ -50,7 +50,7 @@ export default function TodoList({
   const fmt = (iso?: string) => (iso ? iso.slice(5, 10).replace('-', '.') : '');
 
   return (
-    <div className="ta-card bg-background min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div>
         <p className="text-[14px] font-medium text-foreground" style={{ margin: 0 }}>{title}</p>
         <p className="text-[12px] text-muted-foreground" style={{ margin: '2px 0 0' }}>

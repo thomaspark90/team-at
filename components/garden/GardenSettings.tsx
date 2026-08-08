@@ -157,7 +157,7 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
   );
 
   return (
-    <div className="ta-card bg-background min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
         <p className="text-[14px] font-medium text-foreground" style={{ margin: 0 }}>알림</p>
         <p className="text-[12px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
@@ -276,7 +276,7 @@ function RequestForms() {
   };
 
   return (
-    <div className="ta-card bg-background min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div>
         <p className="text-[14px] font-medium text-foreground" style={{ margin: 0 }}>요청 보내기</p>
         <p className="text-[12px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
@@ -379,7 +379,8 @@ export default function GardenSettings() {
   }, []);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    // 카드 해체(2026-08-08) — 섹션 경계는 보더 대신 제목+넓은 여백으로
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
       <NotificationCenter recipients={recipients} />
       <RequestForms />
       {/* 필터 원두 발주의 스탭이름·로스팅사 드롭다운 명단 */}
