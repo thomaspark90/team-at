@@ -381,24 +381,24 @@ export default function GardenSettings() {
   return (
     // 카드 해체(2026-08-08) — 주요 섹션 경계는 가로 구분선으로만
     <div className="divide-y divide-border">
-      <div className="pb-9">
+      <div className="pb-[54px]">
         <NotificationCenter recipients={recipients} />
       </div>
-      <div className="py-9">
+      <div className="py-[54px]">
         <RequestForms />
       </div>
       {/* 필터 원두 발주의 스탭이름·로스팅사 드롭다운 명단 */}
-      <div className="py-9">
+      <div className="py-[54px]">
         <GardenOptionsManager />
       </div>
       {/* 계정별 페이지 접근 권한(상위 메뉴 + 가든 하위 탭) — admin 전용 */}
       {tabUsers && (
-        <div className="py-9">
+        <div className="py-[54px]">
           <GardenTabAccess initial={tabUsers} initialAllowed={allowedEmails} />
         </div>
       )}
       {/* 투두는 공용 컴포넌트(components/TodoList) — 스탭밀 설정과 공유 */}
-      <div className="pt-9">
+      <div className="pt-[54px]">
         <TodoList
           api="/api/garden-todos"
           title="필터커피 투두리스트"

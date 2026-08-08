@@ -14,14 +14,14 @@ export default function StudioSettingsPage() {
       <StudioNav />
       {/* 카드 해체(2026-08-08) — 가든 설정과 동일하게 주요 섹션 경계는 가로 구분선으로만 */}
       <div className="mx-auto max-w-[1100px] divide-y divide-border px-6 py-8">
-        <div className="pb-9">
+        <div className="pb-[54px]">
           <TopicAssignees
             scope="staffmeal"
             intro="스탭밀 관련 알림을 누가 받을지 정합니다. 특히 '영수증 확인 필요 금액'은 명세서에서 우리 항목에 없는 금액(할인·반품·선입금 등)이나 계산이 맞지 않는 값이 보일 때 즉시 알려주는 항목이라, 돈을 관리하는 사람을 꼭 지정해 두세요."
           />
         </div>
         {/* 스탭밀 팀 투두 — 대시보드 작업 보드에 카드로도 뜬다 */}
-        <div className="pt-9">
+        <div className="pt-[54px]">
           <TodoList
             api="/api/staffmeal-todos"
             title="스탭밀 투두리스트"
