@@ -320,6 +320,11 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
             )}
           </div>
 
+          {/* 미리보기만 보고 저장을 안 누른 채 떠나는 사고 방지(2026-08-08 판교 업로드 누락 건) */}
+          <p className="m-0 text-[13px] font-medium" style={{ color: 'hsl(25 85% 45%)' }}>
+            ⚠️ 아직 저장 전이에요 — 내용 확인 후 아래 &lsquo;매출 저장&rsquo; 버튼을 눌러야 반영됩니다.
+          </p>
+
           <div className="overflow-hidden rounded-md border border-border bg-background">
             <table className="w-full border-collapse text-[13px]">
               <thead>
