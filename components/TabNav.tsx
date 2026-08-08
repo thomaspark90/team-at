@@ -101,25 +101,18 @@ export default function TabNav() {
         </button>
       </div>
 
-      {/* 열려 있을 때 패널 바깥(본문)을 살짝 어둡게 — 탭하면 닫힌다 */}
-      {menuOpen && (
-        <div
-          aria-hidden
-          onClick={() => setMenuOpen(false)}
-          className="fixed inset-0 top-12 z-30 bg-black/20 sm:hidden"
-        />
-      )}
-
-      {/* 모바일 햄버거 패널 — 본문을 밀어내지 않게 헤더 아래 겹치는 레이어로 띄우고,
-          접힘/펼침을 트랜지션으로 처리(닫힘 애니메이션을 위해 항상 렌더) */}
+      {/* 모바일 햄버거 패널 — 헤더 아래를 통째로 덮는 풀스크린 화이트 레이어(FRAMA 무드).
+          본문을 밀어내지 않고, 접힘/펼침은 트랜지션(닫힘 애니메이션을 위해 항상 렌더). */}
       <nav
         aria-label="모바일 메뉴"
         aria-hidden={!menuOpen}
-        className={`absolute left-0 right-0 top-full z-40 border-b border-border bg-background shadow-md transition-all duration-150 ease-out sm:hidden ${
+        className={`absolute left-0 right-0 top-full z-40 h-[calc(100dvh-3rem)] overflow-y-auto bg-background transition-all duration-200 ease-out sm:hidden ${
           menuOpen ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-2 opacity-0'
         }`}
       >
-          <div className="flex flex-col px-4 py-2">
+        <div className="flex h-full flex-col px-6 pb-8 pt-7">
+          {/* 섹션 링크 — 큰 타이포, 현재 위치만 진하게 */}
+          <div className="flex flex-col">
             {TABS.filter((t) => !Array.isArray(allowed) || allowed.includes(t.key)).map((tab) => {
               const p = pathname ?? '';
               const active =
@@ -134,25 +127,31 @@ export default function TabNav() {
                   href={tab.href}
                   aria-current={active ? 'page' : undefined}
                   onClick={() => setMenuOpen(false)}
-                  className={`py-2.5 text-[14px] transition-colors ${
-                    active ? 'font-medium text-foreground' : 'text-muted-foreground'
+                  className={`py-2 text-[20px] leading-snug tracking-[-0.3px] transition-colors ${
+                    active ? 'font-medium text-foreground' : 'text-foreground/55 hover:text-foreground'
                   }`}
                 >
                   {tab.label}
                 </Link>
               );
             })}
-            <div className="mt-1 flex items-center justify-between border-t border-border py-2.5">
-              <span className="text-[13px] text-muted-foreground">테마</span>
-              <ThemeOptions />
-            </div>
-            <button
-              onClick={handleLogout}
-              className="py-2.5 text-left text-[13px] text-muted-foreground transition-colors hover:text-foreground"
-            >
-              로그아웃
-            </button>
           </div>
+
+          <div className="flex-1" />
+
+          {/* 하단 유틸리티 — 헤어라인 구분의 조용한 행들 */}
+          <div className="flex items-center justify-between border-t border-border py-3.5">
+            <span className="text-[13px] text-muted-foreground">테마</span>
+            <ThemeOptions />
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center justify-between border-t border-border py-3.5 text-left text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            로그아웃
+            <span aria-hidden>→</span>
+          </button>
+        </div>
       </nav>
     </header>
   );
