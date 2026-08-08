@@ -1,5 +1,34 @@
 # Supabase 스키마 관리
 
+**2026-08-08 부터 CLI 마이그레이션 체계로 전환.** 현재 프로덕션 스키마 전체(public + finance,
+RLS 정책·그랜트 포함)가 `migrations/20260808181841_remote_schema_baseline.sql` 베이스라인으로
+잡혀 있고, 원격 이력(`supabase_migrations.schema_migrations`)에도 적용됨으로 기록돼 있다.
+루트의 `migration_*.sql` 들은 전환 이전의 수동 실행 기록 — **이미 전부 베이스라인에 포함**되어
+있으므로 다시 실행하지 않는다(역사 참고용으로만 유지).
+
+## 새 변경을 만들 때 (전환 후 워크플로)
+
+```bash
+cd ~/Projects/team-at
+supabase migration new <이름>          # supabase/migrations/<ts>_<이름>.sql 생성 → SQL 작성
+supabase db push --db-url "$SUPABASE_DB_URL"   # 미적용분만 순서대로 적용
+supabase migration list --db-url "$SUPABASE_DB_URL"   # 이력 확인
+```
+
+- `SUPABASE_DB_URL` 은 `.env.local` 에 있다(세션 풀러 경유, 비밀번호 포함).
+- 여전히 멱등하게 작성하는 습관은 유지 — 코드 쪽 권한 판정과 RLS 를 함께 고칠 것.
+- 주의(환경 제약, 2026-08-08 기준):
+  - `supabase link` 는 CLI 2.112.0 의 api-keys 응답 파싱 버그로 실패 — `supabase/.temp/project-ref`
+    수동 기록으로 우회해 뒀다. 새 CLI 버전에서 link 가 되면 `--db-url` 없이도 동작한다.
+  - `db pull`/`db diff` 는 shadow DB용 Docker 가 필요한데 이 Mac 엔 Docker 가 없다.
+    스키마 재덤프가 필요하면 `/opt/homebrew/opt/libpq/bin/pg_dump --schema-only --no-owner
+    --schema=public --schema=finance` 로 뜬다(이번 베이스라인 생성 방식).
+  - 직결 호스트(db.*.supabase.co)는 IPv6 전용이라 항상 풀러 주소를 쓴다.
+
+---
+
+## (전환 이전 기록) 수동 실행 방식
+
 이 폴더의 SQL은 **Supabase SQL Editor에 수동으로 붙여넣어 실행**하는 방식으로 운영해 왔다.
 모든 파일은 멱등(여러 번 실행해도 안전)하게 작성하는 것이 규칙이다 — `create table if not exists`,
 `create or replace view`, `drop policy if exists` 후 재생성.
