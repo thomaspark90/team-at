@@ -91,7 +91,9 @@ export async function POST(req: Request) {
       dedup_hash: r.external_id
         ? hash('coupang', r.external_id)
         : hash('coupang', r.paid_at, merchant, r.product ?? '', r.amount),
-      normalized_key: normalizeKey(merchant),
+      // 쿠팡은 가맹점명이 전부 '쿠팡'이라 키가 하나로 뭉침 → 분류 전파가 전 행을 덮치는 사고(2026-08-08).
+      // 상품명을 붙여 '반복 구매 상품' 단위로만 전파·학습되게 한다.
+      normalized_key: normalizeKey(product ? `${merchant} ${product}` : merchant),
       category_id: null as number | null,
       classified_by: null,
       classified_at: null,

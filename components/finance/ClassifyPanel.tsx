@@ -393,7 +393,10 @@ export default function ClassifyPanel({
     setError(null);
     const supabase = createClient();
     const now = new Date().toISOString();
-    const key = opts?.single ? null : tx.normalized_key;
+    // 플랫폼명 키('쿠팡'·'네이버페이')는 가맹점 구분력이 없어 전파하면 전 행이 덮인다
+    // (2026-08-08 사고 — 기수집 레거시 행 보호. 새 수집분은 상품명 포함 키라 정상 전파).
+    const generic = tx.normalized_key === '쿠팡' || tx.normalized_key === '네이버페이';
+    const key = opts?.single || generic ? null : tx.normalized_key;
 
     let q = supabase
       .schema('finance')

@@ -87,7 +87,8 @@ export async function POST(req: Request) {
       dedup_hash: r.external_id
         ? hash('naverpay', r.external_id)
         : hash('naverpay', r.paid_at, merchant, r.product ?? '', r.amount),
-      normalized_key: normalizeKey(merchant),
+      // 가맹점명이 비어 '네이버페이' 폴백이면 키가 뭉쳐 분류 전파가 과도해짐 — 상품명으로 세분화(쿠팡과 동일 이슈)
+      normalized_key: normalizeKey(merchant === '네이버페이' && product ? `${merchant} ${product}` : merchant),
       category_id: null as number | null,
       classified_by: null,
       classified_at: null,
