@@ -281,12 +281,14 @@ export default function GrindCalibrationCharts() {
                 <span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: C[s.id] }} aria-hidden />
                 {s.label} · 얼라인 {last ?? '기록 없음'}
               </div>
+              {/* '기울기(µm/다이얼)' 통계 용어는 화면에서 제거(2026-08-08 대표 지시 — 물리적
+                  기울어짐으로 오독됨). 바리스타에게 유효한 다이얼 8 환산값을 헤드라인으로. */}
               <div className="tabular text-[22px] text-foreground" style={{ marginTop: 4 }}>
-                {fit ? `${Math.round(fit.a)}µm/다이얼` : '기울기 미확정'}
+                {fit ? `다이얼 8 ≈ ${Math.round(dialToMicron(fit, 8))}µm` : '환산 미확정'}
               </div>
               <div className="text-[11px] text-muted-foreground" style={{ marginTop: 2 }}>
                 {fit
-                  ? `현행 측정 ${points[s.id].current.length}샷 피팅 · 다이얼 8 ≈ ${Math.round(dialToMicron(fit, 8))}µm`
+                  ? `현행 측정 ${points[s.id].current.length}샷 기준 환산`
                   : `서로 다른 다이얼 2개 이상 측정 필요 (현행 ${points[s.id].current.length}샷)`}
               </div>
               {fit && (

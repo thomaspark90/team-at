@@ -17,7 +17,7 @@ import EmailAddPicker, { useTeamEmails } from '@/components/EmailAddPicker';
 
 // 요청 내용 프리셋 — 캘리브레이션 운영에서 실제로 쓰는 것 + 직접 입력
 const PRESETS = [
-  { id: 'slope', label: '기울기 측정 — 다이얼 6 · 8 · 10 × 각 3샷' },
+  { id: 'slope', label: '분쇄도 측정 — 다이얼 6 · 8 · 10 × 각 3샷' },
   { id: 'custom', label: '직접 입력' },
 ];
 

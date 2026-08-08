@@ -1080,7 +1080,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
           {!loading && beanGroups.length > 0 && (
             <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>
-              판교 분쇄도는 지점 캘리브레이션 실측 기반 환산값입니다. <strong>*</strong>는 잠정 범위(기울기 실측 전),
+              판교 분쇄도는 지점 캘리브레이션 실측 기반 환산값입니다. <strong>*</strong>는 잠정 범위(환산 실측 전),
               &lsquo;재측정 필요&rsquo;는 재얼라인 이후 새 측정이 아직 없다는 뜻입니다 —{' '}
               <Link href="/garden/calibration/report" className="underline hover:text-foreground">
                 리포트 보기

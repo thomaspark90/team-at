@@ -172,7 +172,7 @@ export default function GrindMeasurementUpload() {
             언스페셜티 컴퍼스
           </a>
           에서 측정한 결과 화면을 캡처해 올려주세요. 원두·다이얼이 같아야 지점 간 비교가 됩니다.{' '}
-          <strong>평균 µm은 직접 입력해야 차트·기울기 계산에 반영됩니다</strong> — 이미지는 기록용으로만
+          <strong>평균 µm은 직접 입력해야 차트·환산 계산에 반영됩니다</strong> — 이미지는 기록용으로만
           저장돼요.
         </p>
         <p className="text-[13px] text-foreground" style={{ margin: 0 }}>
