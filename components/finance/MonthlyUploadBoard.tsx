@@ -489,7 +489,7 @@ export default function MonthlyUploadBoard({
                 ✓ 잔액 연속성 확인 — 중간 누락 없음 ({preview.continuity.checked}건 연결)
               </p>
             ) : preview.continuity.reliable ? (
-              <p className="mt-2 text-[13px] text-red-500">
+              <p className="mt-2 text-[13px] text-destructive">
                 ⚠ 잔액 흐름이 {preview.continuity.breaks}곳에서 끊겨요
                 {preview.continuity.firstBreak &&
                   ` (첫 지점: ${preview.continuity.firstBreak.date.slice(5).replace('-', '/')} ${preview.continuity.firstBreak.memo})`}
@@ -539,7 +539,7 @@ export default function MonthlyUploadBoard({
       )}
 
       {notice && <p className="mt-3 text-[13px]" style={{ color: 'hsl(var(--number-colored))' }}>{notice}</p>}
-      {error && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
+      {error && <p className="mt-3 text-[13px] text-destructive">{error}</p>}
     </section>
   );
 }

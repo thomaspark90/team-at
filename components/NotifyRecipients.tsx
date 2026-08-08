@@ -46,7 +46,7 @@ export default function NotifyRecipients({ initial }: { initial: RecipientRow[] 
     }`;
 
   return (
-    <div className="rounded-2xl bg-muted/40 px-5 py-4">
+    <div>
       <h2 className="m-0 text-[15px] font-medium">알림 수신자 관리</h2>
       <p className="mt-0.5 text-[13px] text-muted-foreground">
         사람별로 <strong>송금 요청</strong> · <strong>원두 재고</strong>(20%·소진) 알림을
@@ -72,7 +72,7 @@ export default function NotifyRecipients({ initial }: { initial: RecipientRow[] 
                 if (confirm(`${r.email} 을(를) 수신자에서 제거할까요?`)) call('DELETE', { email: r.email });
               }}
               disabled={busy}
-              className="text-muted-foreground hover:text-red-500 disabled:opacity-60"
+              className="text-muted-foreground hover:text-destructive disabled:opacity-60"
               aria-label={`${r.email} 제거`}
             >
               ×
@@ -101,7 +101,7 @@ export default function NotifyRecipients({ initial }: { initial: RecipientRow[] 
         </button>
       </div>
 
-      {error && <p className="mt-2 text-[11px] text-red-500">{error}</p>}
+      {error && <p className="mt-2 text-[11px] text-destructive">{error}</p>}
     </div>
   );
 }

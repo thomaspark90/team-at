@@ -58,7 +58,7 @@ export default function ChannelFeeInput({
   }
 
   return (
-    <div className="ta-card">
+    <div className="rounded-md bg-muted/40 p-6">
       <h2 className="text-[15px] text-foreground">
         채널수수료 <span className="font-normal text-muted-foreground">(선택)</span>
       </h2>

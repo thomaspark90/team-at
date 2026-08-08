@@ -137,7 +137,7 @@ export default function NotifySettings({
   );
 
   return (
-    <div className={bare ? '' : 'rounded-2xl bg-muted/40 px-5 py-4'}>
+    <div>
       {!bare && (
         <>
           <h2 className="m-0 text-[15px] font-medium">{isRecipient ? '알림 설정' : '내 요청 알림'}</h2>
@@ -187,7 +187,7 @@ export default function NotifySettings({
 
       {/* 권한이 '차단'된 기기 — 사이트가 다시 물을 수 없으니 해제 방법 팝업으로 바로 연결 */}
       {denied && push !== 'unsupported' && push !== 'ios-browser' && (
-        <p className="mt-2 text-[11px] text-red-500">
+        <p className="mt-2 text-[11px] text-destructive">
           알림 권한이 거부됐어요. 브라우저 설정에서 허용해주세요.{' '}
           <button
             onClick={() => setGuide('unblock')}
@@ -197,7 +197,7 @@ export default function NotifySettings({
           </button>
         </p>
       )}
-      {error && <p className="mt-2 text-[11px] text-red-500">{error}</p>}
+      {error && <p className="mt-2 text-[11px] text-destructive">{error}</p>}
 
       {/* ---------- 푸시알림 안내 팝업 (setup = 최초 설정 / unblock = 차단 해제) ---------- */}
       {guide && (

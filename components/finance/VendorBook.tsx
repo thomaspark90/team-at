@@ -184,7 +184,7 @@ export default function VendorBook() {
                   >
                     수정
                   </button>
-                  <button onClick={() => remove(v)} disabled={busy} className="rounded-lg border border-border px-2.5 py-1 text-muted-foreground hover:text-red-500 disabled:opacity-60">
+                  <button onClick={() => remove(v)} disabled={busy} className="rounded-lg border border-border px-2.5 py-1 text-muted-foreground hover:text-destructive disabled:opacity-60">
                     삭제
                   </button>
                 </div>
@@ -192,7 +192,7 @@ export default function VendorBook() {
             )
           )}
 
-          {error && <p className="text-[13px] text-red-500">{error}</p>}
+          {error && <p className="text-[13px] text-destructive">{error}</p>}
         </div>
       )}
     </section>

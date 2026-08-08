@@ -135,7 +135,7 @@ export default function TaskBoard({ board }: { board: TaskBoardId }) {
           추가
         </button>
       </div>
-      {error && <p className="text-[13px] text-red-500" style={{ margin: 0 }}>{error}</p>}
+      {error && <p className="text-[13px] text-destructive" style={{ margin: 0 }}>{error}</p>}
 
       {/* 칸반 3컬럼 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', rowGap: 24, columnGap: 12 }}>
@@ -188,7 +188,7 @@ export default function TaskBoard({ board }: { board: TaskBoardId }) {
                         {t.periodLabel ? ` · ${t.periodLabel}` : ''}
                       </span>
                       {t.due && (
-                        <span className={`tabular text-[11px] ${overdue ? 'font-medium text-red-500' : 'text-muted-foreground'}`}>
+                        <span className={`tabular text-[11px] ${overdue ? 'font-medium text-destructive' : 'text-muted-foreground'}`}>
                           ~{fmtDue(t.due)}{overdue ? ' 지연' : ''}
                         </span>
                       )}

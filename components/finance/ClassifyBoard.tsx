@@ -150,7 +150,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
         </div>
       )}
 
-      {error && <p className="mt-6 text-[13px] text-red-500">{error}</p>}
+      {error && <p className="mt-6 text-[13px] text-destructive">{error}</p>}
     </section>
   );
 }

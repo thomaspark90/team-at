@@ -487,7 +487,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
             <button
               onClick={() => remove(r.id)}
               disabled={busyId === r.id}
-              className="rounded-lg border border-border px-3 py-1.5 text-muted-foreground hover:text-red-500 disabled:opacity-60"
+              className="rounded-lg border border-border px-3 py-1.5 text-muted-foreground hover:text-destructive disabled:opacity-60"
             >
               삭제
             </button>
@@ -532,7 +532,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
             {parsing ? `인식 중…${batchTotal > 1 ? ` (${batchTotal}장)` : ''}` : '📷 사진 촬영 / 여러 장 선택'}
           </button>
           {notice && <p className="mt-3 text-[13px]" style={{ color: 'hsl(var(--number-colored))' }}>{notice}</p>}
-          {error && !draft && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
+          {error && !draft && <p className="mt-3 text-[13px] text-destructive">{error}</p>}
           {notifyPrompt && (
             <div className="mt-6 flex flex-wrap items-center gap-2 rounded-xl bg-muted/40 p-3 text-[13px]">
               <span>🔔 내가 올린 송금이 <b>이체 완료되면 알림</b>으로 바로 알려드려요.</span>
@@ -712,7 +712,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
               </div>
             </div>
 
-            {error && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
+            {error && <p className="mt-3 text-[13px] text-destructive">{error}</p>}
 
             <div className="mt-5 flex gap-2">
               <button

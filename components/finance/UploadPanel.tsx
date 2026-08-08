@@ -322,7 +322,7 @@ export default function UploadPanel({
                   e.preview.continuity.breaks === 0 ? (
                     <span className="text-[11px] text-emerald-600">잔액연속 ✓</span>
                   ) : e.preview.continuity.reliable ? (
-                    <span className="text-[11px] text-red-500">⚠ 잔액 끊김 {e.preview.continuity.breaks}곳</span>
+                    <span className="text-[11px] text-destructive">⚠ 잔액 끊김 {e.preview.continuity.breaks}곳</span>
                   ) : (
                     <span className="text-[11px] text-muted-foreground">잔액연속 판정불가</span>
                   )
@@ -343,7 +343,7 @@ export default function UploadPanel({
                 {e.status === 'saved' && e.result && (
                   <span className="text-emerald-600">✓ {won(e.result.saved)}건 저장</span>
                 )}
-                {e.status === 'error' && <span className="text-red-500">⚠ {e.error}</span>}
+                {e.status === 'error' && <span className="text-destructive">⚠ {e.error}</span>}
                 {!loading && !saving && e.status !== 'saved' && e.status !== 'saving' && (
                   <button
                     onClick={() => setEntries((es) => es.filter((_, j) => j !== i))}
@@ -363,7 +363,7 @@ export default function UploadPanel({
       {ready.length > 0 && !done && (
         <>
           {boundaryGaps.length > 0 && (
-            <p className="m-0 text-[13px] text-red-500">
+            <p className="m-0 text-[13px] text-destructive">
               ⚠ 파일 사이 잔액이 이어지지 않아요 — 그 사이 기간의 거래가 빠졌을 수 있어요: {boundaryGaps.join(', ')}.
               은행에서 빠진 기간을 다시 내려받아 함께 올려주세요.
             </p>

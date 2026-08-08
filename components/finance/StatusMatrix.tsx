@@ -91,7 +91,7 @@ export default function StatusMatrix({
         </span>
       </p>
 
-      {error && <p className="text-[13px] text-red-500">⚠ {error}</p>}
+      {error && <p className="text-[13px] text-destructive">⚠ {error}</p>}
       {!data && !error && <p className="text-[13px] text-muted-foreground">불러오는 중…</p>}
 
       {data && (

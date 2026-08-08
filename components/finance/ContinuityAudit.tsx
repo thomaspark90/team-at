@@ -69,7 +69,7 @@ export default function ContinuityAudit({ brand }: { brand: Brand }) {
       <button onClick={run} disabled={loading} className="ta-btn-primary text-[13px]">
         {loading ? '검사 중…' : results ? '다시 검사' : '전체 기간 검사'}
       </button>
-      {error && <p className="mt-4 text-[13px] text-red-500">⚠ {error}</p>}
+      {error && <p className="mt-4 text-[13px] text-destructive">⚠ {error}</p>}
 
       {results && (
         <div className="mt-8 flex flex-col gap-6">
