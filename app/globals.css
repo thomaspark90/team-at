@@ -187,6 +187,19 @@ select option {
   color: hsl(var(--foreground));
 }
 
+/* select 는 브라우저가 기본 화살표를 우측 테두리에 바짝 그려서(padding 무시) 라운드
+   모서리와 겹쳐 보인다 — 기본 화살표를 끄고 여백(우측 14px)을 준 셰브론으로 교체.
+   회색(#888)은 라이트·다크 배경 모두에서 무리 없이 보이는 값 */
+select.ta-input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px 14px;
+}
+
 /* iOS Safari는 폰트 16px 미만 입력에 포커스하면 화면을 자동 확대하고 되돌리지 않는다 —
    모바일에서만 입력·셀렉트 폰트를 16px로 올려 확대를 막는다 */
 @media (max-width: 640px) {

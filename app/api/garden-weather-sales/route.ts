@@ -187,7 +187,22 @@ export async function GET(req: Request) {
     ]),
   );
 
-  const payload = { coverage, weatherDays: weather.size, series, categories };
+  // 요일별 기준 잔수(양재천 COFFEE, 최근 8주) — 날씨 스트립의 '예상 잔수·원두' 환산용 베이스라인.
+  // 예보 화면은 재무 권한이 없어도 보므로, 여기서 계산한 값을 상수(weatherImpact)로 옮겨 쓴다.
+  const coffeeDates = Array.from(coffeeYangjae.keys()).sort();
+  const lastDate = coffeeDates[coffeeDates.length - 1] ?? '';
+  const cutoff = lastDate ? addDays(lastDate, -56) : '';
+  const dowSum = Array(7).fill(0) as number[];
+  const dowN = Array(7).fill(0) as number[];
+  for (const [date, qty] of Array.from(coffeeYangjae.entries())) {
+    if (date < cutoff || qty <= 0) continue;
+    const dow = new Date(date + 'T00:00:00Z').getUTCDay();
+    dowSum[dow] += qty;
+    dowN[dow] += 1;
+  }
+  const yangjaeCoffeeCupsByDow = dowSum.map((s, i) => (dowN[i] > 0 ? Math.round(s / dowN[i]) : 0));
+
+  const payload = { coverage, weatherDays: weather.size, series, categories, baselines: { yangjaeCoffeeCupsByDow } };
   const computedAt = new Date().toISOString();
   try {
     await put(CACHE_PATH, JSON.stringify({ computedAt, payload }), {

@@ -7,6 +7,7 @@ import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import CategoryManager, { type ManagedCat } from '@/components/finance/CategoryManager';
 import BrandBankSettings, { type BrandBankRow } from '@/components/finance/BrandBankSettings';
+import RulesManager from '@/components/finance/RulesManager';
 
 export default async function CategoriesPage({
   searchParams,
@@ -59,6 +60,13 @@ export default async function CategoriesPage({
           <section>
             <h2 className="mb-2 text-[15px] tracking-[-0.3px] text-foreground">계정과목</h2>
             <CategoryManager initial={(data as ManagedCat[]) ?? []} />
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-[15px] tracking-[-0.3px] text-foreground">학습된 분류 규칙</h2>
+            <RulesManager
+              catNames={Object.fromEntries(((data as ManagedCat[]) ?? []).map((c) => [c.id, c.name]))}
+            />
           </section>
         </div>
       </div>

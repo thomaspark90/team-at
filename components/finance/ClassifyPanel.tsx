@@ -398,6 +398,26 @@ export default function ClassifyPanel({
     const generic = tx.normalized_key === '쿠팡' || tx.normalized_key === '네이버페이';
     const key = opts?.single || generic ? null : tx.normalized_key;
 
+    // 대량 전파 가드 — 전파가 몇 건을 덮는지 보여주고 확인받는다(같은 사고의 근본 처방).
+    // 임계 15건: 통상 가맹점 월 반복은 한 자릿수, 수십 건이면 키가 뭉쳤을 가능성이 크다.
+    if (key) {
+      const { count } = await supabase
+        .schema('finance')
+        .from('transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('normalized_key', key)
+        .eq('brand', tx.brand);
+      if ((count ?? 0) >= 15) {
+        const ok = window.confirm(
+          `'${tx.memo}' — 같은 가맹점 거래 ${count}건에 일괄 적용되고 규칙으로 학습됩니다.\n계속할까요? (가맹점 하나치고 건수가 지나치게 많다면 키가 뭉친 것일 수 있어요)`,
+        );
+        if (!ok) {
+          setBusy(null);
+          return false;
+        }
+      }
+    }
+
     let q = supabase
       .schema('finance')
       .from('transactions')
