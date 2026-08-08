@@ -9,13 +9,19 @@ import ReviewSalesReport from '@/components/garden/ReviewSalesReport';
 import MenuSalesReport from '@/components/garden/MenuSalesReport';
 import { fetchSalesRows, type SalesRow } from '@/lib/finance/sales-data';
 import { buildReviewSales, type ReviewRow, type StoreReviewSales } from '@/lib/garden/review-sales';
-import { buildAmericanoWeekly, buildMenuWeekly, fetchItemRows, type ItemRow } from '@/lib/garden/menu-sales';
+import { buildAmericanoSeries, buildMenuSeries, fetchItemRows, type Granularity, type ItemRow } from '@/lib/garden/menu-sales';
 import { STORES } from '@/lib/types';
+
+const GRAN_TABS: { key: Granularity; label: string }[] = [
+  { key: 'day', label: '일' },
+  { key: 'week', label: '주' },
+  { key: 'month', label: '월' },
+];
 
 // 가든 매출 — 토스(양재천)/페이히어(판교) POS 업로드(발생주의) 요약. 스탭밀 매출과 같은 구조.
 // dashboard_pos 뷰에 store 가 추가돼(2026-08-08 마이그레이션) 재무 멤버 전원(viewer 포함)이
 // 지점 필터와 리뷰×매출 리포트를 본다. 접근 통제는 뷰의 my_role()/brand_scope 필터가 담당.
-export default async function GardenSalesPage({ searchParams }: { searchParams: { store?: string } }) {
+export default async function GardenSalesPage({ searchParams }: { searchParams: { store?: string; gran?: string } }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -27,7 +33,12 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
   const scopedOut = brandScope === 'staffmeal'; // 스탭밀 전용 멤버 — 가든 매출은 숨긴다
 
   const storeParam = ['yangjae', 'pangyo'].includes(searchParams.store ?? '') ? searchParams.store! : 'all';
+  const gran: Granularity = (['day', 'week', 'month'] as const).includes(searchParams.gran as Granularity)
+    ? (searchParams.gran as Granularity)
+    : 'week';
   const since = new Date(Date.now() - 396 * 86_400_000).toISOString().slice(0, 10);
+  // 메뉴별 품목 리포트는 12주 캡 없이 오픈 이후 전체를 본다 — 데이터가 얼마 없어 성능 부담이 없다.
+  const itemsSince = '2020-01-01';
 
   let rows: SalesRow[] = [];
   let itemRows: ItemRow[] = [];
@@ -35,13 +46,13 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
     [rows, itemRows] = await Promise.all([
       fetchSalesRows(supabase, { table: 'dashboard_pos', brand: 'garden', since }).catch(() => []),
       // 품목 행은 현재 양재천(토스)만 쌓인다 — 마이그레이션 전이거나 비어 있으면 조용히 [].
-      fetchItemRows(supabase, { brand: 'garden', since }).catch(() => []),
+      fetchItemRows(supabase, { brand: 'garden', since: itemsSince }).catch(() => []),
     ]);
   }
   const shown = storeParam !== 'all' ? rows.filter((r) => r.store === storeParam) : rows;
   const shownItems = storeParam !== 'all' ? itemRows.filter((r) => r.store === storeParam) : itemRows;
-  const americano = buildAmericanoWeekly(shownItems);
-  const menuWeekly = buildMenuWeekly(shownItems);
+  const americano = buildAmericanoSeries(shownItems, gran);
+  const menuSeries = buildMenuSeries(shownItems, gran, 8);
 
   // 리뷰 × 매출 주간 리포트 — 매출을 볼 수 있는 멤버라면 함께 본다 (리뷰는 팀 전체 열람 데이터)
   let reviewSales: StoreReviewSales[] = [];
@@ -66,6 +77,14 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
     { key: 'all', label: '전체' },
     ...STORES.map((s) => ({ key: s.id, label: s.label })),
   ];
+  // store·gran 둘 다 실어 나르는 링크 — 지점 탭 클릭해도 보던 단위(일/주/월) 유지, 반대도 동일
+  const hrefFor = (store: string, g: Granularity) => {
+    const p = new URLSearchParams();
+    if (store !== 'all') p.set('store', store);
+    if (g !== 'week') p.set('gran', g);
+    const qs = p.toString();
+    return qs ? `/garden/sales?${qs}` : '/garden/sales';
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -84,7 +103,7 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
               {storeTabs.map((t) => (
                 <Link
                   key={t.key}
-                  href={t.key === 'all' ? '/garden/sales' : `/garden/sales?store=${t.key}`}
+                  href={hrefFor(t.key, gran)}
                   className={`rounded-lg px-3 py-1 text-[13px] ${
                     storeParam === t.key ? 'bg-foreground font-medium text-background' : 'text-muted-foreground hover:text-foreground'
                   }`}
@@ -95,6 +114,24 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
             </div>
           )}
         </div>
+        {isMember && !scopedOut && shown.length > 0 && (
+          <div className="flex items-center gap-3">
+            <span className="text-[13px] text-muted-foreground">메뉴 리포트 단위</span>
+            <div className="flex gap-1 rounded-xl border border-border bg-card p-1">
+              {GRAN_TABS.map((g) => (
+                <Link
+                  key={g.key}
+                  href={hrefFor(storeParam, g.key)}
+                  className={`rounded-lg px-3 py-1 text-[13px] ${
+                    gran === g.key ? 'bg-foreground font-medium text-background' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {g.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
         {!isMember || scopedOut ? (
           <section>
             <p className="m-0 text-[13px] text-muted-foreground">
@@ -112,7 +149,7 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
         ) : (
           <>
             <SalesSummary rows={shown} />
-            <MenuSalesReport americano={americano} menus={menuWeekly} />
+            <MenuSalesReport americano={americano} menus={menuSeries} />
             {reviewSales.length > 0 && <ReviewSalesReport data={reviewSales} />}
           </>
         )}

@@ -44,6 +44,58 @@ async function compressCapture(file: File): Promise<File> {
   }
 }
 
+// 서버 경유 업로드 — 클라이언트→Blob 저장소 직접 업로드가 한국에서 계속 느려서
+// (2026-08-08~09 대표 지적, 압축·병렬화로도 개선 안 됨) 가까운 서버 함수(icn1)를 거치는
+// 방식으로 교체했다. 클라이언트→함수 구간만 사용자 회선을 타고, 함수→Blob 구간은
+// Vercel 내부망이라 훨씬 빠르다. XHR 을 쓰는 이유는 fetch가 업로드 진행률 이벤트를
+// 표준으로 지원하지 않기 때문(진행률 표시 유지 목적).
+function uploadFilesViaServer(files: File[], onProgress: (pct: number) => void): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    files.forEach((f) => fd.append('files', f));
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/garden-grind-upload');
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      let body: { urls?: string[]; error?: string } = {};
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {
+        // 빈 응답 등 — 아래 상태 코드 체크에서 처리
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && body.urls) resolve(body.urls);
+      else reject(new Error(body.error ?? `업로드 실패 (${xhr.status})`));
+    };
+    xhr.onerror = () => reject(new Error('네트워크 오류로 업로드에 실패했어요.'));
+    xhr.send(fd);
+  });
+}
+
+// 서버 경유 업로드는 함수 요청 바디 4.5MB 한도 안에 들어야 한다 — 압축이 정상 작동한
+// 대다수 경우(수백 KB)엔 여유롭지만, HEIC 등 캔버스 압축이 실패해 원본이 그대로 남는
+// 경우를 대비해 여유 있게 넘으면 예전 방식(클라이언트→Blob 직접, 느리지만 크기 제한 없음)으로 폴백한다.
+const SERVER_UPLOAD_TOTAL_LIMIT = 3_500_000; // bytes
+
+async function uploadFilesDirect(files: File[], onProgress: (pct: number) => void): Promise<string[]> {
+  const perFilePct = new Array(files.length).fill(0);
+  const report = () => onProgress(Math.round(perFilePct.reduce((s, p) => s + p, 0) / files.length));
+  const uploaded = await Promise.all(
+    files.map((file, i) =>
+      upload(`grind-measurements/${Date.now()}-${i}-${file.name}`, file, {
+        access: 'public',
+        handleUploadUrl: '/api/upload',
+        onUploadProgress: ({ percentage }) => {
+          perFilePct[i] = percentage;
+          report();
+        },
+      }),
+    ),
+  );
+  return uploaded.map((b) => b.url);
+}
+
 // 현행 측정 프로토콜 (2026-08-07 판교 재얼라인 이후) — 다이얼 6/8/10 × 각 3샷 × 두 지점
 const PROTOCOL_DIALS = [6, 8, 10];
 const SHOTS_PER_DIAL = 3;
@@ -83,7 +135,7 @@ export default function GrindMeasurementUpload() {
   const [saving, setSaving] = useState(false);
   // 이미지 업로드는 백그라운드(2026-08-08 대표 지적 — 업로드가 느려 저장 버튼이 오래 막힘).
   // 수치 저장은 즉시 끝나고, 이미지는 뒤에서 올라가며 이 상태만 별도로 진행률을 보여준다.
-  const [bgUpload, setBgUpload] = useState<{ done: number; total: number; pct: number } | null>(null);
+  const [bgUpload, setBgUpload] = useState<{ total: number; pct: number } | null>(null);
   const [bgError, setBgError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -156,30 +208,17 @@ export default function GrindMeasurementUpload() {
     if (toUpload.length === 0) return;
     setBgError(null);
     try {
-      const perFilePct = new Array(toUpload.length).fill(0);
-      const report = () =>
-        setBgUpload({
-          done: perFilePct.filter((p) => p >= 100).length,
-          total: toUpload.length,
-          pct: Math.round(perFilePct.reduce((s, p) => s + p, 0) / toUpload.length),
-        });
-      report();
-      const uploaded = await Promise.all(
-        toUpload.map((file, i) =>
-          upload(`grind-measurements/${Date.now()}-${i}-${file.name}`, file, {
-            access: 'public',
-            handleUploadUrl: '/api/upload',
-            onUploadProgress: ({ percentage }) => {
-              perFilePct[i] = percentage;
-              report();
-            },
-          }),
-        ),
-      );
+      setBgUpload({ total: toUpload.length, pct: 0 });
+      const totalBytes = toUpload.reduce((s, f) => s + f.size, 0);
+      const onProgress = (pct: number) => setBgUpload({ total: toUpload.length, pct });
+      const urls =
+        totalBytes <= SERVER_UPLOAD_TOTAL_LIMIT
+          ? await uploadFilesViaServer(toUpload, onProgress)
+          : await uploadFilesDirect(toUpload, onProgress); // 압축 실패 등으로 큰 파일 — 느려도 안전한 경로
       const res = await fetch('/api/garden-grind-measurements', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, imageUrls: uploaded.map((b) => b.url) }),
+        body: JSON.stringify({ id, imageUrls: urls }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -503,8 +542,7 @@ export default function GrindMeasurementUpload() {
         {/* 이미지는 백그라운드로 올라간다 — 저장 버튼을 막지 않는다(2026-08-08 대표 지적) */}
         {bgUpload && (
           <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
-            ⏳ 이미지 배경 업로드 중… {Math.min(bgUpload.done + 1, bgUpload.total)}/{bgUpload.total}장 ·{' '}
-            {bgUpload.pct}% (측정값은 이미 저장됐어요)
+            ⏳ 이미지 배경 업로드 중… {bgUpload.total}장 · {bgUpload.pct}% (측정값은 이미 저장됐어요)
           </p>
         )}
         {bgError && (
