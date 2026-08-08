@@ -51,7 +51,7 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
       <TabNav />
       <AccountingNav role={role} scoped={!!brandScope} />
       <div className="mx-auto max-w-[1600px] px-6 py-8">
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-12">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-[11px] uppercase tracking-[0.06em] text-muted-foreground">자료 입력</div>
@@ -87,7 +87,7 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
             </div>
 
             {/* 1) POS 매출 — 지점 단위 귀속 (#pos: 월별 보드의 POS 칸에서 앵커 이동) */}
-            <div id="pos" className="flex flex-col gap-3 scroll-mt-4 py-[54px]">
+            <div id="pos" className="flex flex-col gap-6 scroll-mt-4 py-[54px]">
               <div>
                 <h2 className="m-0 text-[15px] text-foreground">POS 매출</h2>
                 <p className="mt-1 text-[13px] text-muted-foreground">

@@ -111,7 +111,7 @@ export default function TaskBoard({ board }: { board: TaskBoardId }) {
       .sort((a, b) => (a.due ?? '9999').localeCompare(b.due ?? '9999'));
 
   return (
-    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       {/* 단발 업무 추가 */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <input
@@ -138,14 +138,14 @@ export default function TaskBoard({ board }: { board: TaskBoardId }) {
       {error && <p className="text-[13px] text-red-500" style={{ margin: 0 }}>{error}</p>}
 
       {/* 칸반 3컬럼 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', rowGap: 24, columnGap: 12 }}>
         {TASK_COLUMNS.map((col) => {
           const cards = columnTasks(col.status);
           return (
             <div
               key={col.status}
               className="rounded-md border border-border"
-              style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 160 }}
+              style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 16, minHeight: 160 }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <span className="text-[13px] font-medium text-foreground">{col.label}</span>

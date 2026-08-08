@@ -115,14 +115,14 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
   }
 
   return (
-    <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-14">
       <p className="text-[13px] text-muted-foreground">
         왼쪽 <b>손잡이(⠿)를 드래그</b>해 순서를 바꿔요. <b>이름을 클릭</b>하면 ⭐즐겨찾기로 지정돼 분류 드롭다운 맨 위 &ldquo;자주 쓰는&rdquo;에 떠요. <b>활성</b>을 끄면 숨겨져요. <b>과세/면세</b>는 손익 계산 기준 — 과세 항목은 대시보드에서 공급가액(÷1.1)으로 순액 처리돼요(인건비·이자·수도·세금 등 면세는 그대로).
       </p>
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
       {GROUPS.map((group) => (
-        <div key={group.title} className="flex flex-col gap-4">
+        <div key={group.title} className="flex flex-col gap-8">
           <div>
             <h2 className="text-[15px] tracking-[-0.3px] text-foreground">{group.title}</h2>
             <p className="mt-0.5 text-[11px] text-muted-foreground">{group.hint}</p>
@@ -142,7 +142,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                         if (overId !== c.id) setOverId(c.id);
                       }}
                       onDrop={() => reorder(type, c.id)}
-                      className={`flex flex-wrap items-center gap-[10px] px-[14px] py-[10px] ${overId === c.id ? 'border-t-2 border-foreground' : 'border-t border-border'} ${c.pinned ? 'bg-muted' : 'bg-background'} ${!c.active ? 'opacity-55' : dragId === c.id ? 'opacity-40' : ''}`}
+                      className={`flex flex-wrap items-center gap-[10px] px-[14px] py-[20px] ${overId === c.id ? 'border-t-2 border-foreground' : 'border-t border-border'} ${c.pinned ? 'bg-muted' : 'bg-background'} ${!c.active ? 'opacity-55' : dragId === c.id ? 'opacity-40' : ''}`}
                     >
                       <span
                         draggable

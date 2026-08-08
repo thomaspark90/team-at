@@ -265,7 +265,7 @@ export default function GrindCalibrationCharts() {
     // 카드 해체(2026-08-08) — 주요 섹션 경계는 가로 구분선으로만
     <div className="divide-y divide-border">
       {/* 요약 통계 */}
-      <div className="pb-[54px]" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+      <div className="pb-[54px]" style={{ display: 'flex', columnGap: 12, rowGap: 24, flexWrap: 'wrap' }}>
         {STORES.map((s) => {
           const fit = fits[s.id];
           const last = latestAlignmentDate(alignments, s.id);
@@ -341,7 +341,7 @@ export default function GrindCalibrationCharts() {
             {loading ? '불러오는 중…' : '새로고침'}
           </button>
         </div>
-        <p className="text-[13px] text-muted-foreground" style={{ marginTop: 4, marginBottom: 8, maxWidth: 880 }}>
+        <p className="text-[13px] text-muted-foreground" style={{ marginTop: 4, marginBottom: 16, maxWidth: 880 }}>
           점 1개 = 컴퍼스 촬영 1샷. 진한 점은 각 지점의 최근 얼라인먼트 이후(현행) 측정,{' '}
           {hasStale ? '흐린 점은 얼라인 이전 측정(피팅·비교 제외)' : '얼라인 이전 측정은 흐리게 표시'}입니다. 직선은 현행 측정의
           다이얼→µm 선형 피팅 — 두 지점 직선이 겹칠수록 얼라인이 일치합니다.
@@ -384,7 +384,7 @@ export default function GrindCalibrationCharts() {
       {/* 다이얼별 비교 표 */}
       {dialRows.length > 0 && (
         <div className="min-w-0 py-[54px]" style={{ overflowX: 'auto' }}>
-          <p className="text-[15px] font-medium text-foreground" style={{ marginTop: 0, marginBottom: 10 }}>
+          <p className="text-[15px] font-medium text-foreground" style={{ marginTop: 0, marginBottom: 20 }}>
             다이얼별 지점 비교
           </p>
           <table className="tabular text-[13px]" style={{ borderCollapse: 'collapse', minWidth: 480, width: '100%', maxWidth: 680 }}>
@@ -440,7 +440,7 @@ export default function GrindCalibrationCharts() {
 
       {/* 다이얼별 분포 비교 (σ가 있는 현행 측정이 두 지점 모두 있을 때) */}
       {distCharts.length > 0 && (
-        <div className="pt-[54px]" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 12 }}>
+        <div className="pt-[54px]" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', columnGap: 12, rowGap: 24 }}>
           {distCharts.map(({ dial, data }) => (
             <div key={dial} className="min-w-0 rounded-md bg-muted/40 p-6">
               <span className="text-[13px] font-medium text-foreground">다이얼 {dial.toFixed(1)} 분포 비교</span>

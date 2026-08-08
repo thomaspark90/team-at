@@ -71,7 +71,7 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <GardenNav />
-      <div className="mx-auto max-w-[1100px] px-6 py-8" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="mx-auto max-w-[1100px] px-6 py-8" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="m-0 text-[22px]">가든 매출</h1>

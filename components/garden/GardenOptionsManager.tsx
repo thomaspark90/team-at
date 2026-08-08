@@ -103,7 +103,7 @@ export default function GardenOptionsManager() {
   if (!options) return null;
 
   return (
-    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       <div>
         <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>발주 드롭다운 관리</p>
         <p className="text-[13px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
@@ -209,7 +209,7 @@ function RoasteryList({
           {items.map((v) => (
             <div
               key={v}
-              style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 0', minWidth: 0 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '20px 0', minWidth: 0 }}
             >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
               {editing === v ? (

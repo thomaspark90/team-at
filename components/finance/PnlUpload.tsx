@@ -160,7 +160,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
   }
 
   return (
-    <div className="ta-card flex flex-col gap-4">
+    <div className="ta-card flex flex-col gap-8">
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-[15px] text-foreground">POS 매출 올리기</h2>

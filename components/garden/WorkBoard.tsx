@@ -179,7 +179,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
   return (
     <div className="divide-y divide-border">
       {/* 내 차례 — 들어오자마자 자기 일이 먼저 보이게 */}
-      <div className="min-w-0 pb-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="min-w-0 pb-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           <span className="text-[15px] text-foreground" style={{ fontWeight: 500 }}>내 차례</span>
           <span
@@ -194,7 +194,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
             지금 내 차례인 일은 없어요. 아래 보드에서 팀 전체 진행 상황을 볼 수 있습니다.
           </p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {mineCards.map((c) => (
               <div
                 key={c.id}
@@ -221,7 +221,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
         )}
       </div>
 
-      <div className="pt-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="pt-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       {/* 필터 */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button onClick={() => setFilter('all')} className={chip(filter === 'all')}>
@@ -244,7 +244,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
       </div>
 
       {/* 보드 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px 12px', alignItems: 'start' }}>
         {BOARD_COLUMNS.map((col) => {
           const list = shown.filter((c) => c.column === col.id);
           return (
@@ -258,7 +258,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
                   {col.id === 'done' ? '아직 없음' : '—'}
                 </p>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {list.map((c) => (
                     <Card key={c.id} card={c} />
                   ))}

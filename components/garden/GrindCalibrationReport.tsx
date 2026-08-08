@@ -95,7 +95,7 @@ function Dumbbell() {
   const max = 1000;
   const pos = (v: number) => `${((v - min) / (max - min)) * 100}%`;
   return (
-    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       <span className="text-[15px] font-medium text-foreground">배전도별 평균 입자 크기 — 같은 다이얼 6.5</span>
       {ROASTS.map((r) => {
         const my = shotMean(SHOTS.yangjae[r.key]);
@@ -132,7 +132,7 @@ export default function GrindCalibrationReport() {
     // 카드 해체(2026-08-08) — 주요 섹션 경계는 가로 구분선으로만
     <div className="divide-y divide-border">
       {/* 인트로 */}
-      <div className="pb-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="pb-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>
           같은 EK43, 같은 다이얼인데 왜 커피가 다를까?
         </p>
@@ -145,20 +145,20 @@ export default function GrindCalibrationReport() {
       </div>
 
       {/* 핵심 숫자 */}
-      <div className="py-[54px]" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+      <div className="py-[54px]" style={{ display: 'flex', columnGap: 12, rowGap: 24, flexWrap: 'wrap' }}>
         <Stat value="-187µm" label="같은 다이얼 6.5에서 판교가 더 가늘게 (915→729µm)" />
         <Stat value="약 -20%" label="판교/양재천 평균 입자 크기 비율 0.80 — 3개 배전도 모두 동일 방향" />
         <Stat value="+1.6~2.1" label="판교에서 굵혀야 할 다이얼(잠정) — 다이얼 8.0 실측 후 확정" />
       </div>
 
       {/* 분포 비교 차트 3종 */}
-      <div className="py-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="py-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <p className="text-[13px] text-muted-foreground" style={{ margin: 0, maxWidth: 880 }}>
           아래 곡선은 컴퍼스의 부피 분포(파란 막대)와 같은 스케일로, 각 지점 3샷의 평균·표준편차로
           재구성한 근사 분포입니다. 오른쪽 = 굵은 입자. <strong>판교(아쿠아)가 배전도와 무관하게 통째로
           왼쪽(가는 쪽)으로 밀려 있는 것</strong>이 이번 측정의 핵심입니다.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', columnGap: 12, rowGap: 24 }}>
           {ROASTS.map((r) => (
             <RoastChart key={r.key} roast={r.key} label={r.label} />
           ))}
@@ -171,7 +171,7 @@ export default function GrindCalibrationReport() {
       </div>
 
       {/* 해석 가이드 */}
-      <div className="py-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="py-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>이 결과를 매장에서 어떻게 쓰나요?</p>
         <ul className="text-[13px] text-muted-foreground" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.85, maxWidth: 920 }}>
           <li>
@@ -195,7 +195,7 @@ export default function GrindCalibrationReport() {
 
       {/* 측정값 표 (접근성 겸 원자료) */}
       <div className="min-w-0 pt-[54px]" style={{ overflowX: 'auto' }}>
-        <p className="text-[15px] font-medium text-foreground" style={{ marginTop: 0, marginBottom: 10 }}>
+        <p className="text-[15px] font-medium text-foreground" style={{ marginTop: 0, marginBottom: 20 }}>
           측정 원자료 — EK43 다이얼 6.5, 샷 = 컴퍼스 촬영 1회
         </p>
         <table className="tabular text-[13px]" style={{ borderCollapse: 'collapse', minWidth: 560, width: '100%', maxWidth: 760 }}>

@@ -219,7 +219,7 @@ export default function ReviewInbox() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-4" style={{ marginBottom: 16 }}>
+      <div className="flex flex-wrap items-center gap-4" style={{ marginBottom: 32 }}>
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -249,11 +249,11 @@ export default function ReviewInbox() {
         })}
       </div>
 
-      {error && <p className="ta-error text-[13px]" style={{ marginBottom: 12 }}>{error}</p>}
+      {error && <p className="ta-error text-[13px]" style={{ marginBottom: 24 }}>{error}</p>}
 
       {/* 이슈 탭 — 아직 분류되지 않은 과거 리뷰가 있으면 백필 실행을 안내 */}
       {tab === 'issues' && !loading && unclassified > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted/40 text-[13px]" style={{ padding: '10px 12px', marginBottom: 12 }}>
+        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted/40 text-[13px]" style={{ padding: '10px 12px', marginBottom: 24 }}>
           <span className="text-muted-foreground">
             분류가 필요한 리뷰가 {unclassified}건 있습니다(미분류·카테고리 보완 포함). 실행하면 이슈 리뷰가 이 탭에 모입니다.
           </span>
@@ -270,7 +270,7 @@ export default function ReviewInbox() {
 
       {/* 이슈 탭 카테고리 필터 — 로드된 이슈 리뷰 기준 건수 표시 */}
       {tab === 'issues' && !loading && byStore.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 12 }}>
+        <div className="flex flex-wrap items-center gap-2" style={{ marginBottom: 24 }}>
           {['all', ...ISSUE_CATEGORIES].map((c) => {
             const count = c === 'all' ? byStore.length : byStore.filter((r) => r.issue_categories?.includes(c)).length;
             if (c !== 'all' && count === 0) return null;
@@ -297,7 +297,7 @@ export default function ReviewInbox() {
         </p>
       )}
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-6">
         {shown.map((r) => {
           const pending = ['new', 'drafted'].includes(r.status);
           const approved = r.status === 'approved';

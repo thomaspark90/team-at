@@ -208,7 +208,7 @@ export default function GrindMeasurementUpload() {
   return (
     // 카드 해체(2026-08-08) — 입력 폼·목록 섹션 경계는 가로 구분선으로만
     <div className="divide-y divide-border">
-      <div className="pb-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="pb-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
         <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
           <a href={COMPASS_URL} target="_blank" rel="noreferrer" className="underline hover:text-foreground">
             언스페셜티 컴퍼스
@@ -377,13 +377,13 @@ export default function GrindMeasurementUpload() {
       {days.length === 0 ? (
         <p className="pt-[54px] text-[13px] text-muted-foreground">아직 업로드된 측정 기록이 없어요. 프로토콜: 에티오피아 싱글 × 다이얼 6 / 8 / 10 × 각 3샷 × 두 지점.</p>
       ) : (
-        <div className="pt-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="pt-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
           {days.map(([date, list]) => {
             const storesCovered = new Set(list.map((m) => m.store));
             const beanNames = Array.from(new Set(list.map((m) => m.bean.trim())));
             const roasts = Array.from(new Set(list.map((m) => m.roast)));
             return (
-              <div key={date} className="rounded-md bg-muted/40 p-6" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div key={date} className="rounded-md bg-muted/40 p-6" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                   <span className="tabular text-[15px] font-medium text-foreground">{date.replaceAll('-', '.')}</span>
                   <span className="text-[11px] text-muted-foreground">

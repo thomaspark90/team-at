@@ -78,14 +78,14 @@ export default async function PnlPage({
             ← 재무 홈
           </Link>
         </div>
-        <p className="mb-5 text-[13px] text-muted-foreground">
+        <p className="mb-10 text-[13px] text-muted-foreground">
           POS 매출(발생주의·공급가액)에 매입기준 재료비·인건비를 맞춰 본 손익이에요. 통장 입출금 기준은 <Link href="/finance/cashflow" className="underline">월별 요약</Link>·<Link href="/finance/flow" className="underline">자금 흐름</Link>에서 봐요.
         </p>
 
         {/* 좌측 연·월 사이드바 — 달 선택 시 ?ym= 내비게이션으로 서버가 그 달 손익을 다시 계산(2026-08-03) */}
         <MonthShell brand={seg !== 'all' ? seg : undefined} initialTodos={initialTodos} navigate>
         {/* 브랜드 세그먼트 */}
-        <div className="mb-5 flex flex-wrap items-center gap-3">
+        <div className="mb-10 flex flex-wrap items-center gap-3">
           <div className="flex overflow-hidden rounded-md border border-border">
             {SEGMENTS.map((s) => (
               <Link
@@ -282,7 +282,7 @@ async function PnlBody({
   return (
     <>
       {/* 월 선택 + 업로드 */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-10 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {yms.map((ym) => (
             <Link
@@ -303,7 +303,7 @@ async function PnlBody({
       </div>
 
       {/* 지표 카드 */}
-      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mb-10 grid grid-cols-2 gap-x-3 gap-y-6 md:grid-cols-4">
         <Metric label="식자재 원가율" value={pct(p.metrics.foodCostRate)} sub={`전체 재료율 ${pct(p.metrics.materialRate)}`} sig={foodSig} uncertain={uncertain} />
         <Metric label="인건비율" value={pct(p.metrics.laborRate)} sub="매출 대비" sig={laborSig} uncertain={uncertain} />
         <Metric label="Prime Cost" value={pct(p.metrics.primeCost)} sub="식자재+인건비" sig={primeSig} uncertain={uncertain} />
@@ -311,7 +311,7 @@ async function PnlBody({
       </div>
 
       {p.unclassified > 0 && (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+        <div className="mb-10 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
           <span className="text-foreground">
             ⚠️ 이 달 <b>미분류 지출 {won(p.unclassified)}</b>이 손익에 잡혀 있어요. 분류하면 지표가 정확해져요.
           </span>
@@ -322,7 +322,7 @@ async function PnlBody({
       )}
 
       {store && unassignedOut > 0 && (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+        <div className="mb-10 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
           <span className="text-foreground">
             ⚠️ 지점이 지정되지 않은 가든 지출 <b>{won(unassignedOut)}</b>이 이 지점 손익에서 빠져 있어요.
             분류 화면에서 지점을 지정하거나 건별 분할로 나눠주세요.
@@ -336,7 +336,7 @@ async function PnlBody({
       {/* 보정값 미입력 경고 — 관리손익 설계(2026-07-05)의 필수 보정 2가지가 빠지면 지표가 왜곡된다.
           수수료 미입력 → 추정률 사용(순매출 부정확), 기말재고 미입력 → 매입 전액이 재료비(이익 과소, 특히 초도발주 달). */}
       {(channelFee == null || !invBrand.some((i) => i.ym === selectedYm)) && (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+        <div className="mb-10 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
           <span className="text-foreground">
             ⚠️ 이 달{' '}
             {channelFee == null && <b>채널 수수료가 미입력</b>}
@@ -352,7 +352,7 @@ async function PnlBody({
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-x-5 gap-y-10 lg:grid-cols-[1fr_320px]">
         {/* 손익계산서 */}
         <div className="rounded-md bg-muted/40 p-6">
           <h2 className="mb-4 text-[15px] text-foreground">손익계산서 · {fmtYm(selectedYm)}</h2>
@@ -401,7 +401,7 @@ async function PnlBody({
         </div>
 
         {/* 우측: 기말재고 + 매출 구성 — 재고·수수료 입력은 브랜드 단위(전체·지점 탭에선 숨김) */}
-        <div id="pnl-inputs" className="flex flex-col gap-5">
+        <div id="pnl-inputs" className="flex flex-col gap-10">
           {store ? (
             <div className="rounded-md bg-muted/40 p-6 text-[13px] text-muted-foreground">
               지점 뷰의 재료비·수수료는 {storeLabel(store)} 매출비율({pct(storeRatio)})로 안분한 근사치예요.

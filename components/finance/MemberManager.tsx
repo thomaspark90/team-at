@@ -44,7 +44,7 @@ export default function MemberManager({ initial }: { initial: Member[] }) {
   const active = members.filter((m) => m.role);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-12">
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
       <Section title={`승인 대기 (${pending.length})`} empty="대기 중인 요청이 없어요.">
@@ -100,7 +100,7 @@ function Row({
 }) {
   return (
     <div
-      className={`flex flex-wrap items-center gap-4 border-t border-border px-5 py-3 first:border-t-0 hover:bg-accent ${highlight ? 'bg-muted' : ''}`}
+      className={`flex flex-wrap items-center gap-4 border-t border-border px-5 py-6 first:border-t-0 hover:bg-accent ${highlight ? 'bg-muted' : ''}`}
     >
       <div className="min-w-0 flex-[1_1_200px]">
         <div className="break-all text-[13px] text-foreground">{m.email}</div>

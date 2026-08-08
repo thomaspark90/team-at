@@ -88,11 +88,11 @@ export default function ActivityLog({ rows }: { rows: ActivityRow[] }) {
         </div>
       </div>
 
-      <div className="mt-4 flex flex-col gap-1">
+      <div className="mt-8 flex flex-col gap-2">
         {visible.length === 0 && <p className="text-[13px] text-muted-foreground">기록이 없어요.</p>}
         {days.map(([k, list]) => (
           <div key={k}>
-            <h3 className="mb-1.5 mt-3 border-b border-border pb-1 text-[13px] font-medium first:mt-0">
+            <h3 className="mb-1.5 mt-6 border-b border-border pb-1 text-[13px] font-medium first:mt-0">
               {fmtDay(list[0].created_at)}
               <span className="ml-2 font-normal text-muted-foreground">{list.length}건</span>
             </h3>

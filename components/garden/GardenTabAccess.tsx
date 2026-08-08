@@ -71,7 +71,7 @@ function Row({
   return (
     <div
       className="flex items-start justify-between gap-4 border-t border-border"
-      style={{ paddingTop: 10, paddingBottom: 10 }}
+      style={{ paddingTop: 20, paddingBottom: 20 }}
     >
       <div style={{ minWidth: 0 }}>
         <div className={`text-[13px] font-medium ${on ? 'text-foreground' : 'text-muted-foreground'}`}>
@@ -252,12 +252,12 @@ export default function GardenTabAccess({
       <h2 className="text-[15px] font-medium" style={{ margin: '0 0 4px' }}>
         페이지 접근 권한
       </h2>
-      <p className="text-[13px] text-muted-foreground" style={{ margin: '0 0 12px', lineHeight: 1.6 }}>
+      <p className="text-[13px] text-muted-foreground" style={{ margin: '0 0 24px', lineHeight: 1.6 }}>
         계정별로 접근할 수 있는 화면을 지정합니다. 끈 항목은 나비에서 숨겨지고, 주소로 직접 접근해도 서버에서
         차단됩니다. 대표 계정은 항상 전체 접근이라 목록에 없습니다.
       </p>
       {error && (
-        <p className="text-[13px]" style={{ color: 'hsl(0 72% 45%)', margin: '0 0 8px' }}>
+        <p className="text-[13px]" style={{ color: 'hsl(0 72% 45%)', margin: '0 0 16px' }}>
           {error}
         </p>
       )}
@@ -267,7 +267,7 @@ export default function GardenTabAccess({
         </p>
       )}
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-4">
         {users.map((u) => {
           const open = openId === u.id;
           const sec = allowedSet(u, 'sections');
@@ -312,7 +312,7 @@ export default function GardenTabAccess({
                     ))}
                   </div>
 
-                  <p className="ta-label" style={{ marginTop: 16, marginBottom: 0 }}>
+                  <p className="ta-label" style={{ marginTop: 32, marginBottom: 0 }}>
                     Garden Service 하위 탭
                   </p>
                   {!gardenOn && (
@@ -343,7 +343,7 @@ export default function GardenTabAccess({
                   {/* 계정 삭제 — 잘못 등록한 계정 정리. 외부 계정은 허용 목록에서도 빠져 로그인 차단 */}
                   <div
                     className="border-t border-border"
-                    style={{ marginTop: 16, paddingTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+                    style={{ marginTop: 32, paddingTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
                   >
                     <p className="text-[13px] text-muted-foreground" style={{ margin: 0, lineHeight: 1.5 }}>
                       {isExternal(u.email)
@@ -377,11 +377,11 @@ export default function GardenTabAccess({
       </div>
 
       {/* 이메일 사전 등록 — 로그인한 적 없는 인원도 계정을 미리 만들어 권한을 걸어둔다 */}
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 32 }}>
         <p className="ta-label" style={{ marginBottom: 4 }}>
           이메일로 계정 추가 (사전 등록)
         </p>
-        <p className="text-[13px] text-muted-foreground" style={{ margin: '0 0 8px', lineHeight: 1.6 }}>
+        <p className="text-[13px] text-muted-foreground" style={{ margin: '0 0 16px', lineHeight: 1.6 }}>
           아직 로그인한 적 없는 인원도 이메일로 미리 등록해 권한을 걸어둘 수 있어요. @{TEAM_DOMAIN} 외
           이메일(gmail 등)은 허용 목록에 함께 등록돼 로그인이 열립니다. 같은 이메일로 구글 로그인하면
           등록된 계정에 자동 연결돼요. <b>권한을 따로 끄지 않으면 전체 접근</b>이니, 추가 직후 열리는
@@ -420,13 +420,13 @@ export default function GardenTabAccess({
         </div>
 
         {allowed.length > 0 && (
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 24 }}>
             <p className="text-[13px] text-muted-foreground" style={{ margin: '0 0 6px' }}>
               외부 이메일 허용 목록 — 해제하면 계정·권한 설정은 남고 로그인만 막혀요.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {allowed.map((email) => (
-                <div key={email} className="flex items-center justify-between gap-3 border-t border-border" style={{ paddingTop: 6, paddingBottom: 6 }}>
+                <div key={email} className="flex items-center justify-between gap-3 border-t border-border" style={{ paddingTop: 12, paddingBottom: 12 }}>
                   <span className="break-all text-[13px] text-foreground">{email}</span>
                   <button
                     onClick={() => removeAllowed(email)}

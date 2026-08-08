@@ -38,7 +38,7 @@ export default function MenuEditor({ story, onChange }: Props) {
     }));
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-8">
       {/* 모드 탭 */}
       <div className="flex gap-1 rounded-md border border-border p-1">
         {(['fixed', 'manual'] as const).map((mode) => (
@@ -57,7 +57,7 @@ export default function MenuEditor({ story, onChange }: Props) {
       </div>
 
       {story.inputMode === 'fixed' ? (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-10">
           {story.categories.map((cat, ci) => (
             <div key={ci}>
               <p className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{cat.name}</p>

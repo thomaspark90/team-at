@@ -81,7 +81,7 @@ export default function GrinderCalibration({
       </button>
 
       {open && (
-        <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
           <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
             <a href={COMPASS_URL} target="_blank" rel="noreferrer" className="underline hover:text-foreground">
               언스페셜티 컴퍼스
@@ -93,7 +93,7 @@ export default function GrinderCalibration({
             지점 다이얼이 자동 표시됩니다. (측정은 같은 원두로, 굵기 구간을 벌려서 — 예: 6.0과 8.0)
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', columnGap: 16, rowGap: 32 }}>
             {STORES.map((s) => {
               const fit = fitDialToMicron(profiles[s.id]?.points);
               return (

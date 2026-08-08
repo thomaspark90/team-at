@@ -50,7 +50,7 @@ export default function TodoList({
   const fmt = (iso?: string) => (iso ? iso.slice(5, 10).replace('-', '.') : '');
 
   return (
-    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div>
         <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>{title}</p>
         <p className="text-[13px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
@@ -74,7 +74,7 @@ export default function TodoList({
       {todos.length === 0 ? (
         <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>아직 할 일이 없어요.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {todos.map((t) => (
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
               <input type="checkbox" checked={t.done} onChange={() => toggle(t)} disabled={busy} style={{ cursor: 'pointer', flexShrink: 0 }} />

@@ -32,7 +32,7 @@ export default async function StudioSalesPage() {
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <StudioNav />
-      <div className="mx-auto max-w-[1100px] px-6 py-8" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="mx-auto max-w-[1100px] px-6 py-8" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
         <div>
           <h1 className="m-0 text-[22px]">스탭밀 매출</h1>
           <p className="mt-1 text-[13px] text-muted-foreground">

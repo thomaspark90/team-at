@@ -53,7 +53,7 @@ export default function BrandBankSettings({ initial }: { initial: BrandBankRow[]
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
       <p className="m-0 text-[13px] text-muted-foreground">
         브랜드가 실제로 쓰는 은행만 켜두세요. 꺼진 은행은 그 브랜드의 <b>자료 입력 보드·월 확정 점검·월 배지</b>에서
         요구하지 않아요. (은행을 새로 추가하는 기능이 아니라, 파서가 준비된 은행 중 사용 여부를 고르는 거예요.)
@@ -63,7 +63,7 @@ export default function BrandBankSettings({ initial }: { initial: BrandBankRow[]
         {BRANDS.map((b, i) => (
           <div
             key={b.id}
-            className={`flex flex-wrap items-center gap-[10px] px-[14px] py-[10px] ${i > 0 ? 'border-t border-border' : ''}`}
+            className={`flex flex-wrap items-center gap-[10px] px-[14px] py-[20px] ${i > 0 ? 'border-t border-border' : ''}`}
           >
             <span className="flex-[1_1_140px] text-[13px] text-foreground">{b.label}</span>
             {KNOWN_BANKS.map((k) => {

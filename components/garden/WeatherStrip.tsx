@@ -206,7 +206,7 @@ export default function WeatherStrip() {
         .dark .ws-day-red { color: hsl(0 84% 68%); }
         .dark .ws-day-blue { color: hsl(217 90% 70%); }
       `}</style>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 16 }}>
         <p className="ta-label" style={{ marginBottom: 0 }}>2주 날씨 — 판교·양재천</p>
         <span className="text-[11px] text-muted-foreground/70">
           Open-Meteo · 10일 이후는 경향 참고용 ·{' '}
@@ -228,7 +228,7 @@ export default function WeatherStrip() {
         </span>
       </div>
       {showNotes && (comments.length > 0 || tomorrow) && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 16 }}>
           {comments.map((c) => (
             <p key={c} className="m-0 text-[13px] text-foreground">
               <span className="text-muted-foreground">▸</span> {c}
@@ -366,7 +366,7 @@ export default function WeatherStrip() {
         })}
       </div>
       {selected && hours.get(selected) && (
-        <div className="rounded-md bg-muted/40" style={{ marginTop: 6, padding: '10px 12px' }}>
+        <div className="rounded-md bg-muted/40" style={{ marginTop: 12, padding: '10px 12px' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
             <p className="ta-label" style={{ marginBottom: 0 }}>
               {Number(selected.slice(5, 7))}/{Number(selected.slice(8, 10))} 시간대별 — 기온 · 강수확률

@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { isAllowedUser, isOwner } from '@/lib/finance/access';
-import { SECTIONS, firstAllowedHref, sectionForPath, sectionsForApiPath } from '@/lib/access/sections';
+import { SECTIONS, TA_ACCESS_HEADER, firstAllowedHref, sectionForPath, sectionsForApiPath } from '@/lib/access/sections';
 import { GARDEN_TABS, tabForPath } from '@/lib/garden/tabs';
 
 // 앱 전체 접근 통제의 단일 관문.
@@ -33,7 +33,14 @@ const PUBLIC_API = [
 const isPublicApi = (p: string) => PUBLIC_API.some((a) => p === a || p.startsWith(a + '/'));
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  // 접근 스탬프 헤더는 클라이언트가 보냈다면 항상 제거하고 전달 — 위조 차단.
+  // 쿠키 갱신 뒤에도 같은 헬퍼로 재생성해, 갱신된 토큰과 제거 상태를 함께 유지한다.
+  const sanitizedNext = () => {
+    const h = new Headers(request.headers);
+    h.delete(TA_ACCESS_HEADER);
+    return NextResponse.next({ request: { headers: h } });
+  };
+  let response = sanitizedNext();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,7 +52,7 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
+          response = sanitizedNext();
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
@@ -92,17 +99,26 @@ export async function middleware(request: NextRequest) {
   if (isApi) {
     const needed = sectionsForApiPath(path);
     if (!needed) return response;
+    // tabs까지 함께 읽는다(같은 행 1회 조회) — 통과 시 스탬프에 실어 라우트 가드의 재조회를 없앤다
     const { data: apiAccess } = await supabase
       .schema('finance')
       .from('garden_tab_access')
-      .select('sections')
+      .select('tabs, sections')
       .eq('user_id', user.id)
       .maybeSingle();
     const allowed = (apiAccess?.sections as string[] | null) ?? null; // 행 없음/null = 전체 허용
     if (allowed && !needed.some((k) => allowed.includes(k))) {
       return withCookies(NextResponse.json({ error: '접근 권한이 없는 섹션입니다.' }, { status: 403 }));
     }
-    return response;
+    // 접근 스탬프 — sanitizedNext와 같은 제거를 거친 뒤 미들웨어 값만 싣는다
+    const h = new Headers(request.headers);
+    h.delete(TA_ACCESS_HEADER);
+    h.set(
+      TA_ACCESS_HEADER,
+      JSON.stringify({ uid: user.id, tabs: (apiAccess?.tabs as string[] | null) ?? null, sections: allowed })
+    );
+    const stamped = NextResponse.next({ request: { headers: h } });
+    return withCookies(stamped);
   }
 
   const section = sectionForPath(path);

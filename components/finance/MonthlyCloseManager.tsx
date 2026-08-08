@@ -152,7 +152,7 @@ export default function MonthlyCloseManager({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
       {/* 일괄 확정 툴바 — 확정 대기(미분류 0) 달을 골라 한 번에 */}

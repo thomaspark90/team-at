@@ -71,7 +71,7 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
       <div className="overflow-hidden rounded-md border border-border bg-background">
         <div className="overflow-x-auto">

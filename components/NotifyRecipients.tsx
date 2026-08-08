@@ -54,7 +54,7 @@ export default function NotifyRecipients({ initial }: { initial: RecipientRow[] 
         켤 수 있어요. (구글 로그인에 쓰는 이메일로 등록해야 푸시알림이 연결돼요)
       </p>
 
-      <div className="mt-3 flex flex-col gap-1.5">
+      <div className="mt-3 flex flex-col gap-3">
         {rows.length === 0 && (
           <span className="text-[13px] text-amber-600">수신자가 없어요 — 기본값(대표)으로 발송돼요.</span>
         )}

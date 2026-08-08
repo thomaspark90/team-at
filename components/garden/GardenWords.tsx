@@ -98,7 +98,7 @@ export default function GardenWords() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-16">
       <div>
         <h1 className="text-[22px] font-medium">제철 단어 검수</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
@@ -119,7 +119,7 @@ export default function GardenWords() {
       ) : (
         <>
           <section>
-            <h2 className="mb-3 text-[13px] font-medium text-muted-foreground">
+            <h2 className="mb-6 text-[13px] font-medium text-muted-foreground">
               지금 화면에 떠 있는 단어 {SEED_WORDS.length + approvedLive.length}
             </h2>
             <ul className="flex flex-wrap gap-2">
@@ -148,13 +148,13 @@ export default function GardenWords() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-[13px] font-medium text-muted-foreground">
+            <h2 className="mb-6 text-[13px] font-medium text-muted-foreground">
               대기 중 {pending.length > 0 && <span className="text-foreground">{pending.length}</span>}
             </h2>
             {pending.length === 0 ? (
               <p className="text-[13px] text-muted-foreground">대기 중인 단어가 없습니다.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-4">
                 {pending.map((w) => (
                   <li
                     key={w.id}
@@ -190,7 +190,7 @@ export default function GardenWords() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-[13px] font-medium text-muted-foreground">게시됨 {approved.length}</h2>
+            <h2 className="mb-6 text-[13px] font-medium text-muted-foreground">게시됨 {approved.length}</h2>
             {approved.length === 0 ? (
               <p className="text-[13px] text-muted-foreground">아직 게시된 손님 단어가 없습니다.</p>
             ) : (
@@ -218,7 +218,7 @@ export default function GardenWords() {
 
           {rejected.length > 0 && (
             <section>
-              <h2 className="mb-3 text-[13px] font-medium text-muted-foreground">반려됨 {rejected.length}</h2>
+              <h2 className="mb-6 text-[13px] font-medium text-muted-foreground">반려됨 {rejected.length}</h2>
               <ul className="flex flex-wrap gap-2">
                 {rejected.map((w) => (
                   <li

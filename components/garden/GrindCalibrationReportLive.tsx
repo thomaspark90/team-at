@@ -135,7 +135,7 @@ export default function GrindCalibrationReportLive() {
     // 카드 해체(2026-08-08) — 주요 섹션 경계는 가로 구분선으로만
     <div className="divide-y divide-border">
       {/* 현행 상태 요약 */}
-      <div className="pb-[54px]" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+      <div className="pb-[54px]" style={{ display: 'flex', columnGap: 12, rowGap: 24, flexWrap: 'wrap' }}>
         <Stat
           value={meanOffset != null ? `${meanOffset > 0 ? '+' : ''}${Math.round(meanOffset)}µm` : '—'}
           label={
@@ -172,7 +172,7 @@ export default function GrindCalibrationReportLive() {
 
       {/* 공통 다이얼별 분포 비교 */}
       {shared.length > 0 && (
-        <div className="py-[54px]" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 12 }}>
+        <div className="py-[54px]" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', columnGap: 12, rowGap: 24 }}>
           {shared.map((g) => {
             const curveShots = {
               yangjae: g.yangjae.filter((s: Shot) => s.std > 0),
@@ -221,7 +221,7 @@ export default function GrindCalibrationReportLive() {
       {/* 현행 원자료 */}
       {current.length > 0 && (
         <div className="min-w-0 pt-[54px]" style={{ overflowX: 'auto' }}>
-          <p className="text-[15px] font-medium text-foreground" style={{ marginTop: 0, marginBottom: 10 }}>
+          <p className="text-[15px] font-medium text-foreground" style={{ marginTop: 0, marginBottom: 20 }}>
             현행 측정 원자료 — 최근 얼라인 이후 {current.length}샷
           </p>
           <table className="tabular text-[13px]" style={{ borderCollapse: 'collapse', minWidth: 620, width: '100%', maxWidth: 860 }}>

@@ -123,9 +123,9 @@ function SeriesCard({ s }: { s: Series }) {
         )}
       </div>
       {!s.result ? (
-        <p className="mt-2 text-[13px] text-muted-foreground">표본이 부족해요(영업일 40일 미만) — 데이터가 더 쌓이면 표시됩니다.</p>
+        <p className="mt-4 text-[13px] text-muted-foreground">표본이 부족해요(영업일 40일 미만) — 데이터가 더 쌓이면 표시됩니다.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 28, marginTop: 28 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <p className="ta-label" style={{ marginBottom: 2 }}>기온 (기준 {s.result.tempRef ?? '10–20°'})</p>
             {s.result.temp.map((e) => (
@@ -201,7 +201,7 @@ export default function WeatherSalesReport() {
       {/* 커버리지 */}
       <section className="pb-[54px]">
         <p className="ta-label">데이터 커버리지</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {data.coverage.map((c) => (
             <p key={c.store} className="m-0 text-[13px]">
               <span className="font-medium">{STORE_LABEL[c.store] ?? c.store}</span>{' '}
@@ -247,14 +247,14 @@ export default function WeatherSalesReport() {
       {data.seasonalFactors && data.monthly && (
         <section className="py-[54px]">
           <p className="ta-label">월별 계절 팩터 (1.0 = 연평균 일매출)</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, overflowX: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 36, overflowX: 'auto' }}>
             {Object.entries(data.seasonalFactors)
               .filter(([store]) => store !== '-')
               .map(([store, factors]) => (
                 <SeasonalCurve key={store} store={store} factors={factors} monthly={data.monthly?.[store] ?? []} />
               ))}
           </div>
-          <p className="m-0 mt-2 text-[11px] text-muted-foreground/80">
+          <p className="m-0 mt-4 text-[11px] text-muted-foreground/80">
             발주 계획: 연평균 대비 그 달을 몇 %로 잡을지의 기준선. 성장 트렌드 미보정 원시 평균이라 신규 지점 초기 달은
             낮게, 최근 달은 높게 나올 수 있어요. 영업 10일 미만인 달은 제외(—).
           </p>

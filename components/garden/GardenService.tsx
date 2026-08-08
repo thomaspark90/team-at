@@ -226,7 +226,7 @@ export default function GardenService() {
       <div className="divide-y divide-border">
         <div className="min-w-0 pb-[54px]">
           <p className="ta-label">판매가 산식 기준</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 12px' }}>
             <Field label="구매 용량(g)" value={settings.capacityG} onChange={(v) => setNum('capacityG', v)} />
             {/* 값은 '남는 비율'(잔존율) — 로스율 10%면 90을 입력한다. 라벨 오독으로 10을 넣으면 재료비가 9배가 된다 */}
             <Field label="로스 제외 잔존율(%)" value={Math.round(settings.yieldRate * 100)} onChange={(v) => setNum('yieldRate', v / 100)} />
@@ -294,7 +294,7 @@ export default function GardenService() {
               />
             </label>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {scanMsg && (
               <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>{scanMsg}</p>
             )}
@@ -434,7 +434,7 @@ export default function GardenService() {
           </div>
 
           {result && (
-            <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+            <div style={{ marginTop: 40, display: 'flex', flexDirection: 'column', gap: 28, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <span className="text-[11px] text-muted-foreground">잔당 재료비 (VAT 포함)</span>
@@ -480,16 +480,16 @@ export default function GardenService() {
         {purchasesLoaded && purchases.length > 0 && (
           <div className="min-w-0 pt-[54px]">
             <p className="ta-label">이전 발주 리스트</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
               {purchaseGroups.map((group) => (
                 <div key={group[0].id}>
-                  <p className="text-[13px] text-foreground mb-1.5">
+                  <p className="text-[13px] text-foreground mb-3">
                     {group[0].bean}
                     {group[0].roastery && (
                       <span className="text-[11px] text-muted-foreground"> · {group[0].roastery}</span>
                     )}
                   </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {group.map((rec, i) => {
                       const older = group[i + 1];
                       const delta = older ? rec.costPerCup - older.costPerCup : 0;

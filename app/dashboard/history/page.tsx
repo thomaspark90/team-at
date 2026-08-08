@@ -41,7 +41,7 @@ export default async function TransferManagePage() {
       <div className="mx-auto max-w-[1120px] divide-y divide-border px-4 py-6 sm:px-6 sm:py-8">
         {(role === 'admin' || isNotifyRecipient) && (
           <div className="pb-[54px]">
-            <div className={`grid gap-4 ${role === 'admin' && isNotifyRecipient ? 'sm:grid-cols-2' : ''}`}>
+            <div className={`grid gap-x-4 gap-y-8 ${role === 'admin' && isNotifyRecipient ? 'sm:grid-cols-2' : ''}`}>
               {role === 'admin' && <NotifyRecipients initial={recipientList} />}
               {isNotifyRecipient && <NotifySettings />}
             </div>

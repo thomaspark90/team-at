@@ -601,7 +601,7 @@ export default function ClassifyPanel({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
       {/* 필터 바 */}
       <div className="flex flex-wrap items-center gap-[10px]">
         {/* 월 선택은 좌측 사이드바가 전담(2026-08-04 대표 지시로 드롭다운 제거) —

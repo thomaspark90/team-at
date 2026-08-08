@@ -72,7 +72,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
         미분류가 0이 되면 월 확정을 할 수 있어요.
       </p>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+      <div className="mt-8 grid gap-x-2 gap-y-4 sm:grid-cols-3">
         {TILES.map((t) => {
           const s = status?.sources[t.key];
           // 자료 없음 → 중립, 미분류 있음 → 할 일(점선), 모두 분류 → 완료(✓)
@@ -126,7 +126,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
 
       {/* 마지막 단계 — 월 확정 */}
       {status && (
-        <div className={`mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-3.5 py-2.5 ${confirmed ? 'opacity-70' : ''}`}>
+        <div className={`mt-6 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-3.5 py-2.5 ${confirmed ? 'opacity-70' : ''}`}>
           <span className="flex items-center gap-2 text-[13px]">
             <span className={confirmed ? 'text-emerald-600' : 'text-muted-foreground'}>{confirmed ? '✓' : '•'}</span>
             <span className={confirmed ? 'text-muted-foreground line-through' : ''}>
@@ -150,7 +150,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
         </div>
       )}
 
-      {error && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
+      {error && <p className="mt-6 text-[13px] text-red-500">{error}</p>}
     </section>
   );
 }

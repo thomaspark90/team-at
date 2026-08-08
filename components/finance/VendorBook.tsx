@@ -126,7 +126,7 @@ export default function VendorBook() {
       </button>
 
       {open && (
-        <div className="mt-4 flex flex-col gap-2.5">
+        <div className="mt-8 flex flex-col gap-5">
           <div className="flex gap-2">
             <input
               className={inputCls}

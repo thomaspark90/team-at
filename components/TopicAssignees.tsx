@@ -51,7 +51,7 @@ export default function TopicAssignees({
     save(topic, Array.from(new Set([...map[topic], email])));
 
   return (
-    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       <div>
         <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>{title}</p>
         <p className="text-[13px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
@@ -65,7 +65,7 @@ export default function TopicAssignees({
         <NotifySettings bare />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
         <p className="ta-label" style={{ margin: 0 }}>항목별 담당자</p>
         {topicsOfScope(scope).map((t) => (
           <div key={t.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

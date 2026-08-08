@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import ThemeToggle, { ThemeOptions } from '@/components/ThemeToggle';
 import { SECTIONS, inAccounting } from '@/lib/access/sections';
+import { fetchMyAccess } from '@/lib/access/tab-access-client';
 
 const TABS = SECTIONS.map((s) => ({ href: s.href, label: s.label, key: s.key }));
 
@@ -18,10 +19,8 @@ export default function TabNav() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    fetch('/api/garden-tab-access?scope=mine', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : { sections: null }))
-      .then((j) => setAllowed(j.sections ?? null))
-      .catch(() => setAllowed(null));
+    // GardenNav와 같은 응답을 쓰므로 공유 캐시로 중복 fetch를 없앤다
+    fetchMyAccess().then((a) => setAllowed(a.sections));
   }, []);
 
   // 페이지 이동 시 햄버거 메뉴 닫기

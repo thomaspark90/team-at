@@ -20,7 +20,7 @@ export default function ReviewSalesReport({ data }: { data: StoreReviewSales[] }
         네이버 리뷰 유입(수집 시점 기준)과 주간 매출을 겹쳐 봅니다. 상관은 인과가 아니에요 —
         매출이 늘어 방문이 늘면 리뷰도 함께 느는 역방향도 가능합니다.
       </p>
-      <div className="mt-4 grid gap-5 lg:grid-cols-2">
+      <div className="mt-8 grid gap-x-5 gap-y-10 lg:grid-cols-2">
         {nonEmpty.map((s) => {
           const recent = s.weeks.slice(-12);
           const max = Math.max(1, ...recent.map((w) => w.sales));

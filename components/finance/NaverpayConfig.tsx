@@ -62,7 +62,7 @@ export default function NaverpayConfig() {
         여기서 수정하세요. 어떤 계정의 내역이 수집되는지는 주소가 아니라 <b>Mac의 네이버 로그인
         세션</b>이 정해요 (계정 교체는 Mac에서 쿠키갱신.command).
       </p>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-6 flex flex-wrap gap-2">
         <input
           value={url}
           onChange={(e) => setUrl(e.target.value)}

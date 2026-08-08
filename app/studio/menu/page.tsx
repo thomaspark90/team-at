@@ -47,11 +47,11 @@ export default function StudioMenuPage() {
 
       <div className="mx-auto max-w-[1100px] px-6 py-8">
         <div
-          className="grid items-start gap-6"
+          className="grid items-start gap-x-6 gap-y-12"
           style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))' }}
         >
           {/* 왼쪽: 입력 */}
-          <div className="flex min-w-0 flex-col gap-5">
+          <div className="flex min-w-0 flex-col gap-10">
             <div className="rounded-md bg-muted/40 p-6">
               <p className="ta-label">Date</p>
               <input
@@ -71,7 +71,7 @@ export default function StudioMenuPage() {
           </div>
 
           {/* 오른쪽: 미리보기 + 다운로드 */}
-          <div className="sticky top-6 flex min-w-0 flex-col gap-5">
+          <div className="sticky top-6 flex min-w-0 flex-col gap-10">
             <div className="min-w-0 rounded-md bg-muted/40 p-6">
               <p className="ta-label">Preview</p>
               <div ref={previewBoxRef} className="w-full">
@@ -88,7 +88,7 @@ export default function StudioMenuPage() {
 
             <DownloadButton previewRef={previewRef} story={story} />
 
-            <p className="text-center text-[11px] text-muted-foreground">
+            <p className="-mt-5 text-center text-[11px] text-muted-foreground">
               다운로드 후 인스타그램 앱에서 스토리로 업로드하세요
             </p>
           </div>

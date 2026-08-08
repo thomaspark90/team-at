@@ -93,7 +93,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
   const diff = cand ? cand.amount - preview!.net : 0;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-10">
       {saved && (
         <div className="rounded-md bg-muted/40 p-4">
           <div className="mb-1 text-foreground">✓ 저장 완료{saved.linked ? ' · 정산 연결됨' : ' · 미연결(결제 대기)'}</div>
@@ -105,7 +105,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
       )}
 
       {/* 업로드 카드 */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-8">
         <div>
           <h2 className="text-[15px] text-foreground">신한카드 이용내역으로 지출 자료 세분화</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">

@@ -74,14 +74,14 @@ export default function GrinderAlignmentLog() {
 
   return (
     // 카드 해체(2026-08-08) — 페이지 최상위 섹션은 박스 없이
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <span className="text-[15px] font-medium text-foreground">그라인더 얼라인먼트 기록</span>
         <span className="text-[11px] text-muted-foreground">버 정렬·제로포인트를 본 날 — 이 날짜 이전 측정은 차트에서 흐리게 구분됩니다</span>
       </div>
 
       {/* 지점별 마지막 얼라인 날짜 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', columnGap: 8, rowGap: 16 }}>
         {STORES.map((s) => {
           const last = latestAlignmentDate(events, s.id);
           const checked = latestInspectionDate(events, s.id);
@@ -138,7 +138,7 @@ export default function GrinderAlignmentLog() {
 
       {/* 이력 */}
       {history.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {visible.map((e) => (
             <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span className="tabular text-[13px] text-foreground" style={{ minWidth: 90 }}>{e.date}</span>

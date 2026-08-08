@@ -61,7 +61,7 @@ export default function ContinuityAudit({ brand }: { brand: Brand }) {
           — 저장된 전체 기간에서 빠진 구간(누락 파일) 찾기
         </span>
       </summary>
-      <p className="mb-3 mt-1 text-[13px] text-muted-foreground">
+      <p className="mb-6 mt-1 text-[13px] text-muted-foreground">
         은행 거래의 잔액 흐름(이전 잔액 + 입금 − 출금 = 현재 잔액)이 전 기간 이어지는지 검사해요.
         끊긴 곳 = 그 사이 기간의 거래가 빠졌다는 신호예요(예: 파일 하나를 안 올림). 끊긴 지점을 누르면 그 달로 이동해요.
       </p>
@@ -69,10 +69,10 @@ export default function ContinuityAudit({ brand }: { brand: Brand }) {
       <button onClick={run} disabled={loading} className="ta-btn-primary text-[13px]">
         {loading ? '검사 중…' : results ? '다시 검사' : '전체 기간 검사'}
       </button>
-      {error && <p className="mt-2 text-[13px] text-red-500">⚠ {error}</p>}
+      {error && <p className="mt-4 text-[13px] text-red-500">⚠ {error}</p>}
 
       {results && (
-        <div className="mt-4 flex flex-col gap-3">
+        <div className="mt-8 flex flex-col gap-6">
           {results.map((r) => (
             <div key={r.bank} className="rounded-md bg-muted/40 p-3">
               <div className="text-[13px] font-medium">
@@ -91,7 +91,7 @@ export default function ContinuityAudit({ brand }: { brand: Brand }) {
               ) : r.breaks.length === 0 ? (
                 <p className="mb-0 mt-1 text-[13px] text-emerald-600">✓ 전 기간 잔액이 이어져요 — 누락 구간 없음</p>
               ) : (
-                <ul className="mb-0 mt-2 flex list-none flex-col gap-1.5 p-0">
+                <ul className="mb-0 mt-4 flex list-none flex-col gap-3 p-0">
                   {r.breaks.map((b, i) => (
                     <li key={i}>
                       <button

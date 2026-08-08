@@ -45,7 +45,7 @@ export default function OrderOutlookCard() {
           다음 7일 날씨 배율 ×{data.weatherFactor} · 주기=재발주 간격 기반, 용량=1회 1봉 가정 — 참고치
         </span>
       </div>
-      <div className="mt-3 overflow-x-auto">
+      <div className="mt-6 overflow-x-auto">
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">

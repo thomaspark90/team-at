@@ -233,11 +233,11 @@ export default function MonthlyUploadBoard({
         <input ref={fileInput} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
       )}
 
-      <div className={`mt-4 grid gap-4 sm:grid-cols-2 ${posEntries.length > 0 ? 'xl:grid-cols-4' : 'lg:grid-cols-3'}`}>
+      <div className={`mt-8 grid gap-x-4 gap-y-8 sm:grid-cols-2 ${posEntries.length > 0 ? 'xl:grid-cols-4' : 'lg:grid-cols-3'}`}>
         {GROUPS.map((group) => (
           <div key={group}>
             <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{group}</div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-4">
               {SLOTS.filter((s) => s.group === group).map((s) => {
                 const st = slots?.[s.key];
                 const busy = parsing && activeSlot === s.key;
@@ -374,7 +374,7 @@ export default function MonthlyUploadBoard({
         {posEntries.length > 0 && (
           <div>
             <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">매출 (POS)</div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-4">
               {posEntries.map(([storeKey, p]) => {
                 const meta = POS_META[storeKey];
                 if (p.done) {
@@ -417,7 +417,7 @@ export default function MonthlyUploadBoard({
         {(classify || monthClose) && (
           <div>
             <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">분류 · 확정</div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-4">
               {classify &&
                 (classify.total === 0 ? (
                   <div className="flex items-center justify-between gap-2 rounded-xl bg-muted/40 px-3.5 py-2.5 opacity-70">
@@ -464,7 +464,7 @@ export default function MonthlyUploadBoard({
       </div>
 
       {!readOnly && preview && activeSlot && (
-        <div className="mt-4 rounded-xl bg-muted/40 p-4">
+        <div className="mt-8 rounded-xl bg-muted/40 p-4">
           <div className="text-[13px] font-medium">
             {fmtYm(ym)} · {activeLabel} <span className="font-normal text-muted-foreground">— 인식 결과 확인</span>
           </div>

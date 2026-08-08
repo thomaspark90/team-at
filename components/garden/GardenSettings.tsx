@@ -157,7 +157,7 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
   );
 
   return (
-    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       <div>
         <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>알림</p>
         <p className="text-[13px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
@@ -172,7 +172,7 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
         <NotifySettings bare />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
         <p className="ta-label" style={{ margin: 0 }}>항목별 담당자</p>
         {/* 가든 항목만 — 스탭밀 항목은 /studio/settings 에서 관리한다 */}
         {topicsOfScope('garden').map((t) =>
@@ -276,7 +276,7 @@ function RequestForms() {
   };
 
   return (
-    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div>
         <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>요청 보내기</p>
         <p className="text-[13px] text-muted-foreground" style={{ margin: '2px 0 0' }}>

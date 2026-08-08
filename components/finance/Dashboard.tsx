@@ -200,7 +200,7 @@ export default function Dashboard({
 
   if (months.length === 0) {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-8">
         {toggle}
         <div className="mx-auto my-10 max-w-[460px] text-center text-muted-foreground">
           <div className="mb-3 text-[32px]">📊</div>
@@ -265,7 +265,7 @@ export default function Dashboard({
   const unitLabel = unit === 'month' ? (isPast ? `${focusP}` : '이번 달') : '이번 주';
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-10">
       {isPast && (
         <div className="-mb-1 text-[13px] text-muted-foreground">
           좌측에서 고른 <b className="text-foreground">{focusP}</b> 기준 요약이에요 · 아래 추이 차트는 전체 기간

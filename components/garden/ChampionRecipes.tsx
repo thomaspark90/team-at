@@ -25,7 +25,7 @@ export default function ChampionRecipes() {
             </span>
           </div>
 
-          <div style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ paddingTop: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
             <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>☕ {r.coffee}</p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

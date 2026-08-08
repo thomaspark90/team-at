@@ -80,7 +80,7 @@ export default function ReceiptEnrich() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-8">
       <div>
         <h2 className="text-[15px] text-foreground">🧾 쿠팡 영수증으로 지출 자료 세분화</h2>
         <p className="mt-1 text-[13px] text-muted-foreground">

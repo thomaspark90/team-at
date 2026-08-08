@@ -785,7 +785,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   const unsetCard = unsetBeans.length > 0 && (
     <div className="min-w-0">
       <p className="ta-label">레시피 미설정 원두 — 새 발주</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {unsetBeans.map((rec) => (
           <div key={rec.id} style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             <span className="text-[13px] text-foreground" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -846,7 +846,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
   return (
     // unset(대시보드) 모드는 아래 캘리브레이션과 같은 풀폭, recipes 모드는 기존 720 유지
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 40, minWidth: 0 }}>
       {/* 레시피 편집 폼 — 설정/수정 클릭 시 상단에 노출 */}
       {draft && (
         <div className="min-w-0">
@@ -865,7 +865,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           </div>
 
           {/* ICE / HOT 전환 — 같은 원두의 다른 타입 레시피로 이동 */}
-          <div className="inline-flex gap-1 rounded-md border border-border p-1" style={{ margin: '12px 0' }}>
+          <div className="inline-flex gap-1 rounded-md border border-border p-1" style={{ margin: '24px 0' }}>
             {BREW_TYPES.map((bt) => {
               const on = draft.brewType === bt;
               return (
@@ -882,7 +882,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             })}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 12px' }}>
             <SelField
               label="도징량(g)"
               value={draft.doseG}
@@ -930,7 +930,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           </div>
 
           {/* 푸어링 단계 — 물 투입량 30~60g, 5g 단위 드랍다운 */}
-          <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <span className="text-[11px] text-muted-foreground">푸어링 (단계별 물 투입량)</span>
             {draft.pours.map((p, i) => {
               const cum = draft.pours.slice(0, i + 1).reduce((a, s) => a + s.water, 0);
@@ -979,7 +979,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             </div>
           </div>
 
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 24 }}>
             <span className="text-[11px] text-muted-foreground">테이스팅 노트 (ICE/HOT 공통)</span>
             <input
               type="text"
@@ -990,7 +990,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             />
           </label>
 
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 12 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 24 }}>
             <span className="text-[11px] text-muted-foreground">메모</span>
             <textarea
               value={draft.notes}
@@ -1001,7 +1001,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             />
           </label>
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 28 }}>
             <button onClick={saveDraft} disabled={saving} className="ta-btn-primary" style={{ flex: 1 }}>
               {saving ? '저장 중…' : `${btLabel(draft.brewType)} 레시피 저장`}
             </button>
@@ -1020,7 +1020,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
       {/* 필터 레시피 — 모든 레시피 원두를 국가별 그룹으로, 카드 전체 기능(수정·타이머·이력·재고칩) */}
       {section === 'recipes' && (
-        <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
           {loading && <p className="text-[13px] text-muted-foreground">불러오는 중…</p>}
           {/* 새 발주 원두 — 레시피 미설정이면 상단에서 바로 설정 유도 */}
           {!loading && unsetCard}
@@ -1063,11 +1063,11 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             : countrySections.filter((s) => s.country === selectedCountry)
           ).map(({ country, groups }) => (
             <div key={country} className="min-w-0">
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, borderBottom: '1px solid hsl(var(--border))', paddingBottom: 6, marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, borderBottom: '1px solid hsl(var(--border))', paddingBottom: 6, marginBottom: 24 }}>
                 <h3 className="text-[15px] text-foreground" style={{ margin: 0, fontWeight: 500 }}>{country}</h3>
                 <span className="text-[11px] text-muted-foreground">{groups.length}종</span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px 12px' }}>
                 {groups.map(renderBeanCard)}
               </div>
             </div>

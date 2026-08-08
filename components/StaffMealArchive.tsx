@@ -83,7 +83,7 @@ export default function StaffMealArchive({ initial }: { initial: StaffMealRecord
             아직 기록이 없습니다. IG 메뉴 업데이트에서 스토리를 다운로드하면 자동으로 쌓입니다.
           </p>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-8">
             {records.map((rec) => (
               <div key={rec.id} className="rounded-lg bg-muted/40 p-3.5">
                 <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">

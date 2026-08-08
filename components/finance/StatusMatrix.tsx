@@ -83,7 +83,7 @@ export default function StatusMatrix({
         )}
         <span className="ml-2 text-[11px] font-normal text-muted-foreground">— 접기/펼치기</span>
       </summary>
-      <p className="mb-3 mt-1 text-[13px] text-muted-foreground">
+      <p className="mb-6 mt-1 text-[13px] text-muted-foreground">
         연·월 × 자료 종류의 미입력 현황이에요. 칸을 누르면 그 달로 이동해요.{' '}
         <span className="text-[13px]">
           <span className="text-emerald-600">✓ 완료</span> · <span className="text-amber-600">◐ 일부만</span> ·{' '}

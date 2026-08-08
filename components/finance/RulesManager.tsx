@@ -66,7 +66,7 @@ export default function RulesManager({ catNames }: { catNames: Record<number, st
   if (!rules) return <p className="text-[13px] text-muted-foreground">불러오는 중…</p>;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-3">
         <input
           value={search}

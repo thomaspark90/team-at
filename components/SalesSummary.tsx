@@ -55,7 +55,7 @@ export default function SalesSummary({ rows }: { rows: SalesRow[] }) {
     // 카드 해체(2026-08-08) — 주요 섹션 경계는 가로 구분선으로만, 합계 셀은 bg-muted/40 면으로
     <div className="divide-y divide-border">
       {/* 합계 카드 */}
-      <div className="grid gap-3 pb-[54px] sm:grid-cols-3">
+      <div className="grid gap-x-3 gap-y-6 pb-[54px] sm:grid-cols-3">
         {summary.map((s) => (
           <section key={s.label} className="rounded-2xl bg-muted/40 p-5">
             <p className="m-0 text-[13px] text-muted-foreground">{s.label} <span className="text-[11px]">({s.sub})</span></p>
@@ -72,7 +72,7 @@ export default function SalesSummary({ rows }: { rows: SalesRow[] }) {
         <p className="mt-1 text-[13px] text-muted-foreground">
           데이터가 있는 마지막 날({lastDataDay.slice(5).replace('-', '.')}) 기준. 공급가액(VAT 제외).
         </p>
-        <div className="mt-4 flex items-end gap-[3px]" style={{ height: 72 }}>
+        <div className="mt-8 flex items-end gap-[3px]" style={{ height: 72 }}>
           {chartDays.map((d) => (
             <div
               key={d.day}
@@ -95,9 +95,9 @@ export default function SalesSummary({ rows }: { rows: SalesRow[] }) {
       <section className="pt-[54px]">
         <h2 className="m-0 text-[15px] font-medium">카테고리별 — {monthLabel(latestYm)}</h2>
         {cats.length === 0 ? (
-          <p className="mt-2 text-[13px] text-muted-foreground">이 달에 집계된 매출이 없어요.</p>
+          <p className="mt-4 text-[13px] text-muted-foreground">이 달에 집계된 매출이 없어요.</p>
         ) : (
-          <div className="mt-3 flex flex-col gap-2">
+          <div className="mt-6 flex flex-col gap-4">
             {cats.map(([cat, v]) => (
               <div key={cat} className="flex items-center gap-3">
                 <span className="w-24 flex-shrink-0 truncate text-[13px]">{cat}</span>

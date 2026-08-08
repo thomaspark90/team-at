@@ -15,7 +15,7 @@ export default function Cashflow({ months }: { months: MonthCash[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-10">
       {months.map((m) => {
         const net = m.totalIn - m.totalOut;
         return (

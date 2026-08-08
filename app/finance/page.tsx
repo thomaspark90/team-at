@@ -93,7 +93,7 @@ export default async function FinancePage({ searchParams }: { searchParams: { br
           <div className="flex flex-col gap-8">
             <BrandSegments basePath="/finance" seg={seg} />
             <Overview o={overview} />
-            <section className="flex flex-col gap-4">
+            <section className="flex flex-col gap-8">
               <div>
                 <h2 className="m-0 text-[15px] text-foreground">자료 입력</h2>
                 <p className="mt-1 text-[13px] text-muted-foreground">
@@ -102,7 +102,7 @@ export default async function FinancePage({ searchParams }: { searchParams: { br
                 </p>
               </div>
               {/* 단위별 업로드 페이지 진입 — 스탭밀 / 가든 양재천점 / 가든 판교점 */}
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-x-3 gap-y-6 sm:grid-cols-3">
                 <Link
                   href="/finance/upload/staffmeal"
                   className="ta-card flex flex-col gap-1 p-5 transition-colors hover:border-foreground/40"
@@ -140,7 +140,7 @@ export default async function FinancePage({ searchParams }: { searchParams: { br
 function Overview({ o }: { o: OverviewData }) {
   const hasData = o.latest !== '';
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-8">
       <div className="flex items-baseline justify-between">
         <h1 className="m-0 text-[22px] tracking-[-0.5px]">회계 현황</h1>
         {hasData && <span className="text-[13px] text-muted-foreground">{fmtYm(o.latest)} 기준</span>}
@@ -154,12 +154,12 @@ function Overview({ o }: { o: OverviewData }) {
             <SummaryCard label="총 유출" value={won(o.totalExpense)} color="hsl(var(--foreground))" />
             <SummaryCard label="순증감 (현금)" value={won(o.surplus)} color={o.surplus >= 0 ? GREEN : 'hsl(var(--destructive))'} />
           </div>
-          <p className="-mt-1 text-[11px] text-muted-foreground">
+          <p className="-mt-5 text-[11px] text-muted-foreground">
             통장 입출금 기준(현금)이에요. 발생주의 영업이익·원가율은 <Link href="/finance/pnl" className="underline">관리손익</Link>에서 봐요.
           </p>
 
           {/* 해야 할 일 */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-6">
             <div className="text-[11px] uppercase tracking-[0.06em] text-muted-foreground">해야 할 일</div>
             <TodoRow
               done={o.unclassifiedTotal === 0}
@@ -219,7 +219,7 @@ function SummaryCard({ label, value, color }: { label: string; value: string; co
 
 function TodoRow({ done, text, href, cta }: { done: boolean; text: string; href: string; cta: string }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 first:border-t-0 first:pt-0">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-6 first:border-t-0 first:pt-0">
       <span className="flex items-center gap-2 text-[13px]">
         <span className={done ? 'text-positive' : 'text-muted-foreground'}>{done ? '✓' : '•'}</span>
         <span className={done ? 'text-muted-foreground' : 'text-foreground'}>{text}</span>

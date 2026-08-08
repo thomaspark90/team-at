@@ -158,7 +158,7 @@ export default function GardenSalePrice() {
             책정을 기다리는 발주 기록이 없어요. 발주가 저장되면 여기에 나타납니다.
           </p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
             {unpriced.map((rec) => (
               <RecordPricer
                 key={rec.id}
@@ -189,16 +189,16 @@ export default function GardenSalePrice() {
               </button>
             )}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
             {pricedGroups.map((group) => (
               <div key={group[0].id}>
-                <p className="text-[13px] text-foreground mb-1.5">
+                <p className="text-[13px] text-foreground mb-3">
                   {group[0].bean}
                   {group[0].roastery && (
                     <span className="text-[11px] text-muted-foreground"> · {group[0].roastery}</span>
                   )}
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {group.map((rec) => (
                     <div key={rec.id}>
                       <div className="gs-row">

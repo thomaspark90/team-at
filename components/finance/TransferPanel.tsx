@@ -527,14 +527,14 @@ export default function TransferPanel({ role, email, mode }: Props) {
           <button
             onClick={() => fileInput.current?.click()}
             disabled={parsing}
-            className="mt-4 w-full rounded-xl border border-dashed border-border bg-background py-6 text-[13px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground disabled:opacity-60 sm:w-auto sm:px-10"
+            className="mt-8 w-full rounded-xl border border-dashed border-border bg-background py-6 text-[13px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground disabled:opacity-60 sm:w-auto sm:px-10"
           >
             {parsing ? `인식 중…${batchTotal > 1 ? ` (${batchTotal}장)` : ''}` : '📷 사진 촬영 / 여러 장 선택'}
           </button>
           {notice && <p className="mt-3 text-[13px]" style={{ color: 'hsl(var(--number-colored))' }}>{notice}</p>}
           {error && !draft && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
           {notifyPrompt && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-muted/40 p-3 text-[13px]">
+            <div className="mt-6 flex flex-wrap items-center gap-2 rounded-xl bg-muted/40 p-3 text-[13px]">
               <span>🔔 내가 올린 송금이 <b>이체 완료되면 알림</b>으로 바로 알려드려요.</span>
               <span className="hidden flex-1 sm:block" />
               <button
@@ -762,7 +762,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
           </p>
         )}
 
-        <div className="mt-4 flex flex-col gap-3">
+        <div className="mt-8 flex flex-col gap-6">
           {loadingList && <p className="text-[13px] text-muted-foreground">불러오는 중…</p>}
           {!loadingList && listError && (
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-[13px]">
@@ -781,8 +781,8 @@ export default function TransferPanel({ role, email, mode }: Props) {
           {isDashboard
             ? visible.map(card)
             : months.map(([ym, list]) => (
-                <div key={ym} className="flex flex-col gap-3">
-                  <div className="mt-2 flex items-baseline justify-between border-b border-border pb-1.5 first:mt-0">
+                <div key={ym} className="flex flex-col gap-6">
+                  <div className="mt-4 flex items-baseline justify-between border-b border-border pb-1.5 first:mt-0">
                     <h3 className="m-0 text-[15px] font-medium">{fmtYm(ym)}</h3>
                     <span className="text-[11px] text-muted-foreground">{monthSummary(list)}</span>
                   </div>
