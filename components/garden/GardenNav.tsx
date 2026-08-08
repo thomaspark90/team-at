@@ -5,6 +5,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { GARDEN_TAB_GROUPS, WORDS_CHANGED_EVENT, tabForPath } from '@/lib/garden/tabs';
 import { REVIEWS_CHANGED_EVENT } from '@/lib/garden/review-constants';
+import { fetchMyAccess } from '@/lib/access/tab-access-client';
 
 // 가든 하위 내비게이션 — /garden 하위 페이지 상단에 노출 (FinanceNav와 동일 문법)
 // 설정의 '가든 탭 권한'에서 사용자별로 허용된 탭만 보여주고, 미허용 경로는 허용 탭으로 돌려보낸다.
@@ -21,10 +22,8 @@ export default function GardenNav() {
   const [pendingWords, setPendingWords] = useState(0);
 
   useEffect(() => {
-    fetch('/api/garden-tab-access?scope=mine', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : { mine: null }))
-      .then((j) => setAllowed(j.mine ?? null))
-      .catch(() => setAllowed(null)); // 조회 실패 시 막지 않는다 (내부 도구)
+    // TabNav와 같은 응답을 쓰므로 공유 캐시로 중복 fetch를 없앤다
+    fetchMyAccess().then((a) => setAllowed(a.mine));
   }, []);
 
   useEffect(() => {

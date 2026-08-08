@@ -62,3 +62,9 @@ export function sectionsForApiPath(p: string): string[] | null {
   if (p.startsWith('/api/kakao-notify')) return ['garden'];
   return null;
 }
+
+// 미들웨어 → 라우트 접근 스탬프 헤더. 미들웨어가 섹션 검사에서 이미 읽은
+// garden_tab_access 행을 실어 보내, 라우트 가드(requireGardenTab)의 중복 DB 조회를 없앤다.
+// 클라이언트가 보낸 값은 미들웨어가 모든 매칭 요청에서 제거하므로(위조 차단)
+// 라우트에 도달한 스탬프는 미들웨어가 쓴 것만 존재한다.
+export const TA_ACCESS_HEADER = 'x-ta-access';
