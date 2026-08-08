@@ -6,8 +6,10 @@ import TabNav from '@/components/TabNav';
 import GardenNav from '@/components/garden/GardenNav';
 import SalesSummary from '@/components/SalesSummary';
 import ReviewSalesReport from '@/components/garden/ReviewSalesReport';
+import MenuSalesReport from '@/components/garden/MenuSalesReport';
 import { fetchSalesRows, type SalesRow } from '@/lib/finance/sales-data';
 import { buildReviewSales, type ReviewRow, type StoreReviewSales } from '@/lib/garden/review-sales';
+import { buildAmericanoWeekly, buildMenuWeekly, fetchItemRows, type ItemRow } from '@/lib/garden/menu-sales';
 import { STORES } from '@/lib/types';
 
 // 가든 매출 — 토스(양재천)/페이히어(판교) POS 업로드(발생주의) 요약. 스탭밀 매출과 같은 구조.
@@ -28,10 +30,18 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
   const since = new Date(Date.now() - 396 * 86_400_000).toISOString().slice(0, 10);
 
   let rows: SalesRow[] = [];
+  let itemRows: ItemRow[] = [];
   if (isMember && !scopedOut) {
-    rows = await fetchSalesRows(supabase, { table: 'dashboard_pos', brand: 'garden', since }).catch(() => []);
+    [rows, itemRows] = await Promise.all([
+      fetchSalesRows(supabase, { table: 'dashboard_pos', brand: 'garden', since }).catch(() => []),
+      // 품목 행은 현재 양재천(토스)만 쌓인다 — 마이그레이션 전이거나 비어 있으면 조용히 [].
+      fetchItemRows(supabase, { brand: 'garden', since }).catch(() => []),
+    ]);
   }
   const shown = storeParam !== 'all' ? rows.filter((r) => r.store === storeParam) : rows;
+  const shownItems = storeParam !== 'all' ? itemRows.filter((r) => r.store === storeParam) : itemRows;
+  const americano = buildAmericanoWeekly(shownItems);
+  const menuWeekly = buildMenuWeekly(shownItems);
 
   // 리뷰 × 매출 주간 리포트 — 매출을 볼 수 있는 멤버라면 함께 본다 (리뷰는 팀 전체 열람 데이터)
   let reviewSales: StoreReviewSales[] = [];
@@ -102,6 +112,7 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
         ) : (
           <>
             <SalesSummary rows={shown} />
+            <MenuSalesReport americano={americano} menus={menuWeekly} />
             {reviewSales.length > 0 && <ReviewSalesReport data={reviewSales} />}
           </>
         )}

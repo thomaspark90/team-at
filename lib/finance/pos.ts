@@ -30,10 +30,26 @@ export interface PosCategoryAgg {
   supply: number;
 }
 
+// (일 × 카테고리 × 상품명 × 옵션) 품목 행 — finance.pos_items 용. 토스 리포트만 만들 수 있다
+// (페이히어는 결제 단위라 불가). 옵션 원문은 공백 정규화만 하고 그대로 보존 — 해석(ICE/HOT,
+// 원두 구분)은 리포트 쪽(lib/garden/menu-sales.ts)에서 한다.
+export interface PosItemRow {
+  ym: string;
+  saleDate: string;
+  category: string;
+  product: string;
+  option: string;
+  qty: number;
+  gross: number;
+  vat: number;
+  supply: number;
+}
+
 export interface PosParseResult {
   ym: string; // 대표 월(가장 많은 행이 속한 월)
   yms: string[]; // 파일에 존재하는 모든 월(보통 1개)
   rows: PosDailyCat[]; // (일 × 카테고리) 집계 — pos_sales 삽입용
+  items?: PosItemRow[]; // (일 × 카테고리 × 상품명 × 옵션) — pos_items 삽입용. 토스만 채운다.
   byCategory: PosCategoryAgg[]; // 월 카테고리 요약
   totals: { qty: number; gross: number; vat: number; supply: number };
   excluded: { rows: number; gross: number; vat: number }; // 제외된 상품권
@@ -79,6 +95,7 @@ function locateColumns(rows: unknown[][]): { hdr: number; ci: Record<string, num
           state: norm.indexOf('결제상태'),
           channel: norm.indexOf('주문채널'),
           name: norm.indexOf('상품명'),
+          option: norm.indexOf('옵션'),
           category: norm.indexOf('카테고리'),
           qty: norm.indexOf('수량'),
           amount: norm.findIndex((h) => h.includes('실판매금액')),
@@ -107,6 +124,7 @@ export function parsePosRows(rows: unknown[][]): PosParseResult {
   }
   const { ci } = loc;
   const daily = new Map<string, PosDailyCat>(); // key = saleDate|category
+  const itemAgg = new Map<string, PosItemRow>(); // key = saleDate|category|product|option
   const excluded = { rows: 0, gross: 0, vat: 0 };
   const ymCount = new Map<string, number>();
   let completed = 0;
@@ -144,10 +162,29 @@ export function parsePosRows(rows: unknown[][]): PosParseResult {
     cur.vat += vat;
     cur.supply += gross - vat;
     daily.set(key, cur);
+
+    // 품목 행 — 상품명·옵션은 공백만 정규화해 원문 보존(취소행 음수도 그대로 net 합산)
+    const product = String(r[ci.name] ?? '').replace(/\s+/g, ' ').trim() || '기타';
+    const option = ci.option >= 0 ? String(r[ci.option] ?? '').replace(/\s+/g, ' ').trim() : '';
+    const itemKey = `${key}|${product}|${option}`;
+    const it =
+      itemAgg.get(itemKey) ?? { ym, saleDate, category, product, option, qty: 0, gross: 0, vat: 0, supply: 0 };
+    it.qty += num(r[ci.qty]);
+    it.gross += gross;
+    it.vat += vat;
+    it.supply += gross - vat;
+    itemAgg.set(itemKey, it);
   }
 
   const out = Array.from(daily.values()).sort(
     (a, b) => a.saleDate.localeCompare(b.saleDate) || a.category.localeCompare(b.category),
+  );
+  const items = Array.from(itemAgg.values()).sort(
+    (a, b) =>
+      a.saleDate.localeCompare(b.saleDate) ||
+      a.category.localeCompare(b.category) ||
+      a.product.localeCompare(b.product) ||
+      a.option.localeCompare(b.option),
   );
 
   // 카테고리 요약
@@ -174,6 +211,7 @@ export function parsePosRows(rows: unknown[][]): PosParseResult {
     ym,
     yms,
     rows: out,
+    items,
     byCategory,
     totals,
     excluded,

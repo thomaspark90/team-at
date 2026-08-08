@@ -120,6 +120,47 @@ export async function POST(req: Request) {
     .eq('store', store)
     .lt('uploaded_at', now);
 
+  // 품목 단위(pos_items) — 토스 파서만 items 를 만든다(페이히어는 결제 단위라 불가).
+  // pos_sales 와 같은 월 단위 교체(upsert 후 잔여 정리). 테이블이 아직 없으면(마이그레이션 전)
+  // 요약 저장은 이미 끝났으므로 실패로 만들지 않고 응답에만 표시한다.
+  let itemsInserted = 0;
+  let itemsSkipped = false;
+  if (r.items && r.items.length > 0) {
+    const itemRows = r.items.map((d) => ({
+      ym: d.ym,
+      sale_date: d.saleDate,
+      brand,
+      store,
+      category: d.category,
+      product: d.product,
+      option: d.option,
+      qty: d.qty,
+      gross: d.gross,
+      vat: d.vat,
+      supply: d.supply,
+      uploaded_by: user.id,
+      uploaded_at: now,
+    }));
+    const { error: itemErr } = await supabase
+      .schema('finance')
+      .from('pos_items')
+      .upsert(itemRows, { onConflict: 'sale_date,brand,store,category,product,option' });
+    if (itemErr) {
+      if (isMissingTable(itemErr)) itemsSkipped = true;
+      else return NextResponse.json({ error: `품목 매출 저장 실패: ${itemErr.message}` }, { status: 500 });
+    } else {
+      itemsInserted = itemRows.length;
+      await supabase
+        .schema('finance')
+        .from('pos_items')
+        .delete()
+        .in('ym', r.yms)
+        .eq('brand', brand)
+        .eq('store', store)
+        .lt('uploaded_at', now);
+    }
+  }
+
   // 가든 매출이 바뀌면 날씨×판매 분석 캐시(24h)를 무효화 — 다음 조회 때 새로 계산된다
   if (brand === 'garden') {
     try {
@@ -140,6 +181,8 @@ export async function POST(req: Request) {
     ym: r.ym,
     yms: r.yms,
     inserted: rows.length,
+    itemsInserted,
+    itemsSkipped, // true = pos_items 마이그레이션 전이라 품목 저장을 건너뜀
     supply: r.totals.supply,
     excludedRows: r.excluded.rows,
     staleCleaned: !delErr,
