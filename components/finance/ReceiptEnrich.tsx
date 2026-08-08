@@ -103,7 +103,7 @@ export default function ReceiptEnrich() {
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
       {done && (
-        <div className="rounded-md border border-border bg-muted p-4 text-[13px]">
+        <div className="rounded-md bg-muted p-4 text-[13px]">
           <div className="mb-1 text-foreground">✓ 품목으로 나눔 완료</div>
           <div className="text-muted-foreground">
             카드 {done.matchedGroups}건을 품목으로 나눔 · 품목 {done.inserted}건 추가{done.duplicates ? ` · 중복 ${done.duplicates}건 건너뜀` : ''}
@@ -123,7 +123,7 @@ export default function ReceiptEnrich() {
             </span>
           </div>
           {preview.matched === 0 && (
-            <div className="rounded-md border border-border bg-muted p-3 text-[13px] text-muted-foreground">
+            <div className="rounded-md bg-muted p-3 text-[13px] text-muted-foreground">
               매칭되는 카드 쿠팡 거래가 없어요. 같은 카드의 이용내역이 먼저 저장돼 있어야 하고, 승인번호(또는 날짜+금액)가 맞아야 해요.
             </div>
           )}

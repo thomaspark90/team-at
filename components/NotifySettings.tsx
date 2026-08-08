@@ -218,7 +218,7 @@ export default function NotifySettings({
                   됩니다.
                 </p>
 
-                <div className="mt-4 rounded-xl border border-border bg-background p-4">
+                <div className="mt-4 rounded-xl bg-muted/40 p-4">
                   <h4 className="m-0 text-[13px] font-medium">PC 크롬 · 엣지 · 웨일</h4>
                   <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-[13px]">
                     <li>
@@ -236,7 +236,7 @@ export default function NotifySettings({
                   </p>
                 </div>
 
-                <div className="mt-3 rounded-xl border border-border bg-background p-4">
+                <div className="mt-3 rounded-xl bg-muted/40 p-4">
                   <h4 className="m-0 text-[13px] font-medium">맥 사파리</h4>
                   <p className="mt-1.5 text-[13px]">
                     Safari 메뉴 → <strong>설정 → 웹사이트 → 알림</strong>에서 이 사이트를 <strong>허용</strong>으로
@@ -248,7 +248,7 @@ export default function NotifySettings({
                   </p>
                 </div>
 
-                <div className="mt-3 rounded-xl border border-border bg-background p-4">
+                <div className="mt-3 rounded-xl bg-muted/40 p-4">
                   <h4 className="m-0 text-[13px] font-medium">안드로이드 크롬</h4>
                   <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-[13px]">
                     <li>주소창 <strong>자물쇠</strong> → <strong>권한</strong> → 알림 <strong>허용</strong></li>
@@ -259,7 +259,7 @@ export default function NotifySettings({
                   </ol>
                 </div>
 
-                <div className="mt-3 rounded-xl border border-border bg-background p-4">
+                <div className="mt-3 rounded-xl bg-muted/40 p-4">
                   <h4 className="m-0 text-[13px] font-medium">아이폰 (홈 화면 앱)</h4>
                   <p className="mt-1.5 text-[13px]">
                     아이폰 <strong>설정 → 알림 → team-at</strong>에서 알림 허용을 켜요. (사파리 탭에서는 원래 푸시가
@@ -274,7 +274,7 @@ export default function NotifySettings({
               앱 설치 없이, 이 사이트가 직접 알림을 보내요. 알림을 받을 기기마다 아래처럼 한 번만 켜면 됩니다.
             </p>
 
-            <div className="mt-4 rounded-xl border border-border bg-background p-4">
+            <div className="mt-4 rounded-xl bg-muted/40 p-4">
               <h4 className="m-0 text-[13px] font-medium">안드로이드 (갤럭시 등)</h4>
               <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-[13px]">
                 <li>
@@ -292,7 +292,7 @@ export default function NotifySettings({
               </p>
             </div>
 
-            <div className="mt-3 rounded-xl border border-border bg-background p-4">
+            <div className="mt-3 rounded-xl bg-muted/40 p-4">
               <h4 className="m-0 text-[13px] font-medium">아이폰 / 아이패드</h4>
               <p className="mt-1.5 text-[12px] text-amber-600">
                 아이폰은 사파리 탭에서는 알림을 못 받아요. 꼭 홈 화면에 추가한 뒤 그 아이콘으로 열어야 해요.
@@ -319,7 +319,7 @@ export default function NotifySettings({
               </p>
             </div>
 
-            <div className="mt-3 rounded-xl border border-border bg-background p-4">
+            <div className="mt-3 rounded-xl bg-muted/40 p-4">
               <h4 className="m-0 text-[13px] font-medium">PC (맥 · 윈도우)</h4>
               <p className="mt-1.5 text-[13px]">
                 크롬·엣지·사파리로 접속해 <strong>알림 켜기</strong> → <strong>허용</strong>. 화면 구석에 시스템 알림으로 떠요.

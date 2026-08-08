@@ -420,7 +420,7 @@ export default function MonthlyUploadBoard({
             <div className="flex flex-col gap-2">
               {classify &&
                 (classify.total === 0 ? (
-                  <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 opacity-70">
+                  <div className="flex items-center justify-between gap-2 rounded-xl bg-muted/40 px-3.5 py-2.5 opacity-70">
                     <span className="flex items-center gap-2 text-[13px]">
                       <span className="text-emerald-600">✓</span>
                       <span className="text-muted-foreground line-through">지출 자료 분류</span>
@@ -441,7 +441,7 @@ export default function MonthlyUploadBoard({
                 ))}
               {monthClose &&
                 (monthClose.confirmed ? (
-                  <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 opacity-70">
+                  <div className="flex items-center justify-between gap-2 rounded-xl bg-muted/40 px-3.5 py-2.5 opacity-70">
                     <span className="flex items-center gap-2 text-[13px]">
                       <span className="text-emerald-600">✓</span>
                       <span className="text-muted-foreground line-through">월 확정</span>
@@ -464,7 +464,7 @@ export default function MonthlyUploadBoard({
       </div>
 
       {!readOnly && preview && activeSlot && (
-        <div className="mt-4 rounded-xl border border-border bg-background p-4">
+        <div className="mt-4 rounded-xl bg-muted/40 p-4">
           <div className="text-[13px] font-medium">
             {fmtYm(ym)} · {activeLabel} <span className="font-normal text-muted-foreground">— 인식 결과 확인</span>
           </div>

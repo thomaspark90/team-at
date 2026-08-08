@@ -78,14 +78,14 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
           // 자료 없음 → 중립, 미분류 있음 → 할 일(점선), 모두 분류 → 완료(✓)
           if (!status) {
             return (
-              <div key={t.key} className="rounded-xl border border-border bg-background px-3.5 py-2.5 text-[13px] text-muted-foreground">
+              <div key={t.key} className="rounded-xl bg-muted/40 px-3.5 py-2.5 text-[13px] text-muted-foreground">
                 {t.label} <span className="text-[12px]">— 확인 중…</span>
               </div>
             );
           }
           if (!s || s.total === 0) {
             return (
-              <div key={t.key} className="rounded-xl border border-border bg-background px-3.5 py-2.5 opacity-50">
+              <div key={t.key} className="rounded-xl bg-muted/40 px-3.5 py-2.5 opacity-50">
                 <span className="text-[13px]">{t.label}</span>
                 <span className="ml-2 text-[12px] text-muted-foreground">자료 없음</span>
               </div>
@@ -93,7 +93,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
           }
           if (s.unclassified === 0) {
             return (
-              <div key={t.key} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 opacity-70">
+              <div key={t.key} className="flex items-center justify-between gap-2 rounded-xl bg-muted/40 px-3.5 py-2.5 opacity-70">
                 <span className="flex items-center gap-2 text-[13px]">
                   <span className="text-emerald-600">✓</span>
                   <span className="text-muted-foreground line-through">{t.label}</span>
@@ -126,7 +126,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
 
       {/* 마지막 단계 — 월 확정 */}
       {status && (
-        <div className={`mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 ${confirmed ? 'border-border bg-muted/40 opacity-70' : 'border-border bg-background'}`}>
+        <div className={`mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-3.5 py-2.5 ${confirmed ? 'opacity-70' : ''}`}>
           <span className="flex items-center gap-2 text-[13px]">
             <span className={confirmed ? 'text-emerald-600' : 'text-muted-foreground'}>{confirmed ? '✓' : '•'}</span>
             <span className={confirmed ? 'text-muted-foreground line-through' : ''}>

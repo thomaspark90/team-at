@@ -155,7 +155,7 @@ export default function VendorBook() {
             draft?.id === v.id ? (
               <div key={v.id}>{editRow}</div>
             ) : (
-              <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-background px-3 py-2.5">
+              <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2.5">
                 <div className="min-w-0">
                   <p className="m-0 text-[13px] font-medium">{v.vendor_name}</p>
                   <p className="m-0 mt-0.5 text-[12px] text-muted-foreground">

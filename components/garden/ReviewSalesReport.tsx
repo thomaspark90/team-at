@@ -24,7 +24,7 @@ export default function ReviewSalesReport({ data }: { data: StoreReviewSales[] }
           const recent = s.weeks.slice(-12);
           const max = Math.max(1, ...recent.map((w) => w.sales));
           return (
-            <div key={s.store} className="rounded-xl border border-border bg-background p-4">
+            <div key={s.store} className="rounded-xl bg-muted/40 p-4">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="m-0 text-[13px] font-medium">{storeLabel(s.store)}</p>
                 <p className="m-0 text-[11px] text-muted-foreground">

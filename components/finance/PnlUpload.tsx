@@ -176,7 +176,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
         {/* POS 단위 선택 — 어느 브랜드·지점의 파일인지 (같은 달이라도 지점별로 따로 저장·교체).
             단위별 자료 입력 페이지에서는 단위가 고정돼 선택기가 숨는다. */}
         {fixedUnit ? (
-          <span className="rounded-md border border-border bg-muted px-3 py-1.5 text-[13px] text-foreground">{fixedUnit.label}</span>
+          <span className="rounded-md bg-muted px-3 py-1.5 text-[13px] text-foreground">{fixedUnit.label}</span>
         ) : (
           <div className="flex overflow-hidden rounded-md border border-border">
             {POS_UNITS.map((u) => (
@@ -237,7 +237,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
 
       {/* 처리 중 안내 — 뭘 하고 있는지 화면에 명시(2026-08-01 대표 요청) */}
       {applying && batchAt != null && batchFiles[batchAt] && (
-        <div className="flex items-center gap-2 rounded-md border border-border bg-muted px-4 py-3 text-[13px]">
+        <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-3 text-[13px]">
           <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-foreground" aria-hidden />
           <span className="text-foreground">
             ⏳ 파일 처리 중 — {batchAt + 1}/{batchFiles.length} · <b>{batchFiles[batchAt].name}</b>
@@ -246,13 +246,13 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
         </div>
       )}
       {loading && file && (
-        <div className="flex items-center gap-2 rounded-md border border-border bg-muted px-4 py-3 text-[13px]">
+        <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-3 text-[13px]">
           <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-foreground" aria-hidden />
           <span className="text-foreground">⏳ 파일 읽는 중 — <b>{file.name}</b></span>
         </div>
       )}
       {applying && batchAt == null && (
-        <div className="flex items-center gap-2 rounded-md border border-border bg-muted px-4 py-3 text-[13px]">
+        <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-3 text-[13px]">
           <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-foreground" aria-hidden />
           <span className="text-foreground">⏳ 저장 중…</span>
         </div>
@@ -261,7 +261,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
       {done && (
-        <div className="rounded-md border border-border bg-muted p-4 text-[13px]">
+        <div className="rounded-md bg-muted p-4 text-[13px]">
           <div className="mb-1 text-foreground">✓ 저장 완료 — {done.yms.map(fmtYm).join(', ')} · 이어서 다음 파일을 올릴 수 있어요</div>
           <div className="text-muted-foreground">
             공급가액 매출 <b className="text-foreground">{won(done.supply)}</b> · {done.inserted}개 집계행{done.excludedRows ? ` · 식권·상품권 ${done.excludedRows}건 제외` : ''} ·{' '}

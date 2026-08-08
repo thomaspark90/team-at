@@ -74,7 +74,7 @@ export default function ContinuityAudit({ brand }: { brand: Brand }) {
       {results && (
         <div className="mt-4 flex flex-col gap-3">
           {results.map((r) => (
-            <div key={r.bank} className="rounded-md border border-border bg-background p-3">
+            <div key={r.bank} className="rounded-md bg-muted/40 p-3">
               <div className="text-[13px] font-medium">
                 {r.label}
                 <span className="ml-2 font-normal text-muted-foreground">

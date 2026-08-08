@@ -59,7 +59,7 @@ export default function NotifyRecipients({ initial }: { initial: RecipientRow[] 
           <span className="text-[12px] text-amber-600">수신자가 없어요 — 기본값(대표)으로 발송돼요.</span>
         )}
         {rows.map((r) => (
-          <div key={r.email} className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5">
+          <div key={r.email} className="flex flex-wrap items-center gap-1.5 rounded-lg bg-muted/40 px-3 py-1.5">
             <span className="min-w-0 flex-1 truncate text-[12px]">{r.email}</span>
             <button onClick={() => toggle(r, 'transfer')} disabled={busy} className={topicBtn(r.transfer)} title="송금 요청 알림 켜기/끄기">
               송금

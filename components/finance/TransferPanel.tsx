@@ -402,7 +402,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
     const account = [r.bank, r.account_no].filter(Boolean).join(' ');
     const mine = r.requester_email === email;
     return (
-      <div key={r.id} className="rounded-xl border border-border bg-background p-4">
+      <div key={r.id} className="rounded-xl bg-muted/40 p-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <span className="flex items-baseline gap-2 text-[15px] font-medium">
             {r.vendor_name}
@@ -534,7 +534,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
           {notice && <p className="mt-3 text-[13px]" style={{ color: 'hsl(var(--number-colored))' }}>{notice}</p>}
           {error && !draft && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
           {notifyPrompt && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-background p-3 text-[13px]">
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-muted/40 p-3 text-[13px]">
               <span>🔔 내가 올린 송금이 <b>이체 완료되면 알림</b>으로 바로 알려드려요.</span>
               <span className="hidden flex-1 sm:block" />
               <button
@@ -628,7 +628,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
               {/* 미수금 — 이번 발주만/미수만/합계 중 무엇을 보낼지 고른다.
                   명세서마다 총잔액에 이번 발주가 포함되기도 하고 아니기도 해서 계산식을 함께 보여준다 */}
               {breakdown && breakdown.options.length > 1 && (
-                <div className="col-span-2 -mt-1 flex flex-col gap-1.5 rounded-lg border border-border bg-background px-3 py-2.5">
+                <div className="col-span-2 -mt-1 flex flex-col gap-1.5 rounded-lg bg-muted/40 px-3 py-2.5">
                   <span className="text-[12px] font-medium">지급 기준</span>
                   <div className="flex flex-wrap gap-1.5">
                     {breakdown.options.map((o) => {
