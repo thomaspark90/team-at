@@ -5,7 +5,7 @@ import { STORES } from '@/lib/types';
 import { draftReply } from '@/lib/garden/review-draft';
 import { classifyIssue } from '@/lib/garden/review-issue';
 import { notifyGardenEvent } from '@/lib/notify';
-import { topicEmails } from '@/lib/garden-notify-topics-server';
+import { reviewIssueEmails } from '@/lib/garden-notify-topics-server';
 import { recordIngestSuccess } from '@/lib/ingest-health';
 
 export const runtime = 'nodejs';
@@ -165,33 +165,41 @@ export async function POST(req: Request) {
     }
   }
 
-  // 이슈 리뷰가 새로 잡히면 담당자에게 이메일+웹푸시 — 실패해도 적재 결과는 그대로 반환
+  // 이슈 리뷰가 새로 잡히면 담당자에게 이메일+웹푸시 — 실패해도 적재 결과는 그대로 반환.
+  // 지점별로 나눠 발송 — 각 지점 이슈는 그 지점 담당자에게만 간다(2026-08-08).
   if (issueFound.length > 0) {
     try {
       const storeLabel = Object.fromEntries(STORES.map((s) => [s.id, s.label]));
-      const lines = issueFound.map((i) => {
-        const head = `[${storeLabel[i.store_key] ?? i.store_key}] ★${i.rating ?? '-'}`;
-        const cats = i.categories.length ? ` (${i.categories.join(', ')})` : '';
-        return `${head} ${i.note ?? '지적 내용 확인 필요'}${cats}`;
-      });
       // notify 계열은 기본(public) 스코프 클라이언트를 받는다 — finance 스코프 클라이언트와 타입이 달라 별도 생성
       const notifyClient = createServiceClient(url, serviceKey);
-      const emails = await topicEmails(notifyClient, 'reviewIssue');
-      await notifyGardenEvent(notifyClient, {
-        emails,
-        subject: `[이슈 리뷰] 새 지적 ${issueFound.length}건 — ${lines[0].slice(0, 60)}`,
-        html: `
-        <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
-          <p><strong>불만·개선 지적이 담긴 리뷰 ${issueFound.length}건이 새로 수집됐어요.</strong></p>
-          ${lines.map((l) => `<p>${l}</p>`).join('')}
-          <p><a href="${APP_URL}/garden/reviews">이슈·개선 탭 열기 →</a></p>
-        </div>`,
-        push: {
-          title: `이슈 리뷰 ${issueFound.length}건`,
-          body: lines[0].slice(0, 100),
-          url: '/garden/reviews',
-        },
-      });
+      const byStore = new Map<string, typeof issueFound>();
+      for (const i of issueFound) {
+        if (!byStore.has(i.store_key)) byStore.set(i.store_key, []);
+        byStore.get(i.store_key)!.push(i);
+      }
+      for (const [storeKey, items] of Array.from(byStore.entries())) {
+        const label = storeLabel[storeKey] ?? storeKey;
+        const lines = items.map((i) => {
+          const cats = i.categories.length ? ` (${i.categories.join(', ')})` : '';
+          return `★${i.rating ?? '-'} ${i.note ?? '지적 내용 확인 필요'}${cats}`;
+        });
+        const emails = await reviewIssueEmails(notifyClient, storeKey);
+        await notifyGardenEvent(notifyClient, {
+          emails,
+          subject: `[이슈 리뷰] ${label} 새 지적 ${items.length}건 — ${lines[0].slice(0, 60)}`,
+          html: `
+          <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
+            <p><strong>${label}에 불만·개선 지적이 담긴 리뷰 ${items.length}건이 새로 수집됐어요.</strong></p>
+            ${lines.map((l) => `<p>${l}</p>`).join('')}
+            <p><a href="${APP_URL}/garden/reviews">이슈·개선 탭 열기 →</a></p>
+          </div>`,
+          push: {
+            title: `${label} 이슈 리뷰 ${items.length}건`,
+            body: lines[0].slice(0, 100),
+            url: '/garden/reviews',
+          },
+        });
+      }
     } catch (e) {
       console.error('이슈 리뷰 알림 실패:', e);
     }

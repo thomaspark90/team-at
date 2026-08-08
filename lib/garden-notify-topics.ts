@@ -5,7 +5,9 @@ export type GardenTopicId =
   | 'recipeEdit'
   | 'calibration'
   | 'beanCard'
-  | 'reviewIssue'
+  | 'reviewIssue' // (구) 지점 공통 — 화면에서 제거, 지점 토픽 미지정 시 폴백으로만 읽는다(2026-08-08 지점 분리)
+  | 'reviewIssueYangjae'
+  | 'reviewIssuePangyo'
   | 'receiptAnomaly'
   | 'mealStory';
 
@@ -17,7 +19,19 @@ export const GARDEN_TOPICS: { id: GardenTopicId; label: string; desc: string; sc
   { id: 'recipeEdit', label: '기존 레시피 수정', desc: '기존 레시피가 수정되면 알림', scope: 'garden' },
   { id: 'calibration', label: 'EK43 캘리브레이션 요청', desc: '분쇄도 측정 요청의 기본 수신자', scope: 'garden' },
   { id: 'beanCard', label: '원두카드 제작 요청', desc: '원두카드 제작 요청의 기본 수신자', scope: 'garden' },
-  { id: 'reviewIssue', label: '이슈 리뷰 접수', desc: '불만·개선 지적이 담긴 새 리뷰가 수집되면 알림', scope: 'garden' },
+  // 이슈 리뷰는 지점별 담당자 — 그 지점 리뷰만 그 지점 담당자에게 간다(2026-08-08)
+  {
+    id: 'reviewIssueYangjae',
+    label: '이슈 리뷰 접수 · 양재천점',
+    desc: '양재천점의 불만·개선 지적 리뷰가 수집되면 알림',
+    scope: 'garden',
+  },
+  {
+    id: 'reviewIssuePangyo',
+    label: '이슈 리뷰 접수 · 판교점',
+    desc: '판교점의 불만·개선 지적 리뷰가 수집되면 알림',
+    scope: 'garden',
+  },
   {
     id: 'receiptAnomaly',
     label: '영수증 확인 필요 금액',
@@ -37,6 +51,12 @@ export const EMPTY_TOPICS: GardenTopicMap = {
   calibration: [],
   beanCard: [],
   reviewIssue: [],
+  reviewIssueYangjae: [],
+  reviewIssuePangyo: [],
   receiptAnomaly: [],
   mealStory: [],
 };
+
+// 리뷰의 store_key(pangyo/yangjae) → 지점 이슈 리뷰 토픽
+export const reviewIssueTopicOf = (store: string): GardenTopicId =>
+  store === 'pangyo' ? 'reviewIssuePangyo' : 'reviewIssueYangjae';

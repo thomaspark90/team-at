@@ -2,7 +2,7 @@
 import { get, put } from '@vercel/blob';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { GardenTopicId, GardenTopicMap } from './garden-notify-topics';
-import { EMPTY_TOPICS } from './garden-notify-topics';
+import { EMPTY_TOPICS, reviewIssueTopicOf } from './garden-notify-topics';
 import { recipientEmails } from './notify';
 
 const DATA_PATH = 'data/garden-notify-topics.json';
@@ -32,5 +32,16 @@ export async function topicEmails(supabase: SupabaseClient, topic: GardenTopicId
   const map = await readGardenTopics();
   const assigned = map[topic] ?? [];
   if (assigned.length > 0) return assigned;
+  return recipientEmails(supabase, 'stock');
+}
+
+// 이슈 리뷰 담당자 — 지점별 토픽 우선, 다음 (구) 공통 reviewIssue 지정(마이그레이션 전 저장분),
+// 둘 다 없으면 원두 알림 수신자 폴백. 지점 리뷰는 그 지점 담당자에게만 간다(2026-08-08).
+export async function reviewIssueEmails(supabase: SupabaseClient, store: string): Promise<string[]> {
+  const map = await readGardenTopics();
+  const assigned = map[reviewIssueTopicOf(store)] ?? [];
+  if (assigned.length > 0) return assigned;
+  const legacy = map.reviewIssue ?? [];
+  if (legacy.length > 0) return legacy;
   return recipientEmails(supabase, 'stock');
 }

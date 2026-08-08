@@ -5,7 +5,7 @@ import { classifyIssue } from '@/lib/garden/review-issue';
 import { logActivity } from '@/lib/finance/activity';
 import { checkAiQuota } from '@/lib/access/rate-limit';
 import { notifyGardenEvent } from '@/lib/notify';
-import { topicEmails } from '@/lib/garden-notify-topics-server';
+import { reviewIssueEmails } from '@/lib/garden-notify-topics-server';
 import { requireGardenTab } from '@/lib/access/guard';
 import { STORES } from '@/lib/types';
 
@@ -79,25 +79,34 @@ export async function POST() {
 
   // 백필에서 새로 이슈로 판정된 리뷰도 담당자 알림 — 수집 시점에 초안 실패 등으로
   // 알림을 못 받았던 리뷰가 조용히 지나가지 않게 한다. 실패해도 분류 결과는 유지.
+  // 지점별로 나눠 발송 — 각 지점 이슈는 그 지점 담당자에게만 간다(2026-08-08).
   if (issueFound.length > 0) {
     try {
       const storeLabel = Object.fromEntries(STORES.map((s) => [s.id, s.label]));
-      const lines = issueFound.map((i) => {
-        const cats = i.categories.length ? ` (${i.categories.join(', ')})` : '';
-        return `[${storeLabel[i.store_key] ?? i.store_key}] ★${i.rating ?? '-'} ${i.note ?? '지적 내용 확인 필요'}${cats}`;
-      });
-      const emails = await topicEmails(supabase, 'reviewIssue');
-      await notifyGardenEvent(supabase, {
-        emails,
-        subject: `[이슈 리뷰] 분류에서 발견 ${issueFound.length}건 — ${lines[0].slice(0, 60)}`,
-        html: `
-        <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
-          <p><strong>분류 실행에서 불만·개선 지적 리뷰 ${issueFound.length}건이 확인됐어요.</strong></p>
-          ${lines.map((l) => `<p>${l}</p>`).join('')}
-          <p><a href="${APP_URL}/garden/reviews">이슈·개선 탭 열기 →</a></p>
-        </div>`,
-        push: { title: `이슈 리뷰 ${issueFound.length}건 (분류)`, body: lines[0].slice(0, 100), url: '/garden/reviews' },
-      });
+      const byStore = new Map<string, typeof issueFound>();
+      for (const i of issueFound) {
+        if (!byStore.has(i.store_key)) byStore.set(i.store_key, []);
+        byStore.get(i.store_key)!.push(i);
+      }
+      for (const [storeKey, items] of Array.from(byStore.entries())) {
+        const label = storeLabel[storeKey] ?? storeKey;
+        const lines = items.map((i) => {
+          const cats = i.categories.length ? ` (${i.categories.join(', ')})` : '';
+          return `★${i.rating ?? '-'} ${i.note ?? '지적 내용 확인 필요'}${cats}`;
+        });
+        const emails = await reviewIssueEmails(supabase, storeKey);
+        await notifyGardenEvent(supabase, {
+          emails,
+          subject: `[이슈 리뷰] ${label} 분류에서 발견 ${items.length}건 — ${lines[0].slice(0, 60)}`,
+          html: `
+          <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
+            <p><strong>분류 실행에서 ${label}의 불만·개선 지적 리뷰 ${items.length}건이 확인됐어요.</strong></p>
+            ${lines.map((l) => `<p>${l}</p>`).join('')}
+            <p><a href="${APP_URL}/garden/reviews">이슈·개선 탭 열기 →</a></p>
+          </div>`,
+          push: { title: `${label} 이슈 리뷰 ${items.length}건 (분류)`, body: lines[0].slice(0, 100), url: '/garden/reviews' },
+        });
+      }
     } catch (e) {
       console.error('이슈 분류 알림 실패:', e);
     }
