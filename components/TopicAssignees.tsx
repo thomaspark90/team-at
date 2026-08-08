@@ -23,8 +23,10 @@ export default function TopicAssignees({
   const [map, setMap] = useState<GardenTopicMap>(EMPTY_TOPICS);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // 이메일 추가 드롭다운 후보 — 팀 전체 계정(대표·사전 등록 포함)
+  // 이메일 추가 드롭다운 후보 — 팀 전체 계정(대표·사전 등록 포함) + 어느 항목이든
+  // 이미 담당자로 등록된 이메일(직접 입력분도 다른 항목에서 재선택할 수 있게)
   const teamEmails = useTeamEmails();
+  const candidates = Array.from(new Set([...teamEmails, ...Object.values(map).flat()]));
 
   useEffect(() => {
     fetch('/api/garden-notify-topics', { cache: 'no-store' })
@@ -88,7 +90,7 @@ export default function TopicAssignees({
               ))}
               {/* 드롭다운(팀 계정 선택 즉시 추가) + '직접 입력' 수기 기입 */}
               <EmailAddPicker
-                candidates={teamEmails}
+                candidates={candidates}
                 exclude={map[t.id]}
                 onAdd={(email) => add(t.id, email)}
                 busy={busy}
