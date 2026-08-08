@@ -71,6 +71,38 @@ export default function GrindMeasurementUpload() {
 
   const set = <K extends keyof Draft>(key: K, v: Draft[K]) => setDraft((d) => ({ ...d, [key]: v }));
 
+  // 컴퍼스 캡처 자동 판독 — 이미지를 고르면 Gemini 가 평균·표준편차·미분(제목의 다이얼까지) 읽어
+  // 빈 칸을 채운다. 사용자가 이미 입력한 값은 덮지 않고, 판독값은 저장 전 확인·수정 가능.
+  const [scanning, setScanning] = useState(false);
+  const [scanNote, setScanNote] = useState<string | null>(null);
+
+  const scanImage = async (file: File) => {
+    setScanning(true);
+    setScanNote(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/garden-grind-scan', { method: 'POST', body: fd });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error ?? `인식 실패 (${res.status})`);
+      const e = j.extraction as { dial: number | null; meanUm: number | null; stdUm: number | null; finesPct: number | null };
+      const got: string[] = [];
+      setDraft((d) => {
+        const next = { ...d };
+        if (d.dial.trim() === '' && e.dial != null) { next.dial = String(e.dial); got.push(`다이얼 ${e.dial}`); }
+        if (d.mean.trim() === '' && e.meanUm != null) { next.mean = String(Math.round(e.meanUm)); got.push(`평균 ${Math.round(e.meanUm)}µm`); }
+        if (d.std.trim() === '' && e.stdUm != null) { next.std = String(Math.round(e.stdUm * 10) / 10); got.push(`σ ${Math.round(e.stdUm * 10) / 10}`); }
+        if (d.fines.trim() === '' && e.finesPct != null) { next.fines = String(e.finesPct); got.push(`미분 ${e.finesPct}%`); }
+        return next;
+      });
+      setScanNote(got.length > 0 ? `✓ 이미지에서 자동 입력: ${got.join(' · ')} — 확인 후 저장하세요` : '이미지에서 수치를 찾지 못했어요 — 직접 입력해주세요');
+    } catch (err) {
+      setScanNote(`자동 인식 실패 — 직접 입력해주세요 (${(err as Error).message})`);
+    } finally {
+      setScanning(false);
+    }
+  };
+
   const canSave = draft.bean.trim() !== '' && draft.dial.trim() !== '' && (files.length > 0 || draft.mean.trim() !== '');
 
   const save = async () => {
@@ -276,15 +308,34 @@ export default function GrindMeasurementUpload() {
         {/* 이미지 선택 */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <label className="ta-btn" style={{ height: 34, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', paddingLeft: 12, paddingRight: 12, fontSize: 13, cursor: 'pointer', width: 'fit-content' }}>
-            + 컴퍼스 결과 이미지 선택 {files.length > 0 && `(${files.length}장)`}
+            + 컴퍼스 결과 이미지 선택 — 수치 자동 인식 {files.length > 0 && `(${files.length}장)`}
             <input
               type="file"
               accept="image/*"
               multiple
               style={{ display: 'none' }}
-              onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+              onChange={(e) => {
+                const list = Array.from(e.target.files ?? []);
+                setFiles(list);
+                if (list.length > 0) scanImage(list[0]); // 첫 장 자동 판독 → 수치 자동 입력
+              }}
             />
           </label>
+          {(scanning || scanNote) && (
+            <p
+              className="text-[13px]"
+              style={{
+                margin: 0,
+                color: scanning
+                  ? 'hsl(var(--muted-foreground))'
+                  : scanNote?.startsWith('✓')
+                    ? 'hsl(150 60% 35%)'
+                    : 'hsl(25 85% 45%)',
+              }}
+            >
+              {scanning ? '⏳ 이미지에서 수치 인식 중…' : scanNote}
+            </p>
+          )}
           {previews.length > 0 && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {previews.map((src, i) => (
