@@ -38,15 +38,23 @@ export default async function TransferManagePage() {
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <AccountingNav role={role} scoped={!!brandScope} />
-      <div className="mx-auto flex max-w-[1120px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-[1120px] divide-y divide-border px-4 py-6 sm:px-6 sm:py-8">
         {(role === 'admin' || isNotifyRecipient) && (
-          <div className={`grid gap-4 ${role === 'admin' && isNotifyRecipient ? 'sm:grid-cols-2' : ''}`}>
-            {role === 'admin' && <NotifyRecipients initial={recipientList} />}
-            {isNotifyRecipient && <NotifySettings />}
+          <div className="pb-[54px]">
+            <div className={`grid gap-4 ${role === 'admin' && isNotifyRecipient ? 'sm:grid-cols-2' : ''}`}>
+              {role === 'admin' && <NotifyRecipients initial={recipientList} />}
+              {isNotifyRecipient && <NotifySettings />}
+            </div>
           </div>
         )}
-        {['admin', 'classifier'].includes(role ?? '') && <VendorBook />}
-        <TransferPanel role={role} email={user.email ?? ''} mode="history" />
+        {['admin', 'classifier'].includes(role ?? '') && (
+          <div className="py-[54px]">
+            <VendorBook />
+          </div>
+        )}
+        <div className="pt-[54px]">
+          <TransferPanel role={role} email={user.email ?? ''} mode="history" />
+        </div>
       </div>
     </div>
   );

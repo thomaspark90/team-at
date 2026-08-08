@@ -77,7 +77,7 @@ export default function StatusMatrix({
       <summary className="cursor-pointer select-none list-none text-[15px] font-medium [&::-webkit-details-marker]:hidden">
         {brandLabel(brand)} · 전체 자료 현황
         {data && (
-          <span className={`ml-2 text-[12px] font-normal ${missingTotal === 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+          <span className={`ml-2 text-[11px] font-normal ${missingTotal === 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
             {missingTotal === 0 ? '전부 완료' : `남은 항목 ${missingTotal}개`}
           </span>
         )}
@@ -85,7 +85,7 @@ export default function StatusMatrix({
       </summary>
       <p className="mb-3 mt-1 text-[13px] text-muted-foreground">
         연·월 × 자료 종류의 미입력 현황이에요. 칸을 누르면 그 달로 이동해요.{' '}
-        <span className="text-[12px]">
+        <span className="text-[13px]">
           <span className="text-emerald-600">✓ 완료</span> · <span className="text-amber-600">◐ 일부만</span> ·{' '}
           <span className="rounded bg-amber-500/15 px-1 text-amber-600">자료 업로드 필요 = 미입력</span>
         </span>
@@ -122,7 +122,7 @@ export default function StatusMatrix({
             <tbody>
               {(desc ? [...data.rows].reverse() : data.rows).map((r) => (
                 <tr key={r.ym} className="border-t border-border">
-                  <td className="sticky left-0 whitespace-nowrap bg-card px-2 py-1.5 text-[12px] text-muted-foreground">
+                  <td className="sticky left-0 whitespace-nowrap bg-card px-2 py-1.5 text-[13px] text-muted-foreground">
                     {fmtYm(r.ym)}
                   </td>
                   {data.slots.map((s) => (
@@ -136,7 +136,7 @@ export default function StatusMatrix({
                     {r.uncl > 0 ? (
                       <Link
                         href={`/finance/classify?ym=${r.ym}&brand=${brand}&unclassified=1`}
-                        className="inline-block min-w-[52px] rounded bg-amber-500/15 px-1.5 py-0.5 text-[12px] font-medium text-amber-600 hover:bg-amber-500/25"
+                        className="inline-block min-w-[52px] rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 hover:bg-amber-500/25"
                       >
                         {r.uncl.toLocaleString('ko-KR')}건
                       </Link>
@@ -153,7 +153,7 @@ export default function StatusMatrix({
                     ) : r.hasData ? (
                       <Link
                         href={`/finance/close?unit=${unitId ?? (brand === 'staffmeal' ? 'staffmeal' : 'yangjae')}`}
-                        className="inline-block rounded bg-amber-500/15 px-1.5 py-0.5 text-[12px] text-amber-600 hover:bg-amber-500/25"
+                        className="inline-block rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] text-amber-600 hover:bg-amber-500/25"
                       >
                         미확정
                       </Link>

@@ -103,7 +103,7 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
       <div className="mx-auto flex max-w-[1680px] flex-wrap items-center justify-center gap-x-5 gap-y-2 px-6 py-3">
         {groups.map((group, gi) => (
           <span key={gi} className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            {gi > 0 && <span className="select-none text-[12px] text-border">|</span>}
+            {gi > 0 && <span className="select-none text-[11px] text-border">|</span>}
             {group.map(({ href, label }) => {
               const active = isActive(href);
               return (

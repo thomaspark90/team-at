@@ -76,7 +76,7 @@ export default function StaffMealArchive({ initial }: { initial: StaffMealRecord
 
   return (
     <>
-      <div className="ta-card bg-background">
+      <div className="pb-[54px]">
         <p className="ta-label">메뉴 기록</p>
         {records.length === 0 ? (
           <p className="text-[13px] text-muted-foreground">
@@ -85,12 +85,12 @@ export default function StaffMealArchive({ initial }: { initial: StaffMealRecord
         ) : (
           <div className="flex flex-col gap-4">
             {records.map((rec) => (
-              <div key={rec.id} className="rounded-lg border border-border p-3.5">
+              <div key={rec.id} className="rounded-lg bg-muted/40 p-3.5">
                 <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                   <span className="flex items-baseline gap-2">
                     <span className="tabular text-[15px] font-medium">{rec.date}</span>
                     {(dupCounts.get(dupKey(rec)) ?? 0) > 1 && (
-                      <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground">
+                      <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
                         {latestIds.has(rec.id) ? '최신' : '이전 버전'}
                       </span>
                     )}
@@ -124,7 +124,7 @@ export default function StaffMealArchive({ initial }: { initial: StaffMealRecord
       </div>
 
       {ranked.length > 0 && (
-        <div className="ta-card bg-background">
+        <div className="pt-[54px]">
           <p className="ta-label">메뉴별 기록 횟수</p>
           <p className="mb-2 mt-0 text-[11px] text-muted-foreground">
             같은 날 중복 기록은 최신 1건만 집계됩니다
@@ -133,7 +133,7 @@ export default function StaffMealArchive({ initial }: { initial: StaffMealRecord
             {ranked.map(([name, count]) => (
               <span
                 key={name}
-                className="rounded-full border border-border px-2.5 py-1 text-[12px]"
+                className="rounded-full border border-border px-2.5 py-1 text-[11px]"
               >
                 <span className="text-foreground">{name}</span>{' '}
                 <span className="tabular text-muted-foreground">{count}회</span>

@@ -135,7 +135,7 @@ export default function TaskBoard({ board }: { board: TaskBoardId }) {
           추가
         </button>
       </div>
-      {error && <p className="text-[12px] text-red-500" style={{ margin: 0 }}>{error}</p>}
+      {error && <p className="text-[13px] text-red-500" style={{ margin: 0 }}>{error}</p>}
 
       {/* 칸반 3컬럼 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
@@ -148,7 +148,7 @@ export default function TaskBoard({ board }: { board: TaskBoardId }) {
               style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 160 }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <span className="text-[12px] font-medium text-foreground">{col.label}</span>
+                <span className="text-[13px] font-medium text-foreground">{col.label}</span>
                 <span className="tabular text-[11px] text-muted-foreground">{cards.length}</span>
               </div>
               {cards.length === 0 && (
@@ -183,7 +183,7 @@ export default function TaskBoard({ board }: { board: TaskBoardId }) {
                     </div>
 
                     <div style={{ display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                      <span className="rounded-sm border border-border text-[10px] text-muted-foreground" style={{ padding: '0 5px' }}>
+                      <span className="rounded-sm border border-border text-[11px] text-muted-foreground" style={{ padding: '0 5px' }}>
                         {CADENCE_LABEL[t.cadence]}
                         {t.periodLabel ? ` · ${t.periodLabel}` : ''}
                       </span>

@@ -85,7 +85,7 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
                 <Link
                   key={t.key}
                   href={t.key === 'all' ? '/garden/sales' : `/garden/sales?store=${t.key}`}
-                  className={`rounded-lg px-3 py-1 text-[12px] ${
+                  className={`rounded-lg px-3 py-1 text-[13px] ${
                     storeParam === t.key ? 'bg-foreground font-medium text-background' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -96,7 +96,7 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
           )}
         </div>
         {!isMember || scopedOut ? (
-          <section className="rounded-2xl border border-border bg-card p-5">
+          <section>
             <p className="m-0 text-[13px] text-muted-foreground">
               {scopedOut
                 ? '스탭밀 전용 계정이라 가든 매출은 볼 수 없어요.'
@@ -104,7 +104,7 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
             </p>
           </section>
         ) : shown.length === 0 ? (
-          <section className="rounded-2xl border border-border bg-card p-5">
+          <section>
             <p className="m-0 text-[13px] text-muted-foreground">
               아직 집계된 POS 매출이 없어요. 회계 → 자료 입력에서 매출리포트를 올리면 여기에 나타납니다.
             </p>

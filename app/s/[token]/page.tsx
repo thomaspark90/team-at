@@ -45,20 +45,20 @@ export default async function SharePage({ params }: { params: { token: string } 
       {share ? (
         <div className="ta-card bg-background" style={{ width: '100%', maxWidth: 360, textAlign: 'center', padding: '36px 24px' }}>
           <p className="ta-label" style={{ marginBottom: 4 }}>Garden Service · 판매가 안내</p>
-          <p className="text-[20px] text-foreground" style={{ margin: '12px 0 4px', fontWeight: 600 }}>
+          <p className="text-[22px] text-foreground" style={{ margin: '12px 0 4px' }}>
             {share.bean}
           </p>
           <p className="tabular text-foreground" style={{ fontSize: 34, fontWeight: 700, margin: '8px 0' }}>
             {won(share.price)}
           </p>
-          <p className="text-[12px] text-muted-foreground" style={{ marginTop: 12 }}>
+          <p className="text-[13px] text-muted-foreground" style={{ marginTop: 12 }}>
             {fmtDate(share.decidedAt)} 책정 · team at
           </p>
         </div>
       ) : (
         <div className="ta-card bg-background" style={{ width: '100%', maxWidth: 360, textAlign: 'center', padding: '36px 24px' }}>
-          <p className="text-[14px] text-foreground" style={{ marginBottom: 6 }}>링크를 찾을 수 없어요</p>
-          <p className="text-[12px] text-muted-foreground">주소가 잘못되었거나 만료된 링크일 수 있습니다.</p>
+          <p className="text-[15px] text-foreground" style={{ marginBottom: 6 }}>링크를 찾을 수 없어요</p>
+          <p className="text-[13px] text-muted-foreground">주소가 잘못되었거나 만료된 링크일 수 있습니다.</p>
         </div>
       )}
     </main>

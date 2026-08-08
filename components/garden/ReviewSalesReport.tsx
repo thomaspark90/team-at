@@ -13,7 +13,8 @@ export default function ReviewSalesReport({ data }: { data: StoreReviewSales[] }
   if (nonEmpty.length === 0) return null;
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-5">
+    // 카드 해체(2026-08-08) — 페이지 최상위 섹션은 박스 없이
+    <section>
       <h2 className="m-0 text-[15px] font-medium">리뷰 × 매출 — 주간 흐름</h2>
       <p className="mt-1 text-[13px] text-muted-foreground">
         네이버 리뷰 유입(수집 시점 기준)과 주간 매출을 겹쳐 봅니다. 상관은 인과가 아니에요 —
@@ -50,13 +51,13 @@ export default function ReviewSalesReport({ data }: { data: StoreReviewSales[] }
                 {recent.map((w) => (
                   <span
                     key={w.week}
-                    className={`min-w-0 flex-1 text-center text-[10px] ${w.reviews > 0 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
+                    className={`min-w-0 flex-1 text-center text-[11px] ${w.reviews > 0 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
                   >
                     {w.reviews > 0 ? w.reviews : '·'}
                   </span>
                 ))}
               </div>
-              <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+              <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
                 <span>{recent[0].week.slice(5).replace('-', '.')} 주</span>
                 <span>리뷰 수</span>
                 <span>{recent[recent.length - 1].week.slice(5).replace('-', '.')} 주</span>

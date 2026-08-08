@@ -910,7 +910,7 @@ export default function ClassifyPanel({
                         <input type="checkbox" checked={selected.has(tx.id)} onChange={() => toggleSel(tx.id)} aria-label="선택" />
                       )}
                     </td>
-                    <td className="px-2 py-2 text-right align-middle text-[12px] tabular-nums text-muted-foreground">
+                    <td className="px-2 py-2 text-right align-middle text-[11px] tabular-nums text-muted-foreground">
                       {pageStart + rowIdx + 1}
                     </td>
                     <Td>{bankSourceLabel(tx.bank)}</Td>
@@ -1099,7 +1099,7 @@ export default function ClassifyPanel({
             >
               다음 →
             </button>
-            <span className="ml-2 text-[12px] text-muted-foreground">
+            <span className="ml-2 text-[11px] text-muted-foreground">
               {won(pageStart + 1)}–{won(Math.min(pageStart + PAGE_SIZE, filtered.length))} / {won(filtered.length)}건
             </span>
           </div>

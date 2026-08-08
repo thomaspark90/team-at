@@ -55,7 +55,7 @@ const CAT_MAX = 8; // 8색까지, 초과 카테고리는 '기타'로 접음
 
 const axisTick = { fontSize: 11, fill: AXIS };
 // x축 각 지점마다 상시 노출하는 값 라벨 스타일
-const pointLabel = { fontSize: 10, fill: AXIS };
+const pointLabel = { fontSize: 11, fill: AXIS };
 const wonLabel = (v: any) => (v == null ? '' : manwon(Number(v)));
 const pctLabel = (v: any) => (v == null ? '' : `${v}%`);
 
@@ -267,7 +267,7 @@ export default function Dashboard({
   return (
     <div className="flex flex-col gap-5">
       {isPast && (
-        <div className="-mb-1 text-[12px] text-muted-foreground">
+        <div className="-mb-1 text-[13px] text-muted-foreground">
           좌측에서 고른 <b className="text-foreground">{focusP}</b> 기준 요약이에요 · 아래 추이 차트는 전체 기간
         </div>
       )}
@@ -286,6 +286,7 @@ export default function Dashboard({
         </div>
       )}
 
+      <div className="divide-y divide-border">
       {/* 1) 통장 입출금·잔액 — 분류와 무관한 통장 자체의 현금 흐름(대표 지시로 첫 차트, 2026-08-04) */}
       {unit === 'month' && bankData.length > 0 && (
         <ChartCard
@@ -336,7 +337,7 @@ export default function Dashboard({
             <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
             <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
             <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
-            <Legend wrapperStyle={{ fontSize: 12, color: AXIS }} />
+            <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} />
             <ReferenceLine y={0} stroke={REF} />
             {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
             <Line type="monotone" dataKey="EBIT" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
@@ -357,7 +358,7 @@ export default function Dashboard({
               <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
               <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
               <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
-              <Legend wrapperStyle={{ fontSize: 12, color: AXIS }} />
+              <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} />
               <ReferenceLine y={0} stroke={REF} />
               <Line type="monotone" dataKey="영업이익" stroke={LINE2} strokeWidth={1.5} strokeDasharray="4 3" dot={{ r: 2, fill: LINE2 }} />
               <Line type="monotone" dataKey="감가상각 반영" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
@@ -432,6 +433,7 @@ export default function Dashboard({
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>
+      </div>
 
       <p className="m-0 text-[11px] text-muted-foreground">
         {netVat
@@ -452,7 +454,7 @@ function delta(cur: number, prevV: number | null | undefined): string | null {
 
 function Stat({ label, value, delta }: { label: string; value: string; delta: string | null }) {
   return (
-    <div className="ta-card min-w-[150px] flex-[1_1_auto] p-[14px_18px]">
+    <div className="min-w-[150px] flex-[1_1_auto] rounded-md bg-muted/40 p-[14px_18px]">
       <div className="mb-[5px] text-[11px] text-muted-foreground">{label}</div>
       <div className="tabular text-[22px] text-foreground">{value}</div>
       {delta && <div className={`mt-[3px] text-[11px] ${delta.startsWith('▲') ? 'text-positive' : 'text-muted-foreground'}`}>전기 {delta}</div>}
@@ -462,7 +464,7 @@ function Stat({ label, value, delta }: { label: string; value: string; delta: st
 
 function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <div className="ta-card p-[18px_16px_12px]">
+    <div className="pb-[54px] pt-[54px] first:pt-0 last:pb-0">
       <div className="px-1.5 pb-3">
         <h3 className="m-0 text-[15px] text-foreground">{title}</h3>
         {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}

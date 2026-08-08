@@ -37,7 +37,7 @@ const fmtDay = (iso: string) => {
 // 칸(슬롯) 우상단 필요 액션 배지 — 좌측 월 사이드바 배지와 같은 시각 언어.
 // 미완료 칸마다 1 (업로드/수집 액션 1개). 부모 칸에 relative 필요.
 const ActionBadge = ({ n = 1 }: { n?: number }) => (
-  <span className="absolute -right-1.5 -top-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-none text-white">
+  <span className="absolute -right-1.5 -top-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-medium leading-none text-white">
     {n}
   </span>
 );
@@ -204,12 +204,12 @@ export default function MonthlyUploadBoard({
   const totalDone = doneCount + posDone + extraDone;
 
   return (
-    <section id="monthly-board" className="scroll-mt-4 rounded-2xl border border-border bg-card p-5">
+    <section id="monthly-board" className="scroll-mt-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="m-0 text-[15px] font-medium">
           {brandLabel(brand)} · {readOnly ? '월별 자료 현황' : '월별 회계자료 업로드'}
           {slots && (
-            <span className={`ml-2 text-[12px] font-normal ${totalDone === totalSlots ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+            <span className={`ml-2 text-[11px] font-normal ${totalDone === totalSlots ? 'text-emerald-600' : 'text-muted-foreground'}`}>
               {totalDone}/{totalSlots} 완료{partialCount > 0 && <span className="text-amber-600"> · 부분 {partialCount}</span>}
             </span>
           )}
@@ -257,7 +257,7 @@ export default function MonthlyUploadBoard({
                         {st?.done && <span className="text-emerald-600">✓</span>}
                         {s.label}
                       </span>
-                      <span className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                      <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
                         {!slots ? (
                           '확인 중…'
                         ) : busy ? (
@@ -330,7 +330,7 @@ export default function MonthlyUploadBoard({
                         <span className="text-amber-600">◐</span>
                         {s.label}
                       </span>
-                      <span className="text-right text-[12px]">
+                      <span className="text-right text-[11px]">
                         <span className="font-medium text-amber-600">{st.range ?? '일부'}만 올라옴</span>
                         <span className="block text-[11px] text-muted-foreground">
                           {readOnly ? '자료 입력에서 이어서 →' : busy ? '읽는 중…' : '이어서 업로드 →'}
@@ -352,7 +352,7 @@ export default function MonthlyUploadBoard({
                   <>
                     {slots && <ActionBadge />}
                     <span className="text-[13px] font-medium">{s.label}</span>
-                    <span className="text-[12px] text-muted-foreground">
+                    <span className="text-[11px] text-muted-foreground">
                       {readOnly ? '없음 — 자료 입력에서 올리기 →' : busy ? '읽는 중…' : !slots ? '확인 중…' : '업로드 →'}
                     </span>
                   </>
@@ -404,7 +404,7 @@ export default function MonthlyUploadBoard({
                   >
                     <ActionBadge />
                     <span className="text-[13px] font-medium">{meta.label}</span>
-                    <span className="text-[12px] text-muted-foreground">
+                    <span className="text-[11px] text-muted-foreground">
                       {readOnly ? '없음 — 자료 입력에서 올리기 →' : '없음 — 위 POS 업로더에서 올리기 ↑'}
                     </span>
                   </Link>
@@ -434,7 +434,7 @@ export default function MonthlyUploadBoard({
                   >
                     <ActionBadge n={classify.sources} />
                     <span className="text-[13px] font-medium">지출 자료 분류</span>
-                    <span className="text-[12px] text-muted-foreground">
+                    <span className="text-[11px] text-muted-foreground">
                       미분류 <b className="tabular-nums text-foreground">{classify.total}건</b> · 분류하기 →
                     </span>
                   </Link>
@@ -455,7 +455,7 @@ export default function MonthlyUploadBoard({
                   >
                     <ActionBadge />
                     <span className="text-[13px] font-medium">월 확정</span>
-                    <span className="text-[12px] text-muted-foreground">미확정 — 확정하기 →</span>
+                    <span className="text-[11px] text-muted-foreground">미확정 — 확정하기 →</span>
                   </Link>
                 ))}
             </div>
@@ -477,7 +477,7 @@ export default function MonthlyUploadBoard({
             <span>출금 {won(preview.sumOut)}</span>
           </div>
           {preview.coverage && !preview.coverage.full && (
-            <p className="mt-2 text-[12px] text-amber-600">
+            <p className="mt-2 text-[13px] text-amber-600">
               ◐ 이 파일은 {preview.coverage.label ? `${preview.coverage.label} 구간만` : `${fmtYm(ym)} 거래 없이`} 포함해요
               (월 커버리지 {preview.coverage.pct}%). 저장은 되지만 칸은 <b>부분</b>으로 표시되고, 나머지 기간 파일을
               이어서 올리면 완료로 바뀌어요.
@@ -485,35 +485,35 @@ export default function MonthlyUploadBoard({
           )}
           {preview.continuity && (
             preview.continuity.breaks === 0 ? (
-              <p className="mt-2 text-[12px] text-emerald-600">
+              <p className="mt-2 text-[13px] text-emerald-600">
                 ✓ 잔액 연속성 확인 — 중간 누락 없음 ({preview.continuity.checked}건 연결)
               </p>
             ) : preview.continuity.reliable ? (
-              <p className="mt-2 text-[12px] text-red-500">
+              <p className="mt-2 text-[13px] text-red-500">
                 ⚠ 잔액 흐름이 {preview.continuity.breaks}곳에서 끊겨요
                 {preview.continuity.firstBreak &&
                   ` (첫 지점: ${preview.continuity.firstBreak.date.slice(5).replace('-', '/')} ${preview.continuity.firstBreak.memo})`}
                 — 그 사이 거래가 빠졌을 수 있어요. 은행에서 전체 기간을 다시 내려받아 확인하세요.
               </p>
             ) : (
-              <p className="mt-2 text-[12px] text-muted-foreground">
+              <p className="mt-2 text-[13px] text-muted-foreground">
                 잔액 연속성은 판정하지 못했어요 (여러 계좌가 섞였거나 정렬이 다른 파일이에요).
               </p>
             )
           )}
           {preview.outOfMonth > 0 && (
-            <p className="mt-2 text-[12px] text-amber-600">
+            <p className="mt-2 text-[13px] text-amber-600">
               ⚠ {fmtYm(ym)} 밖의 거래가 {preview.outOfMonth}건 있어요. 다른 달 파일이 아닌지 확인하세요. (거래는 각자 실제 날짜의 달로 들어가고, 그 달의 칸에도 자동 반영돼요)
             </p>
           )}
           {(preview.crossFormat?.count ?? 0) > 0 && (
-            <p className="mt-2 text-[12px] text-amber-600">
+            <p className="mt-2 text-[13px] text-amber-600">
               ⚠ 이 기간에 <b>PDF로 올린 이력</b>이 있어요. 형식이 다르면 중복이 걸러지지 않아 같은 거래가 이중
               저장될 수 있어요 — 같은 계좌 내역이면 저장 전에 업로드 이력을 확인하세요.
             </p>
           )}
           {preview.sample.length > 0 && (
-            <div className="mt-3 flex flex-col gap-1 border-t border-border pt-3 text-[12px] text-muted-foreground">
+            <div className="mt-3 flex flex-col gap-1 border-t border-border pt-3 text-[13px] text-muted-foreground">
               {preview.sample.slice(0, 5).map((t) => (
                 <div key={t.dedupHash} className="flex justify-between gap-3">
                   <span className="truncate">{t.txAt.slice(0, 10)} · {t.memo}</span>
@@ -524,13 +524,13 @@ export default function MonthlyUploadBoard({
             </div>
           )}
           <div className="mt-4 flex gap-2">
-            <button onClick={cancel} disabled={saving} className="flex-1 rounded-xl border border-border py-2.5 text-[14px] text-muted-foreground hover:text-foreground disabled:opacity-60">
+            <button onClick={cancel} disabled={saving} className="flex-1 rounded-xl border border-border py-2.5 text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-60">
               취소
             </button>
             <button
               onClick={save}
               disabled={saving}
-              className="flex-[2] rounded-xl bg-foreground py-2.5 text-[14px] font-medium text-background disabled:opacity-60"
+              className="flex-[2] rounded-xl bg-foreground py-2.5 text-[13px] font-medium text-background disabled:opacity-60"
             >
               {saving ? '저장 중…' : preview.fresh === 0 ? '완료로 표시 (새 거래 없음)' : `신규 ${preview.fresh}건 저장`}
             </button>

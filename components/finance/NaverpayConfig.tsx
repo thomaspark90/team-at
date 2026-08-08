@@ -55,7 +55,7 @@ export default function NaverpayConfig() {
   const dirty = url.trim() !== savedUrl;
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-5">
+    <section>
       <h2 className="m-0 text-[15px] font-medium">네이버페이 자동 수집 주소</h2>
       <p className="mt-1 text-[13px] text-muted-foreground">
         매일 19:00 Mac 수집기가 이 주소의 결제내역을 크롤링해요. 네이버가 페이지 주소를 바꾸면

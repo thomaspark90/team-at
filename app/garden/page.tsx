@@ -15,11 +15,19 @@ export default function GardenPage() {
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <GardenNav />
-      <div className="mx-auto max-w-[1100px] px-6 py-8" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-        <WeatherStrip />
-        <WorkBoard />
-        <GardenDashboard section="unset" />
-        <GardenOps />
+      <div className="mx-auto max-w-[1100px] divide-y divide-border px-6 py-8">
+        <div className="pb-[54px]">
+          <WeatherStrip />
+        </div>
+        <div className="py-[54px]">
+          <WorkBoard />
+        </div>
+        <div className="py-[54px]">
+          <GardenDashboard section="unset" />
+        </div>
+        <div className="pt-[54px]">
+          <GardenOps />
+        </div>
       </div>
     </div>
   );

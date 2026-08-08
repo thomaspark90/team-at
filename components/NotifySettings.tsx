@@ -128,7 +128,7 @@ export default function NotifySettings({
     <button
       onClick={onClick}
       disabled={busy}
-      className={`rounded-lg px-3 py-1.5 text-[12px] transition-colors disabled:opacity-60 ${
+      className={`rounded-lg px-3 py-1.5 text-[13px] transition-colors disabled:opacity-60 ${
         on ? 'bg-foreground font-medium text-background' : 'border border-border text-muted-foreground hover:text-foreground'
       }`}
     >
@@ -137,11 +137,11 @@ export default function NotifySettings({
   );
 
   return (
-    <div className={bare ? '' : 'rounded-2xl border border-border bg-card px-5 py-4'}>
+    <div className={bare ? '' : 'rounded-2xl bg-muted/40 px-5 py-4'}>
       {!bare && (
         <>
           <h2 className="m-0 text-[15px] font-medium">{isRecipient ? '알림 설정' : '내 요청 알림'}</h2>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
             {isRecipient
               ? '새 송금 요청이 등록되면 알림을 받아요. 채널별로 켜고 끌 수 있어요.'
               : '내가 올린 송금 요청이 이체 완료되면 알림을 받아요. 완료 이메일은 자동으로 오고, 푸시는 아래에서 켤 수 있어요.'}
@@ -153,7 +153,7 @@ export default function NotifySettings({
         <div className="mt-3 flex items-center justify-between gap-2">
           <span className="text-[13px]">이메일 알림</span>
           {emailEnabled === null ? (
-            <span className="text-[12px] text-muted-foreground">…</span>
+            <span className="text-[13px] text-muted-foreground">…</span>
           ) : (
             toggleBtn(emailEnabled, false, toggleEmail)
           )}
@@ -212,7 +212,7 @@ export default function NotifySettings({
             {guide === 'unblock' ? (
               <>
                 <h3 className="m-0 text-[15px] font-medium">알림 차단 해제 방법</h3>
-                <p className="mt-1 text-[12px] text-muted-foreground">
+                <p className="mt-1 text-[13px] text-muted-foreground">
                   권한 요청에서 &lsquo;차단&rsquo;을 누르면 브라우저가 기억해서 다시 묻지 않아요. 아래처럼 브라우저
                   설정에서 직접 허용으로 바꾼 뒤, 이 화면을 새로고침하고 <strong>알림 켜기</strong>를 다시 누르면
                   됩니다.
@@ -230,7 +230,7 @@ export default function NotifySettings({
                     </li>
                     <li>탭으로 돌아와 새로고침 → <strong>알림 켜기</strong></li>
                   </ol>
-                  <p className="mt-2 text-[12px] text-muted-foreground">
+                  <p className="mt-2 text-[13px] text-muted-foreground">
                     안 보이면 주소창에 <span className="break-all font-mono text-[11px]">chrome://settings/content/notifications</span> 을
                     입력해 &lsquo;차단됨&rsquo; 목록에서 이 사이트를 허용으로 바꿔요.
                   </p>
@@ -242,7 +242,7 @@ export default function NotifySettings({
                     Safari 메뉴 → <strong>설정 → 웹사이트 → 알림</strong>에서 이 사이트를 <strong>허용</strong>으로
                     변경 → 새로고침 후 알림 켜기.
                   </p>
-                  <p className="mt-2 text-[12px] text-muted-foreground">
+                  <p className="mt-2 text-[13px] text-muted-foreground">
                     맥 공통: 브라우저에서 허용해도 안 뜨면 <strong>시스템 설정 → 알림</strong>에서 크롬/사파리의 알림
                     허용이 켜져 있는지 확인하세요.
                   </p>
@@ -270,7 +270,7 @@ export default function NotifySettings({
             ) : (
               <>
             <h3 className="m-0 text-[15px] font-medium">푸시알림 설정 방법</h3>
-            <p className="mt-1 text-[12px] text-muted-foreground">
+            <p className="mt-1 text-[13px] text-muted-foreground">
               앱 설치 없이, 이 사이트가 직접 알림을 보내요. 알림을 받을 기기마다 아래처럼 한 번만 켜면 됩니다.
             </p>
 
@@ -287,14 +287,14 @@ export default function NotifySettings({
                   브라우저가 묻는 알림 권한에서 <strong>허용</strong>을 눌러요
                 </li>
               </ol>
-              <p className="mt-2 text-[12px] text-muted-foreground">
+              <p className="mt-2 text-[13px] text-muted-foreground">
                 이후 일반 앱 알림처럼 잠금화면과 상단 알림바에 떠요. 홈 화면 추가는 필요 없어요.
               </p>
             </div>
 
             <div className="mt-3 rounded-xl bg-muted/40 p-4">
               <h4 className="m-0 text-[13px] font-medium">아이폰 / 아이패드</h4>
-              <p className="mt-1.5 text-[12px] text-amber-600">
+              <p className="mt-1.5 text-[13px] text-amber-600">
                 아이폰은 사파리 탭에서는 알림을 못 받아요. 꼭 홈 화면에 추가한 뒤 그 아이콘으로 열어야 해요.
               </p>
               <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-[13px]">
@@ -314,7 +314,7 @@ export default function NotifySettings({
                   이 화면에서 <strong>알림 켜기</strong> → 권한 <strong>허용</strong>을 눌러요
                 </li>
               </ol>
-              <p className="mt-2 text-[12px] text-muted-foreground">
+              <p className="mt-2 text-[13px] text-muted-foreground">
                 이후 일반 앱처럼 잠금화면·알림센터에 떠요. iOS 16.4 이상 필요(2023년 3월 이후 업데이트된 아이폰이면 대부분 가능).
               </p>
             </div>
@@ -326,7 +326,7 @@ export default function NotifySettings({
               </p>
             </div>
 
-            <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-[12px]">
+            <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-[13px]">
               <p className="m-0 font-medium">잘 안 될 때</p>
               <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-5">
                 <li>
@@ -347,7 +347,7 @@ export default function NotifySettings({
 
             <button
               onClick={() => setGuide(null)}
-              className="mt-4 w-full rounded-xl bg-foreground py-2.5 text-[14px] font-medium text-background"
+              className="mt-4 w-full rounded-xl bg-foreground py-2.5 text-[13px] font-medium text-background"
             >
               확인
             </button>

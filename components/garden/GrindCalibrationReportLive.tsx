@@ -55,9 +55,9 @@ function ChartTooltip({ active, payload, label }: any) {
 
 function Stat({ value, label, tone }: { value: string; label: string; tone?: 'ok' | 'warn' }) {
   return (
-    <div className="ta-card bg-background" style={{ flex: 1, minWidth: 220 }}>
+    <div className="rounded-md bg-muted/40 p-6" style={{ flex: 1, minWidth: 220 }}>
       <div
-        className="tabular text-[30px] font-semibold"
+        className="tabular text-[22px] font-medium"
         style={{ color: tone === 'warn' ? 'hsl(0 72% 45%)' : 'hsl(var(--foreground))' }}
       >
         {value}
@@ -131,9 +131,10 @@ export default function GrindCalibrationReportLive() {
   const missing = STORES.filter((s) => storeShots(s.id) === 0);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    // 카드 해체(2026-08-08) — 주요 섹션 경계는 가로 구분선으로만
+    <div className="divide-y divide-border">
       {/* 현행 상태 요약 */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+      <div className="pb-[54px]" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <Stat
           value={meanOffset != null ? `${meanOffset > 0 ? '+' : ''}${Math.round(meanOffset)}µm` : '—'}
           label={
@@ -160,7 +161,7 @@ export default function GrindCalibrationReportLive() {
 
       {/* 데이터 없는 지점 안내 */}
       {missing.length > 0 && (
-        <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+        <p className="py-[54px] text-[13px] text-muted-foreground" style={{ margin: 0 }}>
           {missing.map((s) => s.label).join(' · ')}
           {missing.length === 1 ? '은(는)' : '은'} 최근 얼라인 이후 측정이 아직 없어요 — 프로토콜(다이얼
           6·8·10 × 각 3샷) 측정을 올리면 이 리포트가 자동으로 채워집니다. (얼라인:{' '}
@@ -170,7 +171,7 @@ export default function GrindCalibrationReportLive() {
 
       {/* 공통 다이얼별 분포 비교 */}
       {shared.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 12 }}>
+        <div className="py-[54px]" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 12 }}>
           {shared.map((g) => {
             const curveShots = {
               yangjae: g.yangjae.filter((s: Shot) => s.std > 0),
@@ -180,10 +181,10 @@ export default function GrindCalibrationReportLive() {
             const my = avg(g.yangjae);
             const mp = avg(g.pangyo);
             return (
-              <div key={g.dial} className="ta-card bg-background min-w-0">
+              <div key={g.dial} className="min-w-0 rounded-md bg-muted/40 p-6">
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                  <span className="text-[14px] font-medium text-foreground">다이얼 {g.dial}</span>
-                  <span className="tabular text-[12px] text-muted-foreground">
+                  <span className="text-[15px] font-medium text-foreground">다이얼 {g.dial}</span>
+                  <span className="tabular text-[11px] text-muted-foreground">
                     양재천 {Math.round(my)}µm({g.yangjae.length}샷) · 판교 {Math.round(mp)}µm(
                     {g.pangyo.length}샷) · Δ{Math.round(mp - my)}µm
                   </span>
@@ -218,7 +219,7 @@ export default function GrindCalibrationReportLive() {
 
       {/* 현행 원자료 */}
       {current.length > 0 && (
-        <div className="ta-card bg-background min-w-0" style={{ overflowX: 'auto' }}>
+        <div className="min-w-0 pt-[54px]" style={{ overflowX: 'auto' }}>
           <p className="text-[15px] font-medium text-foreground" style={{ marginTop: 0, marginBottom: 10 }}>
             현행 측정 원자료 — 최근 얼라인 이후 {current.length}샷
           </p>
@@ -226,7 +227,7 @@ export default function GrindCalibrationReportLive() {
             <thead>
               <tr className="text-muted-foreground">
                 {['날짜', '지점', '원두', '다이얼', '평균(µm)', 'σ'].map((h) => (
-                  <th key={h} style={{ textAlign: h === '원두' ? 'left' : 'right', padding: '4px 10px', borderBottom: '1px solid hsl(var(--border))', fontWeight: 500 }}>
+                  <th key={h} className="font-medium" style={{ textAlign: h === '원두' ? 'left' : 'right', padding: '4px 10px', borderBottom: '1px solid hsl(var(--border))' }}>
                     {h}
                   </th>
                 ))}

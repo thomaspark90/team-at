@@ -23,7 +23,7 @@ export default function GrindCalibrationReportPage() {
       <TabNav />
       <GardenNav />
       <div className="mx-auto max-w-[1100px] px-6 py-8">
-        <h1 className="text-[18px] font-medium" style={{ marginBottom: 4 }}>
+        <h1 className="text-[22px] font-medium" style={{ marginBottom: 4 }}>
           EK43 지점 캘리브레이션 리포트 — 양재천 vs 판교
         </h1>
         <p className="text-[13px] text-muted-foreground" style={{ marginTop: 0, marginBottom: 20 }}>
@@ -31,7 +31,7 @@ export default function GrindCalibrationReportPage() {
         </p>
         <GrindCalibrationReportLive />
 
-        <h2 className="text-[16px] font-medium" style={{ marginTop: 40, marginBottom: 4 }}>
+        <h2 className="text-[15px] font-medium" style={{ marginTop: 40, marginBottom: 4 }}>
           아카이브 — 2026-07-16 기준선 리포트
         </h2>
         <p className="text-[13px] text-muted-foreground" style={{ marginTop: 0, marginBottom: 20 }}>

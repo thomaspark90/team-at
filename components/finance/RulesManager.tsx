@@ -105,7 +105,7 @@ export default function RulesManager({ catNames }: { catNames: Record<number, st
                   <button
                     onClick={() => remove(r)}
                     disabled={busy === `${r.brand}|${r.normalized_key}`}
-                    className="ta-btn h-7 px-2 text-[12px]"
+                    className="ta-btn h-7 px-2 text-[13px]"
                   >
                     {busy === `${r.brand}|${r.normalized_key}` ? '삭제 중…' : '삭제'}
                   </button>

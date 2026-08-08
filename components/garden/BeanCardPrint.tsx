@@ -92,7 +92,8 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
     <div>
       {/* 편집 패널 — 화면 전용, 인쇄에는 안 나옴 */}
       <div className="print:hidden mx-auto max-w-[820px] px-6 py-6">
-        <div className="ta-card bg-background min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {/* 카드 해체(2026-08-08) — 페이지 최상위 섹션은 박스 없이 */}
+        <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
             <p className="ta-label">원두카드 인쇄 — A4 · 카드 9장 · 재단선 포함</p>
             <button onClick={() => window.print()} className="ta-btn-primary" style={{ height: 34, paddingLeft: 16, paddingRight: 16 }}>
@@ -135,7 +136,7 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
                 onClick={translateEn}
                 disabled={translating || !beanKo.trim()}
                 className="ta-btn"
-                style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0 }}
+                style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 13, flexShrink: 0 }}
                 title="한글 원두명을 업계 표준 영문 표기로 자동 변환"
               >
                 {translating ? '변환 중…' : '영문 자동'}
@@ -152,7 +153,7 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
             />
           </div>
           {translateMsg && (
-            <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>{translateMsg}</p>
+            <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>{translateMsg}</p>
           )}
           <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>
             {asset.logo || asset.qr

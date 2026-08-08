@@ -12,7 +12,7 @@ export default function SegmentError({
     <div className="flex min-h-screen items-center justify-center bg-background px-6 text-center">
       <div className="flex max-w-[420px] flex-col items-center gap-4">
         <div className="text-[32px]">⚠️</div>
-        <p className="m-0 text-[15px] font-semibold text-foreground">화면을 불러오지 못했어요</p>
+        <p className="m-0 text-[15px] font-medium text-foreground">화면을 불러오지 못했어요</p>
         <p className="m-0 text-[13px] text-muted-foreground">
           일시적인 문제일 수 있어요. 잠시 후 다시 시도해 주세요. 계속되면 새로고침하거나 관리자에게 알려주세요.
         </p>

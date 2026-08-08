@@ -75,14 +75,19 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
 
           {/* 좌측 고정 연·월 사이드바(MonthShell) — POS 매출부터 하단 업로더까지 전부 오른쪽 열로 */}
           <MonthShell brand={unit.brand} store={store} initialTodos={initialTodos}>
+            <div className="divide-y divide-border">
             {/* 0) 전체 자료 현황 매트릭스 — 연·월 × 자료 종류 미입력 한눈 조망(2026-08-02 대표 지시) */}
-            <StatusMatrix brand={unit.brand} unitId={unit.id} store={store} initialData={initialMatrix} />
+            <div className="pb-[54px]">
+              <StatusMatrix brand={unit.brand} unitId={unit.id} store={store} initialData={initialMatrix} />
+            </div>
 
             {/* 0-1) 잔액 연속성 감사 — 소급 업로드 후 빠진 구간(누락 파일) 최종 점검(2026-08-03) */}
-            <ContinuityAudit brand={unit.brand} />
+            <div className="py-[54px]">
+              <ContinuityAudit brand={unit.brand} />
+            </div>
 
             {/* 1) POS 매출 — 지점 단위 귀속 (#pos: 월별 보드의 POS 칸에서 앵커 이동) */}
-            <div id="pos" className="ta-card flex flex-col gap-3 scroll-mt-4">
+            <div id="pos" className="flex flex-col gap-3 scroll-mt-4 py-[54px]">
               <div>
                 <h2 className="m-0 text-[15px] text-foreground">POS 매출</h2>
                 <p className="mt-1 text-[13px] text-muted-foreground">
@@ -97,7 +102,10 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
                 은행 거래내역은 스탭밀·가든 모두 엑셀로 올리므로, 이 그리드가 유일한 업로드 경로다.
                 (은행 PDF 폼·신한카드 정산·쿠팡 영수증 세분화는 2026-08-01 제거 — 그리드와 중복.
                  필요 시 컴포넌트는 코드에 남아 있으니 되살릴 수 있음: UploadPanel/CardReconcile/ReceiptEnrich) */}
-            <AccountingBoards fixedBrand={unit.brand} unitId={unit.id} mode="upload" banks={banks} />
+            <div className="pt-[54px]">
+              <AccountingBoards fixedBrand={unit.brand} unitId={unit.id} mode="upload" banks={banks} />
+            </div>
+            </div>
           </MonthShell>
         </div>
       </div>

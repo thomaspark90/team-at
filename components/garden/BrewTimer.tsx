@@ -132,7 +132,7 @@ export default function BrewTimer({
 
       {/* 경과 시간 */}
       <div style={{ textAlign: 'center', margin: '26px 0 18px' }}>
-        <div className="tabular" style={{ fontSize: 64, fontWeight: 600, lineHeight: 1, color: over ? '#dc2626' : undefined }}>
+        <div className="tabular" style={{ fontSize: 64, fontWeight: 500, lineHeight: 1, color: over ? '#dc2626' : undefined }}>
           {fmt(phase === 'done' ? doneAtRef.current : elapsed)}
         </div>
         {maxSec > 0 && (
@@ -146,7 +146,7 @@ export default function BrewTimer({
       {phase === 'run' && cur && (
         <div className="rounded-md" style={{ border: '2px solid rgba(132, 204, 22, 0.55)', background: 'rgba(132, 204, 22, 0.14)', padding: '14px 16px', textAlign: 'center', marginBottom: 14 }}>
           <div className="text-[13px] text-muted-foreground">지금</div>
-          <div className="tabular" style={{ fontSize: 28, fontWeight: 600 }}>
+          <div className="tabular" style={{ fontSize: 28, fontWeight: 500 }}>
             {stepName(stepIdx)} {cur.water}g
           </div>
           <div className="tabular text-[13px] text-muted-foreground">누적 {cumTo(stepIdx)}g까지 붓기</div>
@@ -154,7 +154,7 @@ export default function BrewTimer({
       )}
       {phase === 'done' && (
         <div className="rounded-md border border-border" style={{ padding: '14px 16px', textAlign: 'center', marginBottom: 14 }}>
-          <div className="tabular" style={{ fontSize: 22, fontWeight: 600 }}>추출 완료 · {fmt(doneAtRef.current)}</div>
+          <div className="tabular" style={{ fontSize: 22, fontWeight: 500 }}>추출 완료 · {fmt(doneAtRef.current)}</div>
           {totalWater > 0 && <div className="tabular text-[13px] text-muted-foreground">총 {totalWater}g</div>}
         </div>
       )}
@@ -196,13 +196,13 @@ export default function BrewTimer({
       {/* 컨트롤 — 큰 버튼 (장갑 낀 손 기준) */}
       <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
         {phase === 'ready' && (
-          <button onClick={start} className="ta-btn-primary" style={{ flex: 1, height: 56, fontSize: 17 }}>
+          <button onClick={start} className="ta-btn-primary" style={{ flex: 1, height: 56, fontSize: 15 }}>
             추출 시작
           </button>
         )}
         {phase === 'run' && (
           <>
-            <button onClick={next} className="ta-btn-primary" style={{ flex: 1, height: 56, fontSize: 17 }}>
+            <button onClick={next} className="ta-btn-primary" style={{ flex: 1, height: 56, fontSize: 15 }}>
               {stepIdx + 1 < steps.length ? `다음 — ${stepName(stepIdx + 1)} ${steps[stepIdx + 1].water}g` : '추출 종료'}
             </button>
             <button onClick={reset} className="ta-btn" style={{ height: 56, paddingLeft: 18, paddingRight: 18 }}>
@@ -212,10 +212,10 @@ export default function BrewTimer({
         )}
         {phase === 'done' && (
           <>
-            <button onClick={reset} className="ta-btn" style={{ flex: 1, height: 56, fontSize: 17 }}>
+            <button onClick={reset} className="ta-btn" style={{ flex: 1, height: 56, fontSize: 15 }}>
               다시
             </button>
-            <button onClick={onClose} className="ta-btn-primary" style={{ flex: 1, height: 56, fontSize: 17 }}>
+            <button onClick={onClose} className="ta-btn-primary" style={{ flex: 1, height: 56, fontSize: 15 }}>
               닫기
             </button>
           </>

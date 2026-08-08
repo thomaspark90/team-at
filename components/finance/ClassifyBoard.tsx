@@ -56,12 +56,12 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
   const allClassified = status != null && totalRows > 0 && totalUncl === 0;
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-5">
+    <section>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="m-0 text-[15px] font-medium">
           지출 자료 분류
           {status && totalRows > 0 && (
-            <span className={`ml-2 text-[12px] font-normal ${totalUncl === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+            <span className={`ml-2 text-[11px] font-normal ${totalUncl === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
               {totalUncl === 0 ? '모두 분류됨' : `미분류 ${totalUncl}건`}
             </span>
           )}
@@ -79,7 +79,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
           if (!status) {
             return (
               <div key={t.key} className="rounded-xl bg-muted/40 px-3.5 py-2.5 text-[13px] text-muted-foreground">
-                {t.label} <span className="text-[12px]">— 확인 중…</span>
+                {t.label} <span className="text-[11px]">— 확인 중…</span>
               </div>
             );
           }
@@ -87,7 +87,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
             return (
               <div key={t.key} className="rounded-xl bg-muted/40 px-3.5 py-2.5 opacity-50">
                 <span className="text-[13px]">{t.label}</span>
-                <span className="ml-2 text-[12px] text-muted-foreground">자료 없음</span>
+                <span className="ml-2 text-[11px] text-muted-foreground">자료 없음</span>
               </div>
             );
           }
@@ -115,7 +115,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
               className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 transition-colors hover:border-foreground/40"
             >
               <span className="text-[13px] font-medium">{t.label}</span>
-              <span className="text-right text-[12px]">
+              <span className="text-right text-[11px]">
                 <span className="font-medium text-amber-600">미분류 {s.unclassified}건</span>
                 <span className="block text-[11px] text-muted-foreground">{detail}</span>
               </span>
@@ -142,7 +142,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
           {!confirmed && totalRows > 0 && (
             <Link
               href={allClassified ? '/finance/close' : `/finance/classify?ym=${ym}&unclassified=1`}
-              className={`rounded-lg px-3 py-1.5 text-[12px] font-medium ${allClassified ? 'bg-foreground text-background' : 'border border-border text-muted-foreground hover:text-foreground'}`}
+              className={`rounded-lg px-3 py-1.5 text-[13px] font-medium ${allClassified ? 'bg-foreground text-background' : 'border border-border text-muted-foreground hover:text-foreground'}`}
             >
               {allClassified ? '월 확정하러 가기 →' : '분류하러 가기 →'}
             </Link>

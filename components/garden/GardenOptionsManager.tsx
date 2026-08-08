@@ -104,8 +104,8 @@ export default function GardenOptionsManager() {
   return (
     <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
-        <p className="text-[14px] font-medium text-foreground" style={{ margin: 0 }}>발주 드롭다운 관리</p>
-        <p className="text-[12px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
+        <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>발주 드롭다운 관리</p>
+        <p className="text-[13px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
           필터 원두 발주 화면의 스탭이름·로스팅사 선택지를 관리합니다.
         </p>
       </div>
@@ -176,7 +176,7 @@ function RoasteryList({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>
+      <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>
         로스팅사 <span style={{ opacity: 0.7 }}>— 로고·QR을 등록하면 원두카드에 자동 배치됩니다</span>
       </p>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -199,7 +199,7 @@ function RoasteryList({
         </button>
       </div>
       {items.length === 0 ? (
-        <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>
+        <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
           아직 등록된 항목이 없어요. 발주 화면에서 직접 입력해 저장해도 여기에 추가됩니다.
         </p>
       ) : (
@@ -229,14 +229,14 @@ function RoasteryList({
                     onClick={commitEdit}
                     disabled={busy || editValue.trim() === '' || (editValue.trim() !== v && items.includes(editValue.trim()))}
                     className="ta-btn-primary"
-                    style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0 }}
+                    style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 13, flexShrink: 0 }}
                   >
                     저장
                   </button>
                   <button
                     onClick={() => setEditing(null)}
                     className="ta-btn"
-                    style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0 }}
+                    style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 13, flexShrink: 0 }}
                   >
                     취소
                   </button>
@@ -266,7 +266,7 @@ function RoasteryList({
                 onClick={() => remove(v)}
                 disabled={busy}
                 className="text-muted-foreground hover:text-foreground"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1, flexShrink: 0 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 0, lineHeight: 1, flexShrink: 0 }}
                 title="삭제"
               >
                 ×
@@ -300,7 +300,7 @@ function RoomInput({ value, busy, onSave }: { value: string; busy: boolean; onSa
         onKeyDown={(e) => e.key === 'Enter' && commit()}
         placeholder="카톡 채팅방 표시 이름 (정확히 일치해야 전송됨)"
         className="ta-input"
-        style={{ flex: 1, minWidth: 0, height: 28, fontSize: 12 }}
+        style={{ flex: 1, minWidth: 0, height: 28 }}
         disabled={busy}
       />
     </label>
@@ -391,7 +391,7 @@ function OptionList({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>{title}</p>
+      <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>{title}</p>
       <div style={{ display: 'flex', gap: 8 }}>
         <input
           type="text"
@@ -412,7 +412,7 @@ function OptionList({
         </button>
       </div>
       {items.length === 0 ? (
-        <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>
+        <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
           아직 등록된 항목이 없어요. 발주 화면에서 직접 입력해 저장해도 여기에 추가됩니다.
         </p>
       ) : (
@@ -420,7 +420,7 @@ function OptionList({
           {items.map((v) => (
             <span
               key={v}
-              className="rounded-md border border-border text-[12px] text-foreground"
+              className="rounded-md border border-border text-[11px] text-foreground"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px' }}
             >
               {display ? display(v) : v}

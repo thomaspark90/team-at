@@ -74,11 +74,11 @@ function Row({
       style={{ paddingTop: 10, paddingBottom: 10 }}
     >
       <div style={{ minWidth: 0 }}>
-        <div className={`text-[13px] ${on ? 'text-foreground' : 'text-muted-foreground'}`} style={{ fontWeight: 500 }}>
+        <div className={`text-[13px] font-medium ${on ? 'text-foreground' : 'text-muted-foreground'}`}>
           {label}
         </div>
         {desc && (
-          <div className="text-[12px] text-muted-foreground" style={{ marginTop: 2, lineHeight: 1.5 }}>
+          <div className="text-[11px] text-muted-foreground" style={{ marginTop: 2, lineHeight: 1.5 }}>
             {desc}
           </div>
         )}
@@ -249,15 +249,15 @@ export default function GardenTabAccess({
 
   return (
     <section className="min-w-0">
-      <h2 className="text-[14px] font-medium" style={{ margin: '0 0 4px' }}>
+      <h2 className="text-[15px] font-medium" style={{ margin: '0 0 4px' }}>
         페이지 접근 권한
       </h2>
-      <p className="text-[12px] text-muted-foreground" style={{ margin: '0 0 12px', lineHeight: 1.6 }}>
+      <p className="text-[13px] text-muted-foreground" style={{ margin: '0 0 12px', lineHeight: 1.6 }}>
         계정별로 접근할 수 있는 화면을 지정합니다. 끈 항목은 나비에서 숨겨지고, 주소로 직접 접근해도 서버에서
         차단됩니다. 대표 계정은 항상 전체 접근이라 목록에 없습니다.
       </p>
       {error && (
-        <p className="text-[12px]" style={{ color: 'hsl(0 72% 45%)', margin: '0 0 8px' }}>
+        <p className="text-[13px]" style={{ color: 'hsl(0 72% 45%)', margin: '0 0 8px' }}>
           {error}
         </p>
       )}
@@ -282,13 +282,13 @@ export default function GardenTabAccess({
               >
                 <span style={{ minWidth: 0 }}>
                   <span className="block text-[13px] font-medium text-foreground">{u.email}</span>
-                  <span className="block text-[12px] text-muted-foreground" style={{ marginTop: 2 }}>
+                  <span className="block text-[11px] text-muted-foreground" style={{ marginTop: 2 }}>
                     {summary(u)}
                     {externalBadge(u.email)}
                     {busyId === u.id && ' · 저장 중…'}
                   </span>
                 </span>
-                <span className="text-[12px] text-muted-foreground" style={{ flexShrink: 0 }}>
+                <span className="text-[13px] text-muted-foreground" style={{ flexShrink: 0 }}>
                   {open ? '접기 ▲' : '권한 설정 ▼'}
                 </span>
               </button>
@@ -316,7 +316,7 @@ export default function GardenTabAccess({
                     Garden Service 하위 탭
                   </p>
                   {!gardenOn && (
-                    <p className="text-[12px] text-muted-foreground" style={{ margin: '4px 0 0' }}>
+                    <p className="text-[13px] text-muted-foreground" style={{ margin: '4px 0 0' }}>
                       Garden Service 접근이 꺼져 있어 하위 탭 설정은 적용되지 않습니다.
                     </p>
                   )}
@@ -345,7 +345,7 @@ export default function GardenTabAccess({
                     className="border-t border-border"
                     style={{ marginTop: 16, paddingTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
                   >
-                    <p className="text-[12px] text-muted-foreground" style={{ margin: 0, lineHeight: 1.5 }}>
+                    <p className="text-[13px] text-muted-foreground" style={{ margin: 0, lineHeight: 1.5 }}>
                       {isExternal(u.email)
                         ? '삭제하면 계정·권한이 지워지고 허용 목록에서도 빠져 로그인이 차단됩니다.'
                         : '삭제해도 팀 도메인 계정은 구글 로그인하면 다시 생성됩니다(그때는 전체 접근). 완전 차단은 워크스페이스에서 계정을 정지하세요.'}
@@ -359,7 +359,7 @@ export default function GardenTabAccess({
                         height: 30,
                         paddingLeft: 12,
                         paddingRight: 12,
-                        fontSize: 12,
+                        fontSize: 13,
                         cursor: 'pointer',
                         background: 'none',
                         borderColor: 'hsl(0 72% 45% / 0.4)',
@@ -381,7 +381,7 @@ export default function GardenTabAccess({
         <p className="ta-label" style={{ marginBottom: 4 }}>
           이메일로 계정 추가 (사전 등록)
         </p>
-        <p className="text-[12px] text-muted-foreground" style={{ margin: '0 0 8px', lineHeight: 1.6 }}>
+        <p className="text-[13px] text-muted-foreground" style={{ margin: '0 0 8px', lineHeight: 1.6 }}>
           아직 로그인한 적 없는 인원도 이메일로 미리 등록해 권한을 걸어둘 수 있어요. @{TEAM_DOMAIN} 외
           이메일(gmail 등)은 허용 목록에 함께 등록돼 로그인이 열립니다. 같은 이메일로 구글 로그인하면
           등록된 계정에 자동 연결돼요. <b>권한을 따로 끄지 않으면 전체 접근</b>이니, 추가 직후 열리는
@@ -421,7 +421,7 @@ export default function GardenTabAccess({
 
         {allowed.length > 0 && (
           <div style={{ marginTop: 12 }}>
-            <p className="text-[12px] text-muted-foreground" style={{ margin: '0 0 6px' }}>
+            <p className="text-[13px] text-muted-foreground" style={{ margin: '0 0 6px' }}>
               외부 이메일 허용 목록 — 해제하면 계정·권한 설정은 남고 로그인만 막혀요.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

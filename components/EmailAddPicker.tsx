@@ -21,7 +21,7 @@ export function useTeamEmails(): string[] {
   return emails;
 }
 
-const boxStyle: React.CSSProperties = { height: 30, width: 190, fontSize: 12 };
+const boxStyle: React.CSSProperties = { height: 30, width: 190, fontSize: 13 };
 
 export default function EmailAddPicker({
   candidates,
@@ -95,7 +95,7 @@ export default function EmailAddPicker({
         onClick={addTyped}
         disabled={busy || !input.trim()}
         className="ta-btn"
-        style={{ height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 12 }}
+        style={{ height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 13 }}
       >
         추가
       </button>
@@ -105,7 +105,7 @@ export default function EmailAddPicker({
           setInput('');
         }}
         className="ta-btn"
-        style={{ height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 12 }}
+        style={{ height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 13 }}
         title="팀 계정 목록에서 선택"
       >
         목록

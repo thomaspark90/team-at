@@ -95,7 +95,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
   return (
     <div className="flex flex-col gap-5">
       {saved && (
-        <div className="rounded-md border border-border bg-muted p-4">
+        <div className="rounded-md bg-muted/40 p-4">
           <div className="mb-1 text-foreground">✓ 저장 완료{saved.linked ? ' · 정산 연결됨' : ' · 미연결(결제 대기)'}</div>
           <div className="text-[13px] text-muted-foreground">
             {won(saved.saved).replace('₩', '')}건 저장 · 중복 {saved.duplicates}건 건너뜀 · 카테고리는 직접 지정해요(학습된 가맹점은 미리 선택돼요) ·{' '}
@@ -105,7 +105,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
       )}
 
       {/* 업로드 카드 */}
-      <div className="ta-card flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <div>
           <h2 className="text-[15px] text-foreground">신한카드 이용내역으로 지출 자료 세분화</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
@@ -176,7 +176,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
             </button>
           </div>
 
-          <div className="border-b border-border px-4 py-[10px] text-[12.5px] text-muted-foreground">
+          <div className="border-b border-border px-4 py-[10px] text-[13px] text-muted-foreground">
             연결하면 아래 <b>{preview.fresh}건</b>이 지출 자료 분류에 편입되고, 통장의 카드결제 1건은 <b>손익 제외 › 카드대금정산</b>으로 잠겨요.
             {preview.duplicates > 0 && <> (이미 저장된 {preview.duplicates}건 제외)</>}
           </div>

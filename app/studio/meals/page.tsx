@@ -24,7 +24,8 @@ export default async function StaffMealsPage() {
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <StudioNav />
-      <div className="mx-auto flex max-w-[720px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
+      {/* 카드 해체(2026-08-08) — 섹션 경계는 가로 구분선으로만 */}
+      <div className="mx-auto max-w-[720px] divide-y divide-border px-4 py-6 sm:px-6 sm:py-8">
         <StaffMealArchive initial={records} />
       </div>
     </div>

@@ -262,9 +262,10 @@ export default function GrindCalibrationCharts() {
   const bothApplied = calibrationReady(profiles, 'yangjae', 'pangyo');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    // 카드 해체(2026-08-08) — 주요 섹션 경계는 가로 구분선으로만
+    <div className="divide-y divide-border">
       {/* 요약 통계 */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+      <div className="pb-[54px]" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {STORES.map((s) => {
           const fit = fits[s.id];
           const last = latestAlignmentDate(alignments, s.id);
@@ -276,7 +277,7 @@ export default function GrindCalibrationCharts() {
             Math.abs(fit.a - profileFit.a) < 1 &&
             Math.abs(dialToMicron(fit, 8) - dialToMicron(profileFit, 8)) < 1;
           return (
-            <div key={s.id} className="ta-card bg-background" style={{ flex: 1, minWidth: 220 }}>
+            <div key={s.id} className="rounded-md bg-muted/40 p-6" style={{ flex: 1, minWidth: 220 }}>
               <div className="text-[11px] text-muted-foreground" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: C[s.id] }} aria-hidden />
                 {s.label} · 얼라인 {last ?? '기록 없음'}
@@ -302,7 +303,7 @@ export default function GrindCalibrationCharts() {
                       onClick={() => applyFit(s.id)}
                       disabled={applying != null}
                       className="ta-btn"
-                      style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 12 }}
+                      style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 13 }}
                     >
                       {applying === s.id ? '적용 중…' : profileFit ? '이 측정으로 메쉬 기준 갱신' : '레시피 메쉬 기준에 적용'}
                     </button>
@@ -312,7 +313,7 @@ export default function GrindCalibrationCharts() {
             </div>
           );
         })}
-        <div className="ta-card bg-background" style={{ flex: 1, minWidth: 220 }}>
+        <div className="rounded-md bg-muted/40 p-6" style={{ flex: 1, minWidth: 220 }}>
           <div className="text-[11px] text-muted-foreground">두 지점 오프셋 (같은 다이얼, 판교−양재천)</div>
           <div className="tabular text-[22px] text-foreground" style={{ marginTop: 4 }}>
             {meanOffset != null ? `${meanOffset > 0 ? '+' : ''}${Math.round(meanOffset)}µm` : '—'}
@@ -333,7 +334,7 @@ export default function GrindCalibrationCharts() {
       </div>
 
       {/* 다이얼 → µm 산점도 + 피팅 */}
-      <div className="ta-card bg-background min-w-0">
+      <div className="min-w-0 py-[54px]">
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
           <span className="text-[15px] font-medium text-foreground">다이얼 → 입자 크기 — 측정 전체</span>
           <button onClick={() => refresh(true)} className="text-[11px] text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
@@ -382,7 +383,7 @@ export default function GrindCalibrationCharts() {
 
       {/* 다이얼별 비교 표 */}
       {dialRows.length > 0 && (
-        <div className="ta-card bg-background min-w-0" style={{ overflowX: 'auto' }}>
+        <div className="min-w-0 py-[54px]" style={{ overflowX: 'auto' }}>
           <p className="text-[15px] font-medium text-foreground" style={{ marginTop: 0, marginBottom: 10 }}>
             다이얼별 지점 비교
           </p>
@@ -390,7 +391,7 @@ export default function GrindCalibrationCharts() {
             <thead>
               <tr className="text-muted-foreground">
                 {['다이얼', '양재천 평균(µm)', '판교 평균(µm)', '오프셋(판교−양재천)', '판정'].map((h) => (
-                  <th key={h} style={{ textAlign: 'right', padding: '4px 10px', borderBottom: '1px solid hsl(var(--border))', fontWeight: 500 }}>{h}</th>
+                  <th key={h} className="font-medium" style={{ textAlign: 'right', padding: '4px 10px', borderBottom: '1px solid hsl(var(--border))' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -439,9 +440,9 @@ export default function GrindCalibrationCharts() {
 
       {/* 다이얼별 분포 비교 (σ가 있는 현행 측정이 두 지점 모두 있을 때) */}
       {distCharts.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 12 }}>
+        <div className="pt-[54px]" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 12 }}>
           {distCharts.map(({ dial, data }) => (
-            <div key={dial} className="ta-card bg-background min-w-0">
+            <div key={dial} className="min-w-0 rounded-md bg-muted/40 p-6">
               <span className="text-[13px] font-medium text-foreground">다이얼 {dial.toFixed(1)} 분포 비교</span>
               <div style={{ width: '100%', height: 220 }}>
                 <ResponsiveContainer>

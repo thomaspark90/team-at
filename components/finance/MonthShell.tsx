@@ -139,11 +139,11 @@ export default function MonthShell({
                         selected ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                       }`}
                     >
-                      <span className={`block text-[10px] leading-tight ${selected ? 'opacity-70' : 'opacity-60'}`}>{y}</span>
+                      <span className={`block text-[11px] leading-tight ${selected ? 'opacity-70' : 'opacity-60'}`}>{y}</span>
                       <span className="text-[13px] font-medium leading-tight">
                         {Number(mo)}월
                         {n > 0 && (
-                          <span className="ml-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 align-text-top text-[10px] font-semibold leading-none text-white">
+                          <span className="ml-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 align-text-top text-[11px] font-medium leading-none text-white">
                             {n}
                           </span>
                         )}

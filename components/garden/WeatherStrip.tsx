@@ -247,7 +247,7 @@ export default function WeatherStrip() {
             return (
               <div
                 key={i}
-                className="rounded-md border border-border"
+                className="rounded-md"
                 style={{ minWidth: 92, height: 132, background: 'hsl(var(--muted) / 0.4)' }}
               />
             );
@@ -275,7 +275,7 @@ export default function WeatherStrip() {
           return (
             <div
               key={day.ymd}
-              className={`rounded-md border ${dayOff ? 'bg-muted' : 'bg-background'}`}
+              className={`rounded-md ${today ? 'border' : ''} ${dayOff ? 'bg-muted' : 'bg-muted/40'}`}
               role="button"
               tabIndex={0}
               onClick={() => setSelected(isSelected ? null : day.ymd)}
@@ -288,7 +288,7 @@ export default function WeatherStrip() {
                 overflow: 'hidden',
                 flexShrink: 0,
                 cursor: 'pointer',
-                borderColor: today ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
+                borderColor: today ? 'hsl(var(--foreground))' : undefined,
                 boxShadow: isSelected ? '0 0 0 1px hsl(var(--foreground))' : undefined,
               }}
             >
@@ -366,7 +366,7 @@ export default function WeatherStrip() {
         })}
       </div>
       {selected && hours.get(selected) && (
-        <div className="rounded-md border border-border bg-background" style={{ marginTop: 6, padding: '10px 12px' }}>
+        <div className="rounded-md bg-muted/40" style={{ marginTop: 6, padding: '10px 12px' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
             <p className="ta-label" style={{ marginBottom: 0 }}>
               {Number(selected.slice(5, 7))}/{Number(selected.slice(8, 10))} 시간대별 — 기온 · 강수확률

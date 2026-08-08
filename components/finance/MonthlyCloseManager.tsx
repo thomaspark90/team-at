@@ -303,7 +303,7 @@ export default function MonthlyCloseManager({
             <div className="mt-4 flex gap-2">
               <button
                 onClick={() => setBulkGate(null)}
-                className="flex-[2] rounded-xl bg-foreground py-2.5 text-[14px] font-medium text-background"
+                className="flex-[2] rounded-xl bg-foreground py-2.5 text-[13px] font-medium text-background"
               >
                 자료 마저 올리고 확정할게요
               </button>
@@ -313,7 +313,7 @@ export default function MonthlyCloseManager({
                   setBulkGate(null);
                   bulkConfirm(yms);
                 }}
-                className="flex-1 rounded-xl border border-border py-2.5 text-[14px] text-muted-foreground hover:text-foreground"
+                className="flex-1 rounded-xl border border-border py-2.5 text-[13px] text-muted-foreground hover:text-foreground"
               >
                 그래도 확정
               </button>
@@ -341,7 +341,7 @@ export default function MonthlyCloseManager({
             <div className="mt-4 flex gap-2">
               <Link
                 href="/dashboard"
-                className="flex-[2] rounded-xl bg-foreground py-2.5 text-center text-[14px] font-medium text-background"
+                className="flex-[2] rounded-xl bg-foreground py-2.5 text-center text-[13px] font-medium text-background"
               >
                 업로드 보드로 가기
               </Link>
@@ -351,7 +351,7 @@ export default function MonthlyCloseManager({
                   setGate(null);
                   act(ym, 'confirm');
                 }}
-                className="flex-1 rounded-xl border border-border py-2.5 text-[14px] text-muted-foreground hover:text-foreground"
+                className="flex-1 rounded-xl border border-border py-2.5 text-[13px] text-muted-foreground hover:text-foreground"
               >
                 그래도 확정
               </button>

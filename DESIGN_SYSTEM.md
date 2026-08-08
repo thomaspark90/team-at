@@ -14,6 +14,7 @@
 | **Type** | Freesentation(한글·라틴 커버). 기본 400, 강조는 **색 대비**(muted↔foreground) 우선 + 꼭 필요할 때만 **500(medium)**. 600/700 금지. |
 | **Square & compact** | radius `3px`(md, 전반 좌우) / sm 2 / lg 4. pill·큰 그림자 금지. 데이터 밀도 우선. |
 | **Border, not shadow** | 면 구분은 그림자가 아니라 `border-border`. |
+| **One line per layer** | (2026-08-08) 선은 한 계층만. 페이지 최상위 섹션은 카드 박스 대신 **가로 구분선**(`divide-y divide-border`)과 여백(섹션 위아래 `54px`)으로 구획. 그리드 셀·정적 정보 박스는 보더 없이 `bg-muted/40` 면으로. 보더 유지 대상: 점선(어포던스)·인터랙티브 요소·상태색 보더·오버레이·테이블. |
 | **Signal = mono** | 수입/지출은 색이 아니라 부호·라벨로. 진짜 오류/삭제만 `destructive` 레드. |
 
 ---
@@ -71,7 +72,7 @@ CSS 변수 → Tailwind 유틸(`bg-*`, `text-*`, `border-*`)로 노출. 다크 �
 
 | 클래스 | = |
 |--------|---|
-| `.ta-card` | `rounded-md border border-border bg-card p-6` — 예외: 스탭밀(`/studio`)·가든(`/garden`) 카드는 `bg-background`(흰색) 오버라이드 (2026-07-06) |
+| `.ta-card` | `rounded-md border border-border bg-card p-6` — 예외: 스탭밀(`/studio`)·가든(`/garden`) 카드는 `bg-background`(흰색) 오버라이드 (2026-07-06). **(2026-08-08) 페이지 최상위 섹션엔 더 이상 쓰지 않음** — 섹션은 divide-y 구획(§1 One line per layer), ta-card는 오버레이·특수 패널 정도만. |
 | `.ta-input` | `h-9 rounded-md border border-input bg-transparent px-3 text-[13px] …` (input/select/textarea) |
 | `.ta-btn` | 아웃라인 버튼 (h-9, border, hover:bg-accent) |
 | `.ta-btn-primary` | 다크 프라이머리 버튼 (h-9, bg-primary) |

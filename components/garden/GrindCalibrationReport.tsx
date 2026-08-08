@@ -43,8 +43,8 @@ function ChartTooltip({ active, payload, label }: any) {
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="ta-card bg-background" style={{ flex: 1, minWidth: 220 }}>
-      <div className="tabular text-[30px] font-semibold text-foreground">{value}</div>
+    <div className="rounded-md bg-muted/40 p-6" style={{ flex: 1, minWidth: 220 }}>
+      <div className="tabular text-[22px] font-medium text-foreground">{value}</div>
       <div className="text-[13px] text-muted-foreground" style={{ marginTop: 6 }}>{label}</div>
     </div>
   );
@@ -56,10 +56,10 @@ function RoastChart({ roast, label }: { roast: RoastKey; label: string }) {
   const my = shotMean(SHOTS.yangjae[roast]);
   const mp = shotMean(SHOTS.pangyo[roast]);
   return (
-    <div className="ta-card bg-background min-w-0">
+    <div className="min-w-0 rounded-md bg-muted/40 p-6">
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-        <span className="text-[14px] font-medium text-foreground">{label}</span>
-        <span className="tabular text-[12px] text-muted-foreground">
+        <span className="text-[15px] font-medium text-foreground">{label}</span>
+        <span className="tabular text-[11px] text-muted-foreground">
           평균 양재천 {Math.round(my)}µm · 판교 {Math.round(mp)}µm ({Math.round(mp - my)}µm)
         </span>
       </div>
@@ -95,14 +95,14 @@ function Dumbbell() {
   const max = 1000;
   const pos = (v: number) => `${((v - min) / (max - min)) * 100}%`;
   return (
-    <div className="ta-card bg-background min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <span className="text-[14px] font-medium text-foreground">배전도별 평균 입자 크기 — 같은 다이얼 6.5</span>
+    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <span className="text-[15px] font-medium text-foreground">배전도별 평균 입자 크기 — 같은 다이얼 6.5</span>
       {ROASTS.map((r) => {
         const my = shotMean(SHOTS.yangjae[r.key]);
         const mp = shotMean(SHOTS.pangyo[r.key]);
         return (
           <div key={r.key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <span className="text-[12px] text-muted-foreground">{r.label}</span>
+            <span className="text-[11px] text-muted-foreground">{r.label}</span>
             <div style={{ position: 'relative', height: 22 }}>
               <div style={{ position: 'absolute', top: 10, left: 0, right: 0, height: 2, background: 'var(--chart-grid-stroke)' }} />
               <div style={{ position: 'absolute', top: 10, left: pos(mp), width: `calc(${pos(my)} - ${pos(mp)})`, height: 2, background: 'hsl(var(--muted-foreground))' }} />
@@ -111,7 +111,7 @@ function Dumbbell() {
               {/* 양재천 점 */}
               <div title={`양재천 ${Math.round(my)}µm`} style={{ position: 'absolute', top: 4, left: `calc(${pos(my)} - 7px)`, width: 14, height: 14, borderRadius: 7, background: C_YANGJAE, border: '2px solid hsl(var(--background))' }} />
             </div>
-            <div className="tabular text-[12px] text-muted-foreground" style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div className="tabular text-[11px] text-muted-foreground" style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>판교 {Math.round(mp)}µm</span>
               <span>차이 {Math.round(mp - my)}µm</span>
               <span>양재천 {Math.round(my)}µm</span>
@@ -129,13 +129,14 @@ function Dumbbell() {
 
 export default function GrindCalibrationReport() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    // 카드 해체(2026-08-08) — 주요 섹션 경계는 가로 구분선으로만
+    <div className="divide-y divide-border">
       {/* 인트로 */}
-      <div className="ta-card bg-background" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <p className="text-[16px] text-foreground" style={{ margin: 0, fontWeight: 500 }}>
+      <div className="pb-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>
           같은 EK43, 같은 다이얼인데 왜 커피가 다를까?
         </p>
-        <p className="text-[14px] text-muted-foreground" style={{ margin: 0, lineHeight: 1.75, maxWidth: 880 }}>
+        <p className="text-[13px] text-muted-foreground" style={{ margin: 0, lineHeight: 1.75, maxWidth: 880 }}>
           2026-07-16, 두 지점의 EK43을 <strong>같은 원두(배전도 3종)·같은 다이얼 6.5</strong>로 맞추고
           언스페셜티 컴퍼스로 분쇄 입자를 측정했습니다(배전도당 3회 촬영 × 2지점 = 18샷).
           결론: <strong>판교점 EK43은 같은 숫자에서 약 20% 가늘게 갈립니다.</strong> 버 마모·정렬·제로포인트가
@@ -144,14 +145,14 @@ export default function GrindCalibrationReport() {
       </div>
 
       {/* 핵심 숫자 */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+      <div className="py-[54px]" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <Stat value="-187µm" label="같은 다이얼 6.5에서 판교가 더 가늘게 (915→729µm)" />
         <Stat value="약 -20%" label="판교/양재천 평균 입자 크기 비율 0.80 — 3개 배전도 모두 동일 방향" />
         <Stat value="+1.6~2.1" label="판교에서 굵혀야 할 다이얼(잠정) — 다이얼 8.0 실측 후 확정" />
       </div>
 
       {/* 분포 비교 차트 3종 */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="py-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <p className="text-[13px] text-muted-foreground" style={{ margin: 0, maxWidth: 880 }}>
           아래 곡선은 컴퍼스의 부피 분포(파란 막대)와 같은 스케일로, 각 지점 3샷의 평균·표준편차로
           재구성한 근사 분포입니다. 오른쪽 = 굵은 입자. <strong>판교(아쿠아)가 배전도와 무관하게 통째로
@@ -165,12 +166,14 @@ export default function GrindCalibrationReport() {
       </div>
 
       {/* 덤벨 요약 */}
-      <Dumbbell />
+      <div className="py-[54px]">
+        <Dumbbell />
+      </div>
 
       {/* 해석 가이드 */}
-      <div className="ta-card bg-background" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="py-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>이 결과를 매장에서 어떻게 쓰나요?</p>
-        <ul className="text-[14px] text-muted-foreground" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.85, maxWidth: 920 }}>
+        <ul className="text-[13px] text-muted-foreground" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.85, maxWidth: 920 }}>
           <li>
             <strong>레시피의 다이얼 숫자를 지점 간 그대로 복사하지 마세요.</strong> 양재천 기준 6.5 레시피를
             판교에서 6.5로 갈면 훨씬 가늘어져 과추출(쓴맛·떫은맛) 방향으로 밀립니다.
@@ -191,7 +194,7 @@ export default function GrindCalibrationReport() {
       </div>
 
       {/* 측정값 표 (접근성 겸 원자료) */}
-      <div className="ta-card bg-background min-w-0" style={{ overflowX: 'auto' }}>
+      <div className="min-w-0 pt-[54px]" style={{ overflowX: 'auto' }}>
         <p className="text-[15px] font-medium text-foreground" style={{ marginTop: 0, marginBottom: 10 }}>
           측정 원자료 — EK43 다이얼 6.5, 샷 = 컴퍼스 촬영 1회
         </p>
@@ -199,7 +202,7 @@ export default function GrindCalibrationReport() {
           <thead>
             <tr className="text-muted-foreground">
               {['배전도', '샷', '양재천 평균(µm)', '양재천 σ', '판교 평균(µm)', '판교 σ'].map((h) => (
-                <th key={h} style={{ textAlign: 'right', padding: '4px 10px', borderBottom: '1px solid hsl(var(--border))', fontWeight: 500 }}>{h}</th>
+                <th key={h} className="font-medium" style={{ textAlign: 'right', padding: '4px 10px', borderBottom: '1px solid hsl(var(--border))' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -218,7 +221,7 @@ export default function GrindCalibrationReport() {
             )}
           </tbody>
         </table>
-        <p className="text-[12px] text-muted-foreground" style={{ marginBottom: 0 }}>
+        <p className="text-[13px] text-muted-foreground" style={{ marginBottom: 0 }}>
           측정: 언스페셜티 컴퍼스(분쇄도 측정용지 + 사진 분석) · 동일 원두 로트 · 카메라 거리/조명 최대한 동일 ·
           판교 낮음 샷1(688.75µm)은 이상치 가능성 있음(제외해도 결론 동일).
         </p>

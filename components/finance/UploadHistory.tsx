@@ -108,7 +108,7 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
                     <button
                       onClick={() => del(u)}
                       disabled={busy === u.id}
-                      className="ta-btn h-7 px-3 text-[11px] text-destructive"
+                      className="ta-btn h-7 px-3 text-[13px] text-destructive"
                     >
                       {busy === u.id ? '삭제 중…' : '삭제'}
                     </button>

@@ -84,7 +84,7 @@ export default function ChannelFeeInput({
           {saving ? '저장 중' : '저장'}
         </button>
       </div>
-      <div className="mt-1.5 flex items-center gap-3 text-[12px]">
+      <div className="mt-1.5 flex items-center gap-3 text-[13px]">
         {saved && <span className="text-positive">✓ 저장됨</span>}
         {initial != null && (
           <button onClick={reset} disabled={saving} className="text-muted-foreground underline hover:text-foreground disabled:opacity-50">

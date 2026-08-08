@@ -218,8 +218,9 @@ export default function GardenService() {
   }, [purchases]);
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
-        <div className="ta-card bg-background min-w-0">
+    <div style={{ width: '100%', minWidth: 0 }}>
+      <div className="divide-y divide-border">
+        <div className="min-w-0 pb-[54px]">
           <p className="ta-label">판매가 산식 기준</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field label="구매 용량(g)" value={settings.capacityG} onChange={(v) => setNum('capacityG', v)} />
@@ -229,11 +230,11 @@ export default function GardenService() {
           </div>
         </div>
 
-        <div className="ta-card bg-background min-w-0">
+        <div className="min-w-0 py-[54px]">
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
             <p className="ta-label">원두 정보 입력</p>
             {/* 원두봉투 촬영 → AI 인식으로 원두명·로스팅사·용량 자동 기입 (영수증 인식과 동일 패턴) */}
-            <label className="ta-btn" style={{ height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 12, cursor: 'pointer' }}>
+            <label className="ta-btn" style={{ height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 13, cursor: 'pointer' }}>
               {scanning ? '인식 중…' : '📷 원두봉투 스캔'}
               <input
                 type="file"
@@ -291,7 +292,7 @@ export default function GardenService() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {scanMsg && (
-              <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>{scanMsg}</p>
+              <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>{scanMsg}</p>
             )}
             <input
               value={bean}
@@ -330,7 +331,7 @@ export default function GardenService() {
                 }}
                 disabled={translating || !bean.trim()}
                 className="ta-btn"
-                style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0 }}
+                style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 13, flexShrink: 0 }}
                 title="한글 원두명을 업계 표준 영문 표기로 자동 변환"
               >
                 {translating ? '변환 중…' : '영문 자동'}
@@ -378,7 +379,7 @@ export default function GardenService() {
                     <button
                       key={g}
                       onClick={() => setNum('capacityG', g)}
-                      className={`rounded-sm px-2.5 py-1 text-[12px] transition-colors ${
+                      className={`rounded-sm px-2.5 py-1 text-[13px] transition-colors ${
                         on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
@@ -415,7 +416,7 @@ export default function GardenService() {
                     <button
                       key={String(v)}
                       onClick={() => setSettings((s) => ({ ...s, vatIncluded: v }))}
-                      className={`rounded-sm px-2.5 py-1 text-[12px] transition-colors ${
+                      className={`rounded-sm px-2.5 py-1 text-[13px] transition-colors ${
                         on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                       }`}
                       title={v ? '입력한 공급가를 부가세 포함가로 계산' : '입력한 공급가에 부가세 10%를 더해 계산'}
@@ -446,7 +447,7 @@ export default function GardenService() {
               {/* 권장 판매 범위 — 배수 선택(책정)은 '판매가 설정' 탭 담당이라 여기선 범위만 보여준다 */}
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                 <span className="text-[11px] text-muted-foreground">권장 판매 범위</span>
-                <span className="text-[14px] text-foreground tabular">
+                <span className="text-[15px] text-foreground tabular">
                   {won(result.rangeLow)} ~ {won(result.rangeHigh)}
                 </span>
               </div>
@@ -467,13 +468,13 @@ export default function GardenService() {
 
         {/* 발주 기록 — 같은 원두 재발주 시 원가·판매가 비교 */}
         {!purchasesLoaded && (
-          <div className="ta-card bg-background min-w-0">
+          <div className="min-w-0 pt-[54px]">
             <p className="ta-label">이전 발주 리스트</p>
-            <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>불러오는 중…</p>
+            <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>불러오는 중…</p>
           </div>
         )}
         {purchasesLoaded && purchases.length > 0 && (
-          <div className="ta-card bg-background min-w-0">
+          <div className="min-w-0 pt-[54px]">
             <p className="ta-label">이전 발주 리스트</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               {purchaseGroups.map((group) => (
@@ -523,7 +524,7 @@ export default function GardenService() {
                             <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>
                               원가 {won(rec.purchasePrice)}
                               {/* VAT 포함가로 입력한 기록만 표시 — 무표시 = 별도(구 기록 포함) */}
-                              {rec.settings?.vatIncluded && <span style={{ fontSize: 10 }}>·VAT포함</span>}
+                              {rec.settings?.vatIncluded && <span style={{ fontSize: 11 }}>·VAT포함</span>}
                             </span>
                             <span className="tabular text-foreground" style={{ flexShrink: 0 }}>
                               재료비 {won(rec.costPerCup)}
@@ -567,7 +568,7 @@ export default function GardenService() {
                           <button
                             onClick={() => deletePurchase(rec.id)}
                             className="gs-del text-muted-foreground hover:text-foreground"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}
                           >
                             ×
                           </button>
@@ -580,6 +581,7 @@ export default function GardenService() {
             </div>
           </div>
         )}
+      </div>
 
         {/* 발주 카톡 미리보기 카드 — 문구를 고쳐서 전송할 수 있다. 대상 방은 서버 매핑 고정 */}
         {kakaoPreview && (
@@ -594,7 +596,7 @@ export default function GardenService() {
             >
               <div>
                 <p className="ta-label" style={{ margin: 0 }}>발주 메시지 전송</p>
-                <p className="text-[12px] text-muted-foreground" style={{ margin: '4px 0 0' }}>
+                <p className="text-[13px] text-muted-foreground" style={{ margin: '4px 0 0' }}>
                   <span className="text-foreground">[{kakaoPreview.room}]</span> 방으로 전송됩니다 — 문구는 자유롭게 고칠 수 있어요
                 </p>
               </div>
@@ -689,7 +691,7 @@ function PickOrType({
           onChange('');
         }}
         className="ta-btn"
-        style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0 }}
+        style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 13, flexShrink: 0 }}
       >
         목록에서 선택
       </button>
@@ -704,7 +706,7 @@ function Stepper({ value, onDec, onInc }: { value: number; onDec: () => void; on
     border: 'none',
     cursor: 'pointer',
     color: C.mutedFg,
-    fontSize: 14,
+    fontSize: 13,
     lineHeight: 1,
     padding: '2px 6px',
     fontFamily: 'inherit',
@@ -712,7 +714,7 @@ function Stepper({ value, onDec, onInc }: { value: number; onDec: () => void; on
   return (
     <span className="rounded-md border border-border" style={{ display: 'inline-flex', alignItems: 'center' }}>
       <button onClick={onDec} style={btn}>‹</button>
-      <span className="tabular text-foreground" style={{ minWidth: 28, textAlign: 'center', fontSize: 12 }}>{value.toFixed(1)}</span>
+      <span className="tabular text-foreground" style={{ minWidth: 28, textAlign: 'center', fontSize: 13 }}>{value.toFixed(1)}</span>
       <button onClick={onInc} style={btn}>›</button>
     </span>
   );

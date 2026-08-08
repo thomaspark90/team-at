@@ -159,7 +159,7 @@ function Overview({ o }: { o: OverviewData }) {
           </p>
 
           {/* 해야 할 일 */}
-          <div className="ta-card flex flex-col gap-3">
+          <div className="flex flex-col gap-3">
             <div className="text-[11px] uppercase tracking-[0.06em] text-muted-foreground">해야 할 일</div>
             <TodoRow
               done={o.unclassifiedTotal === 0}
@@ -198,7 +198,7 @@ function Overview({ o }: { o: OverviewData }) {
           </div>
         </>
       ) : (
-        <div className="ta-card text-[13px] text-muted-foreground">
+        <div className="rounded-md bg-muted/40 p-6 text-[13px] text-muted-foreground">
           아직 거래가 없어요. 아래에서 은행 거래내역을 올리면 여기 현황이 채워져요.
         </div>
       )}
@@ -208,7 +208,7 @@ function Overview({ o }: { o: OverviewData }) {
 
 function SummaryCard({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="ta-card min-w-[160px] flex-[1_1_auto] p-[16px_18px]">
+    <div className="min-w-[160px] flex-[1_1_auto] rounded-md bg-muted/40 p-[16px_18px]">
       <div className="mb-1.5 text-[11px] uppercase tracking-[0.04em] text-muted-foreground">{label}</div>
       <div className="tabular text-[22px]" style={{ color }}>
         {value}
@@ -233,7 +233,7 @@ function TodoRow({ done, text, href, cta }: { done: boolean; text: string; href:
 
 function NoAccess({ email }: { email: string }) {
   return (
-    <div className="ta-card mx-auto mt-[60px] max-w-[480px] text-center">
+    <div className="mx-auto mt-[60px] max-w-[480px] text-center">
       <div className="mb-3 text-[32px]">🔒</div>
       <h2 className="mb-2 mt-0 text-[15px]">회계·재무 접근 권한이 없어요</h2>
       <p className="m-0 text-[13px] leading-[1.6] text-muted-foreground">

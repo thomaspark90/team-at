@@ -38,7 +38,7 @@ export default function AccountingBoards({
   return (
     <>
       {!fixedBrand && (
-        <div className="rounded-2xl border border-border bg-card px-3 py-2">
+        <div className="px-3 py-2">
           <div className="flex items-center gap-1 px-1 py-1">
             {BRANDS.map((b) => {
               const on = brand === b.id;
@@ -60,15 +60,23 @@ export default function AccountingBoards({
         </div>
       )}
 
-      <MonthlyUploadBoard
-        ym={ym}
-        brand={brand}
-        readOnly={mode === 'status'}
-        unitId={unitId}
-        initialBanks={fixedBrand ? banks : undefined}
-        onSaved={ctx?.refreshTodos}
-      />
-      {mode === 'status' && <ClassifyBoard ym={ym} />}
+      <div className={mode === 'status' ? 'divide-y divide-border' : undefined}>
+        <div className={mode === 'status' ? 'pb-[54px]' : undefined}>
+          <MonthlyUploadBoard
+            ym={ym}
+            brand={brand}
+            readOnly={mode === 'status'}
+            unitId={unitId}
+            initialBanks={fixedBrand ? banks : undefined}
+            onSaved={ctx?.refreshTodos}
+          />
+        </div>
+        {mode === 'status' && (
+          <div className="pt-[54px]">
+            <ClassifyBoard ym={ym} />
+          </div>
+        )}
+      </div>
     </>
   );
 }

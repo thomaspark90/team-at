@@ -162,7 +162,7 @@ export default function SplitModal({
           ))}
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px]">
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
           {lines.length < UNITS.length && (
             <button
               onClick={() => {
@@ -170,12 +170,12 @@ export default function SplitModal({
                 const next = UNITS.find((u) => !used.has(unitKey(u.brand, u.store))) ?? UNITS[0];
                 setLines((ls) => [...ls, { brand: next.brand, store: next.store, amount: 0 }]);
               }}
-              className="ta-btn h-7 px-2.5 text-[12px]"
+              className="ta-btn h-7 px-2.5 text-[13px]"
             >
               + 줄 추가
             </button>
           )}
-          <button onClick={evenSplit} className="ta-btn h-7 px-2.5 text-[12px]">
+          <button onClick={evenSplit} className="ta-btn h-7 px-2.5 text-[13px]">
             균등 분할
           </button>
           <span className={`ml-auto tabular ${remain === 0 ? 'text-positive' : 'text-destructive'}`}>
@@ -183,12 +183,12 @@ export default function SplitModal({
           </span>
         </div>
 
-        <label className="mt-3 flex items-center gap-2 text-[12px] text-muted-foreground">
+        <label className="mt-3 flex items-center gap-2 text-[13px] text-muted-foreground">
           <input type="checkbox" checked={learn} onChange={(e) => setLearn(e.target.checked)} />
           이 가맹점({target.memo.slice(0, 20)})의 분할 비율을 학습해 다음부터 자동 제안
         </label>
 
-        {error && <p className="mt-2 text-[12px] text-destructive">⚠️ {error}</p>}
+        {error && <p className="mt-2 text-[13px] text-destructive">⚠️ {error}</p>}
 
         <div className="mt-4 flex gap-2">
           <button onClick={onClose} disabled={saving} className="flex-1 rounded-xl border border-border py-2 text-[13px] text-muted-foreground hover:text-foreground">

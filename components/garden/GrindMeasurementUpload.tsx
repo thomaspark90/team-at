@@ -174,8 +174,9 @@ export default function GrindMeasurementUpload() {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div className="ta-card bg-background" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    // 카드 해체(2026-08-08) — 입력 폼·목록 섹션 경계는 가로 구분선으로만
+    <div className="divide-y divide-border">
+      <div className="pb-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
           <a href={COMPASS_URL} target="_blank" rel="noreferrer" className="underline hover:text-foreground">
             언스페셜티 컴퍼스
@@ -297,7 +298,7 @@ export default function GrindMeasurementUpload() {
 
         {error && <p className="text-[13px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{error}</p>}
 
-        <button onClick={save} disabled={!canSave || saving} className="ta-btn-primary" style={{ height: 38, fontSize: 14, opacity: !canSave || saving ? 0.5 : 1 }}>
+        <button onClick={save} disabled={!canSave || saving} className="ta-btn-primary" style={{ height: 38, fontSize: 13, opacity: !canSave || saving ? 0.5 : 1 }}>
           {saving
             ? uploadState
               ? `업로드 중… ${Math.min(uploadState.done + 1, uploadState.total)}/${uploadState.total}장 · ${uploadState.pct}%`
@@ -308,18 +309,18 @@ export default function GrindMeasurementUpload() {
 
       {/* 측정 목록 — 날짜별 그룹, 날짜 안에서 두 지점 모두 있으면 비교 가능 표시 */}
       {days.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground">아직 업로드된 측정 기록이 없어요. 프로토콜: 에티오피아 싱글 × 다이얼 6 / 8 / 10 × 각 3샷 × 두 지점.</p>
+        <p className="pt-[54px] text-[13px] text-muted-foreground">아직 업로드된 측정 기록이 없어요. 프로토콜: 에티오피아 싱글 × 다이얼 6 / 8 / 10 × 각 3샷 × 두 지점.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="pt-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {days.map(([date, list]) => {
             const storesCovered = new Set(list.map((m) => m.store));
             const beanNames = Array.from(new Set(list.map((m) => m.bean.trim())));
             const roasts = Array.from(new Set(list.map((m) => m.roast)));
             return (
-              <div key={date} className="ta-card bg-background" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div key={date} className="rounded-md bg-muted/40 p-6" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                  <span className="tabular text-[14px] text-foreground" style={{ fontWeight: 500 }}>{date.replaceAll('-', '.')}</span>
-                  <span className="text-[12px] text-muted-foreground">
+                  <span className="tabular text-[15px] font-medium text-foreground">{date.replaceAll('-', '.')}</span>
+                  <span className="text-[11px] text-muted-foreground">
                     {beanNames.join(' · ')}
                     {roasts.length === 1 && ` (${roastLabel(roasts[0])})`}
                   </span>
@@ -336,7 +337,7 @@ export default function GrindMeasurementUpload() {
                       <span className="tabular text-[13px] text-foreground" style={{ minWidth: 150 }}>
                         {storeLabel(m.store)} · 다이얼 {m.dial.toFixed(1)}
                       </span>
-                      {beanNames.length > 1 && <span className="text-[12px] text-muted-foreground">{m.bean.trim()}</span>}
+                      {beanNames.length > 1 && <span className="text-[11px] text-muted-foreground">{m.bean.trim()}</span>}
                       <span className="tabular text-[13px] text-muted-foreground">
                         {m.mean ? `평균 ${m.mean}µm` : '수치 미입력'}
                         {m.std ? ` · σ ${m.std}` : ''}
@@ -349,7 +350,7 @@ export default function GrindMeasurementUpload() {
                           </a>
                         ))}
                       </div>
-                      <button onClick={() => remove(m.id)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }} title="측정 삭제">
+                      <button onClick={() => remove(m.id)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }} title="측정 삭제">
                         ×
                       </button>
                     </div>

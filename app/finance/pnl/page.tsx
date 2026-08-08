@@ -354,7 +354,7 @@ async function PnlBody({
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         {/* 손익계산서 */}
-        <div className="ta-card">
+        <div className="rounded-md bg-muted/40 p-6">
           <h2 className="mb-4 text-[15px] text-foreground">손익계산서 · {fmtYm(selectedYm)}</h2>
           <table className="w-full border-collapse text-[13px]">
             <tbody>
@@ -403,7 +403,7 @@ async function PnlBody({
         {/* 우측: 기말재고 + 매출 구성 — 재고·수수료 입력은 브랜드 단위(전체·지점 탭에선 숨김) */}
         <div id="pnl-inputs" className="flex flex-col gap-5">
           {store ? (
-            <div className="ta-card text-[13px] text-muted-foreground">
+            <div className="rounded-md bg-muted/40 p-6 text-[13px] text-muted-foreground">
               지점 뷰의 재료비·수수료는 {storeLabel(store)} 매출비율({pct(storeRatio)})로 안분한 근사치예요.
               기말재고·채널수수료 입력은 가든서비스 전체 탭에서 해요.
             </div>
@@ -429,11 +429,11 @@ async function PnlBody({
               />
             </>
           ) : (
-            <div className="ta-card text-[13px] text-muted-foreground">
+            <div className="rounded-md bg-muted/40 p-6 text-[13px] text-muted-foreground">
               기말재고·채널수수료는 브랜드별로 입력해요 — 가든서비스/스탭밀 탭에서 넣어주세요.
             </div>
           )}
-          <div className="ta-card">
+          <div className="rounded-md bg-muted/40 p-6">
             <h2 className="mb-3 text-[15px] text-foreground">매출 구성</h2>
             <table className="w-full border-collapse text-[13px]">
               <tbody>
@@ -469,7 +469,7 @@ function Metric({
   // 미분류가 크면 지표(재료율·인건비율…)가 실제보다 좋게 보이는 착시 → 확신 신호(양호) 대신 '잠정'으로 낮춤
   const showSig = sig && !uncertain;
   return (
-    <div className="ta-card p-4">
+    <div className="rounded-md bg-muted/40 p-4">
       <div className="text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{label}</div>
       <div className={`mt-1 text-[22px] tabular ${showSig ? sig.cls : 'text-foreground'}`}>{value}</div>
       <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">

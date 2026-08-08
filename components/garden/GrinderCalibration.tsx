@@ -79,7 +79,7 @@ export default function GrinderCalibration({
       </button>
 
       {open && (
-        <div className="ta-card bg-background min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
             <a href={COMPASS_URL} target="_blank" rel="noreferrer" className="underline hover:text-foreground">
               언스페셜티 컴퍼스
@@ -97,7 +97,7 @@ export default function GrinderCalibration({
               return (
                 <div key={s.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-                    <span className="text-[13px] text-foreground" style={{ fontWeight: 500 }}>
+                    <span className="text-[13px] font-medium text-foreground">
                       {s.label} EK43
                     </span>
                     {fit && (
@@ -134,7 +134,7 @@ export default function GrinderCalibration({
                       <button
                         onClick={() => removeRow(s.id, i)}
                         className="text-muted-foreground hover:text-foreground"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, flexShrink: 0 }}
                         title="측정점 삭제"
                       >
                         ×

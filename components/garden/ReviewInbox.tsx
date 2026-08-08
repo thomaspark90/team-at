@@ -242,7 +242,7 @@ export default function ReviewInbox() {
                 store === s.key ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {s.label} {count > 0 && <span className="text-[12px] text-muted-foreground">{count}</span>}
+              {s.label} {count > 0 && <span className="text-[11px] text-muted-foreground">{count}</span>}
             </button>
           );
         })}
@@ -252,7 +252,7 @@ export default function ReviewInbox() {
 
       {/* 이슈 탭 — 아직 분류되지 않은 과거 리뷰가 있으면 백필 실행을 안내 */}
       {tab === 'issues' && !loading && unclassified > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/20 text-[13px]" style={{ padding: '10px 12px', marginBottom: 12 }}>
+        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted/40 text-[13px]" style={{ padding: '10px 12px', marginBottom: 12 }}>
           <span className="text-muted-foreground">
             분류가 필요한 리뷰가 {unclassified}건 있습니다(미분류·카테고리 보완 포함). 실행하면 이슈 리뷰가 이 탭에 모입니다.
           </span>
@@ -277,7 +277,7 @@ export default function ReviewInbox() {
               <button
                 key={c}
                 onClick={() => setCat(c)}
-                className={`rounded-full border text-[12px] transition-colors ${
+                className={`rounded-full border text-[11px] transition-colors ${
                   cat === c ? 'border-foreground font-medium text-foreground' : 'border-border text-muted-foreground hover:text-foreground'
                 }`}
                 style={{ padding: '3px 10px' }}
@@ -302,8 +302,8 @@ export default function ReviewInbox() {
           const approved = r.status === 'approved';
           const hasVariants = !!r.draft_variants?.length;
           return (
-            <article key={r.id} className="rounded-lg border border-border bg-card/40" style={{ padding: 16 }}>
-              <div className="flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground" style={{ marginBottom: 8 }}>
+            <article key={r.id} className="rounded-lg bg-muted/40" style={{ padding: 16 }}>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground" style={{ marginBottom: 8 }}>
                 <span className="font-medium text-foreground">{STORE_LABEL[r.store_key] ?? r.store_key}</span>
                 <span>{r.reviewed_at.slice(0, 10)}</span>
                 {r.rating != null && <span>★ {r.rating}</span>}
@@ -315,7 +315,7 @@ export default function ReviewInbox() {
 
               {/* 이슈 리뷰 표시 — 어느 탭에서든 뱃지·카테고리·지적 요약을 보여주고, 수동 정정을 허용한다 */}
               {r.issue && (
-                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]" style={{ color: ISSUE_COLOR, margin: '0 0 6px' }}>
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" style={{ color: ISSUE_COLOR, margin: '0 0 6px' }}>
                   <span
                     className="rounded-sm font-medium"
                     style={{ border: `1px solid ${ISSUE_COLOR}55`, padding: '1px 6px' }}
@@ -336,7 +336,7 @@ export default function ReviewInbox() {
                 </p>
               )}
               {r.issue === false && (
-                <p className="text-[12px]" style={{ margin: '0 0 6px' }}>
+                <p className="text-[13px]" style={{ margin: '0 0 6px' }}>
                   <button
                     onClick={() => setIssue(r, true)}
                     disabled={busy === r.id}
@@ -352,7 +352,7 @@ export default function ReviewInbox() {
               </p>
 
               {!!r.keywords?.length && (
-                <p className="text-[12px] text-muted-foreground" style={{ margin: '0 0 12px' }}>
+                <p className="text-[11px] text-muted-foreground" style={{ margin: '0 0 12px' }}>
                   {r.keywords.join(' · ')}
                 </p>
               )}
@@ -389,7 +389,7 @@ export default function ReviewInbox() {
                           <div className="flex-1">
                             <button
                               onClick={toggle}
-                              className={`text-[12px] transition-colors ${
+                              className={`text-[11px] transition-colors ${
                                 selected ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
                               }`}
                             >
@@ -433,9 +433,9 @@ export default function ReviewInbox() {
                     >
                       답글 안 달기
                     </button>
-                    {busy === r.id && <span className="text-[12px] text-muted-foreground">처리 중…</span>}
+                    {busy === r.id && <span className="text-[13px] text-muted-foreground">처리 중…</span>}
                     {!sel[r.id] && (
-                      <span className="text-[12px] text-muted-foreground">톤을 선택하면 확정할 수 있습니다.</span>
+                      <span className="text-[13px] text-muted-foreground">톤을 선택하면 확정할 수 있습니다.</span>
                     )}
                   </div>
                 </>
@@ -475,7 +475,7 @@ export default function ReviewInbox() {
                     >
                       답글 안 달기
                     </button>
-                    {busy === r.id && <span className="text-[12px] text-muted-foreground">처리 중…</span>}
+                    {busy === r.id && <span className="text-[13px] text-muted-foreground">처리 중…</span>}
                   </div>
                 </>
               )}
@@ -508,7 +508,7 @@ export default function ReviewInbox() {
                               )}
                             </span>
                             <div className="flex-1">
-                              <p className="text-[12px] font-medium" style={{ margin: 0 }}>{v.label}</p>
+                              <p className="text-[11px] font-medium" style={{ margin: 0 }}>{v.label}</p>
                               <p className="text-[13px] whitespace-pre-wrap" style={{ margin: '2px 0 0' }}>
                                 {isSel ? r.reply_text ?? v.text : v.text}
                               </p>
@@ -533,8 +533,8 @@ export default function ReviewInbox() {
                     >
                       취소
                     </button>
-                    {busy === r.id && <span className="text-[12px] text-muted-foreground">처리 중…</span>}
-                    <span className="text-[12px] text-muted-foreground">
+                    {busy === r.id && <span className="text-[13px] text-muted-foreground">처리 중…</span>}
+                    <span className="text-[13px] text-muted-foreground">
                       {postEta(r.approved_at)} 이후 게시 예정 — 취소하면 다시 선택할 수 있습니다.
                     </span>
                   </div>
@@ -549,7 +549,7 @@ export default function ReviewInbox() {
               )}
 
               {r.post_error && (
-                <p className="text-[12px]" style={{ color: '#c0392b', marginTop: 8 }}>
+                <p className="text-[13px]" style={{ color: '#c0392b', marginTop: 8 }}>
                   게시 실패: {r.post_error}
                 </p>
               )}

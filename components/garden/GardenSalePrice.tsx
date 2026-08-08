@@ -144,20 +144,21 @@ export default function GardenSalePrice() {
   );
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
+    <div style={{ width: '100%', minWidth: 0 }}>
       {error && (
-        <p className="text-[12px]" style={{ color: 'hsl(0 72% 45%)', margin: 0 }}>
+        <p className="text-[13px]" style={{ color: 'hsl(0 72% 45%)', margin: '0 0 16px' }}>
           {error}
         </p>
       )}
 
+      <div className="divide-y divide-border">
       {/* 판매가 미책정 — 발주 담당이 저장한 기록 중 책정 대기 건 */}
-      <div className="ta-card bg-background min-w-0">
+      <div className="min-w-0 pb-[54px]">
         <p className="ta-label">판매가 미책정</p>
         {!loaded ? (
-          <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>불러오는 중…</p>
+          <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>불러오는 중…</p>
         ) : unpriced.length === 0 ? (
-          <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>
+          <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
             책정을 기다리는 발주 기록이 없어요. 발주가 저장되면 여기에 나타납니다.
           </p>
         ) : (
@@ -178,7 +179,7 @@ export default function GardenSalePrice() {
 
       {/* 책정 완료 — 판매가 확인·공유·재책정 */}
       {pricedGroups.length > 0 && (
-        <div className="ta-card bg-background min-w-0">
+        <div className="min-w-0 pt-[54px]">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <p className="ta-label">책정 완료</p>
             {latestPriced && (
@@ -247,6 +248,7 @@ export default function GardenSalePrice() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -289,7 +291,7 @@ function RecordPricer({
       )}
 
       {/* 배수 스프레드 표 (가로 스와이프) — 판매가는 당시 설정 스냅샷 산식으로 계산 */}
-      <div className="rounded-md border border-border" style={{ overflowX: 'auto', fontSize: 12, WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
+      <div className="rounded-md border border-border" style={{ overflowX: 'auto', fontSize: 13, WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
         <div
           style={{
             display: 'grid',
@@ -371,7 +373,7 @@ function Cell({
     borderLeft: label ? 'none' : `1px solid ${C.border}`,
     backgroundColor: label ? C.muted : hi ? HIGHLIGHT : C.card,
     color: muted ? C.mutedFg : label ? C.mutedFg : C.fg,
-    fontSize: label || muted ? 11 : 12,
+    fontSize: label || muted ? 11 : 13,
     whiteSpace: 'nowrap',
     cursor: onClick ? 'pointer' : 'default',
   };

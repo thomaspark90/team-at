@@ -229,7 +229,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
       </div>
 
       {batchFiles.length > 1 && !applying && batchResults.length === 0 && (
-        <p className="text-[12px] text-muted-foreground">
+        <p className="text-[13px] text-muted-foreground">
           {batchFiles.length}개 파일을 순서대로 바로 저장해요(파일별 미리보기 없음 — 같은 달 재업로드는 교체라 안전).
           끝나면 파일별 결과 표로 확인해요.
         </p>
@@ -347,7 +347,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
           </div>
 
           {mapping && (
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               페이히어 읽기 — 시트 &lsquo;{mapping.sheet}&rsquo;,{' '}
               {Object.entries(mapping.header)
                 .map(([k, v]) => `${k}=${v}`)

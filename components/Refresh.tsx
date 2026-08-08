@@ -37,7 +37,7 @@ export function RefreshIndicator() {
   return (
     <div
       role="status"
-      className="pointer-events-none fixed bottom-6 right-6 z-[100] rounded-full bg-foreground/90 px-3.5 py-2 text-[12px] text-background shadow-lg"
+      className="pointer-events-none fixed bottom-6 right-6 z-[100] rounded-full bg-foreground/90 px-3.5 py-2 text-[13px] text-background shadow-lg"
     >
       <span className="animate-pulse">목록 갱신 중…</span>
     </div>

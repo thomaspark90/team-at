@@ -113,7 +113,7 @@ function EffectRow({ e }: { e: BandEffect }) {
 
 function SeriesCard({ s }: { s: Series }) {
   return (
-    <section className="rounded-md border border-border bg-background" style={{ padding: 18 }}>
+    <section className="py-[54px]">
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
         <h3 className="m-0 text-[15px] font-medium">{s.label}</h3>
         {s.result && (
@@ -182,23 +182,24 @@ export default function WeatherSalesReport() {
 
   if (error) {
     return (
-      <div className="rounded-md border border-border bg-background p-5">
+      <div className="rounded-md bg-muted/40 p-5">
         <p className="m-0 text-[13px] text-muted-foreground">{error}</p>
       </div>
     );
   }
   if (!data) {
     return (
-      <div className="rounded-md border border-border p-5" style={{ background: 'hsl(var(--muted) / 0.4)' }}>
+      <div className="rounded-md p-5" style={{ background: 'hsl(var(--muted) / 0.4)' }}>
         <p className="m-0 text-[13px] text-muted-foreground">POS 전 기간 × 과거 날씨를 계산하는 중…</p>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    // 카드 해체(2026-08-08) — 주요 섹션 경계는 가로 구분선으로만
+    <div className="divide-y divide-border">
       {/* 커버리지 */}
-      <section className="rounded-md border border-border bg-background" style={{ padding: 18 }}>
+      <section className="pb-[54px]">
         <p className="ta-label">데이터 커버리지</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {data.coverage.map((c) => (
@@ -244,7 +245,7 @@ export default function WeatherSalesReport() {
 
       {/* 월별 계절 곡선 · 계절 팩터 — 발주 계획의 기준선. 구 캐시엔 없어서 '다시 계산' 후 표시됨 */}
       {data.seasonalFactors && data.monthly && (
-        <section className="rounded-md border border-border bg-background" style={{ padding: 18 }}>
+        <section className="py-[54px]">
           <p className="ta-label">월별 계절 팩터 (1.0 = 연평균 일매출)</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18, overflowX: 'auto' }}>
             {Object.entries(data.seasonalFactors)
@@ -266,7 +267,7 @@ export default function WeatherSalesReport() {
 
       {/* 판교 커피 메뉴 후보 — 페이히어는 카테고리=메뉴명이라 잔수 분석엔 메뉴 선별이 필요 */}
       {data.categories.pangyo && (
-        <section className="rounded-md border border-border bg-background" style={{ padding: 18 }}>
+        <section className="pt-[54px]">
           <p className="ta-label">판교 카테고리(메뉴) 상위 — 커피 메뉴 선별용</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
             {data.categories.pangyo.map((c) => (

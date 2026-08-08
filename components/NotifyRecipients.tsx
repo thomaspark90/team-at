@@ -46,9 +46,9 @@ export default function NotifyRecipients({ initial }: { initial: RecipientRow[] 
     }`;
 
   return (
-    <div className="rounded-2xl border border-border bg-card px-5 py-4">
+    <div className="rounded-2xl bg-muted/40 px-5 py-4">
       <h2 className="m-0 text-[15px] font-medium">알림 수신자 관리</h2>
-      <p className="mt-0.5 text-[12px] text-muted-foreground">
+      <p className="mt-0.5 text-[13px] text-muted-foreground">
         사람별로 <strong>송금 요청</strong> · <strong>원두 재고</strong>(20%·소진) 알림을
         따로 켜고 끌 수 있어요. 배지를 눌러 토글하세요. 각자 이 페이지의 알림 설정에서 이메일·푸시 채널을
         켤 수 있어요. (구글 로그인에 쓰는 이메일로 등록해야 푸시알림이 연결돼요)
@@ -56,11 +56,11 @@ export default function NotifyRecipients({ initial }: { initial: RecipientRow[] 
 
       <div className="mt-3 flex flex-col gap-1.5">
         {rows.length === 0 && (
-          <span className="text-[12px] text-amber-600">수신자가 없어요 — 기본값(대표)으로 발송돼요.</span>
+          <span className="text-[13px] text-amber-600">수신자가 없어요 — 기본값(대표)으로 발송돼요.</span>
         )}
         {rows.map((r) => (
           <div key={r.email} className="flex flex-wrap items-center gap-1.5 rounded-lg bg-muted/40 px-3 py-1.5">
-            <span className="min-w-0 flex-1 truncate text-[12px]">{r.email}</span>
+            <span className="min-w-0 flex-1 truncate text-[13px]">{r.email}</span>
             <button onClick={() => toggle(r, 'transfer')} disabled={busy} className={topicBtn(r.transfer)} title="송금 요청 알림 켜기/끄기">
               송금
             </button>

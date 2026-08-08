@@ -68,7 +68,7 @@ export default function BackgroundPanel({ selected, onSelect }: Props) {
   return (
     <div className="space-y-3">
       {backgrounds.length === 0 && !uploading && (
-        <p className="text-sm text-gray-400">아직 배경이 없습니다. + 버튼으로 업로드하세요.</p>
+        <p className="text-[13px] text-gray-400">아직 배경이 없습니다. + 버튼으로 업로드하세요.</p>
       )}
       <div className="flex flex-wrap gap-2">
         {backgrounds.map((bg) => (
@@ -84,7 +84,7 @@ export default function BackgroundPanel({ selected, onSelect }: Props) {
             </button>
             <button
               onClick={(e) => handleDelete(bg.url, e)}
-              className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs leading-none hidden group-hover:flex items-center justify-center"
+              className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[11px] leading-none hidden group-hover:flex items-center justify-center"
             >
               ×
             </button>
@@ -96,7 +96,7 @@ export default function BackgroundPanel({ selected, onSelect }: Props) {
           disabled={uploading}
           className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-accent hover:text-accent transition text-2xl"
         >
-          {uploading ? <span className="text-xs">...</span> : '+'}
+          {uploading ? <span className="text-[11px]">...</span> : '+'}
         </button>
       </div>
       <input

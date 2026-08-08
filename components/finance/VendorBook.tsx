@@ -103,10 +103,10 @@ export default function VendorBook() {
         <input className={`${inputCls} col-span-2`} placeholder="계좌번호" value={draft?.account_no ?? ''} onChange={(e) => setDraft({ ...(draft ?? EMPTY), account_no: e.target.value })} />
       </div>
       <div className="mt-2 flex gap-2">
-        <button onClick={() => setDraft(null)} className="flex-1 rounded-lg border border-border py-1.5 text-[12px] text-muted-foreground hover:text-foreground">
+        <button onClick={() => setDraft(null)} className="flex-1 rounded-lg border border-border py-1.5 text-[13px] text-muted-foreground hover:text-foreground">
           취소
         </button>
-        <button onClick={save} disabled={busy} className="flex-[2] rounded-lg bg-foreground py-1.5 text-[12px] font-medium text-background disabled:opacity-60">
+        <button onClick={save} disabled={busy} className="flex-[2] rounded-lg bg-foreground py-1.5 text-[13px] font-medium text-background disabled:opacity-60">
           {busy ? '저장 중…' : '저장'}
         </button>
       </div>
@@ -114,11 +114,11 @@ export default function VendorBook() {
   );
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-5">
+    <section>
       <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between text-left">
         <div>
           <h2 className="m-0 text-[15px] font-medium">거래처 계좌장부</h2>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
             AI가 학습한 거래처 계좌를 확인·수정해요. 잘못된 계좌를 고치면 다음 업로드부터 반영돼요.
           </p>
         </div>
@@ -136,7 +136,7 @@ export default function VendorBook() {
             />
             <button
               onClick={() => setDraft({ ...EMPTY })}
-              className="whitespace-nowrap rounded-lg border border-border px-3 py-1.5 text-[12px] text-muted-foreground hover:text-foreground"
+              className="whitespace-nowrap rounded-lg border border-border px-3 py-1.5 text-[13px] text-muted-foreground hover:text-foreground"
             >
               + 추가
             </button>
@@ -158,7 +158,7 @@ export default function VendorBook() {
               <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2.5">
                 <div className="min-w-0">
                   <p className="m-0 text-[13px] font-medium">{v.vendor_name}</p>
-                  <p className="m-0 mt-0.5 text-[12px] text-muted-foreground">
+                  <p className="m-0 mt-0.5 text-[13px] text-muted-foreground">
                     {v.account_no ? (
                       <>
                         <span className="font-mono text-foreground">{[v.bank, v.account_no].filter(Boolean).join(' ')}</span>
@@ -169,7 +169,7 @@ export default function VendorBook() {
                     )}
                   </p>
                 </div>
-                <div className="flex gap-1.5 text-[12px]">
+                <div className="flex gap-1.5 text-[13px]">
                   <button
                     onClick={() =>
                       setDraft({
@@ -192,7 +192,7 @@ export default function VendorBook() {
             )
           )}
 
-          {error && <p className="text-[12px] text-red-500">{error}</p>}
+          {error && <p className="text-[13px] text-red-500">{error}</p>}
         </div>
       )}
     </section>

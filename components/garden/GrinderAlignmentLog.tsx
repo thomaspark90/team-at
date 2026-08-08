@@ -73,7 +73,8 @@ export default function GrinderAlignmentLog() {
   });
 
   return (
-    <div className="ta-card bg-background" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    // 카드 해체(2026-08-08) — 페이지 최상위 섹션은 박스 없이
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <span className="text-[15px] font-medium text-foreground">그라인더 얼라인먼트 기록</span>
         <span className="text-[11px] text-muted-foreground">버 정렬·제로포인트를 본 날 — 이 날짜 이전 측정은 차트에서 흐리게 구분됩니다</span>
@@ -85,7 +86,7 @@ export default function GrinderAlignmentLog() {
           const last = latestAlignmentDate(events, s.id);
           const checked = latestInspectionDate(events, s.id);
           return (
-            <div key={s.id} style={{ border: '1px solid hsl(var(--border))', borderRadius: 6, padding: '10px 14px' }}>
+            <div key={s.id} className="bg-muted/40" style={{ borderRadius: 6, padding: '10px 14px' }}>
               <div className="text-[11px] text-muted-foreground">{s.label} 마지막 얼라인먼트</div>
               <div className="tabular text-[15px] text-foreground" style={{ marginTop: 2 }}>
                 {last ?? '기록 없음'}
@@ -150,7 +151,7 @@ export default function GrinderAlignmentLog() {
                 </span>
               )}
               {e.memo && <span className="text-[13px] text-muted-foreground" style={{ flex: 1 }}>{e.memo}</span>}
-              <button onClick={() => remove(e.id)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14 }} title="기록 삭제">
+              <button onClick={() => remove(e.id)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }} title="기록 삭제">
                 ×
               </button>
             </div>

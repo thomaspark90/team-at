@@ -54,10 +54,10 @@ export default function ContinuityAudit({ brand }: { brand: Brand }) {
   };
 
   return (
-    <details className="rounded-2xl border border-border bg-card p-5">
+    <details>
       <summary className="cursor-pointer select-none list-none text-[15px] font-medium [&::-webkit-details-marker]:hidden">
         잔액 연속성 감사
-        <span className="ml-2 text-[12px] font-normal text-muted-foreground">
+        <span className="ml-2 text-[13px] font-normal text-muted-foreground">
           — 저장된 전체 기간에서 빠진 구간(누락 파일) 찾기
         </span>
       </summary>
@@ -104,7 +104,7 @@ export default function ContinuityAudit({ brand }: { brand: Brand }) {
                     </li>
                   ))}
                   {r.breaks.length >= 100 && (
-                    <li className="text-[12px] text-muted-foreground">… 끊김이 100곳을 넘어 이하 생략</li>
+                    <li className="text-[13px] text-muted-foreground">… 끊김이 100곳을 넘어 이하 생략</li>
                   )}
                 </ul>
               )}

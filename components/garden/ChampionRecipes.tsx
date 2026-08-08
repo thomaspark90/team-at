@@ -4,8 +4,8 @@ import { CHAMPION_RECIPES } from '@/lib/champion-recipes';
 
 export default function ChampionRecipes() {
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
-      <div className="min-w-0">
+    <div className="divide-y divide-border" style={{ width: '100%', minWidth: 0 }}>
+      <div className="min-w-0 pb-[54px]">
         <p className="ta-label" style={{ marginBottom: 4 }}>필터 레시피 추천 — 월드 브루어스컵 챔피언</p>
         <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>
           24·25·26년 우승 레시피를 매장 카드 형식으로 정리했어요. 출처에 공개된 수치 그대로이며, 없는 값은 생략.
@@ -13,20 +13,20 @@ export default function ChampionRecipes() {
         </p>
       </div>
 
-      {CHAMPION_RECIPES.map((r) => (
-        <div key={r.year} className="rounded-md border border-border" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+      {CHAMPION_RECIPES.map((r, idx) => (
+        <div key={r.year} className={`min-w-0 ${idx === CHAMPION_RECIPES.length - 1 ? 'pt-[54px]' : 'py-[54px]'}`} style={{ display: 'flex', flexDirection: 'column' }}>
           {/* 헤더 — 연도·대회·챔피언 */}
-          <div className="bg-muted" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '10px 16px', borderBottom: '1px solid hsl(var(--border))', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
             <span className="text-[15px] text-foreground" style={{ fontWeight: 500 }}>
-              {r.year} {r.event} <span className="text-muted-foreground text-[12px]">({r.location})</span>
+              {r.year} {r.event} <span className="text-muted-foreground text-[11px]">({r.location})</span>
             </span>
             <span className="text-[13px] text-foreground" style={{ flexShrink: 0 }}>
               {r.champion} <span className="text-muted-foreground text-[11px]">{r.nation}</span>
             </span>
           </div>
 
-          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>☕ {r.coffee}</p>
+          <div style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>☕ {r.coffee}</p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               <SpecRow label="드리퍼" value={r.dripper} />
@@ -40,7 +40,7 @@ export default function ChampionRecipes() {
             </div>
 
             {/* 푸어링 단계 — 대시보드 카드와 동일 포맷 */}
-            <div className="rounded-md border border-border" style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div className="rounded-md bg-muted/40" style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
               {r.steps.map((s, i) => {
                 const cum = r.steps.slice(0, i + 1).reduce((a, x) => a + x.water, 0);
                 return (

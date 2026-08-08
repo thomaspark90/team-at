@@ -40,7 +40,7 @@ export default async function StudioSalesPage() {
           </p>
         </div>
         {!isMember || scopedOut ? (
-          <section className="rounded-2xl border border-border bg-card p-5">
+          <section>
             <p className="m-0 text-[13px] text-muted-foreground">
               {scopedOut
                 ? '가든 전용 계정이라 스탭밀 매출은 볼 수 없어요.'
@@ -48,7 +48,7 @@ export default async function StudioSalesPage() {
             </p>
           </section>
         ) : rows.length === 0 ? (
-          <section className="rounded-2xl border border-border bg-card p-5">
+          <section>
             <p className="m-0 text-[13px] text-muted-foreground">
               아직 집계된 스탭밀 POS 매출이 없어요. 회계 → 자료 입력에서 페이히어 매출 파일을 올리면 여기에 나타납니다.
             </p>

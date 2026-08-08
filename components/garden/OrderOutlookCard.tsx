@@ -38,7 +38,7 @@ export default function OrderOutlookCard() {
   if (error || !data || data.rows.length === 0) return null; // 참고 카드 — 데이터 없으면 조용히 생략
 
   return (
-    <section className="rounded-md border border-border bg-background" style={{ padding: 18 }}>
+    <section>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
         <p className="ta-label" style={{ marginBottom: 0 }}>발주 참고 — 원두 잔여 추정</p>
         <span className="text-[11px] text-muted-foreground/70">

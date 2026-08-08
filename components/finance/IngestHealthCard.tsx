@@ -25,7 +25,7 @@ const LABEL: Record<Status, string> = { ok: '정상', late: '지연', failed: '�
 export default function IngestHealthCard({ health }: { health: IngestHealth[] }) {
   const byKey = new Map(health.map((h) => [h.pipeline, h]));
   return (
-    <section className="rounded-2xl border border-border bg-card p-5">
+    <section>
       <h2 className="m-0 text-[15px] font-medium">자동 수집 상태</h2>
       <p className="mt-1 text-[13px] text-muted-foreground">
         로컬 수집기(매일 19시)의 마지막 수신 기록이에요. {STALE_HOURS}시간 넘게 소식이 없으면 지연으로 표시합니다.
@@ -39,10 +39,10 @@ export default function IngestHealthCard({ health }: { health: IngestHealth[] })
             <div key={key} className="flex items-center gap-2 py-2.5">
               <span aria-hidden style={{ width: 8, height: 8, borderRadius: 99, background: DOT[status], flexShrink: 0 }} />
               <span className="shrink-0 text-[13px] font-medium">{label}</span>
-              <span className="min-w-0 flex-1 truncate text-[12px] text-muted-foreground" title={note}>
+              <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground" title={note}>
                 {note}
               </span>
-              <span className="shrink-0 text-[12px] text-muted-foreground">
+              <span className="shrink-0 text-[11px] text-muted-foreground">
                 {LABEL[status]} · {ago(h.lastSuccessAt)}
               </span>
             </div>

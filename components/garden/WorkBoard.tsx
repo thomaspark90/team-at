@@ -27,9 +27,9 @@ function Steps({ steps }: { steps: BoardCard['steps'] }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
       {steps.map((s, i) => (
         <span key={s.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-          {i > 0 && <span className="text-[10px] text-muted-foreground/50">▸</span>}
+          {i > 0 && <span className="text-[11px] text-muted-foreground/50">▸</span>}
           <span
-            className={`text-[10.5px] ${
+            className={`text-[11px] ${
               s.state === 'current'
                 ? 'font-medium text-foreground'
                 : s.state === 'done'
@@ -63,7 +63,7 @@ function Card({ card }: { card: BoardCard }) {
         {dot(t.color)}
         {t.label}
       </span>
-      <p className="text-[13.5px] text-foreground" style={{ margin: 0, fontWeight: 500, lineHeight: 1.45 }}>
+      <p className="text-[13px] text-foreground" style={{ margin: 0, fontWeight: 500, lineHeight: 1.45 }}>
         {card.title}
       </p>
       <Steps steps={card.steps} />
@@ -84,7 +84,7 @@ function Card({ card }: { card: BoardCard }) {
           {card.meta.map((m, i) => (
             <span
               key={i}
-              className="text-[11.5px]"
+              className="text-[11px]"
               style={{
                 color:
                   m.tone === 'late'
@@ -100,13 +100,13 @@ function Card({ card }: { card: BoardCard }) {
         </div>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="text-[11.5px] text-muted-foreground" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span className="text-[11px] text-muted-foreground" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           {card.mine ? (
             <>
               <span
                 style={{
                   width: 18, height: 18, borderRadius: 999, display: 'grid', placeItems: 'center',
-                  fontSize: 9.5, background: 'hsl(var(--foreground))', color: 'hsl(var(--background))',
+                  fontSize: 11, background: 'hsl(var(--foreground))', color: 'hsl(var(--background))',
                 }}
               >
                 나
@@ -118,7 +118,7 @@ function Card({ card }: { card: BoardCard }) {
               <span
                 style={{
                   width: 18, height: 18, borderRadius: 999, display: 'grid', placeItems: 'center',
-                  fontSize: 9.5, background: 'hsl(var(--muted-foreground))', color: 'hsl(var(--background))',
+                  fontSize: 11, background: 'hsl(var(--muted-foreground))', color: 'hsl(var(--background))',
                 }}
               >
                 {initials(card.assignees[0])}
@@ -135,7 +135,7 @@ function Card({ card }: { card: BoardCard }) {
           <Link
             href={card.href}
             className={card.mine ? 'ta-btn-primary' : 'ta-btn'}
-            style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 12, display: 'inline-flex', alignItems: 'center' }}
+            style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 13, display: 'inline-flex', alignItems: 'center' }}
           >
             {card.actionLabel}
           </Link>
@@ -168,7 +168,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
   const countOf = (t: BoardType) => (cards ?? []).filter((c) => c.type === t).length;
 
   const chip = (active: boolean): string =>
-    `rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
+    `rounded-full border px-2.5 py-1 text-[13px] transition-colors ${
       active ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:text-foreground'
     }`;
 
@@ -177,13 +177,13 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="divide-y divide-border">
       {/* 내 차례 — 들어오자마자 자기 일이 먼저 보이게 */}
-      <div className="ta-card bg-background min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="min-w-0 pb-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-          <span className="text-[15px] text-foreground" style={{ fontWeight: 600 }}>내 차례</span>
+          <span className="text-[15px] text-foreground" style={{ fontWeight: 500 }}>내 차례</span>
           <span
-            className="tabular text-[12px]"
+            className="tabular text-[11px]"
             style={{ padding: '1px 8px', borderRadius: 999, background: 'hsl(var(--foreground))', color: 'hsl(var(--background))' }}
           >
             {mineCards.length}
@@ -198,11 +198,11 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
             {mineCards.map((c) => (
               <div
                 key={c.id}
-                className="rounded-lg border border-border bg-card/40"
+                className="rounded-lg bg-muted/40"
                 style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px' }}
               >
                 {dot(typeOf(c.type).color)}
-                <span className="text-[13.5px] text-foreground" style={{ fontWeight: 500 }}>{c.title}</span>
+                <span className="text-[13px] text-foreground" style={{ fontWeight: 500 }}>{c.title}</span>
                 <span className="text-[11px] text-muted-foreground">
                   {c.mineReason}
                   {c.meta[0] ? ` · ${c.meta[0].text}` : ''}
@@ -211,7 +211,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
                 <Link
                   href={c.href}
                   className="ta-btn-primary"
-                  style={{ height: 28, paddingLeft: 12, paddingRight: 12, fontSize: 12, display: 'inline-flex', alignItems: 'center' }}
+                  style={{ height: 28, paddingLeft: 12, paddingRight: 12, fontSize: 13, display: 'inline-flex', alignItems: 'center' }}
                 >
                   {c.actionLabel}
                 </Link>
@@ -221,6 +221,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
         )}
       </div>
 
+      <div className="pt-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* 필터 */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button onClick={() => setFilter('all')} className={chip(filter === 'all')}>
@@ -247,13 +248,13 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
         {BOARD_COLUMNS.map((col) => {
           const list = shown.filter((c) => c.column === col.id);
           return (
-            <div key={col.id} className="ta-card bg-card/40 min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div key={col.id} className="rounded-md bg-muted/40 p-6 min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="text-[12px] text-foreground" style={{ fontWeight: 600, letterSpacing: '0.04em' }}>{col.label}</span>
-                <span className="tabular text-[12px] text-muted-foreground">{list.length}</span>
+                <span className="text-[11px] text-foreground" style={{ fontWeight: 500, letterSpacing: '0.04em' }}>{col.label}</span>
+                <span className="tabular text-[11px] text-muted-foreground">{list.length}</span>
               </div>
               {list.length === 0 ? (
-                <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>
+                <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
                   {col.id === 'done' ? '아직 없음' : '—'}
                 </p>
               ) : (
@@ -266,6 +267,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { SEED_WORDS } from '@/app/garden-service/words/seed-words';
 import { CURRENT_SEASON } from '@/lib/garden/season';
+import { WORDS_CHANGED_EVENT } from '@/lib/garden/tabs';
 
 // 제철 단어 검수 — 손님이 보낸 단어를 게시/반려한다. 게시된 단어는 /garden-service/words 에 뜬다.
 
@@ -64,6 +65,8 @@ export default function GardenWords() {
             )
           : prev
       );
+      // 네비 배지 갱신 신호 — GardenNav가 듣고 대기 건수를 다시 가져간다
+      window.dispatchEvent(new Event(WORDS_CHANGED_EVENT));
     } catch (e) {
       setError(e instanceof Error ? e.message : '변경하지 못했습니다.');
     } finally {
@@ -97,7 +100,7 @@ export default function GardenWords() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-lg font-medium">제철 단어 검수</h1>
+        <h1 className="text-[22px] font-medium">제철 단어 검수</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
           손님이 보낸 단어를 게시하면{' '}
           <a href={PUBLIC_URL} target="_blank" rel="noreferrer" className="underline underline-offset-2">
@@ -108,7 +111,7 @@ export default function GardenWords() {
       </div>
 
       {error && (
-        <p className="rounded-md border border-border bg-card px-4 py-3 text-[13px] text-red-500">{error}</p>
+        <p className="rounded-md bg-muted/40 px-4 py-3 text-[13px] text-red-500">{error}</p>
       )}
 
       {words === null ? (
@@ -139,7 +142,7 @@ export default function GardenWords() {
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-[12px] text-muted-foreground">
+            <p className="mt-2 text-[13px] text-muted-foreground">
               흐린 것은 기본 제철 단어, 진한 것은 게시된 손님 단어입니다.
             </p>
           </section>
@@ -155,11 +158,11 @@ export default function GardenWords() {
                 {pending.map((w) => (
                   <li
                     key={w.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3"
+                    className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-4 py-3"
                   >
                     <div className="min-w-0">
-                      <span className="text-[17px]">{w.text}</span>
-                      <span className="ml-3 text-[12px] text-muted-foreground">
+                      <span className="text-[15px]">{w.text}</span>
+                      <span className="ml-3 text-[11px] text-muted-foreground">
                         {fmt(w.created_at)}
                         {subLabel(w) && ` · 제출자 ${subLabel(w)}`}
                       </span>

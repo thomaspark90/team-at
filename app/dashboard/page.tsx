@@ -41,9 +41,9 @@ export default async function AccountingDashboardPage({ searchParams }: { search
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <AccountingNav role={role} />
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-[1600px] divide-y divide-border px-4 py-6 sm:px-6 sm:py-8">
         {/* 대기 송금 요약 */}
-        <section className="rounded-2xl border border-border bg-card p-5">
+        <section className="pb-[54px]">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="m-0 text-[15px] font-medium">송금 대기</h2>
@@ -63,7 +63,7 @@ export default async function AccountingDashboardPage({ searchParams }: { search
             </div>
             <Link
               href="/dashboard/transfer"
-              className="rounded-lg bg-foreground px-3 py-1.5 text-[12px] font-medium text-background"
+              className="rounded-lg bg-foreground px-3 py-1.5 text-[13px] font-medium text-background"
             >
               송금 요청 →
             </Link>
@@ -71,19 +71,23 @@ export default async function AccountingDashboardPage({ searchParams }: { search
         </section>
 
         {/* 무인 수집기(쿠팡·네이버페이·리뷰) 상태 — 실패 이메일이 안 오는 '무소식' 사각지대 감지용 */}
-        <IngestHealthCard health={ingestHealth} />
+        <div className="py-[54px]">
+          <IngestHealthCard health={ingestHealth} />
+        </div>
 
         {/* 월별 자료 현황 + 지출 자료 분류 보드 — 기장 권한자만.
             좌측 고정 연·월 사이드바(MonthShell)가 현황·분류·업무 보드 전체의 왼쪽에 선다.
             대시보드는 확인 전용(2026-08-01 대표 지시) — 업로드는 각 단위의 자료 입력 페이지에서.
             브랜드는 상단 내비 단위가 고정(가든 지점 둘은 통장·카드가 공용이라 같은 가든 현황) */}
         {isStaff && (
+          <div className="pt-[54px]">
           <MonthShell initialTodos={initialTodos} brand={unit.brand}>
             {/* 기장 현황은 상태 그리드의 숫자·배지로 충분해 업무 보드(기장 칸반)는 제거(2026-08-01 대표 지시).
                 단발 업무 추가는 리포트 재무 대시보드(/finance/dashboard)의 업무 보드에 남아 있음.
                 되살리려면 TaskBoard board="accounting" 섹션을 다시 넣으면 됨. */}
             <AccountingBoards fixedBrand={unit.brand} unitId={unit.id} mode="status" />
           </MonthShell>
+          </div>
         )}
       </div>
     </div>

@@ -217,7 +217,7 @@ export default function UploadPanel({
 
       {/* 저장 완료 배너 — 전 파일 합산 */}
       {done && (
-        <div className="rounded-md border border-border bg-muted p-4">
+        <div className="rounded-md bg-muted p-4">
           <div className="mb-1 text-foreground">✓ 저장 완료</div>
           <div className="text-[13px] text-muted-foreground">
             {won(done.saved)}건 저장 (자동 분류 {won(done.autoClassified)}건) · 중복 {won(done.duplicates)}건 건너뜀
@@ -229,7 +229,7 @@ export default function UploadPanel({
       )}
 
       {/* 입력 카드 */}
-      <div className="ta-card flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <div>
           <label className="ta-label">은행</label>
           <div className="inline-flex gap-1 rounded-md border border-border p-1">
@@ -303,7 +303,7 @@ export default function UploadPanel({
       {/* 파일별 목록 — 선택 즉시 표시, 파싱·저장 진행 상태 겸용 */}
       {entries.length > 0 && (
         <div className="overflow-hidden rounded-md border border-border bg-background">
-          <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-2 text-[12px] text-muted-foreground">
+          <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-2 text-[13px] text-muted-foreground">
             <span>{entries.length}개 파일 선택됨</span>
             {!loading && !saving && (
               <button onClick={() => setEntries([])} className="hover:text-foreground">
@@ -320,11 +320,11 @@ export default function UploadPanel({
               <span className="flex shrink-0 items-center gap-3">
                 {e.preview?.continuity && (
                   e.preview.continuity.breaks === 0 ? (
-                    <span className="text-[12px] text-emerald-600">잔액연속 ✓</span>
+                    <span className="text-[11px] text-emerald-600">잔액연속 ✓</span>
                   ) : e.preview.continuity.reliable ? (
-                    <span className="text-[12px] text-red-500">⚠ 잔액 끊김 {e.preview.continuity.breaks}곳</span>
+                    <span className="text-[11px] text-red-500">⚠ 잔액 끊김 {e.preview.continuity.breaks}곳</span>
                   ) : (
-                    <span className="text-[12px] text-muted-foreground">잔액연속 판정불가</span>
+                    <span className="text-[11px] text-muted-foreground">잔액연속 판정불가</span>
                   )
                 )}
                 {e.status === 'picked' && <span className="text-muted-foreground">대기</span>}
@@ -363,13 +363,13 @@ export default function UploadPanel({
       {ready.length > 0 && !done && (
         <>
           {boundaryGaps.length > 0 && (
-            <p className="m-0 text-[12px] text-red-500">
+            <p className="m-0 text-[13px] text-red-500">
               ⚠ 파일 사이 잔액이 이어지지 않아요 — 그 사이 기간의 거래가 빠졌을 수 있어요: {boundaryGaps.join(', ')}.
               은행에서 빠진 기간을 다시 내려받아 함께 올려주세요.
             </p>
           )}
           {crossCount > 0 && (
-            <p className="m-0 text-[12px] text-amber-600">
+            <p className="m-0 text-[13px] text-amber-600">
               ⚠ 이 기간에 <b>다른 형식(PDF↔엑셀)</b>으로 올린 이력이 있어요. 형식이 다르면 중복이 걸러지지 않아
               같은 거래가 이중 저장될 수 있어요 — 같은 계좌 내역이면 저장 전에 업로드 이력을 확인하세요.
             </p>
@@ -383,7 +383,7 @@ export default function UploadPanel({
           </div>
 
           {entries.length > 1 && agg.fresh > 0 && (
-            <p className="m-0 text-[12px] text-muted-foreground">
+            <p className="m-0 text-[13px] text-muted-foreground">
               파일 간 기간이 겹치면 신규 합계가 실제보다 크게 보일 수 있어요 — 저장할 때 앞 파일부터 차례로 넣으며
               겹치는 거래는 자동으로 걸러져요.
             </p>
@@ -430,7 +430,7 @@ export default function UploadPanel({
               {saving ? '저장 중…' : `${entries.length > 1 ? `${ready.length}개 파일 · ` : ''}${won(agg.fresh)}건 저장하기`}
             </button>
           ) : (
-            <div className="rounded-md border border-border bg-muted p-4">
+            <div className="rounded-md bg-muted p-4">
               <div className="mb-1 text-foreground">✓ 이미 모두 저장된 거래예요</div>
               <div className="text-[13px] text-muted-foreground">
                 올린 파일의 {won(agg.totalRows)}건은 전부 중복(이미 저장됨)이라 새로 저장할 게 없어요. 분류는{' '}
@@ -446,7 +446,7 @@ export default function UploadPanel({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-[110px] flex-[1_1_auto] rounded-md border border-border bg-card px-4 py-3">
+    <div className="min-w-[110px] flex-[1_1_auto] rounded-md bg-muted/40 px-4 py-3">
       <div className="mb-1 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{label}</div>
       <div className="tabular text-[15px] text-foreground">{value}</div>
     </div>
