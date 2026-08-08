@@ -333,6 +333,25 @@ async function PnlBody({
         </div>
       )}
 
+      {/* 보정값 미입력 경고 — 관리손익 설계(2026-07-05)의 필수 보정 2가지가 빠지면 지표가 왜곡된다.
+          수수료 미입력 → 추정률 사용(순매출 부정확), 기말재고 미입력 → 매입 전액이 재료비(이익 과소, 특히 초도발주 달). */}
+      {(channelFee == null || !invBrand.some((i) => i.ym === selectedYm)) && (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+          <span className="text-foreground">
+            ⚠️ 이 달{' '}
+            {channelFee == null && <b>채널 수수료가 미입력</b>}
+            {channelFee == null && !invBrand.some((i) => i.ym === selectedYm) && ' · '}
+            {!invBrand.some((i) => i.ym === selectedYm) && <b>기말재고가 미입력</b>}
+            이에요. {channelFee == null && '수수료는 추정률로 계산 중이고, '}
+            {!invBrand.some((i) => i.ym === selectedYm) && '재고 미입력이면 매입 전액이 재료비로 잡혀 영업이익이 실제보다 낮게 보여요. '}
+            아래 입력란에서 채워주세요.
+          </span>
+          <a href="#pnl-inputs" className="whitespace-nowrap underline">
+            입력란으로 →
+          </a>
+        </div>
+      )}
+
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         {/* 손익계산서 */}
         <div className="ta-card">
@@ -382,7 +401,7 @@ async function PnlBody({
         </div>
 
         {/* 우측: 기말재고 + 매출 구성 — 재고·수수료 입력은 브랜드 단위(전체·지점 탭에선 숨김) */}
-        <div className="flex flex-col gap-5">
+        <div id="pnl-inputs" className="flex flex-col gap-5">
           {store ? (
             <div className="ta-card text-[13px] text-muted-foreground">
               지점 뷰의 재료비·수수료는 {storeLabel(store)} 매출비율({pct(storeRatio)})로 안분한 근사치예요.
