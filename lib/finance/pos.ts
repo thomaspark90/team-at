@@ -50,6 +50,17 @@ function serialToYmd(serial: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
+// 주문기준일자 → 'YYYY-MM-DD'. 구 형식은 엑셀 serial(숫자), 2026-07 리포트부터 문자열('2026-07-31')로
+// 바뀌었다(암호화도 사라짐). 둘 다 받는다 — 설명행·빈행·합계행은 null 로 걸러짐.
+function toYmd(v: unknown): string | null {
+  if (typeof v === 'number') return v > 20000 && v < 80000 ? serialToYmd(v) : null;
+  const m = String(v ?? '')
+    .trim()
+    .match(/^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  return null;
+}
+
 const num = (v: unknown): number => {
   if (typeof v === 'number') return v;
   const n = Number(String(v ?? '').replace(/[,\s]/g, ''));
@@ -104,8 +115,8 @@ export function parsePosRows(rows: unknown[][]): PosParseResult {
 
   for (let i = loc.hdr + 1; i < rows.length; i++) {
     const r = rows[i] ?? [];
-    const rawDate = r[ci.date];
-    if (typeof rawDate !== 'number' || rawDate <= 0) continue; // 설명행·빈행·합계행 스킵
+    const saleDate = toYmd(r[ci.date]);
+    if (!saleDate) continue; // 설명행·빈행·합계행 스킵
     dataRows++;
 
     const gross = Math.round(num(r[ci.amount]));
@@ -122,7 +133,6 @@ export function parsePosRows(rows: unknown[][]): PosParseResult {
     if (String(r[ci.state] ?? '').trim() === '취소') canceled++;
     else completed++;
 
-    const saleDate = serialToYmd(rawDate);
     const ym = saleDate.slice(0, 7);
     ymCount.set(ym, (ymCount.get(ym) ?? 0) + 1);
 
