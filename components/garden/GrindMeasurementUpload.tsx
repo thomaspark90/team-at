@@ -235,7 +235,7 @@ export default function GrindMeasurementUpload() {
             type="text"
             value={draft.bean}
             onChange={(e) => set('bean', e.target.value)}
-            placeholder="원두명 (예: 에티오피아 첼베사)"
+            placeholder="원두명 * (예: 에티오피아 첼베사)"
             className="ta-input"
           />
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -297,6 +297,21 @@ export default function GrindMeasurementUpload() {
         </div>
 
         {error && <p className="text-[13px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{error}</p>}
+
+        {/* 비활성 사유 안내 — 버튼이 왜 안 눌리는지 화면이 말해준다(2026-08-08 대표 문의) */}
+        {!canSave && !saving && (
+          <p className="text-[13px]" style={{ margin: 0, color: 'hsl(25 85% 45%)' }}>
+            저장하려면{' '}
+            {[
+              draft.bean.trim() === '' ? '원두명' : null,
+              draft.dial.trim() === '' ? 'EK43 다이얼' : null,
+              files.length === 0 && draft.mean.trim() === '' ? '평균 크기(µm) 또는 결과 이미지' : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            {' '}입력이 필요해요.
+          </p>
+        )}
 
         <button onClick={save} disabled={!canSave || saving} className="ta-btn-primary" style={{ height: 38, fontSize: 13, opacity: !canSave || saving ? 0.5 : 1 }}>
           {saving
