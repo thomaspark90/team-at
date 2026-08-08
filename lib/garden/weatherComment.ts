@@ -3,6 +3,7 @@
 import { KR_HOLIDAYS } from './krHolidays';
 import { isSnowCode } from './weatherForecast';
 import {
+  COLD_IMPACT_LABEL,
   cupsWeatherFactor,
   DOSE_G_PER_CUP,
   HEAVY_RAIN_IMPACT_LABEL,
@@ -60,10 +61,12 @@ export function buildWeatherComments(days: ForecastDay[]): string[] {
     }
   }
 
-  // 5) 영하권 — 겨울 방문 감소 신호
+  // 5) 영하권 — 겨울 방문 감소 신호 (판교 실측 −37~38%)
   const cold = week.filter((d) => d.tMax <= 0);
   if (cold.length > 0) {
-    out.push(`일최고 영하 ${cold.length}일(${cold.slice(0, 3).map((d) => md(d.ymd)).join('·')}) — 방문 감소·핫 음료 편중 예상`);
+    out.push(
+      `일최고 영하 ${cold.length}일(${cold.slice(0, 3).map((d) => md(d.ymd)).join('·')}) — ${COLD_IMPACT_LABEL} (${IMPACT_BASIS})`,
+    );
   }
 
   return out.slice(0, 2);
