@@ -11,8 +11,8 @@ import { buildReviewSales, type ReviewRow, type StoreReviewSales } from '@/lib/g
 import { STORES } from '@/lib/types';
 
 // 가든 매출 — 토스(양재천)/페이히어(판교) POS 업로드(발생주의) 요약. 스탭밀 매출과 같은 구조.
-// 지점 구분은 pos_sales 직조회에만 있어서(admin/classifier RLS 통과) 재무 권한자만 지점 필터를 쓰고,
-// viewer 멤버는 dashboard_pos 뷰(안전 컬럼, 지점 없음)로 가든 전체 합만 본다.
+// dashboard_pos 뷰에 store 가 추가돼(2026-08-08 마이그레이션) 재무 멤버 전원(viewer 포함)이
+// 지점 필터와 리뷰×매출 리포트를 본다. 접근 통제는 뷰의 my_role()/brand_scope 필터가 담당.
 export default async function GardenSalesPage({ searchParams }: { searchParams: { store?: string } }) {
   const supabase = await createClient();
   const {
@@ -23,24 +23,19 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
   const { role, brandScope } = await resolveMember(supabase, user);
   const isMember = role != null;
   const scopedOut = brandScope === 'staffmeal'; // 스탭밀 전용 멤버 — 가든 매출은 숨긴다
-  const canSplitStore = ['admin', 'classifier'].includes(role ?? '');
 
   const storeParam = ['yangjae', 'pangyo'].includes(searchParams.store ?? '') ? searchParams.store! : 'all';
   const since = new Date(Date.now() - 396 * 86_400_000).toISOString().slice(0, 10);
 
   let rows: SalesRow[] = [];
   if (isMember && !scopedOut) {
-    rows = await fetchSalesRows(supabase, {
-      table: canSplitStore ? 'pos_sales' : 'dashboard_pos',
-      brand: 'garden',
-      since,
-    }).catch(() => []);
+    rows = await fetchSalesRows(supabase, { table: 'dashboard_pos', brand: 'garden', since }).catch(() => []);
   }
-  const shown = canSplitStore && storeParam !== 'all' ? rows.filter((r) => r.store === storeParam) : rows;
+  const shown = storeParam !== 'all' ? rows.filter((r) => r.store === storeParam) : rows;
 
-  // 리뷰 × 매출 주간 리포트 — 지점 구분이 가능한 재무 권한자에게만 (rows 에 store 필요)
+  // 리뷰 × 매출 주간 리포트 — 매출을 볼 수 있는 멤버라면 함께 본다 (리뷰는 팀 전체 열람 데이터)
   let reviewSales: StoreReviewSales[] = [];
-  if (canSplitStore && rows.length > 0) {
+  if (rows.length > 0) {
     const reviews: ReviewRow[] = [];
     for (let from = 0; ; from += 1000) {
       const { data, error } = await supabase
@@ -74,7 +69,7 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
               토스(양재천)·페이히어(판교) POS 업로드 기준 발생주의 매출이에요. 월 자료가 업로드돼야 반영됩니다.
             </p>
           </div>
-          {canSplitStore && (
+          {isMember && !scopedOut && (
             <div className="flex gap-1 rounded-xl border border-border bg-card p-1">
               {storeTabs.map((t) => (
                 <Link
@@ -106,11 +101,6 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
           </section>
         ) : (
           <>
-            {!canSplitStore && (
-              <p className="m-0 text-[12px] text-muted-foreground">
-                지점 구분은 재무 권한(admin/classifier)이 있어야 보여요 — 지금은 가든 전체 합계입니다.
-              </p>
-            )}
             <SalesSummary rows={shown} />
             {reviewSales.length > 0 && <ReviewSalesReport data={reviewSales} />}
           </>
