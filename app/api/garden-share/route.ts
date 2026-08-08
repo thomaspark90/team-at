@@ -3,14 +3,20 @@ import { purchaseRecords } from '@/lib/blob-records';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { readShares, writeShares, type GardenShare } from '@/lib/garden-share';
+import { requireGardenTab } from '@/lib/access/guard';
 
 // 발주 기록 1건 → 공유 링크 생성: { recordId }
+// 공유는 책정 판매가 공지 동작이라 판매가 설정(saleprice) 탭 권한을 따른다.
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, 'saleprice');
+    if (denied) return denied;
+  }
 
   const { recordId } = await req.json();
   const record = (await purchaseRecords.readAll()).find((r) => r.id === recordId);

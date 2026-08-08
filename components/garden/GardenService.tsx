@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { GardenOptions, PricingSettings, PurchaseRecord } from '@/lib/types';
-import { DEFAULT_SETTINGS, computePricing, normalize, priceAtMult } from '@/lib/pricing';
+import { DEFAULT_SETTINGS, computePricing, normalize } from '@/lib/pricing';
 
 // 인라인 스타일에서 참조할 midday 토큰 (HSL 변수)
 const C = {
@@ -22,13 +22,8 @@ const fmtDate = (iso: string) => {
   return `${String(d.getFullYear()).slice(2)}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
 };
 
-// 스프레드로 보여줄 배수 (3.0 ~ 7.0, 0.5 단위 — 가로 스와이프)
-const SPREAD = [3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7];
-const HIGHLIGHT = C.accent; // 권장 구간(배수 minMult~maxMult) 강조색 (무채색)
-// 선택 칸 강조 — 연두(라임). 투명도를 높여 뒤 텍스트 가독 유지. 라이트/다크 공통 리터럴.
-const SELECT_BORDER = 'rgba(132, 204, 22, 0.55)';
-const SELECT_FILL = 'rgba(132, 204, 22, 0.14)';
-
+// 발주 전용 화면 — 판매가 책정(배수 선택·공유)은 권한이 분리된 '판매가 설정' 탭
+// (GardenSalePrice)이 담당한다. 여기서는 발주 기록 저장과 원가 확인까지만 한다.
 export default function GardenService() {
   const [settings, setSettings] = useState<PricingSettings>(DEFAULT_SETTINGS);
   const [bean, setBean] = useState('');
@@ -44,11 +39,8 @@ export default function GardenService() {
   // 원두봉투 스캔 상태 — 인식 결과로 원두명·로스팅사·용량 자동 기입
   const [scanning, setScanning] = useState(false);
   const [scanMsg, setScanMsg] = useState<string | null>(null);
-  const [selectedMult, setSelectedMult] = useState<number | null>(null);
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [saving, setSaving] = useState(false);
-  const [sharingId, setSharingId] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const refreshPurchases = async () => {
     const res = await fetch('/api/purchases', { cache: 'no-store' });
@@ -96,8 +88,6 @@ export default function GardenService() {
         costPerCup: result.costPerCup,
         rangeLow: result.rangeLow,
         rangeHigh: result.rangeHigh,
-        chosenMult: selectedMult,
-        chosenPrice: selectedMult != null ? priceAtMult(price, selectedMult, settings) : null,
       }),
     });
     // 직접 입력한 새 스탭이름·로스팅사는 드롭다운 명단에 자동 추가 (설정에서 관리)
@@ -118,33 +108,7 @@ export default function GardenService() {
       });
     }
     await refreshPurchases();
-    setSelectedMult(null);
     setSaving(false);
-  };
-
-  // 판매가 공유 링크 생성 → 모바일은 공유시트, 그 외 클립보드 복사 (카톡방 공지용)
-  const sharePurchase = async (rec: PurchaseRecord) => {
-    if (sharingId) return;
-    setSharingId(rec.id);
-    try {
-      const res = await fetch('/api/garden-share', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recordId: rec.id }),
-      });
-      if (!res.ok) return;
-      const { url } = await res.json();
-      const title = `${rec.bean} — 판매가 ${rec.chosenPrice != null ? won(rec.chosenPrice) : ''}`;
-      if (navigator.share) {
-        await navigator.share({ title, url }).catch(() => {});
-      } else {
-        await navigator.clipboard.writeText(url);
-        setCopiedId(rec.id);
-        setTimeout(() => setCopiedId(null), 2000);
-      }
-    } finally {
-      setSharingId(null);
-    }
   };
 
   const deletePurchase = async (id: string) => {
@@ -155,15 +119,6 @@ export default function GardenService() {
     });
     refreshPurchases();
   };
-
-  // 카드 우측 상단 공유 대상 — 판매가가 책정된 가장 최근 기록
-  const latestPriced = useMemo(
-    () =>
-      purchases
-        .filter((r) => r.chosenPrice != null)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null,
-    [purchases]
-  );
 
   // 발주 기록 — 원두별 그룹(각 그룹 최신순), 그룹은 최근 기록순
   const purchaseGroups = useMemo(() => {
@@ -340,10 +295,7 @@ export default function GardenService() {
                   return (
                     <button
                       key={g}
-                      onClick={() => {
-                        setNum('capacityG', g);
-                        setSelectedMult(null);
-                      }}
+                      onClick={() => setNum('capacityG', g)}
                       className={`rounded-sm px-2.5 py-1 text-[12px] transition-colors ${
                         on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                       }`}
@@ -356,10 +308,7 @@ export default function GardenService() {
               <input
                 type="number"
                 value={settings.capacityG || ''}
-                onChange={(e) => {
-                  setNum('capacityG', Number(e.target.value) || 0);
-                  setSelectedMult(null);
-                }}
+                onChange={(e) => setNum('capacityG', Number(e.target.value) || 0)}
                 placeholder="직접 입력"
                 className="ta-input tabular"
                 style={{ flex: 1, minWidth: 0 }}
@@ -371,10 +320,7 @@ export default function GardenService() {
                 type="text"
                 inputMode="numeric"
                 value={price ? price.toLocaleString('ko-KR') : ''}
-                onChange={(e) => {
-                  setPrice(Number(e.target.value.replace(/[^\d]/g, '')) || 0);
-                  setSelectedMult(null);
-                }}
+                onChange={(e) => setPrice(Number(e.target.value.replace(/[^\d]/g, '')) || 0)}
                 placeholder={`공급가 000,000 (${settings.capacityG}g·부가세 ${settings.vatIncluded ? '포함' : '별도'})`}
                 className="ta-input tabular"
                 style={{ flex: 1, minWidth: 0 }}
@@ -386,10 +332,7 @@ export default function GardenService() {
                   return (
                     <button
                       key={String(v)}
-                      onClick={() => {
-                        setSettings((s) => ({ ...s, vatIncluded: v }));
-                        setSelectedMult(null);
-                      }}
+                      onClick={() => setSettings((s) => ({ ...s, vatIncluded: v }))}
                       className={`rounded-sm px-2.5 py-1 text-[12px] transition-colors ${
                         on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                       }`}
@@ -418,40 +361,15 @@ export default function GardenService() {
                 </div>
               </div>
 
-              {/* 배수 스프레드 표 (가로 스와이프) */}
-              <div className="rounded-md border border-border" style={{ overflowX: 'auto', fontSize: 12, WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: `52px repeat(${SPREAD.length}, 76px)`,
-                  minWidth: 'max-content',
-                }}
-              >
-                <Cell label>배수</Cell>
-                {SPREAD.map((m) => (
-                  <Cell key={`h${m}`} head pos="top" hi={m >= settings.minMult && m <= settings.maxMult} selected={selectedMult === m} onClick={() => setSelectedMult(m)}>
-                    {m.toFixed(1)}×
-                  </Cell>
-                ))}
-
-                <Cell label>판매가</Cell>
-                {SPREAD.map((m) => (
-                  <Cell key={`p${m}`} pos="mid" hi={m >= settings.minMult && m <= settings.maxMult} bold selected={selectedMult === m} onClick={() => setSelectedMult(m)}>
-                    {won(priceAtMult(price, m, settings))}
-                  </Cell>
-                ))}
-
-                <Cell label>원가율</Cell>
-                {SPREAD.map((m) => (
-                  <Cell key={`r${m}`} pos="bottom" hi={m >= settings.minMult && m <= settings.maxMult} muted selected={selectedMult === m} onClick={() => setSelectedMult(m)}>
-                    {/* 이론값(100/배수)이 아니라 100원 올림 반영 실제 원가율 — 저장 기록·대시보드와 같은 산식 */}
-                    {result ? Math.round((result.costPerCup / priceAtMult(price, m, settings)) * 100) : Math.round(100 / m)}%
-                  </Cell>
-                ))}
-              </div>
+              {/* 권장 판매 범위 — 배수 선택(책정)은 '판매가 설정' 탭 담당이라 여기선 범위만 보여준다 */}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span className="text-[11px] text-muted-foreground">권장 판매 범위</span>
+                <span className="text-[14px] text-foreground tabular">
+                  {won(result.rangeLow)} ~ {won(result.rangeHigh)}
+                </span>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                강조 칸 = 권장 구간(배수 {settings.minMult}~{settings.maxMult}) · 배수를 클릭해 책정 판매가를 고르세요
+                저장하면 발주 기록으로 남고, 판매가 책정은 &lsquo;판매가 설정&rsquo; 탭에서 담당자가 진행해요
               </p>
 
               <button
@@ -468,19 +386,7 @@ export default function GardenService() {
         {/* 발주 기록 — 같은 원두 재발주 시 원가·판매가 비교 */}
         {purchases.length > 0 && (
           <div className="ta-card bg-background min-w-0">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <p className="ta-label">이전 판매 리스트</p>
-              {latestPriced && (
-                <button
-                  onClick={() => sharePurchase(latestPriced)}
-                  className="text-muted-foreground hover:text-foreground"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, flexShrink: 0 }}
-                  title={`최근 책정 판매가 공유 — ${latestPriced.bean} (카톡방 공지용)`}
-                >
-                  {copiedId === latestPriced.id ? '링크 복사됨 ✓' : sharingId === latestPriced.id ? '…' : '공유'}
-                </button>
-              )}
-            </div>
+            <p className="ta-label">이전 발주 리스트</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               {purchaseGroups.map((group) => (
                 <div key={group[0].id}>
@@ -649,68 +555,6 @@ function Stepper({ value, onDec, onInc }: { value: number; onDec: () => void; on
       <span className="tabular text-foreground" style={{ minWidth: 28, textAlign: 'center', fontSize: 12 }}>{value.toFixed(1)}</span>
       <button onClick={onInc} style={btn}>›</button>
     </span>
-  );
-}
-
-function Cell({
-  children,
-  label,
-  head,
-  hi,
-  bold,
-  muted,
-  selected,
-  onClick,
-  pos,
-}: {
-  children: React.ReactNode;
-  label?: boolean;
-  head?: boolean;
-  hi?: boolean;
-  bold?: boolean;
-  muted?: boolean;
-  selected?: boolean;
-  onClick?: () => void;
-  pos?: 'top' | 'mid' | 'bottom';
-}) {
-  const style: React.CSSProperties = {
-    padding: '7px 3px',
-    textAlign: label ? 'left' : 'center',
-    borderTop: `1px solid ${C.border}`,
-    borderLeft: label ? 'none' : `1px solid ${C.border}`,
-    backgroundColor: label ? C.muted : hi ? HIGHLIGHT : C.card,
-    color: muted ? C.mutedFg : label ? C.mutedFg : C.fg,
-    fontSize: label || muted ? 11 : 12,
-    whiteSpace: 'nowrap',
-    cursor: onClick ? 'pointer' : 'default',
-  };
-  // 라벨 칸은 가로 스크롤 시 좌측 고정
-  if (label) {
-    style.position = 'sticky';
-    style.left = 0;
-    style.zIndex = 2;
-  }
-  if (selected) {
-    // 세 칸의 바깥 테두리만 강조(투명 연두) 2px → 한 박스처럼, 모서리 라운드 + 옅은 채움
-    const B = `2px solid ${SELECT_BORDER}`;
-    style.backgroundColor = SELECT_FILL;
-    style.borderLeft = B;
-    style.borderRight = B;
-    if (pos === 'top') {
-      style.borderTop = B;
-      style.borderTopLeftRadius = 7;
-      style.borderTopRightRadius = 7;
-    }
-    if (pos === 'bottom') {
-      style.borderBottom = B;
-      style.borderBottomLeftRadius = 7;
-      style.borderBottomRightRadius = 7;
-    }
-  }
-  return (
-    <div onClick={onClick} className="tabular" style={style}>
-      {children}
-    </div>
   );
 }
 

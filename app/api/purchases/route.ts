@@ -17,7 +17,7 @@ export async function GET() {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   {
-    const denied = await requireGardenTab(supabase, user, ['pricing', 'recipes', 'dashboard', 'beancard']);
+    const denied = await requireGardenTab(supabase, user, ['pricing', 'saleprice', 'recipes', 'dashboard', 'beancard']);
     if (denied) return denied;
   }
 
@@ -49,14 +49,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '판매가 산식 기준(용량·잔존율·투입량)이 올바르지 않습니다.' }, { status: 400 });
   }
   const pricing = computePricing(purchasePrice, settings);
-  // 책정 배수가 오면 판매가도 서버 산식으로 확정, 배수 없이 가격만 오면 양수 검증만
-  const chosenMult = body.chosenMult != null && Number.isFinite(Number(body.chosenMult)) ? Number(body.chosenMult) : null;
-  const chosenPrice =
-    chosenMult != null
-      ? priceAtMult(purchasePrice, chosenMult, settings)
-      : Number(body.chosenPrice) > 0
-        ? Number(body.chosenPrice)
-        : null;
 
   const record: PurchaseRecord = {
     // 같은 밀리초에 두 건이 저장되면 id 가 겹쳐 한쪽이 덮어써지므로 UUID 사용
@@ -73,8 +65,10 @@ export async function POST(req: Request) {
     costPerCup: pricing.costPerCup,
     rangeLow: pricing.rangeLow,
     rangeHigh: pricing.rangeHigh,
-    chosenMult,
-    chosenPrice,
+    // 판매가 책정은 권한이 분리된 별도 동작(PATCH · saleprice 탭) — POST 로는 책정값을
+    // 받지 않는다. 받으면 발주 권한만 가진 계정이 API 로 판매가를 정할 수 있게 된다.
+    chosenMult: null,
+    chosenPrice: null,
     createdBy: user.email ?? '',
   };
   // 같은 날 같은 원두·가격이라도 구매 용량이 다르면 별건 발주(500g/1kg) — 대체하지 않는다
@@ -105,6 +99,46 @@ export async function POST(req: Request) {
   return NextResponse.json(record);
 }
 
+// 판매가 책정: { id, chosenMult } — 발주(POST)와 분리된 동작이라 saleprice 탭 권한만 허용.
+// chosenMult: null 을 보내면 책정 해제. 판매가는 항상 서버 산식(당시 설정 스냅샷)으로 확정한다.
+export async function PATCH(req: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  {
+    const denied = await requireGardenTab(supabase, user, 'saleprice');
+    if (denied) return denied;
+  }
+
+  const body = await req.json();
+  const record = (await purchaseRecords.readAll()).find((r) => r.id === body.id);
+  if (!record) return NextResponse.json({ error: '발주 기록을 찾을 수 없습니다.' }, { status: 404 });
+
+  if (body.chosenMult == null) {
+    record.chosenMult = null;
+    record.chosenPrice = null;
+  } else {
+    const mult = Number(body.chosenMult);
+    if (!Number.isFinite(mult) || mult < 1 || mult > 20) {
+      return NextResponse.json({ error: '배수가 올바르지 않습니다.' }, { status: 400 });
+    }
+    record.chosenMult = mult;
+    record.chosenPrice = priceAtMult(record.purchasePrice, mult, { ...DEFAULT_SETTINGS, ...record.settings });
+  }
+  await purchaseRecords.writeOne(record);
+  await logActivity(
+    supabase,
+    user,
+    '가든서비스 판매가 책정',
+    record.chosenPrice != null
+      ? `${record.bean} · 판매가 ${record.chosenPrice.toLocaleString()}원 (${record.chosenMult}×)`
+      : `${record.bean} · 책정 해제`
+  );
+  return NextResponse.json(record);
+}
+
 export async function DELETE(req: Request) {
   const supabase = await createClient();
   const {
@@ -112,7 +146,7 @@ export async function DELETE(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   {
-    const denied = await requireGardenTab(supabase, user, ['pricing', 'recipes', 'dashboard']);
+    const denied = await requireGardenTab(supabase, user, ['pricing', 'saleprice', 'recipes', 'dashboard']);
     if (denied) return denied;
   }
 

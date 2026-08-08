@@ -7,7 +7,9 @@ export type GardenTab = { key: string; href: string; label: string; desc?: strin
 export const GARDEN_TAB_GROUPS: GardenTab[][] = [
   [{ key: 'dashboard', href: '/garden', label: '대시보드', desc: '재고·레시피 미설정 원두 한눈에 보기' }],
   [
-    { key: 'pricing', href: '/garden/pricing', label: '필터 원두 발주', desc: '매입가 입력 · 드립 판매가 산출' },
+    { key: 'pricing', href: '/garden/pricing', label: '필터 원두 발주', desc: '원두 정보·매입가 입력 · 발주 기록' },
+    // 발주(pricing)와 판매가 책정을 분리 — 책정 권한만 다른 인원에게 줄 수 있다
+    { key: 'saleprice', href: '/garden/saleprice', label: '판매가 설정', desc: '발주 원두 드립 판매가 책정 · 공유' },
     { key: 'recipes', href: '/garden/recipes', label: '필터 레시피', desc: 'ICE/HOT 레시피 편집 · 추출 타이머' },
     { key: 'recommended', href: '/garden/recommended', label: '필터 레시피 추천', desc: '원두별 추천 레시피 조회' },
     { key: 'calibration', href: '/garden/calibration', label: '분쇄도 측정', desc: 'EK43 캘리브레이션 업로드 · 차트' },
