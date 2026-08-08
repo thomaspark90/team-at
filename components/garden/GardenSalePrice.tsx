@@ -140,7 +140,7 @@ export default function GardenSalePrice() {
   );
 
   return (
-    <div style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
       {error && (
         <p className="text-[12px]" style={{ color: 'hsl(0 72% 45%)', margin: 0 }}>
           {error}

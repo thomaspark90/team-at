@@ -4,7 +4,7 @@ import { CHAMPION_RECIPES } from '@/lib/champion-recipes';
 
 export default function ChampionRecipes() {
   return (
-    <div style={{ width: '100%', maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
       <div className="min-w-0">
         <p className="ta-label" style={{ marginBottom: 4 }}>필터 레시피 추천 — 월드 브루어스컵 챔피언</p>
         <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>

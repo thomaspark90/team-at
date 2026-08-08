@@ -851,7 +851,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
   return (
     // unset(대시보드) 모드는 아래 캘리브레이션과 같은 풀폭, recipes 모드는 기존 720 유지
-    <div style={{ width: '100%', maxWidth: section === 'unset' ? undefined : 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
       {/* 레시피 편집 폼 — 설정/수정 클릭 시 상단에 노출 */}
       {draft && (
         <div className="ta-card bg-background min-w-0">
