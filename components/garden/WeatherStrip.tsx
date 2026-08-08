@@ -96,6 +96,8 @@ export default function WeatherStrip() {
   const [pm25, setPm25] = useState<Map<string, number>>(new Map());
   // 요일별 기준 잔수 — 분석이 갱신한 최신값(실패 시 weatherImpact 내장 상수 폴백)
   const [cupsByDow, setCupsByDow] = useState<number[] | undefined>(undefined);
+  // 날씨 요약 문장 — 평소엔 숨기고 '더보기'로 펼친다 (발주 판단 때만 참고하는 부가 정보)
+  const [showNotes, setShowNotes] = useState(false);
   const [selected, setSelected] = useState<string | null>(null); // 카드 클릭 → 시간대별 상세
   const [failed, setFailed] = useState(false);
   const hasData = useRef(false);
@@ -208,12 +210,24 @@ export default function WeatherStrip() {
         <p className="ta-label" style={{ marginBottom: 0 }}>2주 날씨 — 판교·양재천</p>
         <span className="text-[11px] text-muted-foreground/70">
           Open-Meteo · 10일 이후는 경향 참고용 ·{' '}
+          {(comments.length > 0 || tomorrow) && (
+            <>
+              <button
+                onClick={() => setShowNotes((v) => !v)}
+                className="underline underline-offset-2 hover:text-foreground"
+                style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer' }}
+              >
+                {showNotes ? '요약 접기' : '더보기'}
+              </button>
+              {' · '}
+            </>
+          )}
           <Link href="/garden/weather" className="underline underline-offset-2 hover:text-foreground">
             판매 분석 →
           </Link>
         </span>
       </div>
-      {(comments.length > 0 || tomorrow) && (
+      {showNotes && (comments.length > 0 || tomorrow) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8 }}>
           {comments.map((c) => (
             <p key={c} className="m-0 text-[13px] text-foreground">
