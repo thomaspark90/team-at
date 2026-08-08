@@ -50,13 +50,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'JSON 본문이 필요합니다.' }, { status: 400 });
   }
 
-  // 매장 키 검증 — 수집기 오타 키가 적재되면 매장 필터에 안 잡히는 유령 매장이 된다
+  // 매장 키 검증 — 수집기 오타 키가 적재되면 매장 필터에 안 잡히는 유령 매장이 된다.
+  // 거부 건수는 응답에 실어 수집기가 알림을 띄운다 — 키가 어긋나 전량 거부돼도
+  // 여기서 조용히 '성공'으로 끝나면 데이터 유실이 아무에게도 안 보인다.
   const validStores = new Set<string>(STORES.map((s) => s.id));
   const valid = reviews.filter((r) => r?.review_id && validStores.has(r.store_key) && r.place_id && r.reviewed_at);
-  if (valid.length === 0) {
-    await recordIngestSuccess('reviews', '새 리뷰 없음'); // 빈 결과도 수집기가 돌았다는 신호
-    return NextResponse.json({ saved: 0, duplicates: 0, drafted: 0 });
-  }
+  const rejected = reviews.length - valid.length;
+  // valid가 비어도 return하지 않는다 — 아래 leftover(초안 대기분) 재시도는 항상 돌아야 한다
 
   const supabase = createServiceClient(url, serviceKey, { db: { schema: 'finance' } });
 
@@ -123,9 +123,30 @@ export async function POST(req: Request) {
       .order('approved_at', { ascending: false })
       .limit(8);
     const examples = (exRows ?? []).map((e: { reply_text: string | null }) => String(e.reply_text ?? '').trim()).filter(Boolean);
+    // 시간 예산 — draftReply는 모델 폴백까지 최대 100초를 쓸 수 있어(25초×4모델),
+    // 예산 없이 돌리면 Gemini 장애 때 함수가 maxDuration(60초)에 강제 종료돼
+    // 적재는 됐는데 수집기에는 '적재 실패'로 보고되는 거짓 실패가 난다. 남은 건 pendingDraft로.
+    const deadline = Date.now() + 45_000;
     for (const r of targets) {
+      if (Date.now() > deadline) break;
       const draft = await draftReply(r, geminiKey, examples);
-      if (!draft) continue;
+      if (!draft) {
+        // 초안 실패 시에도 이슈 분류는 따로 시도 — 불만 리뷰 알림이 초안 장애에 묻히지 않게.
+        // (둘 다 실패하면 issue=null로 남아 이슈 탭의 '분류 실행' 백필이 다시 잡는다)
+        if ((r.content ?? '').trim()) {
+          const result = await classifyIssue(r, geminiKey);
+          if (result) {
+            const { error } = await supabase
+              .from('place_reviews')
+              .update({ issue: result.issue, issue_note: result.note, issue_categories: result.categories })
+              .eq('review_id', r.review_id);
+            if (!error && result.issue) {
+              issueFound.push({ store_key: r.store_key, rating: r.rating ?? null, note: result.note, categories: result.categories });
+            }
+          }
+        }
+        continue;
+      }
       const { error } = await supabase
         .from('place_reviews')
         .update({
@@ -153,6 +174,7 @@ export async function POST(req: Request) {
       .filter((r) => r.status === 'replied_elsewhere' && (r.content ?? '').trim())
       .slice(0, 5);
     for (const r of repliedTargets) {
+      if (Date.now() > deadline) break;
       const result = await classifyIssue(r, geminiKey);
       if (!result) continue; // 실패 — 미분류로 남겨 백필에서 재시도
       const { error } = await supabase
@@ -205,10 +227,14 @@ export async function POST(req: Request) {
     }
   }
 
-  await recordIngestSuccess('reviews', `저장 ${rows.length} · 중복 ${valid.length - rows.length}`);
+  await recordIngestSuccess(
+    'reviews',
+    `저장 ${rows.length} · 중복 ${valid.length - rows.length}${rejected > 0 ? ` · 거부 ${rejected}` : ''}`
+  );
   return NextResponse.json({
     saved: rows.length,
     duplicates: valid.length - rows.length,
+    rejected,
     drafted,
     pendingDraft: Math.max(
       0,
