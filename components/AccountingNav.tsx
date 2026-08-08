@@ -100,29 +100,48 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
           </div>
         </div>
       )}
-      {/* 2단: 선택된 단위의 메뉴 */}
-      <div className="mx-auto flex max-w-[1680px] flex-wrap items-center justify-center gap-x-5 gap-y-2 px-6 py-3">
+      {/* 2단: 선택된 단위의 메뉴 — 데스크톱은 가운데 정렬 줄바꿈, 모바일은 그룹을 2줄로 나눠
+          각 줄을 가로 스크롤(2026-08-09) — 항목이 많아 3줄까지 늘어나던 문제 해소. */}
+      <div className="mx-auto hidden max-w-[1680px] flex-wrap items-center justify-center gap-x-5 gap-y-2 px-6 py-3 sm:flex">
         {groups.map((group, gi) => (
           <span key={gi} className="flex flex-wrap items-center gap-x-5 gap-y-2">
             {gi > 0 && <span className="select-none text-[11px] text-border">|</span>}
-            {group.map(({ href, label }) => {
-              const active = isActive(href);
-              return (
-                <Link
-                  key={href}
-                  href={withUnit(href)}
-                  aria-current={active ? 'page' : undefined}
-                  className={`whitespace-nowrap text-[13px] transition-colors ${
-                    active ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {label}
-                </Link>
-              );
-            })}
+            {group.map(({ href, label }) => (
+              <NavLink key={href} href={withUnit(href)} active={isActive(href)} label={label} />
+            ))}
           </span>
         ))}
       </div>
+      <div className="flex flex-col gap-2 py-3 sm:hidden">
+        {(groups.length > 2 ? [groups.slice(0, 2), groups.slice(2)] : [groups]).map((row, ri) => (
+          <div key={ri} className="scrollbar-hide overflow-x-auto px-6">
+            <div className="flex w-max items-center gap-x-5">
+              {row.map((group, gi) => (
+                <span key={gi} className="flex shrink-0 items-center gap-x-5">
+                  {gi > 0 && <span className="select-none text-[11px] text-border">|</span>}
+                  {group.map(({ href, label }) => (
+                    <NavLink key={href} href={withUnit(href)} active={isActive(href)} label={label} />
+                  ))}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </nav>
+  );
+}
+
+function NavLink({ href, active, label }: { href: string; active: boolean; label: string }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? 'page' : undefined}
+      className={`whitespace-nowrap text-[13px] transition-colors ${
+        active ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {label}
+    </Link>
   );
 }
