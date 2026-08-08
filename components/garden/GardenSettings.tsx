@@ -379,21 +379,33 @@ export default function GardenSettings() {
   }, []);
 
   return (
-    // 카드 해체(2026-08-08) — 섹션 경계는 보더 대신 제목+넓은 여백으로
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
-      <NotificationCenter recipients={recipients} />
-      <RequestForms />
+    // 카드 해체(2026-08-08) — 주요 섹션 경계는 가로 구분선으로만
+    <div className="divide-y divide-border">
+      <div className="pb-9">
+        <NotificationCenter recipients={recipients} />
+      </div>
+      <div className="py-9">
+        <RequestForms />
+      </div>
       {/* 필터 원두 발주의 스탭이름·로스팅사 드롭다운 명단 */}
-      <GardenOptionsManager />
+      <div className="py-9">
+        <GardenOptionsManager />
+      </div>
       {/* 계정별 페이지 접근 권한(상위 메뉴 + 가든 하위 탭) — admin 전용 */}
-      {tabUsers && <GardenTabAccess initial={tabUsers} initialAllowed={allowedEmails} />}
+      {tabUsers && (
+        <div className="py-9">
+          <GardenTabAccess initial={tabUsers} initialAllowed={allowedEmails} />
+        </div>
+      )}
       {/* 투두는 공용 컴포넌트(components/TodoList) — 스탭밀 설정과 공유 */}
-      <TodoList
-        api="/api/garden-todos"
-        title="필터커피 투두리스트"
-        desc="측정·검증·레시피 등 필터커피 관련 할 일을 팀이 함께 봅니다."
-        placeholder="할 일 추가 (예: 판교 6·8·10 측정 결과 업로드)"
-      />
+      <div className="pt-9">
+        <TodoList
+          api="/api/garden-todos"
+          title="필터커피 투두리스트"
+          desc="측정·검증·레시피 등 필터커피 관련 할 일을 팀이 함께 봅니다."
+          placeholder="할 일 추가 (예: 판교 6·8·10 측정 결과 업로드)"
+        />
+      </div>
     </div>
   );
 }
