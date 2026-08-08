@@ -1,7 +1,7 @@
 # team-at — Design System
 
 > **레퍼런스**: [midday.ai](https://midday.ai) 의 디자인 토큰을 그대로 이식.
-> 따뜻한 무채색(크림 카드) · Freesentation · 스퀘어(3px) · **장식적 액센트 컬러 없음**(상태 신호 2색은 예외 — §1).
+> 따뜻한 무채색(크림 카드) · Freesentation · radius 10px 통일 · **장식적 액센트 컬러 없음**(상태 신호 2색은 예외 — §1).
 > 소스: github.com/midday-ai/midday (`packages/ui/src/globals.css`) HSL 값 기준.
 > 2026-08-08~09 전면 재정비: 카드 해체(One line per layer) · 폰트 5단계 램프 전체 적용 · 여백 리듬 확정.
 
@@ -13,7 +13,7 @@
 |--------|------|
 | **Warm monochrome** | 흑·백·그레이 + **따뜻한 크림 카드**(`45 18% 96%`). 장식적 컬러 액센트 없음. |
 | **Type** | Freesentation(한글·라틴 커버). 기본 400, 강조는 **색 대비**(muted↔foreground) 우선 + 꼭 필요할 때만 **500(medium)**. 600/700 금지. |
-| **Square & compact** | radius `3px`(md, 전반 좌우) / sm 2 / lg 4. pill·큰 그림자 금지. 데이터 밀도 우선. |
+| **Rounded & compact** | radius **`10px` 전 스케일 통일**(2026-08-01 결정, `tailwind.config.ts` — sm/md/lg/xl/2xl/3xl 전부 10px, `rounded-full`만 예외). pill(둥근 배지·칩)은 여전히 `rounded-full`로 별도. 큰 그림자 금지, 데이터 밀도 우선. |
 | **Border, not shadow** | 면 구분은 그림자가 아니라 `border-border`. |
 | **One line per layer** | 선은 한 계층만. 페이지 최상위 섹션은 카드 박스 대신 **가로 구분선**(`divide-y divide-border`)과 여백으로 구획(§7). 그리드 셀·정적 정보 박스는 보더 없이 `bg-muted/40` 면으로. 보더 유지 대상: 점선(업로드 등 어포던스) · 인터랙티브 요소(버튼·인풋·클릭 가능한 내비 카드) · 상태색 보더(선택/활성 신호) · 플로팅 오버레이(모달·드롭다운·툴팁) · 테이블 · 차트 내부. `ta-card`는 이제 페이지 섹션이 아니라 이런 예외(오버레이·독립형 카드)에만 쓴다. |
 | **Signal = 상태색 2종 한정** | 장식적 컬러는 없지만, **상태 신호**는 두 색으로 표준화: `emerald`(완료·정상) / `amber`(지연·미분류·확인 필요). 진짜 오류·삭제·음수는 `destructive` 토큰(`text-destructive`/`bg-destructive`) — 원시 `red-500`/`red-600` 등 직접 색상 클래스 금지, 반드시 토큰 경유. |
@@ -37,7 +37,7 @@ CSS 변수 → Tailwind 유틸(`bg-*`, `text-*`, `border-*`)로 노출. 다크 �
 | `--input` | `240 5.9% 90%` | 입력 필드 보더 |
 | `--ring` | `240 5.9% 10%` | 포커스 링 |
 | `--destructive` | `0 84% 60%` | 오류·삭제·음수 — `text-destructive`/`bg-destructive`로만 사용, 원시 `red-*` 금지 |
-| `--radius-sm/md/lg` | `2 / 3 / 4px` | 명시 3-값. `rounded-md`(3px)가 버튼·인풋·카드 전반 |
+| `--radius-sm/md/lg` | `10px` (globals.css, 미사용 vestige) | 실제 반영은 `tailwind.config.ts`의 `borderRadius` — sm/md/lg/xl/2xl/3xl 전부 `10px`, `full`만 원형 예외 |
 
 **상태 신호 2색** (토큰화되어 있지 않은 Tailwind 팔레트 직접 사용 — §1 참고):
 
