@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { draftReply } from '@/lib/garden/review-draft';
-import { REVIEW_POST_GRACE_MS } from '@/lib/garden/review-constants';
+import { REVIEW_POST_GRACE_MS, REVIEW_OPEN_STATUSES } from '@/lib/garden/review-constants';
 import { requireGardenTab } from '@/lib/access/guard';
 
 export const runtime = 'nodejs';
@@ -21,7 +21,7 @@ async function requireUser() {
   return { supabase, user };
 }
 
-const OPEN_STATUSES = ['new', 'drafted', 'approved'];
+const OPEN_STATUSES = REVIEW_OPEN_STATUSES;
 
 export async function GET(req: Request) {
   const g = await requireUser();
@@ -156,6 +156,7 @@ export async function PATCH(req: Request) {
         approved_at: new Date().toISOString(),
         approved_tone: tone,
         post_error: null,
+        post_attempts: 0, // 재승인 시 게시 재시도 카운터 리셋
       })
       .eq('id', id).select('*').single();
     await logActivity(g.supabase, g.user, '리뷰 답글 승인', `${review.store_key} · ${text.slice(0, 40)}`);
@@ -169,7 +170,9 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: '승인 상태인 답글만 취소할 수 있습니다.' }, { status: 409 });
     }
     const approvedAt = review.approved_at ? new Date(review.approved_at).getTime() : 0;
-    if (Date.now() - approvedAt > REVIEW_POST_GRACE_MS) {
+    // 게시가 실패해 post_error가 남은 건은 유예가 지나도 취소를 열어둔다 —
+    // 막으면 실패 건을 정리할 방법이 SQL밖에 없다. (게시와 겹치는 경합은 queue 쪽 0건 가드가 처리)
+    if (Date.now() - approvedAt > REVIEW_POST_GRACE_MS && !review.post_error) {
       return NextResponse.json({ error: '게시 유예(1시간)가 지나 취소할 수 없습니다. 게시가 진행 중일 수 있어요.' }, { status: 409 });
     }
     const { data } = await g.supabase.schema('finance').from('place_reviews')

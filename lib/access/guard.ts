@@ -17,12 +17,17 @@ export async function requireGardenTab(
 ): Promise<NextResponse | null> {
   const need = Array.isArray(tab) ? tab : [tab];
   if (isOwner(user.email)) return null;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .schema('finance')
     .from('garden_tab_access')
     .select('tabs, sections')
     .eq('user_id', user.id)
     .maybeSingle();
+  // 조회 실패를 '행 없음 = 전체 허용'으로 접으면 장애 순간에 권한이 통째로 열린다 — 막고 로그를 남긴다
+  if (error) {
+    console.error('[garden-tab-access] 권한 조회 실패:', error.message);
+    return NextResponse.json({ error: '권한 확인에 실패했습니다. 잠시 후 다시 시도해주세요.' }, { status: 503 });
+  }
   if (!data) return null; // 행 없음 = 전체 허용
 
   const sections = (data.sections as string[] | null) ?? null;

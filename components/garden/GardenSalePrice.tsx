@@ -89,7 +89,11 @@ export default function GardenSalePrice() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recordId: rec.id }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        // 실패를 조용히 삼키면 링크가 복사된 줄 알게 된다 — 카드 상단 에러로 알린다
+        setError('공유 링크 생성에 실패했어요. 잠시 후 다시 시도해주세요.');
+        return;
+      }
       const { url } = await res.json();
       const title = `${rec.bean} — 판매가 ${rec.chosenPrice != null ? won(rec.chosenPrice) : ''}`;
       if (navigator.share) {

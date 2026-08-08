@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ISSUE_CATEGORIES } from '@/lib/garden/review-issue';
-import { REVIEW_POST_GRACE_MS } from '@/lib/garden/review-constants';
+import { REVIEW_POST_GRACE_MS, REVIEWS_CHANGED_EVENT } from '@/lib/garden/review-constants';
 import { STORES } from '@/lib/types';
 
 type DraftVariant = { tone: string; label: string; text: string };
@@ -155,6 +155,8 @@ export default function ReviewInbox() {
         setSel((s) => ({ ...s, [r.id]: undefined }));
       }
       if (action === 'cancel') setSel((s) => ({ ...s, [r.id]: undefined }));
+      // 네비 배지 갱신 신호 — GardenNav가 듣고 건수를 다시 가져간다
+      window.dispatchEvent(new Event(REVIEWS_CHANGED_EVENT));
     } catch (e) {
       setError(e instanceof Error ? e.message : '처리에 실패했습니다.');
     } finally {

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireGardenTab } from '@/lib/access/guard';
+import { REVIEW_ACTION_STATUSES } from '@/lib/garden/review-constants';
 
 export const runtime = 'nodejs';
 
-// 네이버 리뷰 탭 배지용 — 액션 필요(수집됨·초안 대기·게시 대기) 리뷰 건수만 반환.
-// 목록 API(../route.ts)의 tab=open과 같은 기준을 쓴다.
-const OPEN_STATUSES = ['new', 'drafted', 'approved'];
+// 네이버 리뷰 탭 배지용 — 매니저 액션이 필요한(수집됨·초안 대기) 건수만 반환.
+// approved는 자동 게시 대기라 세지 않는다 (미처리 탭 기준과 다름 — review-constants 참고).
 
 export async function GET() {
   const supabase = await createClient();
@@ -19,7 +19,7 @@ export async function GET() {
     .schema('finance')
     .from('place_reviews')
     .select('id', { count: 'exact', head: true })
-    .in('status', OPEN_STATUSES);
+    .in('status', REVIEW_ACTION_STATUSES);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ count: count ?? 0 });

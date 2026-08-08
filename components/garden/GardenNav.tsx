@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Fragment, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { GARDEN_TAB_GROUPS, tabForPath } from '@/lib/garden/tabs';
+import { REVIEWS_CHANGED_EVENT } from '@/lib/garden/review-constants';
 
 // 가든 하위 내비게이션 — /garden 하위 페이지 상단에 노출 (FinanceNav와 동일 문법)
 // 설정의 '가든 탭 권한'에서 사용자별로 허용된 탭만 보여주고, 미허용 경로는 허용 탭으로 돌려보낸다.
@@ -26,10 +27,15 @@ export default function GardenNav() {
 
   useEffect(() => {
     if (Array.isArray(allowed) && !allowed.includes('reviews')) return;
-    fetch('/api/garden-reviews/count', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : { count: 0 }))
-      .then((j) => setReviewCount(j.count ?? 0))
-      .catch(() => {});
+    const refresh = () =>
+      fetch('/api/garden-reviews/count', { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : { count: 0 }))
+        .then((j) => setReviewCount(j.count ?? 0))
+        .catch(() => {});
+    refresh();
+    // 인박스에서 처리(승인·건너뛰기 등)하면 페이지 이동 없이도 배지를 갱신한다
+    window.addEventListener(REVIEWS_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(REVIEWS_CHANGED_EVENT, refresh);
   }, [allowed, pathname]);
 
   useEffect(() => {

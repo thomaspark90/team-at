@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { GardenOptions, PricingSettings, PurchaseRecord } from '@/lib/types';
 import { DEFAULT_SETTINGS, computePricing, normalize } from '@/lib/pricing';
+import { toast } from '@/components/Toast';
 
 // 인라인 스타일에서 참조할 midday 토큰 (HSL 변수)
 const C = {
@@ -42,6 +43,7 @@ export default function GardenService() {
   const [scanning, setScanning] = useState(false);
   const [scanMsg, setScanMsg] = useState<string | null>(null);
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
+  const [purchasesLoaded, setPurchasesLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   // 카톡 발주 알림 — 허용 계정에만 [발주] 버튼 노출, jobs 는 기록별 전송 상태(pending|sent|failed)
   const [kakao, setKakao] = useState<{ allowed: boolean; jobs: Record<string, string> }>({ allowed: false, jobs: {} });
@@ -52,6 +54,7 @@ export default function GardenService() {
   const refreshPurchases = async () => {
     const res = await fetch('/api/purchases', { cache: 'no-store' });
     if (res.ok) setPurchases(await res.json());
+    setPurchasesLoaded(true);
   };
   useEffect(() => {
     refreshPurchases();
@@ -138,7 +141,7 @@ export default function GardenService() {
       const pv = await fetch(`/api/kakao-notify?purchaseId=${encodeURIComponent(rec.id)}`, { cache: 'no-store' });
       const pj = await pv.json().catch(() => null);
       if (!pv.ok || !pj?.message) {
-        alert(pj?.error ?? '미리보기를 불러오지 못했습니다.');
+        toast(pj?.error ?? '미리보기를 불러오지 못했습니다.', 'error');
         return;
       }
       setKakaoPreview({ recId: rec.id, bean: rec.bean, room: pj.room, message: pj.message });
@@ -151,7 +154,7 @@ export default function GardenService() {
   const confirmKakaoSend = async () => {
     if (!kakaoPreview || kakaoSending) return;
     if (!kakaoPreview.message.trim()) {
-      alert('빈 메시지는 보낼 수 없습니다.');
+      toast('빈 메시지는 보낼 수 없습니다.', 'error');
       return;
     }
     setKakaoSending(kakaoPreview.recId);
@@ -166,7 +169,7 @@ export default function GardenService() {
         setKakao((k) => ({ ...k, jobs: { ...k.jobs, [kakaoPreview.recId]: j.job.status } }));
         setKakaoPreview(null);
       } else if (j?.error) {
-        alert(j.error);
+        toast(j.error, 'error');
       }
     } finally {
       setKakaoSending(null);
@@ -183,7 +186,7 @@ export default function GardenService() {
     });
     if (!res.ok) {
       const j = await res.json().catch(() => null);
-      alert(j?.error ?? '수령 기재에 실패했습니다.');
+      toast(j?.error ?? '수령 기재에 실패했습니다.', 'error');
     }
     setReceivingId(null);
     refreshPurchases();
@@ -463,7 +466,13 @@ export default function GardenService() {
         </div>
 
         {/* 발주 기록 — 같은 원두 재발주 시 원가·판매가 비교 */}
-        {purchases.length > 0 && (
+        {!purchasesLoaded && (
+          <div className="ta-card bg-background min-w-0">
+            <p className="ta-label">이전 발주 리스트</p>
+            <p className="text-[12px] text-muted-foreground" style={{ margin: 0 }}>불러오는 중…</p>
+          </div>
+        )}
+        {purchasesLoaded && purchases.length > 0 && (
           <div className="ta-card bg-background min-w-0">
             <p className="ta-label">이전 발주 리스트</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
