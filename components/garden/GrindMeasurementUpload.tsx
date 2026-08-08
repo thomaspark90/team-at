@@ -14,6 +14,36 @@ import { fetchGrindMeasurements, primeGrindMeasurements } from '@/lib/garden/mea
 
 const COMPASS_URL = 'https://community.unspecialty.com/compass/grinder';
 
+// EXIF 회전 반영 로드 (옵션 미지원 브라우저는 기본 동작 폴백) — TransferPanel과 동일 패턴
+async function loadBitmap(file: File | Blob): Promise<ImageBitmap> {
+  try {
+    return await createImageBitmap(file, { imageOrientation: 'from-image' });
+  } catch {
+    return await createImageBitmap(file);
+  }
+}
+
+// 컴퍼스 캡처(보통 PNG 2~5MB)를 업로드·AI 인식 앞에서 축소 — 원본 그대로 올리면 업로드가
+// 느리다(2026-08-08 대표 지적). 히스토그램·숫자 가독성은 유지하도록 화면 캡처치곤 넉넉한
+// 1800px·JPEG 0.85 사용 (사진 압축용 TransferPanel의 1400px·0.8보다 살짝 높게).
+async function compressCapture(file: File): Promise<File> {
+  try {
+    const bmp = await loadBitmap(file);
+    const scale = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * scale);
+    const h = Math.round(bmp.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext('2d')!.drawImage(bmp, 0, 0, w, h);
+    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
+    if (!blob || blob.size >= file.size) return file; // 압축이 오히려 커지면 원본 유지
+    return new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' });
+  } catch {
+    return file; // 캔버스 실패(HEIC 등) — 원본으로 폴백, 서버가 그대로 받는다
+  }
+}
+
 // 현행 측정 프로토콜 (2026-08-07 판교 재얼라인 이후) — 다이얼 6/8/10 × 각 3샷 × 두 지점
 const PROTOCOL_DIALS = [6, 8, 10];
 const SHOTS_PER_DIAL = 3;
@@ -123,19 +153,29 @@ export default function GrindMeasurementUpload() {
     setSaving(true);
     setError(null);
     try {
-      const imageUrls: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        setUploadState({ done: i, total: files.length, pct: Math.round((i / files.length) * 100) });
-        const blob = await upload(`grind-measurements/${Date.now()}-${file.name}`, file, {
-          access: 'public',
-          handleUploadUrl: '/api/upload',
-          onUploadProgress: ({ percentage }) => {
-            setUploadState({ done: i, total: files.length, pct: Math.round(((i + percentage / 100) / files.length) * 100) });
-          },
+      // 병렬 업로드 — 파일은 이미 선택 시 압축돼 있다(compressCapture). 순차보다 왕복 지연이
+      // 줄어 체감 속도가 빠르다. 진행률은 파일별 퍼센트 배열의 평균으로 집계.
+      const perFilePct = new Array(files.length).fill(0);
+      const reportProgress = () =>
+        setUploadState({
+          done: perFilePct.filter((p) => p >= 100).length,
+          total: files.length,
+          pct: Math.round(perFilePct.reduce((s, p) => s + p, 0) / files.length),
         });
-        imageUrls.push(blob.url);
-      }
+      reportProgress();
+      const uploaded = await Promise.all(
+        files.map((file, i) =>
+          upload(`grind-measurements/${Date.now()}-${i}-${file.name}`, file, {
+            access: 'public',
+            handleUploadUrl: '/api/upload',
+            onUploadProgress: ({ percentage }) => {
+              perFilePct[i] = percentage;
+              reportProgress();
+            },
+          }),
+        ),
+      );
+      const imageUrls = uploaded.map((b) => b.url);
       setUploadState(null); // 이미지 끝 — 이후는 수치 저장(짧음)이라 '저장 중…'으로 전환
       const res = await fetch('/api/garden-grind-measurements', {
         method: 'POST',
@@ -327,10 +367,13 @@ export default function GrindMeasurementUpload() {
               accept="image/*"
               multiple
               style={{ display: 'none' }}
-              onChange={(e) => {
+              onChange={async (e) => {
                 const list = Array.from(e.target.files ?? []);
-                setFiles(list);
-                if (list.length > 0) scanImage(list[0]); // 첫 장 자동 판독 → 수치 자동 입력
+                if (list.length === 0) return;
+                // 선택 즉시 압축(보통 <1초/장) — 이후 인식·업로드가 이 축소본을 쓴다
+                const compressed = await Promise.all(list.map(compressCapture));
+                setFiles(compressed);
+                scanImage(compressed[0]); // 첫 장 자동 판독 → 수치 자동 입력
               }}
             />
           </label>
