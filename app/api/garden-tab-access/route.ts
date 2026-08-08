@@ -174,8 +174,27 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: '본인 계정은 삭제할 수 없습니다.' }, { status: 400 });
     }
 
+    // 송금 요청 기록은 requester_id 가 ON DELETE CASCADE 라 계정과 함께 지워진다 —
+    // 기록 유실을 막기 위해 이력이 있으면 삭제를 거부한다(차단은 권한 끄기·허용 해제로).
+    const { count: transferCount } = await svc
+      .from('transfer_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('requester_id', userId);
+    if ((transferCount ?? 0) > 0) {
+      return NextResponse.json(
+        { error: `이 계정의 송금 요청 기록 ${transferCount}건이 함께 삭제됩니다 — 기록 보존을 위해 삭제 대신 접근 권한을 모두 끄고(외부 계정은 허용 해제) 차단하세요.` },
+        { status: 409 },
+      );
+    }
+
     const { error: delErr } = await svc.auth.admin.deleteUser(userId);
-    if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
+    if (delErr) {
+      // 회계 기록(거래 분류·업로드·월결산 등)이 이 계정을 참조하면 DB 가 삭제를 거부한다(FK)
+      const friendly = /foreign key|violates/i.test(delErr.message)
+        ? '이 계정이 남긴 회계 기록이 있어 삭제할 수 없습니다 — 기록 보존을 위해 삭제 대신 접근 권한을 모두 끄고(외부 계정은 허용 해제) 차단하세요.'
+        : delErr.message;
+      return NextResponse.json({ error: friendly }, { status: 409 });
+    }
     // 권한 행·외부 허용 목록도 함께 제거 — 외부 계정은 이걸로 재로그인까지 차단된다
     await svc.from('garden_tab_access').delete().eq('user_id', userId);
     await svc.from('allowed_emails').delete().eq('email', email);
