@@ -297,6 +297,15 @@ export default function ClassifyPanel({
       else pageSelectableIds.forEach((id) => n.add(id));
       return n;
     });
+  // 검색 결과 전체 선택 — 페이지 경계를 넘어(예: 특정 배송지 태그 검색) 한 번에 선택할 때 사용
+  const allFilteredSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
+  const toggleAllFiltered = () =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (allFilteredSelected) selectableIds.forEach((id) => n.delete(id));
+      else selectableIds.forEach((id) => n.add(id));
+      return n;
+    });
 
   async function bulkClassify(catId: number) {
     const targets = rows.filter((r) => selected.has(r.id) && !isLocked(r));
@@ -665,6 +674,14 @@ export default function ClassifyPanel({
           placeholder="가맹점·내용 검색"
           className="ta-input min-w-[160px] flex-1 text-[13px]"
         />
+        {search.trim() && selectableIds.length > 0 && (
+          <button
+            onClick={toggleAllFiltered}
+            className="whitespace-nowrap text-[13px] text-primary underline underline-offset-2"
+          >
+            {allFilteredSelected ? '검색결과 선택 해제' : `검색결과 ${selectableIds.length}건 전체 선택`}
+          </button>
+        )}
         {catFilterActive && (
           <button
             onClick={() => setCatFilter({})}
