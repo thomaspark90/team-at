@@ -86,16 +86,29 @@ export default function GrindMeasurementUpload() {
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? `인식 실패 (${res.status})`);
       const e = j.extraction as { dial: number | null; meanUm: number | null; stdUm: number | null; finesPct: number | null };
-      const got: string[] = [];
-      setDraft((d) => {
-        const next = { ...d };
-        if (d.dial.trim() === '' && e.dial != null) { next.dial = String(e.dial); got.push(`다이얼 ${e.dial}`); }
-        if (d.mean.trim() === '' && e.meanUm != null) { next.mean = String(Math.round(e.meanUm)); got.push(`평균 ${Math.round(e.meanUm)}µm`); }
-        if (d.std.trim() === '' && e.stdUm != null) { next.std = String(Math.round(e.stdUm * 10) / 10); got.push(`σ ${Math.round(e.stdUm * 10) / 10}`); }
-        if (d.fines.trim() === '' && e.finesPct != null) { next.fines = String(e.finesPct); got.push(`미분 ${e.finesPct}%`); }
-        return next;
-      });
-      setScanNote(got.length > 0 ? `✓ 이미지에서 자동 입력: ${got.join(' · ')} — 확인 후 저장하세요` : '이미지에서 수치를 찾지 못했어요 — 직접 입력해주세요');
+      // 채울 값·안내 문구를 업데이트 함수 밖에서 계산 — updater 는 나중에 실행되므로
+      // 그 안에서 목록을 채우면 메시지 시점엔 항상 비어 있다(2026-08-08 '못 찾았어요' 오표기 버그)
+      const fills: { key: 'dial' | 'mean' | 'std' | 'fines'; value: string; label: string }[] = [];
+      if (draft.dial.trim() === '' && e.dial != null) fills.push({ key: 'dial', value: String(e.dial), label: `다이얼 ${e.dial}` });
+      if (draft.mean.trim() === '' && e.meanUm != null) fills.push({ key: 'mean', value: String(Math.round(e.meanUm)), label: `평균 ${Math.round(e.meanUm)}µm` });
+      if (draft.std.trim() === '' && e.stdUm != null) fills.push({ key: 'std', value: String(Math.round(e.stdUm * 10) / 10), label: `σ ${Math.round(e.stdUm * 10) / 10}` });
+      if (draft.fines.trim() === '' && e.finesPct != null) fills.push({ key: 'fines', value: String(e.finesPct), label: `미분 ${e.finesPct}%` });
+      if (fills.length > 0) {
+        // 스캔하는 1~2초 사이 사용자가 타이핑했을 수 있으니 적용 시점에 빈 칸만 채운다
+        setDraft((d) => {
+          const next = { ...d };
+          for (const f of fills) if (d[f.key].trim() === '') next[f.key] = f.value;
+          return next;
+        });
+      }
+      const recognized = [e.dial, e.meanUm, e.stdUm, e.finesPct].some((v) => v != null);
+      setScanNote(
+        fills.length > 0
+          ? `✓ 이미지에서 자동 입력: ${fills.map((f) => f.label).join(' · ')} — 확인 후 저장하세요`
+          : recognized
+            ? '인식됨 — 이미 입력된 값이 있어 덮지 않았어요'
+            : '이미지에서 수치를 찾지 못했어요 — 직접 입력해주세요',
+      );
     } catch (err) {
       setScanNote(`자동 인식 실패 — 직접 입력해주세요 (${(err as Error).message})`);
     } finally {
