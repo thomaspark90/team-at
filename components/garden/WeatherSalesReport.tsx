@@ -28,10 +28,60 @@ interface Payload {
   categories: Record<string, { category: string; qty: number; supply: number }[]>;
   computedAt?: string;
   cached?: boolean;
+  /** 지점별 월 시계열(영업일·일평균) — 구 캐시엔 없을 수 있음 */
+  monthly?: Record<string, { ym: string; days: number; supplyPerDay: number; qtyPerDay: number }[]>;
+  /** 지점별 1~12월 계절 팩터(1.0=연평균 일매출, 표본 부족 월 null) */
+  seasonalFactors?: Record<string, (number | null)[]>;
 }
 
 const STORE_LABEL: Record<string, string> = { pangyo: '판교', yangjae: '양재천', '-': '(지점 미지정)' };
 const pctText = (p: number) => `${p > 0 ? '+' : ''}${p.toFixed(0)}%`;
+
+// 월별 계절 곡선 + 계절 팩터 — 발주 계획용. 막대 = 그 달의 계절 팩터(1.0 = 연평균 일매출).
+function SeasonalCurve({
+  store,
+  factors,
+  monthly,
+}: {
+  store: string;
+  factors: (number | null)[];
+  monthly: { ym: string; days: number; supplyPerDay: number }[];
+}) {
+  const max = Math.max(1, ...factors.filter((f): f is number => f != null));
+  const span = monthly.length > 0 ? `${monthly[0].ym} ~ ${monthly[monthly.length - 1].ym}` : '';
+  return (
+    <div>
+      <p className="m-0 mb-2 text-[13px] font-medium">
+        {STORE_LABEL[store] ?? store} <span className="tabular font-normal text-muted-foreground text-[11px]">({span})</span>
+      </p>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+        {factors.map((f, m) => (
+          <div key={m} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, width: 44 }}>
+            <span className={`tabular text-[11px] ${f != null && f >= 1 ? 'text-foreground' : 'text-muted-foreground'}`}>
+              {f != null ? f.toFixed(2) : '—'}
+            </span>
+            <div style={{ position: 'relative', width: '100%', height: 56, background: 'hsl(var(--muted) / 0.5)', borderRadius: 2, overflow: 'hidden' }}>
+              {f != null && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: 2,
+                    right: 2,
+                    bottom: 0,
+                    height: `${Math.max(4, (f / max) * 100)}%`,
+                    background: 'hsl(var(--foreground))',
+                    borderRadius: 1,
+                  }}
+                />
+              )}
+            </div>
+            <span className="tabular text-[11px] text-muted-foreground">{m + 1}월</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function EffectRow({ e }: { e: BandEffect }) {
   const sig = Math.abs(e.t) >= 2;
@@ -191,6 +241,24 @@ export default function WeatherSalesReport() {
           )}
         </div>
       </section>
+
+      {/* 월별 계절 곡선 · 계절 팩터 — 발주 계획의 기준선. 구 캐시엔 없어서 '다시 계산' 후 표시됨 */}
+      {data.seasonalFactors && data.monthly && (
+        <section className="rounded-md border border-border bg-background" style={{ padding: 18 }}>
+          <p className="ta-label">월별 계절 팩터 (1.0 = 연평균 일매출)</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, overflowX: 'auto' }}>
+            {Object.entries(data.seasonalFactors)
+              .filter(([store]) => store !== '-')
+              .map(([store, factors]) => (
+                <SeasonalCurve key={store} store={store} factors={factors} monthly={data.monthly?.[store] ?? []} />
+              ))}
+          </div>
+          <p className="m-0 mt-2 text-[11px] text-muted-foreground/80">
+            발주 계획: 연평균 대비 그 달을 몇 %로 잡을지의 기준선. 성장 트렌드 미보정 원시 평균이라 신규 지점 초기 달은
+            낮게, 최근 달은 높게 나올 수 있어요. 영업 10일 미만인 달은 제외(—).
+          </p>
+        </section>
+      )}
 
       {data.series.map((s) => (
         <SeriesCard key={s.key} s={s} />

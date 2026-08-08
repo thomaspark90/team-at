@@ -202,6 +202,44 @@ export async function GET(req: Request) {
     ]),
   );
 
+  // 월별 계절 곡선 + 계절 팩터 — 발주 계획용. 팩터 = 해당 월 일평균 매출 ÷ 전체 일평균 매출.
+  // 성장 트렌드는 보정하지 않은 원시 평균(화면에 캡션 명시), 영업 10일 미만인 달은 팩터 제외.
+  const monthly: Record<string, { ym: string; days: number; supplyPerDay: number; qtyPerDay: number }[]> = {};
+  const seasonalFactors: Record<string, (number | null)[]> = {};
+  for (const [store, daysMap] of Array.from(byStore.entries())) {
+    const perYm = new Map<string, { days: number; supply: number; qty: number }>();
+    for (const [date, d] of Array.from(daysMap.entries())) {
+      if (d.supply <= 0) continue; // 휴무 제외
+      const ym = date.slice(0, 7);
+      const acc = perYm.get(ym) ?? { days: 0, supply: 0, qty: 0 };
+      acc.days += 1;
+      acc.supply += d.supply;
+      acc.qty += d.qty;
+      perYm.set(ym, acc);
+    }
+    const yms2 = Array.from(perYm.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    monthly[store] = yms2.map(([ym, a]) => ({
+      ym,
+      days: a.days,
+      supplyPerDay: Math.round(a.supply / a.days),
+      qtyPerDay: Math.round((a.qty / a.days) * 10) / 10,
+    }));
+    const byMonth = Array.from({ length: 12 }, () => ({ supply: 0, days: 0 }));
+    let totSupply = 0;
+    let totDays = 0;
+    for (const [ym, a] of yms2) {
+      const m = Number(ym.slice(5, 7)) - 1;
+      byMonth[m].supply += a.supply;
+      byMonth[m].days += a.days;
+      totSupply += a.supply;
+      totDays += a.days;
+    }
+    const overall = totDays > 0 ? totSupply / totDays : 0;
+    seasonalFactors[store] = byMonth.map((b) =>
+      b.days >= 10 && overall > 0 ? Math.round((b.supply / b.days / overall) * 100) / 100 : null,
+    );
+  }
+
   // 요일별 기준 잔수(양재천 COFFEE, 최근 8주) — 날씨 스트립의 '예상 잔수·원두' 환산용 베이스라인.
   // 예보 화면은 재무 권한이 없어도 보므로, 여기서 계산한 값을 상수(weatherImpact)로 옮겨 쓴다.
   const coffeeDates = Array.from(coffeeYangjae.keys()).sort();
@@ -217,7 +255,15 @@ export async function GET(req: Request) {
   }
   const yangjaeCoffeeCupsByDow = dowSum.map((s, i) => (dowN[i] > 0 ? Math.round(s / dowN[i]) : 0));
 
-  const payload = { coverage, weatherDays: weather.size, series, categories, baselines: { yangjaeCoffeeCupsByDow } };
+  const payload = {
+    coverage,
+    weatherDays: weather.size,
+    series,
+    categories,
+    baselines: { yangjaeCoffeeCupsByDow },
+    monthly,
+    seasonalFactors,
+  };
   const computedAt = new Date().toISOString();
   try {
     await put(CACHE_PATH, JSON.stringify({ computedAt, payload }), {
