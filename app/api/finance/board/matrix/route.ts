@@ -19,11 +19,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: '회계 권한이 없습니다.' }, { status: 403 });
   }
 
-  const brandRaw = new URL(req.url).searchParams.get('brand');
+  const params = new URL(req.url).searchParams;
+  const brandRaw = params.get('brand');
   const brand = brandRaw && ['garden', 'staffmeal', 'personal'].includes(brandRaw) ? brandRaw : undefined;
+  // ?store= (가든 지점 페이지) — POS 열을 그 지점만으로 좁힌다
+  const storeRaw = params.get('store');
+  const store = storeRaw && ['yangjae', 'pangyo'].includes(storeRaw) ? storeRaw : undefined;
 
   try {
-    return NextResponse.json(await computeBoardMatrix(supabase, brand));
+    return NextResponse.json(await computeBoardMatrix(supabase, brand, store));
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : '집계에 실패했어요.' }, { status: 500 });
   }

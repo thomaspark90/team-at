@@ -29,6 +29,7 @@ export default function MonthShell({
   children,
   initialTodos,
   brand,
+  store,
   navigate = false,
   badgeKind = 'todos',
 }: {
@@ -37,6 +38,8 @@ export default function MonthShell({
   initialTodos?: Record<string, number>;
   // 페이지의 브랜드 — 배지를 이 브랜드 몫만 집계한다(미지정 = 전 브랜드 합산)
   brand?: string;
+  // 가든 지점 페이지 — POS 항목 배지를 이 지점만 집계(각 지점은 자기 지점 POS 자료만 요청)
+  store?: string;
   // true = 달 선택 시 router.replace 로 실제 내비게이션(서버 컴포넌트가 ?ym= 로 데이터를 다시 계산하는
   // 페이지용 — 관리손익 등). false(기본) = replaceState 얕은 갱신(클라이언트 필터만 바뀌는 페이지).
   navigate?: boolean;
@@ -79,6 +82,7 @@ export default function MonthShell({
     try {
       const qs = new URLSearchParams();
       if (brand) qs.set('brand', brand);
+      if (store) qs.set('store', store);
       if (badgeKind !== 'todos') qs.set('kind', badgeKind);
       const res = await fetch(`/api/finance/board/todos${qs.size ? `?${qs}` : ''}`);
       const j = await res.json();
@@ -86,7 +90,7 @@ export default function MonthShell({
     } catch {
       /* 배지는 부가 정보 — 실패해도 조용히 스킵 */
     }
-  }, [brand, badgeKind]);
+  }, [brand, store, badgeKind]);
 
   const hasInitial = initialTodos !== undefined;
   useEffect(() => {

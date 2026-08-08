@@ -22,6 +22,9 @@ export async function GET(req: Request) {
   const params = new URL(req.url).searchParams;
   const brandRaw = params.get('brand');
   const brand = brandRaw && ['garden', 'staffmeal', 'personal'].includes(brandRaw) ? brandRaw : undefined;
+  // ?store= (가든 지점 페이지) — POS 항목 집계를 그 지점만으로 좁힌다
+  const storeRaw = params.get('store');
+  const store = storeRaw && ['yangjae', 'pangyo'].includes(storeRaw) ? storeRaw : undefined;
   // kind=uncl → 월별 미분류 '건수'(분류 화면 배지). 기본 = 남은 업무 수(자료 입력 배지)
   const kind = params.get('kind') === 'uncl' ? 'uncl' : 'todos';
 
@@ -30,7 +33,7 @@ export async function GET(req: Request) {
       counts:
         kind === 'uncl'
           ? await computeUnclassifiedByMonth(supabase, brand)
-          : await computeBoardTodos(supabase, brand),
+          : await computeBoardTodos(supabase, brand, store),
     });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : '집계에 실패했어요.' }, { status: 500 });

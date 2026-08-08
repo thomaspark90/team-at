@@ -43,7 +43,9 @@ async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<Quer
   return { data: all, error: null };
 }
 
-async function collectBoardData(supabase: SupabaseClient, brand?: string): Promise<BoardData> {
+// store 지정(가든 지점 페이지) 시 POS 요구를 그 지점만으로 좁힌다 — 각 지점 페이지는
+// 자기 지점 POS 자료만 요청(2026-08-08). 미지정이면 브랜드 전 지점(대시보드 등 기존 동작).
+async function collectBoardData(supabase: SupabaseClient, brand?: string, store?: string): Promise<BoardData> {
   const now = new Date();
   const currentYm = toYm(now);
   const prevYm = toYm(new Date(now.getFullYear(), now.getMonth() - 1, 1));
@@ -89,7 +91,8 @@ async function collectBoardData(supabase: SupabaseClient, brand?: string): Promi
     if (!posByYm.has(ym)) posByYm.set(ym, new Set());
     posByYm.get(ym)!.add(String(p.store ?? ''));
   }
-  const posStores = brand === 'garden' ? ['yangjae', 'pangyo'] : brand === 'staffmeal' ? [''] : [];
+  const posStores =
+    brand === 'garden' ? (store ? [store] : ['yangjae', 'pangyo']) : brand === 'staffmeal' ? [''] : [];
 
   // 월확정은 단위별 (ym,brand,store) — 가든은 양재천·판교 둘 다 확정돼야 그 달 완료.
   // 그 외(스탭밀 등·브랜드 미지정 전역)는 확정 행이 있으면 완료(기존 동작 유지).
@@ -187,8 +190,13 @@ function slotState(d: BoardData, ym: string, key: string): SlotState {
 // 남은 업무 = 미완료 업로드 슬롯 + 미분류가 남은 출처 수 + 월 확정(자료 있고 미확정이면 1) + POS 미입력 지점.
 // 확정된 달·이번 달 이후·자료 없는 옛날 달은 0 (배지 없음).
 // brand 지정 시 그 브랜드 몫만 집계(페이지가 브랜드 고정) — 미지정은 전 브랜드 합산(구버전 호환).
-export async function computeBoardTodos(supabase: SupabaseClient, brand?: string): Promise<Record<string, number>> {
-  const d = await collectBoardData(supabase, brand);
+// store 지정(가든 지점 페이지) 시 POS 항목은 그 지점만 집계.
+export async function computeBoardTodos(
+  supabase: SupabaseClient,
+  brand?: string,
+  store?: string
+): Promise<Record<string, number>> {
+  const d = await collectBoardData(supabase, brand, store);
   const counts: Record<string, number> = {};
   for (const ym of d.months) {
     const sources = d.perMonth.get(ym) ?? {};
@@ -242,8 +250,9 @@ export interface BoardMatrix {
   slots: { key: string; label: string }[];
   posStores: string[];
 }
-export async function computeBoardMatrix(supabase: SupabaseClient, brand?: string): Promise<BoardMatrix> {
-  const d = await collectBoardData(supabase, brand);
+// store 지정(가든 지점 페이지) 시 POS 열은 그 지점만 노출.
+export async function computeBoardMatrix(supabase: SupabaseClient, brand?: string, store?: string): Promise<BoardMatrix> {
+  const d = await collectBoardData(supabase, brand, store);
   const hasAny = (ym: string) =>
     Object.values(d.perMonth.get(ym) ?? {}).some((s) => s.total > 0) ||
     (d.slotAcc.get(ym)?.size ?? 0) > 0 ||

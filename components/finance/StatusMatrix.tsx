@@ -19,10 +19,13 @@ const POS_LABEL: Record<string, string> = {
 export default function StatusMatrix({
   brand,
   unitId,
+  store,
   initialData,
 }: {
   brand: Brand;
   unitId?: string;
+  // 가든 지점 페이지 — POS 열을 이 지점만 노출(각 지점은 자기 지점 POS 자료만 요청, 2026-08-08)
+  store?: string;
   // 서버 컴포넌트가 미리 집계한 매트릭스 — 있으면 첫 화면부터 완성본이 뜬다('불러오는 중' 깜빡임 제거)
   initialData?: BoardMatrix;
 }) {
@@ -35,7 +38,7 @@ export default function StatusMatrix({
   const hasInitial = initialData !== undefined;
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/finance/board/matrix?brand=${brand}`);
+      const res = await fetch(`/api/finance/board/matrix?brand=${brand}${store ? `&store=${store}` : ''}`);
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '현황을 불러오지 못했어요.');
       setData(j as BoardMatrix);
@@ -43,7 +46,7 @@ export default function StatusMatrix({
     } catch (e) {
       setError((e as Error).message);
     }
-  }, [brand]);
+  }, [brand, store]);
 
   useEffect(() => {
     if (!hasInitial) load();

@@ -38,10 +38,12 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
   const posUnitKey = unit.id === 'staffmeal' ? 'staffmeal' : `garden-${unit.store}`;
   // 브랜드별 사용 은행 + 매트릭스·월 배지 서버 프리페치(병렬) — 첫 화면부터 완성본이 뜨게
   // ('불러오는 중…' 후 채워지는 이단 로딩 제거, 2026-08-03 대표 지시)
+  // 가든 지점 페이지는 POS 요구를 자기 지점만으로 좁힌다 — 각 지점은 자기 지점 POS 자료만 요청(2026-08-08)
+  const store = unit.store ?? undefined;
   const [banks, initialTodos, initialMatrix] = await Promise.all([
     getBrandBanks(supabase, unit.brand),
-    computeBoardTodos(supabase, unit.brand).catch(() => undefined),
-    computeBoardMatrix(supabase, unit.brand).catch(() => undefined),
+    computeBoardTodos(supabase, unit.brand, store).catch(() => undefined),
+    computeBoardMatrix(supabase, unit.brand, store).catch(() => undefined),
   ]);
 
   return (
@@ -72,9 +74,9 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
           </div>
 
           {/* 좌측 고정 연·월 사이드바(MonthShell) — POS 매출부터 하단 업로더까지 전부 오른쪽 열로 */}
-          <MonthShell brand={unit.brand} initialTodos={initialTodos}>
+          <MonthShell brand={unit.brand} store={store} initialTodos={initialTodos}>
             {/* 0) 전체 자료 현황 매트릭스 — 연·월 × 자료 종류 미입력 한눈 조망(2026-08-02 대표 지시) */}
-            <StatusMatrix brand={unit.brand} unitId={unit.id} initialData={initialMatrix} />
+            <StatusMatrix brand={unit.brand} unitId={unit.id} store={store} initialData={initialMatrix} />
 
             {/* 0-1) 잔액 연속성 감사 — 소급 업로드 후 빠진 구간(누락 파일) 최종 점검(2026-08-03) */}
             <ContinuityAudit brand={unit.brand} />
