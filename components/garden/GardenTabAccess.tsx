@@ -103,6 +103,32 @@ export default function GardenTabAccess({
   const [allowed, setAllowed] = useState<string[]>(initialAllowed);
   const [newEmail, setNewEmail] = useState('');
   const [adding, setAdding] = useState(false);
+  // 알림 설정(항목별 담당자·송금/재고 수신자)에 수기로 입력된 이메일 — 사전 등록 드롭다운 후보.
+  // 조회 실패는 조용히 스킵: 드롭다운만 안 뜨고 직접 입력은 그대로 된다.
+  const [manualEmails, setManualEmails] = useState<string[]>([]);
+
+  useEffect(() => {
+    Promise.allSettled([
+      fetch('/api/garden-notify-topics', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})),
+      fetch('/api/notify/recipients', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})),
+    ]).then(([topics, rec]) => {
+      const fromTopics =
+        topics.status === 'fulfilled'
+          ? (Object.values(topics.value as Record<string, string[]>).flat() as string[])
+          : [];
+      const fromRecipients =
+        rec.status === 'fulfilled'
+          ? (((rec.value as { recipients?: { email: string }[] })?.recipients ?? []).map((r) => r.email) as string[])
+          : [];
+      setManualEmails(
+        Array.from(new Set([...fromTopics, ...fromRecipients].map((e) => String(e).trim().toLowerCase()))).sort()
+      );
+    });
+  }, []);
+
+  // 이미 계정이 있거나 허용 목록에 있는 이메일은 후보에서 제외
+  const registered = new Set([...users.map((u) => u.email.toLowerCase()), ...allowed.map((e) => e.toLowerCase())]);
+  const preRegCandidates = manualEmails.filter((e) => !registered.has(e));
 
   useEffect(() => {
     setUsers(initial);
@@ -361,7 +387,24 @@ export default function GardenTabAccess({
           등록된 계정에 자동 연결돼요. <b>권한을 따로 끄지 않으면 전체 접근</b>이니, 추가 직후 열리는
           권한 설정에서 필요한 화면만 켜두세요.
         </p>
-        <div style={{ display: 'flex', gap: 8, minWidth: 0 }}>
+        <div style={{ display: 'flex', gap: 8, minWidth: 0, flexWrap: 'wrap' }}>
+          {preRegCandidates.length > 0 && (
+            <select
+              // 선택하면 입력칸에 채워 확인 후 '추가'로 확정하는 방식 — 오선택으로 바로 등록되지 않게
+              value=""
+              onChange={(e) => e.target.value && setNewEmail(e.target.value)}
+              className="ta-input"
+              style={{ flexShrink: 0, width: 220 }}
+              aria-label="알림 설정에 수기로 입력된 이메일 선택"
+            >
+              <option value="">알림 설정의 이메일 불러오기…</option>
+              {preRegCandidates.map((e) => (
+                <option key={e} value={e}>
+                  {e}
+                </option>
+              ))}
+            </select>
+          )}
           <input
             type="email"
             value={newEmail}
@@ -369,7 +412,7 @@ export default function GardenTabAccess({
             onKeyDown={(e) => e.key === 'Enter' && addEmail()}
             placeholder="example@gmail.com"
             className="ta-input"
-            style={{ flex: 1, minWidth: 0 }}
+            style={{ flex: 1, minWidth: 180 }}
           />
           <button onClick={addEmail} disabled={adding || !newEmail.trim()} className="ta-btn" style={{ flexShrink: 0 }}>
             {adding ? '추가 중…' : '추가'}
