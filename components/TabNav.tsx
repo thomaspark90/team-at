@@ -106,7 +106,7 @@ export default function TabNav() {
       <nav
         aria-label="모바일 메뉴"
         aria-hidden={!menuOpen}
-        className={`absolute left-0 right-0 top-full z-40 h-[calc(100dvh-3rem)] overflow-y-auto bg-background transition-all duration-200 ease-out sm:hidden ${
+        className={`absolute left-0 right-0 top-full z-40 h-[calc(100dvh-3rem)] overflow-y-auto bg-background/95 backdrop-blur-sm transition-all duration-200 ease-out sm:hidden ${
           menuOpen ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-2 opacity-0'
         }`}
       >
