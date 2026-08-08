@@ -30,6 +30,8 @@ export interface BandEffect {
 export interface RegressionResult {
   n: number;
   r2: number;
+  /** 기온 기준 밴드 라벨(관측 최다 밴드 자동 선택) — 효과는 이 밴드 대비 % */
+  tempRef: string;
   temp: BandEffect[];
   rain: BandEffect[];
   /** 트렌드: 기간 처음→끝 기준 % 변화 (신규 매장 성장 등) */
@@ -40,10 +42,12 @@ export interface RegressionResult {
   holidayT: number | null;
 }
 
+// 기온 밴드 전체 — 기준(레퍼런스)은 표본에서 관측일이 가장 많은 밴드를 자동 선택한다.
+// 고정 기준(10–20°)을 쓰면 여름만 있는 표본(양재천)에선 기준일이 2일뿐이라 모든 계수가 불안정해진다(2026-08-08 실측).
 const TEMP_BANDS: { key: string; label: string; test: (t: number) => boolean }[] = [
   { key: 'temp:<0', label: '영하', test: (t) => t < 0 },
   { key: 'temp:0-10', label: '0–10°', test: (t) => t >= 0 && t < 10 },
-  // 10–20° = 기준(더미 없음)
+  { key: 'temp:10-20', label: '10–20°', test: (t) => t >= 10 && t < 20 },
   { key: 'temp:20-25', label: '20–25°', test: (t) => t >= 20 && t < 25 },
   { key: 'temp:25-30', label: '25–30°', test: (t) => t >= 25 && t < 30 },
   { key: 'temp:30+', label: '30° 이상', test: (t) => t >= 30 },
@@ -91,10 +95,10 @@ export function regressWeather(sales: SalesDay[], weather: Map<string, WeatherDa
     .sort((a, b) => a.date.localeCompare(b.date));
   if (obs.length < 40) return null; // 최소 표본 — 더미 수 대비 여유
 
-  // 관측 있는 밴드만 컬럼으로 (0관측 더미는 특이행렬을 만든다)
-  const tempCols = TEMP_BANDS.map((band) => ({ ...band, n: obs.filter((o) => band.test(o.w.tmax)).length })).filter(
-    (band) => band.n >= 3,
-  );
+  // 기온 기준 밴드 = 관측 최다 밴드. 나머지 중 관측 있는 밴드만 컬럼으로 (0관측 더미는 특이행렬을 만든다)
+  const tempCounts = TEMP_BANDS.map((band) => ({ ...band, n: obs.filter((o) => band.test(o.w.tmax)).length }));
+  const tempRef = tempCounts.reduce((best, b) => (b.n > best.n ? b : best), tempCounts[0]);
+  const tempCols = tempCounts.filter((band) => band.key !== tempRef.key && band.n >= 3);
   const rainCols = RAIN_BANDS.map((band) => ({ ...band, n: obs.filter((o) => band.test(o.w.rainMm)).length })).filter(
     (band) => band.n >= 3,
   );
@@ -156,6 +160,7 @@ export function regressWeather(sales: SalesDay[], weather: Map<string, WeatherDa
   return {
     n: obs.length,
     r2: sst > 0 ? 1 - sse / sst : 0,
+    tempRef: tempRef.label,
     temp,
     rain,
     trendPct: (Math.exp(beta[jTrend]) - 1) * 100,

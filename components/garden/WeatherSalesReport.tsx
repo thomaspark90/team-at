@@ -77,7 +77,7 @@ function SeriesCard({ s }: { s: Series }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <p className="ta-label" style={{ marginBottom: 2 }}>기온 (기준 10–20°)</p>
+            <p className="ta-label" style={{ marginBottom: 2 }}>기온 (기준 {s.result.tempRef ?? '10–20°'})</p>
             {s.result.temp.map((e) => (
               <EffectRow key={e.band} e={e} />
             ))}
