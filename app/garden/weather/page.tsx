@@ -1,5 +1,6 @@
 import TabNav from '@/components/TabNav';
 import GardenNav from '@/components/garden/GardenNav';
+import OrderOutlookCard from '@/components/garden/OrderOutlookCard';
 import WeatherSalesReport from '@/components/garden/WeatherSalesReport';
 
 // 날씨 × 판매 분석 — 대시보드 날씨 스트립에서 진입하는 재무 권한자용 리포트.
@@ -18,6 +19,7 @@ export default function GardenWeatherPage() {
             비 없음 · 요일/트렌드 통제.
           </p>
         </div>
+        <OrderOutlookCard />
         <WeatherSalesReport />
       </div>
     </div>

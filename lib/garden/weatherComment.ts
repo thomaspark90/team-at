@@ -2,7 +2,14 @@
 // 계수(날씨×판매 회귀)가 확정되기 전까지는 % 예측 없이 방향성 문장만 만든다.
 import { KR_HOLIDAYS } from './krHolidays';
 import { isSnowCode } from './weatherForecast';
-import { HEAVY_RAIN_IMPACT_LABEL, IMPACT_BASIS, RAIN_IMPACT_LABEL } from './weatherImpact';
+import {
+  cupsWeatherFactor,
+  DOSE_G_PER_CUP,
+  HEAVY_RAIN_IMPACT_LABEL,
+  IMPACT_BASIS,
+  RAIN_IMPACT_LABEL,
+  YANGJAE_COFFEE_CUPS_BY_DOW,
+} from './weatherImpact';
 
 export interface ForecastDay {
   ymd: string; // 'YYYY-MM-DD'
@@ -60,4 +67,16 @@ export function buildWeatherComments(days: ForecastDay[]): string[] {
   }
 
   return out.slice(0, 2);
+}
+
+/** 내일 예상 잔수·원두(양재천) — 요일 기준 잔수 × 날씨 배율. 휴무(기준 0)면 null. */
+export function buildTomorrowForecast(days: ForecastDay[]): string | null {
+  const t = days[1];
+  if (!t) return null;
+  const dow = dowOf(t.ymd);
+  const base = YANGJAE_COFFEE_CUPS_BY_DOW[dow];
+  if (!base) return null; // 정기휴무(월)
+  const cups = Math.round((base * cupsWeatherFactor(t)) / 5) * 5;
+  const kg = (cups * DOSE_G_PER_CUP) / 1000;
+  return `내일(${DOW[dow]}) 양재천 커피 ~${cups}잔 · 원두 ~${kg.toFixed(1)}kg 예상 — 날씨 보정 · 잠정(잔당 ${DOSE_G_PER_CUP}g 가정)`;
 }

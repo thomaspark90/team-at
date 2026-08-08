@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { KR_HOLIDAYS } from '@/lib/garden/krHolidays';
-import { buildWeatherComments } from '@/lib/garden/weatherComment';
+import { buildTomorrowForecast, buildWeatherComments } from '@/lib/garden/weatherComment';
 import {
   fetchForecast,
   fetchPm25,
@@ -138,6 +138,7 @@ export default function WeatherStrip() {
   // 자정이 지나 재조회 전이라도 지난 날짜 카드는 걸러낸다
   const visible = days?.filter((day) => day.ymd >= todayYmd) ?? null;
   const comments = visible ? buildWeatherComments(visible) : [];
+  const tomorrow = visible ? buildTomorrowForecast(visible) : null;
 
   return (
     <section>
@@ -201,13 +202,18 @@ export default function WeatherStrip() {
           </Link>
         </span>
       </div>
-      {comments.length > 0 && (
+      {(comments.length > 0 || tomorrow) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 8 }}>
           {comments.map((c) => (
             <p key={c} className="m-0 text-[13px] text-foreground">
               <span className="text-muted-foreground">▸</span> {c}
             </p>
           ))}
+          {tomorrow && (
+            <p className="m-0 text-[13px] text-muted-foreground">
+              <span>▸</span> {tomorrow}
+            </p>
+          )}
         </div>
       )}
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>

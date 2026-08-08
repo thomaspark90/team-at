@@ -19,3 +19,21 @@ export const RAIN_IMPACT_LABEL = '예상 매출 −10~20%';
 
 /** 선선한 날(일최고 20–25°, 여름 기준) 예상 영향 문구 */
 export const COOL_IMPACT_LABEL = '예상 매출 −15% 안팎';
+
+// ---------- 예상 잔수·원두 환산 (양재천) ----------
+// 요일별 기준 잔수 — 분석 API baselines(최근 8주 COFFEE 평균, 2026-08-08 실측). 월요일 = 정기휴무.
+// 갱신 방법: /garden/weather '다시 계산' 후 응답의 baselines.yangjaeCoffeeCupsByDow 로 교체.
+export const YANGJAE_COFFEE_CUPS_BY_DOW = [261, 0, 158, 148, 144, 172, 235]; // 일~토
+
+// 잔당 원두 투입량 — 발주 산식 기본값(PricingSettings.doseG 20g, ICE/HOT 평균)과 동일 가정
+export const DOSE_G_PER_CUP = 20;
+
+/** 날씨 → 잔수 배율. 유의 계수(잔수 기준)만 반영: 20–25° −15%, 비 20mm+ −23%, 5–20mm −8%. */
+export function cupsWeatherFactor(day: { tMax: number; rainMm: number; rainProb: number | null }): number {
+  let f = 1;
+  if (day.tMax >= 20 && day.tMax < 25) f *= 0.85;
+  if (day.rainMm >= 20) f *= 0.77;
+  else if (day.rainMm >= 5) f *= 0.92;
+  else if ((day.rainProb ?? 0) >= 60) f *= 0.88; // 양이 불확실한 비 예보 — 중간 추정
+  return f;
+}
