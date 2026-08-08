@@ -36,7 +36,7 @@ export function Toaster() {
           key={t.id}
           role="status"
           className={`max-w-full rounded-lg px-4 py-2.5 text-[13px] shadow-lg ${
-            t.type === 'error' ? 'bg-red-600 text-white' : 'bg-foreground text-background'
+            t.type === 'error' ? 'bg-destructive text-white' : 'bg-foreground text-background'
           }`}
         >
           {t.message}

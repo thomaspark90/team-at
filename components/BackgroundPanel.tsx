@@ -84,7 +84,7 @@ export default function BackgroundPanel({ selected, onSelect }: Props) {
             </button>
             <button
               onClick={(e) => handleDelete(bg.url, e)}
-              className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[11px] leading-none hidden group-hover:flex items-center justify-center"
+              className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-white rounded-full text-[11px] leading-none hidden group-hover:flex items-center justify-center"
             >
               ×
             </button>
