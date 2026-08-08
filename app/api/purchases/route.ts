@@ -60,6 +60,8 @@ export async function POST(req: Request) {
     bean: body.bean,
     beanEn: body.beanEn ? String(body.beanEn).trim() : undefined,
     roastery: body.roastery ? String(body.roastery).trim() : undefined,
+    orderDate: body.orderDate ? String(body.orderDate) : undefined,
+    // 로스팅 날짜는 발주 시점엔 모른다 — 수령 후 /api/purchases/receive 로 기재
     roastDate: body.roastDate ? String(body.roastDate) : undefined,
     staffName: body.staffName ? String(body.staffName).trim() : undefined,
     tastingNotes: body.tastingNotes ? String(body.tastingNotes).trim() : undefined,

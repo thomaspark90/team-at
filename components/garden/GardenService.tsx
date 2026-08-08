@@ -31,7 +31,9 @@ export default function GardenService() {
   const [translating, setTranslating] = useState(false); // 한글 원두명 → 영문 AI 변환 중
   const [tastingNotes, setTastingNotes] = useState(''); // 테이스팅 노트 — 원두카드 인쇄용
   const [roastery, setRoastery] = useState('');
-  const [roastDate, setRoastDate] = useState(''); // 로스팅 날짜 YYYY-MM-DD
+  // 발주 날짜 — 기본 오늘(KST). 로스팅 날짜는 발주 시점엔 모르므로 수령 후 [수령] 버튼으로 기재
+  const [orderDate, setOrderDate] = useState(() => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10));
+  const [receivingId, setReceivingId] = useState<string | null>(null); // [수령] 클릭한 기록 — 날짜 입력창 노출
   const [staffName, setStaffName] = useState(''); // 발주한 스탭이름 — 기록에 'OOO님'으로 표시
   // 드롭다운 명단(스탭이름·로스팅사) — 설정에서 관리, 새 이름 저장 시 자동 추가
   const [options, setOptions] = useState<GardenOptions>({ staffNames: [], roasteries: [] });
@@ -87,7 +89,7 @@ export default function GardenService() {
         beanEn: beanEn.trim() || undefined,
         tastingNotes: tastingNotes.trim() || undefined,
         roastery: roastery.trim() || undefined,
-        roastDate: roastDate || undefined,
+        orderDate: orderDate || undefined,
         staffName: staffName.trim() || undefined,
         purchasePrice: price,
         settings,
@@ -153,6 +155,22 @@ export default function GardenService() {
     } finally {
       setKakaoSending(null);
     }
+  };
+
+  // [수령] — 택배 도착 후 봉투에 찍힌 로스팅 날짜를 기재한다 (발주 시점엔 알 수 없는 값)
+  const receiveBean = async (rec: PurchaseRecord, date: string) => {
+    if (!date) return;
+    const res = await fetch('/api/purchases/receive', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: rec.id, roastDate: date }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => null);
+      alert(j?.error ?? '수령 기재에 실패했습니다.');
+    }
+    setReceivingId(null);
+    refreshPurchases();
   };
 
   // 버튼 라벨 — 대기(전송기가 아직 안 집어감)와 완료를 구분해 보여준다
@@ -320,12 +338,13 @@ export default function GardenService() {
               inputPlaceholder="스탭이름 (예: 홍길동)"
               optionLabel={(n) => `${n}님`}
             />
+            {/* 로스팅 날짜는 봉투에 찍혀 와서 발주 시점엔 모른다 — 수령 후 발주 리스트의 [수령]으로 기재 */}
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <span className="text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>로스팅 날짜</span>
+              <span className="text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>발주 날짜</span>
               <input
                 type="date"
-                value={roastDate}
-                onChange={(e) => setRoastDate(e.target.value)}
+                value={orderDate}
+                onChange={(e) => setOrderDate(e.target.value)}
                 className="ta-input tabular"
                 style={{ flex: 1, minWidth: 0 }}
               />
@@ -447,15 +466,34 @@ export default function GardenService() {
                       return (
                         <div key={rec.id} className="gs-row">
                           <span className="gs-meta">
-                            <span className="tabular text-muted-foreground" style={{ width: 64, flexShrink: 0 }}>{fmtDate(rec.createdAt)}</span>
+                            <span className="tabular text-muted-foreground" style={{ width: 64, flexShrink: 0 }}>{fmtDate(rec.orderDate ?? rec.createdAt)}</span>
                             {/* 스탭이름이 있으면 'OOO님' 우선, 없으면 저장 계정(구 기록) */}
                             {(rec.staffName || rec.createdBy) && (
                               <span className="text-muted-foreground" style={{ flexShrink: 0 }}>
                                 {rec.staffName ? `${rec.staffName}님` : rec.createdBy!.split('@')[0]}
                               </span>
                             )}
-                            {rec.roastDate && (
+                            {/* 로스팅 날짜: 있으면 표시, 없으면 [수령] — 클릭 시 날짜 입력으로 바뀜 */}
+                            {rec.roastDate ? (
                               <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>로스팅 {fmtDate(rec.roastDate)}</span>
+                            ) : receivingId === rec.id ? (
+                              <input
+                                type="date"
+                                autoFocus
+                                onChange={(e) => e.target.value && receiveBean(rec, e.target.value)}
+                                onBlur={() => setReceivingId(null)}
+                                className="ta-input tabular"
+                                style={{ height: 22, fontSize: 11, padding: '0 4px', flexShrink: 0, width: 130 }}
+                              />
+                            ) : (
+                              <button
+                                onClick={() => setReceivingId(rec.id)}
+                                className="text-foreground"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, flexShrink: 0, padding: 0, textDecoration: 'underline' }}
+                                title="수령 완료 — 봉투의 로스팅 날짜 기재"
+                              >
+                                수령
+                              </button>
                             )}
                             <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>
                               원가 {won(rec.purchasePrice)}

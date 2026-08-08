@@ -38,7 +38,8 @@ export interface PurchaseRecord {
   bean: string;
   beanEn?: string; // 영문 원두명 — 원두카드 인쇄용 (구 기록엔 없음)
   roastery?: string; // 로스팅사 (구 기록엔 없음)
-  roastDate?: string; // 로스팅 날짜 YYYY-MM-DD (구 기록엔 없음)
+  orderDate?: string; // 발주 날짜 YYYY-MM-DD (구 기록엔 없음 — createdAt 으로 대체 표시)
+  roastDate?: string; // 로스팅 날짜 YYYY-MM-DD — 발주 시점엔 모르고, 택배 수령 후 [수령]으로 기재
   tastingNotes?: string; // 테이스팅 노트 — 원두카드 인쇄용 (구 기록엔 없음)
   staffName?: string; // 발주한 스탭이름 — 'OOO님'으로 표시 (구 기록엔 없음)
   purchasePrice: number; // 구매가 (구매 용량 기준)

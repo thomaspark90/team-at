@@ -48,8 +48,8 @@ export function buildOrderMessage(r: PurchaseRecord): string {
     `· 원두: ${r.roastery ? `${r.roastery} · ` : ''}${r.bean}`,
     `· 용량: ${r.settings?.capacityG ?? '?'}g`,
   ];
-  if (r.roastDate) lines.push(`· 로스팅: ${r.roastDate}`);
+  if (r.roastDate) lines.push(`· 로스팅: ${r.roastDate}`); // 수령 전엔 없음 — 그 줄 생략
   if (r.staffName) lines.push(`· 발주자: ${r.staffName}님`);
-  lines.push(`· 등록일: ${kstDate(r.createdAt)}`);
+  lines.push(`· 발주일: ${kstDate(r.orderDate ?? r.createdAt)}`);
   return lines.join('\n');
 }
