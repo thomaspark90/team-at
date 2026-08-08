@@ -106,7 +106,7 @@ export default function TabNav() {
       <nav
         aria-label="모바일 메뉴"
         aria-hidden={!menuOpen}
-        className={`absolute left-0 right-0 top-full z-40 h-[calc(100dvh-3rem)] overflow-y-auto bg-background/95 backdrop-blur-sm transition-all duration-200 ease-out sm:hidden ${
+        className={`absolute left-0 right-0 top-full z-40 h-[calc(100dvh-3rem)] overflow-y-auto bg-background/95 shadow-2xl backdrop-blur-sm transition-all duration-200 ease-out sm:hidden ${
           menuOpen ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-2 opacity-0'
         }`}
       >
@@ -137,6 +137,7 @@ export default function TabNav() {
             })}
           </div>
 
+          {/* 남는 공간을 위·아래 반씩 — 유틸리티가 맨 밑에 붙어 링크와 너무 벌어지던 것을 절반으로 */}
           <div className="flex-1" />
 
           {/* 하단 유틸리티 — 헤어라인 구분의 조용한 행들 */}
@@ -151,6 +152,8 @@ export default function TabNav() {
             로그아웃
             <span aria-hidden>→</span>
           </button>
+
+          <div className="flex-1" />
         </div>
       </nav>
     </header>
