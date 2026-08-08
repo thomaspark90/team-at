@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { extractBeanBagInfo } from '@/lib/garden-bean-scan';
 import { logActivity } from '@/lib/finance/activity';
 import { checkAiQuota } from '@/lib/access/rate-limit';
+import { archiveOriginal } from '@/lib/finance/original-archive';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -35,6 +36,8 @@ export async function POST(req: Request) {
   try {
     const base64 = Buffer.from(await file.arrayBuffer()).toString('base64');
     const extraction = await extractBeanBagInfo(base64, file.type, key);
+    // 원본 보관 — 인식 결과가 틀려도 사진은 남아 나중에 다시 볼 수 있게
+    await archiveOriginal(supabase, user, file, { area: 'bean-scan', note: extraction.beanName ?? undefined });
     await logActivity(supabase, user, '원두봉투 AI 인식', extraction.beanName ?? '(원두명 미인식)');
     return NextResponse.json({ extraction });
   } catch (e) {

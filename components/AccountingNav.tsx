@@ -46,6 +46,7 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
     { href: `/finance/upload/${u}`, label: '자료 입력' },
     { href: '/finance/classify', label: '지출 자료 분류' },
     { href: '/finance/uploads', label: '자료 이력' },
+    { href: '/finance/originals', label: '원본 자료함' },
   ];
   const CLOSING = [{ href: '/finance/close', label: '월 확정' }];
   const ADMIN = [{ href: '/finance/categories', label: '설정' }];

@@ -7,6 +7,7 @@ import { brandLabel, storeLabel, type Brand } from '@/lib/finance/types';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
+import { archiveOriginal } from '@/lib/finance/original-archive';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -63,6 +64,15 @@ export async function POST(req: Request) {
   if (r.rows.length === 0) {
     return NextResponse.json({ error: '저장할 매출이 없습니다.' }, { status: 422 });
   }
+
+  // 원본 보관 — 파서 개선 시 재업로드 요청 없이 재처리할 수 있게
+  await archiveOriginal(supabase, user, file, {
+    area: `pos-${brand}${store ? `-${store}` : ''}`,
+    ym: r.ym,
+    brand,
+    store,
+    note: posType,
+  });
 
   // 확정된 달 보호 — 확정은 (ym, brand, store) 3단위, POS 는 정확히 그 단위로 귀속
   const { data: closed, error: closeErr } = await supabase

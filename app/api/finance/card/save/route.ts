@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
 import { fetchExistingHashes } from '@/lib/finance/dedup';
+import { archiveOriginal } from '@/lib/finance/original-archive';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -42,6 +43,15 @@ export async function POST(req: Request) {
   if (result.totalRows === 0) {
     return NextResponse.json({ error: '이용내역을 읽지 못했습니다.' }, { status: 422 });
   }
+
+  // 원본 보관 — 재파싱 대비
+  const cardDates = result.transactions.map((t) => t.txAt).sort();
+  await archiveOriginal(supabase, user, file, {
+    area: `card-${brand}`,
+    ym: cardDates[0]?.slice(0, 7),
+    brand,
+    note: '신한카드',
+  });
 
   // 신규만
   const allHashes = result.transactions.map((t) => t.dedupHash);

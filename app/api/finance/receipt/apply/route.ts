@@ -5,6 +5,7 @@ import { hash, fetchExistingHashes } from '@/lib/finance/dedup';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
+import { archiveOriginal } from '@/lib/finance/original-archive';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -32,6 +33,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `전표를 읽지 못했습니다: ${(e as Error).message}` }, { status: 400 });
   }
   if (items.length === 0) return NextResponse.json({ error: '전표 품목을 읽지 못했습니다.' }, { status: 422 });
+
+  // 원본 보관 — 재파싱 대비. 배치가 여러 브랜드에 걸칠 수 있어 brand는 비워 둔다(품목에 각자 있음).
+  const receiptYmds = items.map((i) => i.ymd).sort();
+  await archiveOriginal(supabase, user, file, {
+    area: 'receipt-coupang',
+    ym: receiptYmds[0]?.slice(0, 7),
+    note: '쿠팡영수증',
+  });
 
   const { data: splitCat } = await supabase
     .schema('finance')

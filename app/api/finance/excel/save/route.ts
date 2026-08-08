@@ -7,6 +7,7 @@ import { lockedYms } from '@/lib/finance/monthLock';
 import { dedupe } from '@/lib/finance/parse';
 import { fileToRows, rowsToTransactions, type ExcelMapping } from '@/lib/finance/excel';
 import { SLOT_KEYS, UPLOAD_SLOTS } from '@/lib/finance/uploadSlots';
+import { archiveOriginal } from '@/lib/finance/original-archive';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -73,6 +74,14 @@ export async function POST(req: Request) {
   const allDates = result.transactions.map((t) => t.txAt).sort();
   const periodStart = allDates[0]?.slice(0, 10);
   const periodEnd = allDates[allDates.length - 1]?.slice(0, 10);
+
+  // 원본 보관 — 재파싱 대비. 슬롯(은행 등)별로 구분해 area 를 나눈다.
+  await archiveOriginal(supabase, user, file, {
+    area: `bank-excel-${brand}${slot ? `-${slot}` : ''}`,
+    ym: slotYm ?? periodStart?.slice(0, 7),
+    brand,
+    note: bankLabel,
+  });
 
   const { fresh: freshAll, duplicates } = dedupe(result.transactions, existing);
 
