@@ -157,7 +157,9 @@
 
 /*
  * 재사용 프리미티브 — midday/shadcn 메트릭 그대로.
- * 카드 p-6 · 버튼/인풋 h-9(px-4/px-3) · radius md · text-sm(14px).
+ * 카드 p-6 · 버튼/인풋 h-9(px-4/px-3) · radius md · 본문 13px.
+ * ta-card는 페이지 최상위 섹션에 쓰지 않는다(DESIGN_SYSTEM.md §1·§7) — 모달·팝오버 등
+ * 플로팅 패널이나 화면 중앙 독립형 단일 카드(/install, /s/[token] 등)에만 사용.
  */
 @layer components {
   .ta-card {

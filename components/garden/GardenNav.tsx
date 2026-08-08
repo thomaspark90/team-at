@@ -100,7 +100,7 @@ export default function GardenNav() {
                   >
                     {label}
                     {badge > 0 && (
-                      <span className="inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold leading-none text-white">
+                      <span className="inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-medium leading-none text-white">
                         {badge > 999 ? '999+' : badge}
                       </span>
                     )}

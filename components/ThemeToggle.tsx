@@ -70,7 +70,7 @@ export function ThemeOptions() {
           role="radio"
           aria-checked={theme === o.id}
           onClick={() => select(o.id)}
-          className={`rounded px-2 py-1 text-[12px] transition-colors ${
+          className={`rounded px-2 py-1 text-[11px] transition-colors ${
             theme === o.id ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
@@ -136,7 +136,7 @@ export default function ThemeToggle() {
                 select(o.id);
                 setOpen(false);
               }}
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-[12px] transition-colors ${
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-[11px] transition-colors ${
                 theme === o.id ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
