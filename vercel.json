@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/weather-briefing",
       "schedule": "0 23 * * 0"
+    },
+    {
+      "path": "/api/cron/review-classify",
+      "schedule": "30 1 * * *"
     }
   ]
 }

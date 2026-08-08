@@ -25,6 +25,8 @@ const PUBLIC_API = [
   '/api/finance/coupang/ingest',
   '/api/finance/coupang/alert',
   '/api/cron/ingest-health', // Vercel 크론 — CRON_SECRET Bearer 로 자체 인증
+  '/api/cron/weather-briefing', // Vercel 크론 — CRON_SECRET Bearer 로 자체 인증
+  '/api/cron/review-classify', // Vercel 크론 — CRON_SECRET Bearer 로 자체 인증
   '/api/kakao-notify/queue', // 원두 발주 카톡 전송기(맥 로컬) — 토큰(x-kakao-token) 자체 인증
 ];
 

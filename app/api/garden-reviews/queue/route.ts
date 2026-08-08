@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { APP_URL } from '@/lib/app-url';
 import { REVIEW_POST_GRACE_MS, REVIEW_POST_MAX_ATTEMPTS } from '@/lib/garden/review-constants';
+import { notifyGardenEvent } from '@/lib/notify';
+import { reviewIssueEmails } from '@/lib/garden-notify-topics-server';
+import { STORES } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -81,14 +85,50 @@ export async function POST(req: Request) {
   }
 
   // 실패 보고 — 사유와 시도 횟수를 남긴다 (상한 도달 시 GET 대기열에서 빠진다)
-  const { data: row } = await supabase.from('place_reviews').select('post_attempts').eq('id', id).maybeSingle();
+  const { data: row } = await supabase
+    .from('place_reviews')
+    .select('post_attempts, store_key, content, reply_text')
+    .eq('id', id)
+    .maybeSingle();
+  const attempts = ((row?.post_attempts as number | null) ?? 0) + 1;
+  const postError = String(body?.error ?? '알 수 없는 오류').slice(0, 300);
   const { error } = await supabase
     .from('place_reviews')
-    .update({
-      post_error: String(body?.error ?? '알 수 없는 오류').slice(0, 300),
-      post_attempts: ((row?.post_attempts as number | null) ?? 0) + 1,
-    })
+    .update({ post_error: postError, post_attempts: attempts })
     .eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // 재시도 소진 — 대기열에서 빠지는 순간이라, 알리지 않으면 리뷰 탭을 열어보기 전까지
+  // 아무도 모른다. 지점 리뷰 담당자에게 이메일+푸시 (정확히 상한 도달 시 1회만).
+  if (attempts === REVIEW_POST_MAX_ATTEMPTS && row) {
+    try {
+      const url2 = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const serviceKey2 = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+      const notifyClient = createServiceClient(url2, serviceKey2);
+      const storeKey = String(row.store_key ?? '');
+      const label = STORES.find((s) => s.id === storeKey)?.label ?? storeKey;
+      const emails = await reviewIssueEmails(notifyClient, storeKey);
+      await notifyGardenEvent(notifyClient, {
+        emails,
+        subject: `[리뷰 답글] ${label} 게시 ${REVIEW_POST_MAX_ATTEMPTS}회 실패 — 확인 필요`,
+        html: `
+        <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
+          <p><strong>${label} 리뷰 답글 게시가 ${REVIEW_POST_MAX_ATTEMPTS}회 실패해 자동 재시도를 멈췄어요.</strong></p>
+          <p>리뷰: ${String(row.content ?? '(사진만)').slice(0, 120)}</p>
+          <p>답글: ${String(row.reply_text ?? '').slice(0, 120)}</p>
+          <p>마지막 실패 사유: ${postError}</p>
+          <p>미처리 탭에서 승인 취소 후 내용을 확인하고 다시 승인하면 재시도합니다.</p>
+          <p><a href="${APP_URL}/garden/reviews">네이버 리뷰 탭 열기 →</a></p>
+        </div>`,
+        push: {
+          title: `${label} 답글 게시 ${REVIEW_POST_MAX_ATTEMPTS}회 실패`,
+          body: postError.slice(0, 100),
+          url: '/garden/reviews',
+        },
+      });
+    } catch (e) {
+      console.error('게시 실패 소진 알림 실패:', e);
+    }
+  }
   return NextResponse.json({ ok: true });
 }
