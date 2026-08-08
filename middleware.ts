@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { isAllowedEmail, isOwner } from '@/lib/finance/access';
+import { isAllowedUser, isOwner } from '@/lib/finance/access';
 import { SECTIONS, firstAllowedHref, sectionForPath, sectionsForApiPath } from '@/lib/access/sections';
 import { GARDEN_TABS, tabForPath } from '@/lib/garden/tabs';
 
@@ -79,8 +79,8 @@ export async function middleware(request: NextRequest) {
   };
 
   if (!user) return deny(401, '로그인이 필요합니다.');
-  // 로그인은 됐지만 팀 도메인(@team-at.space)/대표가 아니면 차단 — 페이지·API 모두.
-  if (!isAllowedEmail(user.email)) return deny(403, '팀 계정만 이용할 수 있습니다.');
+  // 로그인은 됐지만 팀 도메인(@team-at.space)/대표/등록된 외부 이메일이 아니면 차단 — 페이지·API 모두.
+  if (!(await isAllowedUser(supabase, user.email))) return deny(403, '허용된 계정만 이용할 수 있습니다.');
 
   // 여기부터는 사용자별 섹션/가든탭 접근 권한 — 대표는 항상 전체
   if (isOwner(user.email)) return response;

@@ -390,6 +390,8 @@ export default function GardenSettings() {
   const [tabUsers, setTabUsers] = useState<
     { id: string; email: string; tabs: string[] | null; sections: string[] | null }[] | null
   >(null);
+  // 외부 이메일 허용 목록 — 페이지 접근 권한 카드의 사전 등록 UI 가 쓴다 (admin 응답에만 옴)
+  const [allowedEmails, setAllowedEmails] = useState<string[]>([]);
 
   useEffect(() => {
     fetch('/api/notify/recipients', { cache: 'no-store' })
@@ -398,7 +400,10 @@ export default function GardenSettings() {
       .catch(() => setRecipients(null));
     fetch('/api/garden-tab-access', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => setTabUsers(j?.isAdmin && Array.isArray(j.users) ? j.users : null))
+      .then((j) => {
+        setTabUsers(j?.isAdmin && Array.isArray(j.users) ? j.users : null);
+        if (Array.isArray(j?.allowedEmails)) setAllowedEmails(j.allowedEmails);
+      })
       .catch(() => setTabUsers(null));
   }, []);
 
@@ -409,7 +414,7 @@ export default function GardenSettings() {
       {/* 필터 원두 발주의 스탭이름·로스팅사 드롭다운 명단 */}
       <GardenOptionsManager />
       {/* 계정별 페이지 접근 권한(상위 메뉴 + 가든 하위 탭) — admin 전용 */}
-      {tabUsers && <GardenTabAccess initial={tabUsers} />}
+      {tabUsers && <GardenTabAccess initial={tabUsers} initialAllowed={allowedEmails} />}
       {/* 투두는 공용 컴포넌트(components/TodoList) — 스탭밀 설정과 공유 */}
       <TodoList
         api="/api/garden-todos"

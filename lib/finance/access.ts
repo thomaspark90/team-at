@@ -14,8 +14,28 @@ export const isOwner = (email?: string | null): boolean =>
 
 // 앱 접근 허용 정책: @team-at.space 팀 계정 또는 대표(gmail 예외).
 // 이 판정에서 막히면 로그인 자체가 거부돼 스탭밀·가든·재무 어디도 못 들어옴.
+// ⚠️ 입장 검사(미들웨어·로그인 콜백·PUBLIC_API 라우트)에는 이것 대신 isAllowedUser 를 쓸 것 —
+// 설정에서 등록한 외부 이메일(finance.allowed_emails)까지 포함해야 한다.
 export const isAllowedEmail = (email?: string | null): boolean =>
   !!email && (isOwner(email) || email.toLowerCase().endsWith('@' + TEAM_DOMAIN));
+
+// 허용 판정의 완전판: 팀 도메인/대표는 즉시 통과, 그 외(gmail 등 외부 계정)는
+// finance.allowed_emails 허용 목록을 조회한다(설정 > 페이지 접근 권한에서 관리).
+// RLS 는 본인 이메일 행만 조회를 허용하므로 로그인 사용자 세션 클라이언트로 호출해야 한다.
+export async function isAllowedUser(
+  supabase: SupabaseClient,
+  email?: string | null
+): Promise<boolean> {
+  if (isAllowedEmail(email)) return true;
+  if (!email) return false;
+  const { data } = await supabase
+    .schema('finance')
+    .from('allowed_emails')
+    .select('email')
+    .eq('email', email.toLowerCase())
+    .maybeSingle();
+  return !!data;
+}
 
 // 현재 사용자의 재무 역할. OWNER 는 항상 admin, 그 외엔 finance.members 조회.
 export async function resolveRole(

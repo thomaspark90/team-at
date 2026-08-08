@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { isAllowedEmail } from '@/lib/finance/access';
+import { isAllowedUser } from '@/lib/finance/access';
 import LoginButton from '@/components/LoginButton';
 
 export default async function LandingPage({ searchParams }: { searchParams: { denied?: string } }) {
@@ -8,10 +8,12 @@ export default async function LandingPage({ searchParams }: { searchParams: { de
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const denied = searchParams.denied === '1' || (!!user && !isAllowedEmail(user.email));
+  // 팀 도메인/대표 외에 설정에서 등록한 외부 이메일도 허용 — 미들웨어·콜백과 같은 판정
+  const userAllowed = !!user && (await isAllowedUser(supabase, user.email));
+  const denied = searchParams.denied === '1' || (!!user && !userAllowed);
   // denied=1 로 되돌아온 경우엔 자동 이동하지 않는다 — 접근 권한이 하나도 없는 계정이
   // 여기서 다시 /dashboard 로 튀면 미들웨어와 무한히 왕복해 아무 화면도 못 연다.
-  if (user && isAllowedEmail(user.email) && !denied) redirect('/dashboard');
+  if (userAllowed && !denied) redirect('/dashboard');
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6">
@@ -29,7 +31,7 @@ export default async function LandingPage({ searchParams }: { searchParams: { de
         <LoginButton />
         {denied ? (
           <p className="mt-4 text-center text-[13px] text-destructive">
-            <b>@team-at.space</b> 팀 계정만 이용할 수 있어요. 팀 구글 계정으로 다시 로그인해 주세요.
+            <b>@team-at.space</b> 팀 계정 또는 등록된 이메일만 이용할 수 있어요. 관리자에게 이메일 등록을 요청하세요.
           </p>
         ) : (
           <p className="mt-4 text-center text-[13px] text-muted-foreground">

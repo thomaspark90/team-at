@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { createHash, randomUUID } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
-import { isAllowedEmail } from '@/lib/finance/access';
+import { isAllowedUser } from '@/lib/finance/access';
 import { requireGardenTab } from '@/lib/access/guard';
 import { CURRENT_SEASON } from '@/lib/garden/season';
 
@@ -37,8 +37,8 @@ export async function GET(req: Request) {
     } = await supabase.auth.getUser();
     // 이 라우트는 공개 제출·조회 때문에 미들웨어 검사에서 제외돼 있어 관리 조회는 여기서 직접 확인한다
     if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
-    if (!isAllowedEmail(user.email))
-      return NextResponse.json({ error: '팀 계정만 조회할 수 있습니다.' }, { status: 403 });
+    if (!(await isAllowedUser(supabase, user.email)))
+      return NextResponse.json({ error: '허용된 계정만 조회할 수 있습니다.' }, { status: 403 });
     {
       // 미들웨어 우회 경로이므로 섹션·words 탭 권한도 여기서 직접 강제한다
       const denied = await requireGardenTab(supabase, user, 'words');
@@ -142,8 +142,8 @@ export async function PATCH(req: Request) {
   } = await supabase.auth.getUser();
   // 이 라우트는 공개 제출·조회 때문에 미들웨어 검사에서 제외돼 있어 검수 동작은 여기서 직접 확인한다
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
-  if (!isAllowedEmail(user.email))
-    return NextResponse.json({ error: '팀 계정만 검수할 수 있습니다.' }, { status: 403 });
+  if (!(await isAllowedUser(supabase, user.email)))
+    return NextResponse.json({ error: '허용된 계정만 검수할 수 있습니다.' }, { status: 403 });
   {
     // 미들웨어 우회 경로이므로 섹션·words 탭 권한도 여기서 직접 강제한다
     const denied = await requireGardenTab(supabase, user, 'words');

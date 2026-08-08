@@ -1,7 +1,7 @@
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { isAllowedEmail } from '@/lib/finance/access';
+import { isAllowedUser } from '@/lib/finance/access';
 
 // 클라이언트가 직접 Blob 저장소에 업로드할 수 있는 토큰을 발급하는 엔드포인트
 // 파일이 서버를 거치지 않아 Vercel 함수 바디 4.5MB 한도를 우회함
@@ -23,7 +23,7 @@ export async function POST(req: Request): Promise<NextResponse> {
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) throw new Error('로그인이 필요합니다.');
-        if (!isAllowedEmail(user.email)) throw new Error('팀 계정만 업로드할 수 있습니다.');
+        if (!(await isAllowedUser(supabase, user.email))) throw new Error('허용된 계정만 업로드할 수 있습니다.');
         // 경로를 클라이언트가 정하므로 접두사를 강제 — data/ 등 저장소 파일 덮어쓰기 방지.
         // Blob 키는 파일 경로가 아니라 문자열이라 접두사 검사만으로 충분하다(상위 경로 탈출 불가).
         if (!ALLOWED_PREFIXES.some((p) => pathname.startsWith(p))) {
