@@ -73,26 +73,30 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
 
   return (
     <nav className="border-b border-border bg-card/40">
-      {/* 1단: 회계 단위 */}
+      {/* 1단: 회계 단위 — 모바일에서 줄바꿈 대신 가로 스크롤 한 줄(2026-08-08 대표 지시).
+          w-max + mx-auto: 넓으면 가운데 정렬, 좁으면 왼쪽부터 시작해 끝까지 스크롤 가능
+          (overflow 상태에서 justify-center 를 쓰면 앞쪽 탭이 잘려 접근 불가). */}
       {!scoped && (
-        <div className="mx-auto flex max-w-[1680px] flex-wrap items-center justify-center gap-x-2 gap-y-1 px-6 pt-3">
-          {UNITS.map((x) => {
-            const on = x.id === u;
-            return (
-              <Link
-                key={x.id}
-                href={unitHref(x.id)}
-                aria-current={on ? 'page' : undefined}
-                className={`rounded-full px-3.5 py-1 text-[13px] transition-colors ${
-                  on
-                    ? 'bg-foreground font-medium text-background'
-                    : 'border border-border text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {UNIT_TAB_LABEL[x.id]}
-              </Link>
-            );
-          })}
+        <div className="mx-auto max-w-[1680px] overflow-x-auto px-6 pt-3">
+          <div className="mx-auto flex w-max items-center gap-2">
+            {UNITS.map((x) => {
+              const on = x.id === u;
+              return (
+                <Link
+                  key={x.id}
+                  href={unitHref(x.id)}
+                  aria-current={on ? 'page' : undefined}
+                  className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1 text-[13px] transition-colors ${
+                    on
+                      ? 'bg-foreground font-medium text-background'
+                      : 'border border-border text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {UNIT_TAB_LABEL[x.id]}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
       {/* 2단: 선택된 단위의 메뉴 */}
