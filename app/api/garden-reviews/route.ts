@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
-import { draftReply } from '@/lib/garden/review-draft';
+import { draftReply, recentReplyExamples } from '@/lib/garden/review-draft';
 import { REVIEW_POST_GRACE_MS, REVIEW_OPEN_STATUSES } from '@/lib/garden/review-constants';
 import { requireGardenTab } from '@/lib/access/guard';
+import { unclassifiedRemaining } from '@/lib/garden/review-classify';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -41,14 +42,8 @@ export async function GET(req: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     // 백필 대상 잔여 건수(미분류 + 카테고리 미보완 이슈) — 분류 실행 버튼 노출용
-    const db = g.supabase.schema('finance');
-    const [{ count: nullCount }, { count: catCount }] = await Promise.all([
-      db.from('place_reviews').select('id', { count: 'exact', head: true }).is('issue', null),
-      // 수동 정정 건은 카테고리 보완 대상이 아니므로 제외 (classify 라우트와 동일 기준)
-      db.from('place_reviews').select('id', { count: 'exact', head: true })
-        .eq('issue', true).is('issue_categories', null).is('issue_source', null).not('content', 'is', null),
-    ]);
-    return NextResponse.json({ reviews: data ?? [], unclassified: (nullCount ?? 0) + (catCount ?? 0) });
+    const unclassified = await unclassifiedRemaining(g.supabase.schema('finance'));
+    return NextResponse.json({ reviews: data ?? [], unclassified });
   }
 
   const statuses =
@@ -97,15 +92,7 @@ export async function PATCH(req: Request) {
     const key = process.env.GEMINI_API_KEY;
     if (!key) return NextResponse.json({ error: 'GEMINI_API_KEY 미설정' }, { status: 500 });
     // 확정해 게시한 최근 답글들을 길이·결 기준으로 함께 전달
-    const { data: exRows } = await g.supabase
-      .schema('finance')
-      .from('place_reviews')
-      .select('reply_text')
-      .not('reply_text', 'is', null)
-      .in('status', ['approved', 'posted'])
-      .order('approved_at', { ascending: false })
-      .limit(8);
-    const examples = (exRows ?? []).map((e: { reply_text: string | null }) => String(e.reply_text ?? '').trim()).filter(Boolean);
+    const examples = await recentReplyExamples(g.supabase.schema('finance'));
     const draft = await draftReply(review, key, examples);
     if (!draft) return NextResponse.json({ error: '초안 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' }, { status: 502 });
     // 매니저가 수동 정정한 이슈 판정은 재생성이 덮어쓰지 않는다

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { APP_URL } from '@/lib/app-url';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { STORES } from '@/lib/types';
-import { draftReply } from '@/lib/garden/review-draft';
+import { draftReply, recentReplyExamples } from '@/lib/garden/review-draft';
 import { classifyIssue } from '@/lib/garden/review-issue';
 import { notifyGardenEvent } from '@/lib/notify';
 import { reviewIssueEmails } from '@/lib/garden-notify-topics-server';
@@ -76,10 +76,14 @@ export async function POST(req: Request) {
 
   // 이전 실행에서 초안을 만들지 못하고 남은 대기분(429·키 미설정·상한 초과) —
   // 새 리뷰가 없어도 이번 실행 예산으로 재시도한다. (신규 적재 전에 조회하므로 신규분과 겹치지 않음)
+  // 실패 횟수 오름차순 — 영구 실패 건이 줄 앞을 막고 예산을 독점하지 않게. 5회 초과는 제외
+  // (제외돼도 이슈 분류 크론이 잡고, 매니저는 '초안 다시 생성' 버튼으로 언제든 수동 재시도 가능)
   const { data: leftoverData } = await supabase
     .from('place_reviews')
-    .select('review_id, store_key, rating, content, keywords, visit_count, photo_count, reviewed_at')
+    .select('review_id, store_key, rating, content, keywords, visit_count, photo_count, reviewed_at, draft_attempts')
     .eq('status', 'new')
+    .lt('draft_attempts', 5)
+    .order('draft_attempts', { ascending: true })
     .order('reviewed_at', { ascending: true })
     .limit(DRAFT_LIMIT);
   const leftover = leftoverData ?? [];
@@ -115,14 +119,7 @@ export async function POST(req: Request) {
     const freshNew = rows.filter((r) => r.status === 'new');
     const targets = [...freshNew, ...leftover].slice(0, DRAFT_LIMIT);
     // 사장님이 확정해 게시한 최근 답글들 — 새 초안의 길이·결 기준으로 프롬프트에 전달
-    const { data: exRows } = await supabase
-      .from('place_reviews')
-      .select('reply_text')
-      .not('reply_text', 'is', null)
-      .in('status', ['approved', 'posted'])
-      .order('approved_at', { ascending: false })
-      .limit(8);
-    const examples = (exRows ?? []).map((e: { reply_text: string | null }) => String(e.reply_text ?? '').trim()).filter(Boolean);
+    const examples = await recentReplyExamples(supabase);
     // 시간 예산 — draftReply는 모델 폴백까지 최대 100초를 쓸 수 있어(25초×4모델),
     // 예산 없이 돌리면 Gemini 장애 때 함수가 maxDuration(60초)에 강제 종료돼
     // 적재는 됐는데 수집기에는 '적재 실패'로 보고되는 거짓 실패가 난다. 남은 건 pendingDraft로.
@@ -131,6 +128,12 @@ export async function POST(req: Request) {
       if (Date.now() > deadline) break;
       const draft = await draftReply(r, geminiKey, examples);
       if (!draft) {
+        // 실패 횟수 기록 — leftover 재시도 순서·제외 기준 (head-of-line blocking 방지)
+        const prevAttempts = (r as { draft_attempts?: number | null }).draft_attempts ?? 0;
+        await supabase
+          .from('place_reviews')
+          .update({ draft_attempts: prevAttempts + 1 })
+          .eq('review_id', r.review_id);
         // 초안 실패 시에도 이슈 분류는 따로 시도 — 불만 리뷰 알림이 초안 장애에 묻히지 않게.
         // (둘 다 실패하면 issue=null로 남아 이슈 탭의 '분류 실행' 백필이 다시 잡는다)
         if ((r.content ?? '').trim()) {

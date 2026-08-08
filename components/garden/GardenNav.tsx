@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Fragment, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { GARDEN_TAB_GROUPS, tabForPath } from '@/lib/garden/tabs';
+import { GARDEN_TAB_GROUPS, WORDS_CHANGED_EVENT, tabForPath } from '@/lib/garden/tabs';
 import { REVIEWS_CHANGED_EVENT } from '@/lib/garden/review-constants';
 
 // 가든 하위 내비게이션 — /garden 하위 페이지 상단에 노출 (FinanceNav와 동일 문법)
@@ -17,6 +17,8 @@ export default function GardenNav() {
   const [reviewCount, setReviewCount] = useState(0);
   // 판매가 설정 탭 배지 — 책정 대기(판매가 미책정) 발주 건수
   const [unpricedCount, setUnpricedCount] = useState(0);
+  // 제철 단어 탭 배지 — 검수 대기(pending) 단어 건수
+  const [pendingWords, setPendingWords] = useState(0);
 
   useEffect(() => {
     fetch('/api/garden-tab-access?scope=mine', { cache: 'no-store' })
@@ -46,6 +48,19 @@ export default function GardenNav() {
       .catch(() => {});
   }, [allowed, pathname]);
 
+  useEffect(() => {
+    if (Array.isArray(allowed) && !allowed.includes('words')) return;
+    const refresh = () =>
+      fetch('/api/garden-words?scope=pending-count', { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : { count: 0 }))
+        .then((j) => setPendingWords(j.count ?? 0))
+        .catch(() => {});
+    refresh();
+    // 제철 단어 화면에서 검수하면 페이지 이동 없이도 배지를 갱신한다
+    window.addEventListener(WORDS_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(WORDS_CHANGED_EVENT, refresh);
+  }, [allowed, pathname]);
+
   // 미허용 탭에 직접 접근하면 첫 허용 탭으로 리다이렉트
   useEffect(() => {
     if (!Array.isArray(allowed)) return;
@@ -71,7 +86,10 @@ export default function GardenNav() {
               {shown.map(({ key, href, label }) => {
                 const active = pathname === href;
                 const badge =
-                  key === 'reviews' ? reviewCount : key === 'saleprice' ? unpricedCount : 0;
+                  key === 'reviews' ? reviewCount
+                  : key === 'saleprice' ? unpricedCount
+                  : key === 'words' ? pendingWords
+                  : 0;
                 return (
                   <Link
                     key={href}

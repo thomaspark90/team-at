@@ -52,21 +52,33 @@ const coreVendor = (name: string) =>
 // (브랜드 컬럼이 생기기 전에 등록된 건들 — 지금은 등록 시 브랜드 선택이 필수다)
 async function inferBrand(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  vendorName: string
-): Promise<'garden' | 'staffmeal' | null> {
-  const core = coreVendor(vendorName ?? '');
-  if (core.length < 2) return null;
+  vendorNames: string[]
+): Promise<Map<string, 'garden' | 'staffmeal'>> {
+  // 거래처별 ilike 쿼리를 건건이 날리면(N+1) 보드 로드마다 원장을 최대 20번 스캔한다 —
+  // or()로 한 번에 모아 조회하고 코어별 집계는 메모리에서 한다.
+  const out = new Map<string, 'garden' | 'staffmeal'>();
+  const cores = Array.from(
+    new Set(vendorNames.map((v) => coreVendor(v ?? '')).filter((c) => c.length >= 2))
+  );
+  if (cores.length === 0) return out;
+  // or() 문법과 충돌하는 문자는 검색어에서 제거 (구분자·괄호·따옴표)
+  const pattern = (c: string) => `memo.ilike.%${c.replace(/[,()"\\]/g, '')}%`;
   const { data } = await supabase
     .schema('finance')
     .from('transactions')
-    .select('brand')
-    .ilike('memo', `%${core}%`)
+    .select('memo, brand')
     .not('brand', 'is', null)
-    .limit(100);
-  const tally = new Map<string, number>();
-  for (const r of data ?? []) tally.set(r.brand, (tally.get(r.brand) ?? 0) + 1);
-  const top = Array.from(tally.entries()).sort((a, b) => b[1] - a[1])[0];
-  return top && (top[0] === 'garden' || top[0] === 'staffmeal') ? top[0] : null;
+    .or(cores.map(pattern).join(','))
+    .limit(500);
+  for (const core of cores) {
+    const tally = new Map<string, number>();
+    for (const r of data ?? []) {
+      if (String(r.memo ?? '').includes(core)) tally.set(r.brand, (tally.get(r.brand) ?? 0) + 1);
+    }
+    const top = Array.from(tally.entries()).sort((a, b) => b[1] - a[1])[0];
+    if (top && (top[0] === 'garden' || top[0] === 'staffmeal')) out.set(core, top[0]);
+  }
+  return out;
 }
 
 export async function GET(req: Request) {
@@ -283,13 +295,13 @@ export async function GET(req: Request) {
       .limit(20);
     // 브랜드가 지정된 건은 해당 보드에만. 미지정(옛 기록)은 거래처의 지출 원장 이력으로 추정하고,
     // 그래도 판별되지 않을 때만 양쪽에 띄워 놓치지 않게 한다.
-    const resolved = await Promise.all(
-      (transfers ?? []).map(async (t) => ({
-        ...t,
-        brand: t.brand ?? (await inferBrand(supabase, t.vendor_name ?? '')),
-        inferred: !t.brand,
-      }))
-    );
+    const missing = (transfers ?? []).filter((t) => !t.brand).map((t) => t.vendor_name ?? '');
+    const inferredMap = missing.length ? await inferBrand(supabase, missing) : new Map<string, 'garden' | 'staffmeal'>();
+    const resolved = (transfers ?? []).map((t) => ({
+      ...t,
+      brand: t.brand ?? inferredMap.get(coreVendor(t.vendor_name ?? '')) ?? null,
+      inferred: !t.brand,
+    }));
     const forThisBoard = resolved.filter((t) => !t.brand || t.brand === scope);
     for (const t of forThisBoard) {
       const d = daysAgo(t.created_at);

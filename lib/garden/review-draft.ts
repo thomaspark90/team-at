@@ -3,14 +3,23 @@
 // 같은 호출에서 이슈(불만·개선 지적) 여부도 함께 분류한다 — 기준은 review-issue.ts 참고.
 
 import { ISSUE_RULE, sanitizeCategories } from './review-issue';
+import { GEMINI_MODELS as MODELS } from './review-constants';
 import { STORES } from '@/lib/types';
 
-const MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
-];
+/** 사장님이 확정해 게시한 최근 답글 — 새 초안의 길이·결 기준.
+ *  목록 API(redraft)와 인제스트가 같은 쿼리를 쓰도록 여기서 단일화한다. */
+export async function recentReplyExamples(db: { from: (table: string) => any }): Promise<string[]> {
+  const { data } = await db
+    .from('place_reviews')
+    .select('reply_text')
+    .not('reply_text', 'is', null)
+    .in('status', ['approved', 'posted'])
+    .order('approved_at', { ascending: false })
+    .limit(8);
+  return ((data ?? []) as { reply_text: string | null }[])
+    .map((e) => String(e.reply_text ?? '').trim())
+    .filter(Boolean);
+}
 
 export type ReviewForDraft = {
   store_key: string;

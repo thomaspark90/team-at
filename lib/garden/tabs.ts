@@ -28,6 +28,9 @@ export const GARDEN_TABS: GardenTab[] = GARDEN_TAB_GROUPS.flat();
 export const GARDEN_TAB_KEYS = GARDEN_TABS.map((t) => t.key);
 
 /** 현재 경로가 어느 탭인지 판정 — 대시보드는 정확히, 나머지는 하위 경로 포함. */
+// 제철 단어 검수(승인·반려) 시 쏘는 브라우저 이벤트 — GardenNav가 듣고 배지를 갱신한다
+export const WORDS_CHANGED_EVENT = 'garden-words-changed';
+
 export const tabForPath = (pathname: string): GardenTab | undefined =>
   GARDEN_TABS.find((t) =>
     t.href === '/garden' ? pathname === '/garden' : pathname === t.href || pathname.startsWith(t.href + '/'),

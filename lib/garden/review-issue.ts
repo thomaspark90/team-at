@@ -2,12 +2,7 @@
 // 신규 리뷰는 초안 생성(review-draft.ts)에 분류가 동승하고,
 // 이 모듈은 기존 리뷰 백필·단독 재분류에 쓰는 분류 전용 호출이다.
 
-const MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
-];
+import { GEMINI_MODELS as MODELS } from './review-constants';
 
 export type ReviewForIssue = {
   rating: number | null;

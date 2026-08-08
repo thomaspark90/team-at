@@ -17,6 +17,17 @@ const LLM_BATCH = 10;
 // finance 스코프 service 클라이언트를 모두 수용하기 위함
 type FinanceDb = { from: (table: string) => any };
 
+/** 백필 잔여 건수 = 미분류 + 카테고리 미보완 — 목록 API(issues 탭)와 분류 배치가 같은 기준을 쓴다.
+ *  수동 정정 건은 카테고리 보완 대상이 아니므로 제외 (무한 '분류 실행' 버튼 방지). */
+export async function unclassifiedRemaining(db: FinanceDb): Promise<number> {
+  const [{ count: nullCount }, { count: catCount }] = await Promise.all([
+    db.from('place_reviews').select('id', { count: 'exact', head: true }).is('issue', null),
+    db.from('place_reviews').select('id', { count: 'exact', head: true })
+      .eq('issue', true).is('issue_categories', null).is('issue_source', null).not('content', 'is', null),
+  ]);
+  return (nullCount ?? 0) + (catCount ?? 0);
+}
+
 export async function classifyBacklog(
   db: FinanceDb, // finance 스코프 클라이언트
   notifyClient: SupabaseClient, // 기본(public) 스코프 — 알림 수신자 조회·발송용
@@ -123,12 +134,5 @@ export async function classifyBacklog(
     }
   }
 
-  const [{ count: nullCount }, { count: catCount }] = await Promise.all([
-    db.from('place_reviews').select('id', { count: 'exact', head: true }).is('issue', null),
-    // 수동 정정 건은 카테고리 보완 대상이 아니므로 잔여 카운트에서도 제외 (무한 버튼 방지)
-    db.from('place_reviews').select('id', { count: 'exact', head: true })
-      .eq('issue', true).is('issue_categories', null).is('issue_source', null).not('content', 'is', null),
-  ]);
-
-  return { classified, remaining: (nullCount ?? 0) + (catCount ?? 0) };
+  return { classified, remaining: await unclassifiedRemaining(db) };
 }

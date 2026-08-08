@@ -15,3 +15,12 @@ export const REVIEW_POST_MAX_ATTEMPTS = 5;
 
 // 인박스에서 리뷰를 처리하면 쏘는 브라우저 이벤트 — GardenNav가 듣고 배지를 갱신한다
 export const REVIEWS_CHANGED_EVENT = 'garden-reviews-changed';
+
+// Gemini 모델 폴백 체인 — 초안 생성(review-draft)과 이슈 분류(review-issue)가 공유.
+// 무료 한도 429를 만나면 순서대로 다음 모델로 넘어간다.
+export const GEMINI_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+];

@@ -72,11 +72,17 @@ export function blobCollection<T extends BlobRecord>(opts: {
       (a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? '') || (a.id ?? '').localeCompare(b.id ?? '')
     );
 
+  // 구 단일 파일이 없다고 확인되면 인스턴스 수명 동안 다시 조회하지 않는다 —
+  // 이관이 끝난 지 오래인데 readAll마다 blob GET 1회(항상 miss)를 내는 것 방지.
+  // 콜드 스타트마다 초기화되므로, 만에 하나 파일이 재등장해도 새 인스턴스가 잡는다.
+  let legacyGone = false;
+
   const readAll = async (): Promise<T[]> => {
     // 이관 여부는 "기록 blob 개수"가 아니라 "구 단일 파일이 남아 있는지"로 판단한다.
     // 개수로 판단하면 (1) 기록을 전부 지운 뒤 조회할 때 삭제한 기록이 되살아나고,
     // (2) 이관이 중간에 실패하면 일부만 남은 상태가 완료로 오인돼 나머지가 영영 사라진다.
-    const legacy = await readJson<Record<string, unknown>>(opts.legacyPath);
+    const legacy = legacyGone ? null : await readJson<Record<string, unknown>>(opts.legacyPath);
+    if (!legacy) legacyGone = true;
     if (legacy) {
       const arr = (Array.isArray(legacy[opts.legacyKey]) ? (legacy[opts.legacyKey] as T[]) : []).map(norm);
       // 같은 id·경로라 여러 번 실행돼도 멱등. 중간에 실패하면 원본이 남아 다음 요청이 다시 시도한다.

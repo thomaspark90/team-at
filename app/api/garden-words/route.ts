@@ -31,6 +31,26 @@ export async function GET(req: Request) {
   const supabase = await createClient();
   const url = new URL(req.url);
 
+  // 네비 배지용 — 검수 대기 건수만. 관리 조회와 같은 권한(허용 계정 + words 탭)을 요구한다
+  if (url.searchParams.get('scope') === 'pending-count') {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+    if (!(await isAllowedUser(supabase, user.email)))
+      return NextResponse.json({ error: '허용된 계정만 조회할 수 있습니다.' }, { status: 403 });
+    {
+      const denied = await requireGardenTab(supabase, user, 'words');
+      if (denied) return denied;
+    }
+    const { count, error } = await supabase
+      .from('garden_words')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ count: count ?? 0 });
+  }
+
   if (url.searchParams.get('scope') === 'admin') {
     const {
       data: { user },
