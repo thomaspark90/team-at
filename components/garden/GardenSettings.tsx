@@ -10,6 +10,7 @@ import { type RecipientRow } from '@/components/NotifyRecipients';
 import NotifySettings from '@/components/NotifySettings';
 import GardenOptionsManager from '@/components/garden/GardenOptionsManager';
 import GardenTabAccess from '@/components/garden/GardenTabAccess';
+import EmailAddPicker, { useTeamEmails } from '@/components/EmailAddPicker';
 
 // 가든 설정 — 알림(내 채널 + 항목별 담당자), 요청 보내기, 발주 명단, 접근 권한, 투두리스트.
 // 흩어져 있던 알림 3종(항목별 담당자·수신자 관리·내 채널)과 요청 폼 2종을 각각 하나로 합쳤다.
@@ -39,7 +40,6 @@ const chip: React.CSSProperties = {
   gap: 6,
 };
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // ───────────────────────── 알림 (내 채널 + 항목별 담당자) ─────────────────────────
 
@@ -54,9 +54,10 @@ const FINANCE_TOPICS: { id: FinanceTopic; label: string; desc: string }[] = [
 function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null }) {
   const [map, setMap] = useState<GardenTopicMap>(EMPTY_TOPICS);
   const [rows, setRows] = useState<RecipientRow[]>(recipients ?? []);
-  const [inputs, setInputs] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 이메일 추가 드롭다운 후보 — 팀 전체 계정(대표·사전 등록 포함)
+  const teamEmails = useTeamEmails();
 
   useEffect(() => {
     fetch('/api/garden-notify-topics', { cache: 'no-store' })
@@ -110,41 +111,6 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
     }
   };
 
-  const addTo = (key: string, add: (email: string) => void) => {
-    const email = (inputs[key] ?? '').trim().toLowerCase();
-    if (!email || busy) return;
-    if (!EMAIL_RE.test(email)) {
-      setError('올바른 이메일을 입력하세요.');
-      return;
-    }
-    setInputs((p) => ({ ...p, [key]: '' }));
-    add(email);
-  };
-
-  // 렌더 함수로 호출한다(<AddInput/> 처럼 컴포넌트로 쓰면 매 입력마다 새 타입이 되어
-  // input 이 리마운트되고 포커스가 날아간다)
-  const addInput = (k: string, onAdd: (email: string) => void) => (
-    <>
-      <input
-        type="email"
-        value={inputs[k] ?? ''}
-        onChange={(e) => setInputs((p) => ({ ...p, [k]: e.target.value }))}
-        onKeyDown={(e) => e.key === 'Enter' && addTo(k, onAdd)}
-        placeholder="이메일 추가"
-        className="ta-input"
-        style={{ height: 30, width: 190, fontSize: 12 }}
-      />
-      <button
-        onClick={() => addTo(k, onAdd)}
-        disabled={busy || !(inputs[k] ?? '').trim()}
-        className="ta-btn"
-        style={{ height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 12 }}
-      >
-        추가
-      </button>
-    </>
-  );
-
   const row = ({
     label,
     desc,
@@ -180,7 +146,8 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
             </button>
           </span>
         ))}
-        {addInput(k, onAdd)}
+        {/* 드롭다운(팀 계정 선택 즉시 추가) + '직접 입력' 수기 기입 */}
+        <EmailAddPicker candidates={teamEmails} exclude={emails} onAdd={onAdd} busy={busy} onError={setError} />
       </div>
     </div>
   );

@@ -55,11 +55,17 @@ export async function GET(req: Request) {
 
   if (mineOnly) return NextResponse.json({ mine, sections });
   const role = await resolveRole(g.supabase, g.user);
-  if (role !== 'admin') return NextResponse.json({ mine, sections, isAdmin: false });
 
-  // admin: 팀 전체 계정 + 각자의 허용 섹션·탭 (행 없으면 null = 전체)
+  // 팀 전체 계정 이메일(대표·사전 등록 계정 포함) — 항목별 담당자 등 이메일 선택 드롭다운용.
+  // admin 이 아니어도 내려준다(팀 내부 정보, 미들웨어가 팀 확인을 끝낸 뒤에만 도달).
   const { data: usersData, error: usersErr } = await svc.auth.admin.listUsers({ perPage: 200 });
   if (usersErr) return NextResponse.json({ error: usersErr.message }, { status: 500 });
+  const emails = usersData.users
+    .map((u) => u.email)
+    .filter((e): e is string => !!e)
+    .sort();
+
+  if (role !== 'admin') return NextResponse.json({ mine, sections, isAdmin: false, emails });
   const { data: accessRows } = await svc.from('garden_tab_access').select('user_id, tabs, sections');
   const accessMap = new Map(
     (accessRows ?? []).map((r: { user_id: string; tabs: string[] | null; sections: string[] | null }) => [
@@ -82,7 +88,7 @@ export async function GET(req: Request) {
   const { data: allowRows } = await svc.from('allowed_emails').select('email');
   const allowedEmails = ((allowRows ?? []) as { email: string }[]).map((r) => r.email).sort();
 
-  return NextResponse.json({ mine, sections, isAdmin: true, users, allowedEmails });
+  return NextResponse.json({ mine, sections, isAdmin: true, users, allowedEmails, emails });
 }
 
 // 이메일 사전 등록 — 계정이 없으면 만들어(비밀번호 없는 자리, 구글 로그인 시 자동 연결)

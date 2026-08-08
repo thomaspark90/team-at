@@ -4,11 +4,10 @@ import { useEffect, useState } from 'react';
 import type { GardenTopicId, GardenTopicMap, TopicScope } from '@/lib/garden-notify-topics';
 import { EMPTY_TOPICS, topicsOfScope } from '@/lib/garden-notify-topics';
 import NotifySettings from '@/components/NotifySettings';
+import EmailAddPicker, { useTeamEmails } from '@/components/EmailAddPicker';
 
 // 항목별 알림 담당자 — 브랜드(scope)별 토픽만 보여준다.
 // 가든 설정과 스탭밀 설정이 같은 UI 를 쓰되 다루는 항목만 다르다.
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const chip: React.CSSProperties = { padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: 6 };
 
@@ -22,9 +21,10 @@ export default function TopicAssignees({
   intro?: string;
 }) {
   const [map, setMap] = useState<GardenTopicMap>(EMPTY_TOPICS);
-  const [inputs, setInputs] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 이메일 추가 드롭다운 후보 — 팀 전체 계정(대표·사전 등록 포함)
+  const teamEmails = useTeamEmails();
 
   useEffect(() => {
     fetch('/api/garden-notify-topics', { cache: 'no-store' })
@@ -45,13 +45,8 @@ export default function TopicAssignees({
     setBusy(false);
   };
 
-  const add = (topic: GardenTopicId) => {
-    const email = (inputs[topic] ?? '').trim().toLowerCase();
-    if (!email || busy) return;
-    if (!EMAIL_RE.test(email)) return setError('올바른 이메일을 입력하세요.');
-    setInputs((p) => ({ ...p, [topic]: '' }));
+  const add = (topic: GardenTopicId, email: string) =>
     save(topic, Array.from(new Set([...map[topic], email])));
-  };
 
   return (
     <div className="ta-card bg-background min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -91,23 +86,14 @@ export default function TopicAssignees({
                   </button>
                 </span>
               ))}
-              <input
-                type="email"
-                value={inputs[t.id] ?? ''}
-                onChange={(e) => setInputs((p) => ({ ...p, [t.id]: e.target.value }))}
-                onKeyDown={(e) => e.key === 'Enter' && add(t.id)}
-                placeholder="이메일 추가"
-                className="ta-input"
-                style={{ height: 30, width: 190, fontSize: 12 }}
+              {/* 드롭다운(팀 계정 선택 즉시 추가) + '직접 입력' 수기 기입 */}
+              <EmailAddPicker
+                candidates={teamEmails}
+                exclude={map[t.id]}
+                onAdd={(email) => add(t.id, email)}
+                busy={busy}
+                onError={setError}
               />
-              <button
-                onClick={() => add(t.id)}
-                disabled={busy || !(inputs[t.id] ?? '').trim()}
-                className="ta-btn"
-                style={{ height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 12 }}
-              >
-                추가
-              </button>
             </div>
           </div>
         ))}
