@@ -41,6 +41,9 @@ export default function GardenService() {
   const [scanMsg, setScanMsg] = useState<string | null>(null);
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [saving, setSaving] = useState(false);
+  // 카톡 발주 알림 — 허용 계정에만 [발주] 버튼 노출, jobs 는 기록별 전송 상태(pending|sent|failed)
+  const [kakao, setKakao] = useState<{ allowed: boolean; jobs: Record<string, string> }>({ allowed: false, jobs: {} });
+  const [kakaoSending, setKakaoSending] = useState<string | null>(null);
 
   const refreshPurchases = async () => {
     const res = await fetch('/api/purchases', { cache: 'no-store' });
@@ -51,6 +54,9 @@ export default function GardenService() {
     fetch('/api/garden-options', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => j && setOptions({ staffNames: j.staffNames ?? [], roasteries: j.roasteries ?? [] }));
+    fetch('/api/kakao-notify', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j && setKakao({ allowed: !!j.allowed, jobs: j.jobs ?? {} }));
   }, []);
 
   // 잔존율·투입량이 0이면(입력창 비움) 재료비 0원·판매가 0원이 그대로 저장되므로 결과 자체를 막는다
@@ -118,6 +124,36 @@ export default function GardenService() {
       body: JSON.stringify({ id }),
     });
     refreshPurchases();
+  };
+
+  // [발주] — 카톡 전송 잡 등록. 실제 전송은 맥 로컬 전송기가 큐를 폴링해 수행한다.
+  const sendKakaoOrder = async (rec: PurchaseRecord) => {
+    if (kakaoSending) return;
+    setKakaoSending(rec.id);
+    try {
+      const res = await fetch('/api/kakao-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purchaseId: rec.id }),
+      });
+      const j = await res.json().catch(() => null);
+      if (res.ok && j?.job) {
+        setKakao((k) => ({ ...k, jobs: { ...k.jobs, [rec.id]: j.job.status } }));
+      } else if (j?.error) {
+        alert(j.error);
+      }
+    } finally {
+      setKakaoSending(null);
+    }
+  };
+
+  // 버튼 라벨 — 대기(전송기가 아직 안 집어감)와 완료를 구분해 보여준다
+  const kakaoLabel = (status: string | undefined, sending: boolean) => {
+    if (sending) return '…';
+    if (status === 'pending') return '대기중';
+    if (status === 'sent') return '발주됨 ✓';
+    if (status === 'failed') return '실패·재시도';
+    return '발주';
   };
 
   // 발주 기록 — 원두별 그룹(각 그룹 최신순), 그룹은 최근 기록순
@@ -437,6 +473,18 @@ export default function GardenService() {
                               <span className="tabular text-muted-foreground">판매 {won(rec.rangeLow)}~{won(rec.rangeHigh)}</span>
                             )}
                           </span>
+                          {kakao.allowed && (
+                            <button
+                              onClick={() => sendKakaoOrder(rec)}
+                              // pending·sent 는 서버가 중복 등록을 막지만, 눌러도 변화가 없어 혼란만 주므로 비활성화
+                              disabled={kakaoSending === rec.id || kakao.jobs[rec.id] === 'pending' || kakao.jobs[rec.id] === 'sent'}
+                              className={kakao.jobs[rec.id] === 'sent' ? 'text-muted-foreground' : 'text-foreground hover:text-foreground'}
+                              style={{ background: 'none', border: 'none', cursor: kakao.jobs[rec.id] === 'sent' ? 'default' : 'pointer', fontSize: 11, flexShrink: 0, padding: 0 }}
+                              title="카톡방에 발주 메시지 전송"
+                            >
+                              {kakaoLabel(kakao.jobs[rec.id], kakaoSending === rec.id)}
+                            </button>
+                          )}
                           <a
                             href={`/garden/beancard?recordId=${rec.id}`}
                             className="text-muted-foreground hover:text-foreground"

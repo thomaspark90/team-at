@@ -58,5 +58,7 @@ export function sectionsForApiPath(p: string): string[] | null {
   if (p.startsWith('/api/garden-share') || p.startsWith('/api/garden-tab-access')) return null;
   // purchases 는 이름과 달리 가든의 '원두 발주' 기록이다 — 회계가 아니라 가든 화면들이 쓴다
   if (p.startsWith('/api/garden-') || p.startsWith('/api/purchases')) return ['garden'];
+  // 발주 카톡 알림 — 발주 화면 전용. /api/kakao-notify/queue 는 PUBLIC_API 라 여기 안 온다
+  if (p.startsWith('/api/kakao-notify')) return ['garden'];
   return null;
 }
