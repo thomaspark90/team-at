@@ -18,7 +18,15 @@ interface OverviewData {
   unclassifiedTotal: number;
   unclassifiedLatest: number;
   latestConfirmed: boolean;
+  pendingTransfers: { id: number; vendor: string; amount: number; brand: string | null }[];
+  closeReminders: { label: string; href: string; late: boolean }[];
 }
+
+const UNITS = [
+  { brand: 'staffmeal', store: null as string | null, unit: 'staffmeal', label: '스탭밀' },
+  { brand: 'garden', store: 'yangjae', unit: 'yangjae', label: '가든 양재천' },
+  { brand: 'garden', store: 'pangyo', unit: 'pangyo', label: '가든 판교' },
+];
 
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 const GREEN = 'hsl(var(--number-colored))';
@@ -73,6 +81,41 @@ export default async function FinancePage({ searchParams }: { searchParams: { br
       seg === 'all'
         ? latestBrands.length > 0 && latestBrands.every((b) => brandConfirmed(b))
         : brandConfirmed(seg);
+
+    // 송금 요청(대기 중) — 브랜드 보드에는 안 띄우고 회계 대시보드에서만 처리(2026-08-09)
+    const { data: transferRows } = await supabase
+      .schema('finance')
+      .from('transfer_requests')
+      .select('id, vendor_name, amount, brand, status, created_at')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true })
+      .limit(20);
+    const pendingTransfers = ((transferRows as { id: number; vendor_name: string | null; amount: number; brand: string | null }[] | null) ?? [])
+      .filter((t) => seg === 'all' || !t.brand || t.brand === seg)
+      .map((t) => ({ id: t.id, vendor: t.vendor_name ?? '거래처', amount: Number(t.amount ?? 0), brand: t.brand }));
+
+    // 지난달 자료 마감 리마인더 — 매월 5일부터, 단위별로 전월 미확정이면 노출
+    const kstNow = new Date(Date.now() + 9 * 3600_000);
+    const dayOfMonth = kstNow.getUTCDate();
+    const closeReminders: OverviewData['closeReminders'] = [];
+    if (dayOfMonth >= 5) {
+      const prev = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth() - 1, 1));
+      const prevYm = `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, '0')}`;
+      const monthNo = prev.getUTCMonth() + 1;
+      const confirmedUnitsPrev = new Set(
+        closes.filter((c) => c.ym === prevYm && c.status === 'confirmed').map((c) => `${c.brand ?? 'garden'}|${c.store || ''}`),
+      );
+      for (const u of UNITS) {
+        if (seg !== 'all' && u.brand !== seg) continue;
+        if (confirmedUnitsPrev.has(`${u.brand}|${u.store ?? ''}`)) continue;
+        closeReminders.push({
+          label: `${monthNo}월 ${u.label} 자료 마감`,
+          href: `/finance/upload/${u.unit}`,
+          late: dayOfMonth >= 15,
+        });
+      }
+    }
+
     overview = {
       latest,
       totalRevenue: s.totalRevenue,
@@ -81,6 +124,8 @@ export default async function FinancePage({ searchParams }: { searchParams: { br
       unclassifiedTotal: txns.filter((t) => t.category_id == null).length,
       unclassifiedLatest: txns.filter((t) => t.ym === latest && t.category_id == null).length,
       latestConfirmed,
+      pendingTransfers,
+      closeReminders,
     };
   }
 
@@ -179,6 +224,18 @@ function Overview({ o }: { o: OverviewData }) {
               href={o.unclassifiedLatest === 0 ? '/finance/close' : `/finance/classify?ym=${o.latest}&unclassified=1`}
               cta={o.latestConfirmed ? '월 확정' : o.unclassifiedLatest === 0 ? '확정하러 가기' : '분류하러 가기'}
             />
+            {o.closeReminders.map((r) => (
+              <TodoRow key={r.href} done={false} text={r.late ? `${r.label} (지연)` : r.label} href={r.href} cta="자료 입력 열기" />
+            ))}
+            {o.pendingTransfers.map((t) => (
+              <TodoRow
+                key={t.id}
+                done={false}
+                text={`송금 대기 — ${t.vendor} ${won(t.amount)}${t.brand ? '' : ' · 브랜드 미지정'}`}
+                href="/dashboard/transfer"
+                cta="이체 처리"
+              />
+            ))}
           </div>
 
           {/* 빠른 이동 */}

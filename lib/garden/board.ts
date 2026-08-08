@@ -7,7 +7,9 @@ export type BoardColumn = 'todo' | 'doing' | 'done';
 /** 보드는 브랜드별로 나뉜다 — 가든 화면엔 가든 일만, 스탭밀 화면엔 스탭밀 일만 */
 export type BoardScope = 'garden' | 'staffmeal';
 
-export type BoardType = 'order' | 'measure' | 'align' | 'review' | 'money' | 'todo' | 'meal' | 'upload';
+// 회계 관련 일(송금·자료 마감)은 회계 대시보드(/finance)에서만 다룬다 — 브랜드 보드는
+// 브랜드 운영 활동(발주·측정·얼라인·리뷰·투두)만 보여준다(2026-08-09).
+export type BoardType = 'order' | 'measure' | 'align' | 'review' | 'todo' | 'meal';
 
 export const BOARD_TYPES: { id: BoardType; label: string; color: string }[] = [
   { id: 'order', label: '발주', color: 'var(--chart-cat-1)' },
@@ -15,8 +17,6 @@ export const BOARD_TYPES: { id: BoardType; label: string; color: string }[] = [
   { id: 'align', label: '얼라인', color: 'var(--chart-cat-8)' },
   { id: 'review', label: '리뷰', color: 'var(--chart-cat-7)' },
   { id: 'meal', label: '스탭밀', color: 'var(--chart-cat-4)' },
-  { id: 'money', label: '송금', color: 'var(--chart-cat-3)' },
-  { id: 'upload', label: '자료', color: 'var(--chart-cat-5)' },
   { id: 'todo', label: '투두', color: 'var(--chart-cat-other)' },
 ];
 
@@ -66,8 +66,6 @@ export const TYPE_TAB: Record<BoardType, string | null> = {
   measure: 'calibration',
   align: 'calibration',
   review: 'reviews',
-  money: 'dashboard', // 송금은 회계 화면이지만 카드 자체는 대시보드에 뜬다
-  upload: 'dashboard', // 월 자료 마감 리마인더 — 송금과 같은 기준
   todo: 'settings',
   meal: null,
 };

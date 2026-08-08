@@ -1,7 +1,7 @@
 import { get } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { isOwner, resolveRole } from '@/lib/finance/access';
+import { isOwner } from '@/lib/finance/access';
 import { readGardenTopics } from '@/lib/garden-notify-topics-server';
 import { purchaseRecords, grindMeasurementRecords, gardenTodoRecords, staffmealTodoRecords, alignmentRecords, dripRecipeRecords } from '@/lib/blob-records';
 import { normalize } from '@/lib/pricing';
@@ -40,47 +40,6 @@ const PROTOCOL_DIALS = [6, 8, 10];
 const SHOTS_PER_DIAL = 3;
 const storeLabel = (id: string) => STORES.find((s) => s.id === id)?.label ?? id;
 
-// 거래처명에서 법인격 표기를 걷어낸 핵심 이름 — 원장 적요는 '농협봉농 5/13' 처럼 적히므로
-// '주식회사 봉농' 그대로는 매칭되지 않는다.
-const coreVendor = (name: string) =>
-  name
-    .replace(/\(주\)|\(유\)|\(사\)|주식회사|유한회사|합자회사/g, '')
-    .replace(/[^가-힣a-zA-Z0-9]/g, '')
-    .trim();
-
-// 브랜드가 비어 있는 옛 송금 요청은 같은 거래처의 지출 원장 이력으로 브랜드를 추정한다.
-// (브랜드 컬럼이 생기기 전에 등록된 건들 — 지금은 등록 시 브랜드 선택이 필수다)
-async function inferBrand(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  vendorNames: string[]
-): Promise<Map<string, 'garden' | 'staffmeal'>> {
-  // 거래처별 ilike 쿼리를 건건이 날리면(N+1) 보드 로드마다 원장을 최대 20번 스캔한다 —
-  // or()로 한 번에 모아 조회하고 코어별 집계는 메모리에서 한다.
-  const out = new Map<string, 'garden' | 'staffmeal'>();
-  const cores = Array.from(
-    new Set(vendorNames.map((v) => coreVendor(v ?? '')).filter((c) => c.length >= 2))
-  );
-  if (cores.length === 0) return out;
-  // or() 문법과 충돌하는 문자는 검색어에서 제거 (구분자·괄호·따옴표)
-  const pattern = (c: string) => `memo.ilike.%${c.replace(/[,()"\\]/g, '')}%`;
-  const { data } = await supabase
-    .schema('finance')
-    .from('transactions')
-    .select('memo, brand')
-    .not('brand', 'is', null)
-    .or(cores.map(pattern).join(','))
-    .limit(500);
-  for (const core of cores) {
-    const tally = new Map<string, number>();
-    for (const r of data ?? []) {
-      if (String(r.memo ?? '').includes(core)) tally.set(r.brand, (tally.get(r.brand) ?? 0) + 1);
-    }
-    const top = Array.from(tally.entries()).sort((a, b) => b[1] - a[1])[0];
-    if (top && (top[0] === 'garden' || top[0] === 'staffmeal')) out.set(core, top[0]);
-  }
-  return out;
-}
-
 export async function GET(req: Request) {
   const supabase = await createClient();
   const {
@@ -92,7 +51,7 @@ export async function GET(req: Request) {
   const scope: BoardScope = new URL(req.url).searchParams.get('scope') === 'staffmeal' ? 'staffmeal' : 'garden';
 
   const me = (user.email ?? '').toLowerCase();
-  const [topics, access, role] = await Promise.all([
+  const [topics, access] = await Promise.all([
     readGardenTopics(),
     supabase
       .schema('finance')
@@ -101,12 +60,10 @@ export async function GET(req: Request) {
       .eq('user_id', user.id)
       .maybeSingle()
       .then((r) => r.data),
-    resolveRole(supabase, user),
   ]);
   const owner = isOwner(user.email);
   const allowedTabs = owner ? null : ((access?.tabs as string[] | null) ?? null);
   const allowedSections = owner ? null : ((access?.sections as string[] | null) ?? null);
-  const isFinance = ['admin', 'classifier'].includes(role ?? '');
 
   // 섹션 권한 — 이 보드를 볼 수 있는 사람인지 (미들웨어는 라우트 단위라 scope 별 판단은 여기서)
   const needSection = scope === 'staffmeal' ? 'studio' : 'garden';
@@ -285,96 +242,8 @@ export async function GET(req: Request) {
   }
 
   // ── 송금 요청 : 요청 · 이체 (재무 담당에게만) ──
-  if (isFinance) {
-    const { data: transfers } = await supabase
-      .schema('finance')
-      .from('transfer_requests')
-      .select('id, vendor_name, amount, requester_email, status, created_at, brand')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: true })
-      .limit(20);
-    // 브랜드가 지정된 건은 해당 보드에만. 미지정(옛 기록)은 거래처의 지출 원장 이력으로 추정하고,
-    // 그래도 판별되지 않을 때만 양쪽에 띄워 놓치지 않게 한다.
-    const missing = (transfers ?? []).filter((t) => !t.brand).map((t) => t.vendor_name ?? '');
-    const inferredMap = missing.length ? await inferBrand(supabase, missing) : new Map<string, 'garden' | 'staffmeal'>();
-    const resolved = (transfers ?? []).map((t) => ({
-      ...t,
-      brand: t.brand ?? inferredMap.get(coreVendor(t.vendor_name ?? '')) ?? null,
-      inferred: !t.brand,
-    }));
-    const forThisBoard = resolved.filter((t) => !t.brand || t.brand === scope);
-    for (const t of forThisBoard) {
-      const d = daysAgo(t.created_at);
-      cards.push({
-        id: `money:${t.id}`,
-        type: 'money',
-        title: `${t.vendor_name ?? '거래처'} — ${Number(t.amount ?? 0).toLocaleString()}원`,
-        column: 'todo',
-        steps: stepsAt(['요청', '이체'], 1),
-        meta: [
-          ...(d >= 2 ? [{ text: `${d}일 경과`, tone: 'late' as const }] : [{ text: shortDate(t.created_at) }]),
-          { text: `요청: ${(t.requester_email ?? '').split('@')[0]}` },
-          ...(t.brand && t.inferred ? [{ text: '거래 이력으로 분류' }] : []),
-          ...(t.brand ? [] : [{ text: '브랜드 미지정' }]),
-        ],
-        assignees: [],
-        mine: true,
-        mineReason: '재무 담당',
-        href: '/dashboard/transfer',
-        actionLabel: '이체 처리',
-        tab: TYPE_TAB.money,
-        sortAt: t.created_at,
-      });
-    }
-  }
-
-  // ── 지난달 자료 마감 리마인더 : 매월 5일부터, 전월이 미확정인 단위별로 카드 (재무 담당만) ──
-  // 무엇이 얼마나 남았는지(업로드·분류·확정)는 무거운 집계라 여기선 확정 여부만 본다 —
-  // 세부는 카드가 여는 자료 입력 화면이 보여준다.
-  if (isFinance) {
-    const kstNow = new Date(Date.now() + 9 * 3600_000);
-    const dayOfMonth = kstNow.getUTCDate();
-    if (dayOfMonth >= 5) {
-      const prev = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth() - 1, 1));
-      const prevYm = `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, '0')}`;
-      const monthNo = prev.getUTCMonth() + 1;
-      const { data: closes } = await supabase
-        .schema('finance')
-        .from('monthly_close')
-        .select('status, store')
-        .eq('brand', scope)
-        .eq('ym', prevYm);
-      const confirmedStores = new Set(
-        (closes ?? []).filter((c) => c.status === 'confirmed').map((c) => String(c.store ?? ''))
-      );
-      // 가든은 지점별 확정(양재천·판교), 스탭밀은 단일 확정
-      const targets = isGarden
-        ? [
-            { unit: 'yangjae', store: 'yangjae', label: '가든 양재천' },
-            { unit: 'pangyo', store: 'pangyo', label: '가든 판교' },
-          ].filter((t) => !confirmedStores.has(t.store))
-        : confirmedStores.size > 0
-          ? []
-          : [{ unit: 'staffmeal', store: '', label: '스탭밀' }];
-      for (const t of targets) {
-        cards.push({
-          id: `close:${prevYm}:${t.unit}`,
-          type: 'upload',
-          title: `${monthNo}월 ${t.label} 자료 마감`,
-          column: 'todo',
-          steps: stepsAt(['자료 업로드·분류', '월 확정'], 0),
-          meta: [{ text: `${monthNo}월분 미확정`, ...(dayOfMonth >= 15 ? { tone: 'late' as const } : {}) }],
-          assignees: [],
-          mine: true,
-          mineReason: '재무 담당',
-          href: `/finance/upload/${t.unit}`,
-          actionLabel: '자료 입력 열기',
-          tab: isGarden ? TYPE_TAB.upload : null,
-          sortAt: `${prevYm}-28`,
-        });
-      }
-    }
-  }
+  // 송금 요청·월 자료 마감 리마인더는 회계 일이라 여기(브랜드 보드)엔 안 띄운다 —
+  // 회계 대시보드(/finance)의 '해야 할 일'에서 다룬다(2026-08-09).
 
   // ── 투두 ──
   for (const t of todos) {
