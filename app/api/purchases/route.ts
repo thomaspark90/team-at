@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { normalize, computePricing, priceAtMult, DEFAULT_SETTINGS } from '@/lib/pricing';
 import { requireGardenTab } from '@/lib/access/guard';
+import { kakaoNotifyJobs } from '@/lib/kakao-notify';
 import { topicEmails } from '@/lib/garden-notify-topics-server';
 import { notifyGardenEvent } from '@/lib/notify';
 import { APP_URL } from '@/lib/app-url';
@@ -100,6 +101,18 @@ export async function POST(req: Request) {
   }
   await purchaseRecords.writeOne(record);
   for (const r of replaced) await purchaseRecords.deleteOne(r.id);
+  // 대체된 기록의 카톡 발주 잡을 새 기록 id 로 이어붙인다 — 안 하면 [발주] 버튼이
+  // 다시 활성화돼 같은 발주가 거래처 방에 중복 전송될 수 있다. 실패해도 저장은 막지 않는다.
+  if (replaced.length > 0) {
+    try {
+      const replacedIds = new Set(replaced.map((r) => r.id));
+      for (const job of await kakaoNotifyJobs.readAll()) {
+        if (replacedIds.has(job.purchaseId)) await kakaoNotifyJobs.writeOne({ ...job, purchaseId: record.id });
+      }
+    } catch (e) {
+      console.error('kakao job 재연결 실패:', e);
+    }
+  }
   await logActivity(
     supabase,
     user,
