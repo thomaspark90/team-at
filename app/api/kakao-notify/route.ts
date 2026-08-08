@@ -77,12 +77,17 @@ export async function POST(req: Request) {
   const target = await resolveRoom(record);
   if ('error' in target) return NextResponse.json({ error: target.error }, { status: 400 });
 
+  // 담당자가 미리보기에서 문구를 고쳐 보낼 수 있다 — 없으면 서버 기본 문구.
+  // 방(room)은 수정 대상이 아니다 — 오전송 방지를 위해 항상 서버 매핑으로 확정한다.
+  const custom = typeof body?.message === 'string' ? body.message.trim() : '';
+  if (custom.length > 2000) return NextResponse.json({ error: '메시지가 너무 깁니다(2000자 제한).' }, { status: 400 });
+
   const job: KakaoNotifyJob = {
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
     purchaseId: record.id,
     room: target.room,
-    message: buildOrderMessage(record),
+    message: custom || buildOrderMessage(record),
     status: 'pending',
     requestedBy: user.email ?? '',
   };

@@ -46,6 +46,8 @@ export default function GardenService() {
   // 카톡 발주 알림 — 허용 계정에만 [발주] 버튼 노출, jobs 는 기록별 전송 상태(pending|sent|failed)
   const [kakao, setKakao] = useState<{ allowed: boolean; jobs: Record<string, string> }>({ allowed: false, jobs: {} });
   const [kakaoSending, setKakaoSending] = useState<string | null>(null);
+  // 발주 미리보기 카드 — 문구를 고쳐서 보낼 수 있다. 방은 서버 매핑 고정(오전송 방지).
+  const [kakaoPreview, setKakaoPreview] = useState<{ recId: string; bean: string; room: string; message: string } | null>(null);
 
   const refreshPurchases = async () => {
     const res = await fetch('/api/purchases', { cache: 'no-store' });
@@ -128,9 +130,8 @@ export default function GardenService() {
     refreshPurchases();
   };
 
-  // [발주] — 전송될 메시지 원문을 먼저 보여주고, 담당자가 확인해야 카톡 전송 잡을 등록한다.
-  // 미리보기는 서버가 만든 실제 전송 문구 그대로라 화면과 전송분이 어긋날 수 없다.
-  const sendKakaoOrder = async (rec: PurchaseRecord) => {
+  // [발주] 1단계 — 서버가 만든 전송 문구를 미리보기 카드로 연다. 담당자가 문구를 고칠 수 있다.
+  const openKakaoPreview = async (rec: PurchaseRecord) => {
     if (kakaoSending) return;
     setKakaoSending(rec.id);
     try {
@@ -140,15 +141,30 @@ export default function GardenService() {
         alert(pj?.error ?? '미리보기를 불러오지 못했습니다.');
         return;
       }
-      if (!confirm(`[${pj.room}] 방으로 아래 발주 메시지를 전송할까요?\n\n${pj.message}`)) return;
+      setKakaoPreview({ recId: rec.id, bean: rec.bean, room: pj.room, message: pj.message });
+    } finally {
+      setKakaoSending(null);
+    }
+  };
+
+  // [발주] 2단계 — 미리보기 카드에서 [전송] 확정. 고친 문구가 그대로 잡에 실린다.
+  const confirmKakaoSend = async () => {
+    if (!kakaoPreview || kakaoSending) return;
+    if (!kakaoPreview.message.trim()) {
+      alert('빈 메시지는 보낼 수 없습니다.');
+      return;
+    }
+    setKakaoSending(kakaoPreview.recId);
+    try {
       const res = await fetch('/api/kakao-notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ purchaseId: rec.id }),
+        body: JSON.stringify({ purchaseId: kakaoPreview.recId, message: kakaoPreview.message.trim() }),
       });
       const j = await res.json().catch(() => null);
       if (res.ok && j?.job) {
-        setKakao((k) => ({ ...k, jobs: { ...k.jobs, [rec.id]: j.job.status } }));
+        setKakao((k) => ({ ...k, jobs: { ...k.jobs, [kakaoPreview.recId]: j.job.status } }));
+        setKakaoPreview(null);
       } else if (j?.error) {
         alert(j.error);
       }
@@ -521,7 +537,7 @@ export default function GardenService() {
                           </span>
                           {kakao.allowed && (
                             <button
-                              onClick={() => sendKakaoOrder(rec)}
+                              onClick={() => openKakaoPreview(rec)}
                               // pending·sent 는 서버가 중복 등록을 막지만, 눌러도 변화가 없어 혼란만 주므로 비활성화
                               disabled={kakaoSending === rec.id || kakao.jobs[rec.id] === 'pending' || kakao.jobs[rec.id] === 'sent'}
                               className={kakao.jobs[rec.id] === 'sent' ? 'text-muted-foreground' : 'text-foreground hover:text-foreground'}
@@ -552,6 +568,47 @@ export default function GardenService() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* 발주 카톡 미리보기 카드 — 문구를 고쳐서 전송할 수 있다. 대상 방은 서버 매핑 고정 */}
+        {kakaoPreview && (
+          <div
+            onClick={() => setKakaoPreview(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          >
+            <div
+              className="ta-card bg-background"
+              onClick={(e) => e.stopPropagation()}
+              style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 10 }}
+            >
+              <div>
+                <p className="ta-label" style={{ margin: 0 }}>발주 메시지 전송</p>
+                <p className="text-[12px] text-muted-foreground" style={{ margin: '4px 0 0' }}>
+                  <span className="text-foreground">[{kakaoPreview.room}]</span> 방으로 전송됩니다 — 문구는 자유롭게 고칠 수 있어요
+                </p>
+              </div>
+              <textarea
+                value={kakaoPreview.message}
+                onChange={(e) => setKakaoPreview((p) => (p ? { ...p, message: e.target.value } : p))}
+                rows={7}
+                className="ta-input"
+                style={{ width: '100%', minWidth: 0, height: 'auto', padding: 10, fontSize: 13, lineHeight: 1.6, resize: 'vertical', fontFamily: 'inherit' }}
+              />
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={() => setKakaoPreview(null)} className="ta-btn" style={{ height: 34, paddingLeft: 14, paddingRight: 14 }}>
+                  취소
+                </button>
+                <button
+                  onClick={confirmKakaoSend}
+                  disabled={kakaoSending != null || !kakaoPreview.message.trim()}
+                  className="ta-btn-primary"
+                  style={{ height: 34, paddingLeft: 14, paddingRight: 14 }}
+                >
+                  {kakaoSending ? '전송 중…' : '전송'}
+                </button>
+              </div>
             </div>
           </div>
         )}
