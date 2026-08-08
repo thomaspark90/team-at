@@ -178,6 +178,32 @@ export default function GardenTabAccess({
     }
   };
 
+  // 계정 완전 삭제 — 잘못 등록한 계정 정리. auth 계정·권한 행·허용 목록을 함께 지운다.
+  const deleteAccount = async (u: UserRow) => {
+    const blockNote = isExternal(u.email)
+      ? '\n외부 계정이라 허용 목록에서도 빠져 로그인이 차단됩니다.'
+      : '\n팀 도메인 계정은 구글 로그인하면 다시 생성되니, 완전 차단은 워크스페이스에서 계정을 정지하세요.';
+    if (!confirm(`'${u.email}' 계정을 삭제할까요?\n권한 설정도 함께 지워지며 되돌릴 수 없습니다.${blockNote}`)) return;
+    setBusyId(u.id);
+    setError('');
+    try {
+      const res = await fetch('/api/garden-tab-access', {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ userId: u.id, purge: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? '삭제에 실패했습니다.');
+      setUsers((prev) => prev.filter((x) => x.id !== u.id));
+      setAllowed((prev) => prev.filter((e) => e !== u.email.toLowerCase()));
+      setOpenId(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '삭제에 실패했습니다.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   // 외부 이메일 허용 해제 — 계정·권한 설정은 남고 로그인만 다시 막힌다
   const removeAllowed = async (email: string) => {
     setError('');
@@ -222,7 +248,7 @@ export default function GardenTabAccess({
           const tab = allowedSet(u, 'tabs');
           const gardenOn = sec.has('garden');
           return (
-            <div key={u.id} className="rounded-lg border border-border bg-background" style={{ padding: 12 }}>
+            <div key={u.id} className="rounded-lg bg-muted/40" style={{ padding: 12 }}>
               <button
                 onClick={() => setOpenId(open ? null : u.id)}
                 className="flex w-full items-center justify-between gap-3 text-left"
@@ -246,16 +272,19 @@ export default function GardenTabAccess({
                   <p className="ta-label" style={{ marginBottom: 0 }}>
                     상위 메뉴
                   </p>
-                  {SECTIONS.map((s) => (
-                    <Row
-                      key={s.key}
-                      label={s.label}
-                      desc={s.desc}
-                      on={sec.has(s.key)}
-                      disabled={busyId === u.id}
-                      onChange={() => toggle(u, 'sections', s.key)}
-                    />
-                  ))}
+                  {/* 2열 그리드 — 목록이 길어 한 화면에 더 많이 보이게. 좁은 화면에선 1열로 접힘 */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', columnGap: 28 }}>
+                    {SECTIONS.map((s) => (
+                      <Row
+                        key={s.key}
+                        label={s.label}
+                        desc={s.desc}
+                        on={sec.has(s.key)}
+                        disabled={busyId === u.id}
+                        onChange={() => toggle(u, 'sections', s.key)}
+                      />
+                    ))}
+                  </div>
 
                   <p className="ta-label" style={{ marginTop: 16, marginBottom: 0 }}>
                     Garden Service 하위 탭
@@ -265,7 +294,14 @@ export default function GardenTabAccess({
                       Garden Service 접근이 꺼져 있어 하위 탭 설정은 적용되지 않습니다.
                     </p>
                   )}
-                  <div style={{ opacity: gardenOn ? 1 : 0.45 }}>
+                  <div
+                    style={{
+                      opacity: gardenOn ? 1 : 0.45,
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                      columnGap: 28,
+                    }}
+                  >
                     {GARDEN_TABS.map((t) => (
                       <Row
                         key={t.key}
@@ -276,6 +312,36 @@ export default function GardenTabAccess({
                         onChange={() => toggle(u, 'tabs', t.key)}
                       />
                     ))}
+                  </div>
+
+                  {/* 계정 삭제 — 잘못 등록한 계정 정리. 외부 계정은 허용 목록에서도 빠져 로그인 차단 */}
+                  <div
+                    className="border-t border-border"
+                    style={{ marginTop: 16, paddingTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+                  >
+                    <p className="text-[12px] text-muted-foreground" style={{ margin: 0, lineHeight: 1.5 }}>
+                      {isExternal(u.email)
+                        ? '삭제하면 계정·권한이 지워지고 허용 목록에서도 빠져 로그인이 차단됩니다.'
+                        : '삭제해도 팀 도메인 계정은 구글 로그인하면 다시 생성됩니다(그때는 전체 접근). 완전 차단은 워크스페이스에서 계정을 정지하세요.'}
+                    </p>
+                    <button
+                      onClick={() => deleteAccount(u)}
+                      disabled={busyId === u.id}
+                      className="rounded-md border"
+                      style={{
+                        flexShrink: 0,
+                        height: 30,
+                        paddingLeft: 12,
+                        paddingRight: 12,
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        background: 'none',
+                        borderColor: 'hsl(0 72% 45% / 0.4)',
+                        color: 'hsl(0 72% 45%)',
+                      }}
+                    >
+                      계정 삭제
+                    </button>
                   </div>
                 </div>
               )}

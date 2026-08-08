@@ -16,7 +16,11 @@ export const maxDuration = 15;
 // POST: admin 전용 — { email } 이메일 사전 등록. auth 계정을 미리 만들어 목록에 올리고
 //       (로그인 전에 권한 배정 가능), 외부 이메일이면 finance.allowed_emails 에도 넣어
 //       로그인을 연다. 같은 이메일로 구글 로그인하면 기존 계정에 자동 연결된다.
-// DELETE: admin 전용 — { email } 외부 이메일 허용 해제(계정·권한 행은 남고 로그인만 막힘).
+// DELETE: admin 전용 —
+//   { email }               외부 이메일 허용 해제(계정·권한 행은 남고 로그인만 막힘)
+//   { userId, purge: true } 계정 완전 삭제 — auth 계정·권한 행·허용 목록을 모두 제거.
+//     외부 계정은 허용 목록에서도 빠져 로그인이 차단된다. 팀 도메인 계정은 구글 로그인하면
+//     다시 생성되므로(그때는 전체 접근) 완전 차단은 워크스페이스에서 계정을 정지해야 한다.
 
 const service = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -147,7 +151,7 @@ export async function POST(req: Request) {
   });
 }
 
-// 외부 이메일 허용 해제 — auth 계정과 권한 행은 남지만 미들웨어·로그인 콜백에서 차단된다.
+// 외부 이메일 허용 해제 또는 계정 완전 삭제 — 상단 주석 참고.
 export async function DELETE(req: Request) {
   const g = await requireUser();
   if ('error' in g) return g.error;
@@ -157,6 +161,27 @@ export async function DELETE(req: Request) {
   if (!svc) return NextResponse.json({ error: '서버 설정 누락' }, { status: 500 });
 
   const body = await req.json().catch(() => ({}));
+
+  // 계정 완전 삭제 — 잘못 등록했거나 내보낼 계정. auth·권한 행·허용 목록 일괄 제거.
+  if (body?.purge === true) {
+    const userId = String(body?.userId ?? '');
+    if (!userId) return NextResponse.json({ error: 'userId 가 필요합니다.' }, { status: 400 });
+    const { data: target } = await svc.auth.admin.getUserById(userId);
+    const email = (target?.user?.email ?? '').toLowerCase();
+    if (!email) return NextResponse.json({ error: '계정을 찾을 수 없습니다.' }, { status: 404 });
+    if (isOwner(email)) return NextResponse.json({ error: '대표 계정은 삭제할 수 없습니다.' }, { status: 400 });
+    if (email === (g.user.email ?? '').toLowerCase()) {
+      return NextResponse.json({ error: '본인 계정은 삭제할 수 없습니다.' }, { status: 400 });
+    }
+
+    const { error: delErr } = await svc.auth.admin.deleteUser(userId);
+    if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
+    // 권한 행·외부 허용 목록도 함께 제거 — 외부 계정은 이걸로 재로그인까지 차단된다
+    await svc.from('garden_tab_access').delete().eq('user_id', userId);
+    await svc.from('allowed_emails').delete().eq('email', email);
+    return NextResponse.json({ ok: true, email });
+  }
+
   const email = String(body?.email ?? '').trim().toLowerCase();
   if (!email) return NextResponse.json({ error: 'email 이 필요합니다.' }, { status: 400 });
 
