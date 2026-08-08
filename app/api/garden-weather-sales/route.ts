@@ -3,7 +3,13 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import { requireGardenTab } from '@/lib/access/guard';
-import { fetchWeatherArchive, regressWeather, type RegressionResult, type SalesDay } from '@/lib/garden/weatherSales';
+import {
+  fetchWeatherArchive,
+  regressWeather,
+  WEATHER_SALES_CACHE_PATH,
+  type RegressionResult,
+  type SalesDay,
+} from '@/lib/garden/weatherSales';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -36,8 +42,9 @@ const addDays = (ymd: string, d: number) =>
   new Date(new Date(ymd + 'T00:00:00Z').getTime() + d * 86400_000).toISOString().slice(0, 10);
 
 // 결과 캐시 — POS 는 월 단위 업로드라 하루 한 번 계산이면 충분. 전체 스캔+아카이브 조회를
-// 매 조회마다 반복하지 않도록 계산 결과를 Blob 에 두고 24시간 재사용한다. ?refresh=1 로 강제 재계산.
-const CACHE_PATH = 'data/garden-weather-sales-cache.json';
+// 매 조회마다 반복하지 않도록 계산 결과를 Blob 에 두고 24시간 재사용한다.
+// ?refresh=1 강제 재계산 + 가든 POS 업로드 시 자동 무효화(pos/apply).
+const CACHE_PATH = WEATHER_SALES_CACHE_PATH;
 const CACHE_TTL_MS = 24 * 3600_000;
 
 export async function GET(req: Request) {

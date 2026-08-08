@@ -1,5 +1,7 @@
+import { del } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { parsePosXlsx } from '@/lib/finance/pos';
+import { WEATHER_SALES_CACHE_PATH } from '@/lib/garden/weatherSales';
 import { parsePayhereXlsx } from '@/lib/finance/payhere';
 import { brandLabel, storeLabel, type Brand } from '@/lib/finance/types';
 import { createClient } from '@/lib/supabase/server';
@@ -117,6 +119,15 @@ export async function POST(req: Request) {
     .eq('brand', brand)
     .eq('store', store)
     .lt('uploaded_at', now);
+
+  // 가든 매출이 바뀌면 날씨×판매 분석 캐시(24h)를 무효화 — 다음 조회 때 새로 계산된다
+  if (brand === 'garden') {
+    try {
+      await del(WEATHER_SALES_CACHE_PATH);
+    } catch {
+      // 캐시가 없거나 삭제 실패 — 분석은 TTL 만료 후 자연 갱신되므로 무시
+    }
+  }
 
   await logActivity(
     supabase,

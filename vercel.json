@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/ingest-health",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/weather-briefing",
+      "schedule": "0 23 * * 0"
     }
   ]
 }

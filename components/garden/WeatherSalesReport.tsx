@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { RegressionResult, BandEffect } from '@/lib/garden/weatherSales';
+import { KR_HOLIDAYS_UNTIL } from '@/lib/garden/krHolidays';
 
 // 날씨 × 판매 분석 리포트 — /garden/weather 화면 본문.
 // 기준(10–20°·비 없음·월요일·요일/트렌드 통제) 대비 각 날씨 밴드의 % 효과를 모노 바로 보여준다.
@@ -182,6 +183,12 @@ export default function WeatherSalesReport() {
               </>
             )}
           </p>
+          {Date.parse(KR_HOLIDAYS_UNTIL) - Date.now() < 60 * 86400_000 && (
+            <p className="m-0 mt-1 text-[11px]" style={{ color: 'hsl(var(--destructive))' }}>
+              공휴일 목록이 {KR_HOLIDAYS_UNTIL}까지만 등록돼 있어요 — lib/garden/krHolidays.ts 연장 필요 (공휴일 통제·휴일
+              강조가 그 이후 날짜엔 빠집니다)
+            </p>
+          )}
         </div>
       </section>
 

@@ -21,3 +21,7 @@ export const KR_HOLIDAYS = new Set<string>([
 ]);
 
 export const isKrHoliday = (ymd: string) => KR_HOLIDAYS.has(ymd);
+
+// 목록이 등록된 마지막 날 — 이 날짜가 다가오면 분석 리포트가 연장 경고를 띄운다.
+// 목록을 연장하면 이 값도 같이 갱신할 것.
+export const KR_HOLIDAYS_UNTIL = '2027-01-01';

@@ -4,57 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { KR_HOLIDAYS } from '@/lib/garden/krHolidays';
 import { buildWeatherComments } from '@/lib/garden/weatherComment';
+import { fetchForecastDays, isRainCode, isSnowCode, wmoLabel, type ForecastDay } from '@/lib/garden/weatherForecast';
 
 // 2주 날씨 스트립 — 가든 대시보드 맨 위. 날씨가 원두 소진량에 영향이 커서 발주 판단 참고용.
-// 판교·양재천 중간 좌표(37.43, 127.07) 기준 단일 예보 — 두 매장은 직선 8km라 예보가 사실상 동일.
-// 데이터는 Open-Meteo(키 불필요, CORS 허용)에서 브라우저가 직접 받는다. 최대 16일.
+// 예보 조회·매핑 규칙은 lib/garden/weatherForecast(주간 브리핑 크론과 공유)에 있다.
 // 매장에서 탭을 켜둔 채 두는 용도라 3시간 주기 + 탭 복귀 시(30분 경과) 재조회한다.
-
-const LAT = 37.43;
-const LON = 127.07;
-const API =
-  `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
-  '&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,relative_humidity_2m_mean' +
-  '&hourly=precipitation_probability&forecast_days=16&timezone=Asia%2FSeoul';
-
-// 강수확률은 영업시간대(11–20시) 최대를 쓴다 — 일 최대는 새벽 소나기까지 잡혀
-// '강수량 0mm · 확률 97%' 같은 혼란을 만든다(2026-08-08 대표 지적). 매장 판단엔 낮 시간이 중요.
-const BIZ_START = 11;
-const BIZ_END = 20;
 
 const REFRESH_MS = 3 * 3600_000;
 const VISIBLE_REFRESH_MIN_MS = 30 * 60_000;
-
-type Day = {
-  ymd: string; // 'YYYY-MM-DD'
-  code: number;
-  tMax: number;
-  tMin: number;
-  feelMax: number;
-  rainMm: number;
-  rainProb: number | null;
-  windMax: number | null;
-  humidity: number | null;
-};
-
-// WMO weather code → 라벨 (아이콘은 코드별 SVG/글리프로 렌더)
-const wmo = (code: number): string => {
-  if (code === 0) return '맑음';
-  if (code === 1) return '대체로 맑음';
-  if (code === 2) return '구름 조금';
-  if (code === 3) return '흐림';
-  if (code === 45 || code === 48) return '안개';
-  if (code >= 51 && code <= 57) return '이슬비';
-  if (code >= 61 && code <= 67) return '비';
-  if (code >= 71 && code <= 77) return '눈';
-  if (code >= 80 && code <= 82) return '소나기';
-  if (code === 85 || code === 86) return '소낙눈';
-  if (code >= 95) return '뇌우';
-  return '—';
-};
-
-const isSnowCode = (code: number) => (code >= 71 && code <= 77) || code === 85 || code === 86;
-const isRainCode = (code: number) => (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95;
 
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const kstTodayYmd = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
@@ -124,44 +81,15 @@ const iconOf = (code: number) => {
 };
 
 export default function WeatherStrip() {
-  const [days, setDays] = useState<Day[] | null>(null);
+  const [days, setDays] = useState<ForecastDay[] | null>(null);
   const [failed, setFailed] = useState(false);
   const hasData = useRef(false);
   const lastFetch = useRef(0);
 
   const load = () => {
     lastFetch.current = Date.now();
-    fetch(API)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((j) => {
-        // 날짜별 영업시간대 최대 강수확률
-        const bizProb = new Map<string, number>();
-        const h = j.hourly;
-        for (let i = 0; i < (h?.time?.length ?? 0); i++) {
-          const hour = Number(h.time[i].slice(11, 13));
-          if (hour < BIZ_START || hour > BIZ_END) continue;
-          const p = h.precipitation_probability[i];
-          if (p == null) continue;
-          const date = h.time[i].slice(0, 10);
-          bizProb.set(date, Math.max(bizProb.get(date) ?? 0, p));
-        }
-        const d = j.daily;
-        const out: Day[] = [];
-        for (let i = 0; i < d.time.length; i++) {
-          // 마지막 날은 모델 커버리지에 따라 값이 비기도 함 — 핵심값 없으면 제외
-          if (d.temperature_2m_max[i] == null || d.weather_code[i] == null) continue;
-          out.push({
-            ymd: d.time[i],
-            code: d.weather_code[i],
-            tMax: d.temperature_2m_max[i],
-            tMin: d.temperature_2m_min[i],
-            feelMax: d.apparent_temperature_max[i] ?? d.temperature_2m_max[i],
-            rainMm: d.precipitation_sum[i] ?? 0,
-            rainProb: bizProb.get(d.time[i]) ?? d.precipitation_probability_max[i],
-            windMax: d.wind_speed_10m_max[i],
-            humidity: d.relative_humidity_2m_mean[i],
-          });
-        }
+    fetchForecastDays()
+      .then((out) => {
         hasData.current = true;
         setFailed(false);
         setDays(out);
@@ -265,7 +193,7 @@ export default function WeatherStrip() {
         </div>
       )}
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
-        {(visible ?? Array.from({ length: 16 })).map((day: Day | undefined, i) => {
+        {(visible ?? Array.from({ length: 16 })).map((day: ForecastDay | undefined, i) => {
           if (!day) {
             return (
               <div
@@ -280,7 +208,7 @@ export default function WeatherStrip() {
           const holiday = KR_HOLIDAYS.has(day.ymd);
           const dayOff = weekend || holiday; // 주말·공휴일 — 매출 집중일 강조
           const today = day.ymd === todayYmd;
-          const label = wmo(day.code);
+          const label = wmoLabel(day.code);
           const rainy = day.rainMm >= 1 || (day.rainProb ?? 0) >= 40;
           // 물 채움 — 비 계열(이슬비·비·소나기·뇌우)만, 수위 = 영업시간대 강수확률
           const wet = isRainCode(day.code) && (day.rainProb ?? 0) > 0;

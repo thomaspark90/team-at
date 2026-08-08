@@ -5,6 +5,9 @@
 // 기준(레퍼런스) = 일최고 10–20° · 비 안 온 날(<1mm) · 평일 월요일.
 import { isKrHoliday } from './krHolidays';
 
+// 분석 결과 캐시 경로 — API 라우트(읽기·쓰기)와 POS 업로드(무효화)가 공유
+export const WEATHER_SALES_CACHE_PATH = 'data/garden-weather-sales-cache.json';
+
 export interface WeatherDay {
   date: string; // 'YYYY-MM-DD'
   tmax: number;
