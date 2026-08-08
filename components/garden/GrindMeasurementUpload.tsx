@@ -240,12 +240,33 @@ export default function GrindMeasurementUpload() {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('이 측정 기록을 삭제할까요?')) return;
+    if (!confirm('이 측정 기록을 삭제할까요? (수치·이미지 전부 삭제돼요)')) return;
     const res = await fetch(`/api/garden-grind-measurements?id=${id}`, { method: 'DELETE' });
     if (res.ok) {
       const next = await res.json();
       setItems(next);
       primeGrindMeasurements(next);
+    }
+  };
+
+  // 잘못 올린 이미지 한 장만 제거 — 측정 수치(다이얼·평균 등)는 그대로 둔다
+  const [removingImage, setRemovingImage] = useState<string | null>(null); // url
+  const removeImage = async (measurementId: string, url: string) => {
+    if (!confirm('이 이미지만 삭제할까요? (측정 수치는 남아요)')) return;
+    setRemovingImage(url);
+    try {
+      const res = await fetch('/api/garden-grind-measurements', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: measurementId, removeImageUrls: [url] }),
+      });
+      if (res.ok) {
+        const next = await res.json();
+        setItems(next);
+        primeGrindMeasurements(next);
+      }
+    } finally {
+      setRemovingImage(null);
     }
   };
 
@@ -423,9 +444,36 @@ export default function GrindMeasurementUpload() {
           {previews.length > 0 && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {previews.map((src, i) => (
-                // 로컬 미리보기(blob: URL)라 next/image 최적화 대상이 아님
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={i} src={src} alt={`선택한 이미지 ${i + 1}`} style={{ height: 72, borderRadius: 6, border: '1px solid hsl(var(--border))' }} />
+                // 저장 전 미리보기 — 잘못 고른 장만 × 로 빼고 저장할 수 있다(2026-08-08 대표 지적)
+                <div key={src} style={{ position: 'relative' }}>
+                  {/* 로컬 미리보기(blob: URL)라 next/image 최적화 대상이 아님 */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt={`선택한 이미지 ${i + 1}`} style={{ height: 72, borderRadius: 6, border: '1px solid hsl(var(--border))', display: 'block' }} />
+                  <button
+                    onClick={() => setFiles((fs) => fs.filter((_, j) => j !== i))}
+                    title="이 이미지 빼기"
+                    aria-label="이 이미지 빼기"
+                    style={{
+                      position: 'absolute',
+                      top: -6,
+                      right: -6,
+                      width: 18,
+                      height: 18,
+                      borderRadius: 9,
+                      border: '1px solid hsl(var(--border))',
+                      background: 'hsl(var(--background))',
+                      color: 'hsl(var(--muted-foreground))',
+                      fontSize: 12,
+                      lineHeight: 1,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -503,10 +551,40 @@ export default function GrindMeasurementUpload() {
                         {m.fines != null ? ` · 미분 ${m.fines}%` : ''}
                       </span>
                       <div style={{ display: 'flex', gap: 6 }}>
+                        {m.imageUrls.length === 0 && <span className="text-[11px] text-muted-foreground/70">이미지 없음</span>}
                         {m.imageUrls.map((u, i) => (
-                          <a key={i} href={u} target="_blank" rel="noreferrer">
-                            <Image src={u} alt={`${m.bean.trim()} 측정 이미지 ${i + 1}`} width={80} height={48} style={{ height: 48, width: 'auto', borderRadius: 4, border: '1px solid hsl(var(--border))' }} unoptimized />
-                          </a>
+                          // 잘못 올린 장만 × 로 이 이미지만 제거(측정 수치는 유지) — 클릭하면 원본 열람
+                          <div key={u} style={{ position: 'relative' }}>
+                            <a href={u} target="_blank" rel="noreferrer" title={`샷 ${i + 1} — 새 탭에서 열기`}>
+                              <Image src={u} alt={`${m.bean.trim()} 측정 이미지 ${i + 1}`} width={96} height={58} style={{ height: 58, width: 'auto', borderRadius: 4, border: '1px solid hsl(var(--border))' }} unoptimized />
+                            </a>
+                            <button
+                              onClick={() => removeImage(m.id, u)}
+                              disabled={removingImage === u}
+                              title="이 이미지만 삭제"
+                              aria-label="이 이미지만 삭제"
+                              style={{
+                                position: 'absolute',
+                                top: -6,
+                                right: -6,
+                                width: 18,
+                                height: 18,
+                                borderRadius: 9,
+                                border: '1px solid hsl(var(--border))',
+                                background: 'hsl(var(--background))',
+                                color: 'hsl(0 72% 45%)',
+                                fontSize: 12,
+                                lineHeight: 1,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                opacity: removingImage === u ? 0.5 : 1,
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
                         ))}
                       </div>
                       <button onClick={() => remove(m.id)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }} title="측정 삭제" aria-label="측정 삭제">

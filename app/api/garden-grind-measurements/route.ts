@@ -119,8 +119,12 @@ export async function POST(req: Request) {
   return NextResponse.json(await grindMeasurementRecords.readAll());
 }
 
-// 이미지 붙이기: { id, imageUrls } — 수치를 먼저 저장(POST)한 뒤, 백그라운드 업로드가
-// 끝나면 여기로 imageUrls를 채운다. 수치 저장이 이미지 업로드를 기다리지 않게 하는 목적.
+// 이미지 붙이기/떼기: { id, imageUrls?, removeImageUrls? }
+//   imageUrls — 수치를 먼저 저장(POST)한 뒤 백그라운드 업로드가 끝나면 여기로 붙인다
+//     (수치 저장이 이미지 업로드를 기다리지 않게 하는 목적).
+//   removeImageUrls — 잘못 올린 이미지 한 장만 골라 지운다(측정 기록 전체는 유지).
+// Blob 파일 자체는 지우지 않는다 — 다른 레코드가 같은 URL을 참조할 리는 없지만, 삭제 실수의
+// 되돌릴 구석을 남겨두는 편이 안전(용량은 미미).
 export async function PATCH(req: Request) {
   const supabase = await createClient();
   const {
@@ -135,14 +139,18 @@ export async function PATCH(req: Request) {
   const body = await req.json();
   const id = String(body.id ?? '');
   if (!id) return NextResponse.json({ error: 'id가 필요합니다.' }, { status: 400 });
-  const imageUrls = (Array.isArray(body.imageUrls) ? body.imageUrls : [])
+  const toAdd = (Array.isArray(body.imageUrls) ? body.imageUrls : [])
     .map((u: unknown) => String(u))
     .filter((u: string) => u.startsWith('https://'));
+  const toRemove = new Set(
+    (Array.isArray(body.removeImageUrls) ? body.removeImageUrls : []).map((u: unknown) => String(u)),
+  );
 
   const target = await grindMeasurementRecords.readOne(id);
   if (!target) return NextResponse.json({ error: '측정 기록을 찾을 수 없습니다.' }, { status: 404 });
 
-  await grindMeasurementRecords.writeOne({ ...target, imageUrls: [...target.imageUrls, ...imageUrls] });
+  const imageUrls = [...target.imageUrls.filter((u) => !toRemove.has(u)), ...toAdd];
+  await grindMeasurementRecords.writeOne({ ...target, imageUrls });
   return NextResponse.json(await grindMeasurementRecords.readAll());
 }
 
