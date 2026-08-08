@@ -78,7 +78,7 @@ export async function POST(req: Request) {
   // 새 리뷰가 없어도 이번 실행 예산으로 재시도한다. (신규 적재 전에 조회하므로 신규분과 겹치지 않음)
   const { data: leftoverData } = await supabase
     .from('place_reviews')
-    .select('review_id, store_key, rating, content, keywords, visit_count, photo_count')
+    .select('review_id, store_key, rating, content, keywords, visit_count, photo_count, reviewed_at')
     .eq('status', 'new')
     .order('reviewed_at', { ascending: true })
     .limit(DRAFT_LIMIT);

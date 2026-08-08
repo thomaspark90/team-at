@@ -19,6 +19,7 @@ export type ReviewForDraft = {
   keywords: string[] | null;
   visit_count: number | null;
   photo_count: number | null;
+  reviewed_at?: string | null; // 마무리 인사(주말/평일)를 리뷰 날짜 요일에 맞추는 데 쓴다
 };
 
 export type DraftVariant = { tone: 'kind' | 'plain' | 'grateful'; label: string; text: string };
@@ -40,7 +41,9 @@ const VOICE = `너는 카페 '가든서비스'의 사장님이다. 방문자 리
   리뷰에 언급된 것 중 하나만 짧게 받고, 받을 게 마땅치 않으면 감사 인사만으로 충분하다.
 - 반드시 가벼운 마무리 인사로 끝낸다:
   "감사합니다.", "방문해주셔서 감사합니다.", "좋은 하루 되세요.", "좋은 주말 되세요!" 중
-  흐름에 자연스러운 것 하나. (금·토·일에는 주말 인사가 어울린다)
+  흐름에 자연스러운 것 하나.
+- "좋은 주말 되세요!"는 [리뷰 날짜]의 요일이 금·토·일일 때만 쓴다.
+  그 외 요일이거나 날짜를 모르면 "좋은 하루 되세요."나 "감사합니다."로 끝낸다.
 - 되도록 1문장, 길어야 2문장 — 마무리 인사까지 포함해서다. 짧을수록 좋다.
 - 이모지 금지. 느낌표는 마무리 인사에 하나 정도만. 과장된 감탄 금지.
 - 극적인 부사를 쓰지 않는다: "정말", "너무", "무척", "굉장히", "진심으로", "가장" 같은
@@ -84,10 +87,14 @@ const buildPrompt = (r: ReviewForDraft, examples: string[]) => {
 이 예시들이 길거나 설명이 많더라도, 위 문체 규칙(짧게·설명 없이·마무리 인사)이 우선이다):
 ${examples.slice(0, 8).map((e) => `- "${e}"`).join('\n')}`
     : FALLBACK_EXAMPLES;
-  // 주말 인사("좋은 주말 되세요!")를 요일에 맞게 고르라고 오늘 요일을 알려준다
-  const day = ['일', '월', '화', '수', '목', '금', '토'][new Date().getDay()];
+  // 마무리 인사는 리뷰가 작성된 날짜 기준 — 평일 리뷰에 "좋은 주말 되세요!"가 달리지 않게 한다
+  const reviewed = r.reviewed_at ? new Date(r.reviewed_at) : null;
+  const reviewDay =
+    reviewed && !Number.isNaN(reviewed.getTime())
+      ? `${reviewed.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })} (${reviewed.toLocaleDateString('ko-KR', { weekday: 'long', timeZone: 'Asia/Seoul' })})`
+      : '알 수 없음';
   const lines = [
-    `[오늘] ${day}요일`,
+    `[리뷰 날짜] ${reviewDay}`,
     `[매장] ${store}`,
     `[평점] ${r.rating ?? '없음'} / 5`,
     `[방문 횟수] ${r.visit_count ?? 1}회`,
