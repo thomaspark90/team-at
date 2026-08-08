@@ -126,11 +126,19 @@ export default function GardenService() {
     refreshPurchases();
   };
 
-  // [발주] — 카톡 전송 잡 등록. 실제 전송은 맥 로컬 전송기가 큐를 폴링해 수행한다.
+  // [발주] — 전송될 메시지 원문을 먼저 보여주고, 담당자가 확인해야 카톡 전송 잡을 등록한다.
+  // 미리보기는 서버가 만든 실제 전송 문구 그대로라 화면과 전송분이 어긋날 수 없다.
   const sendKakaoOrder = async (rec: PurchaseRecord) => {
     if (kakaoSending) return;
     setKakaoSending(rec.id);
     try {
+      const pv = await fetch(`/api/kakao-notify?purchaseId=${encodeURIComponent(rec.id)}`, { cache: 'no-store' });
+      const pj = await pv.json().catch(() => null);
+      if (!pv.ok || !pj?.message) {
+        alert(pj?.error ?? '미리보기를 불러오지 못했습니다.');
+        return;
+      }
+      if (!confirm(`카톡방에 아래 발주 메시지를 전송할까요?\n\n${pj.message}`)) return;
       const res = await fetch('/api/kakao-notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

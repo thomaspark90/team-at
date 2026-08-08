@@ -7,9 +7,11 @@ import { buildOrderMessage, canSendKakaoOrder, kakaoNotifyJobs, type KakaoNotify
 
 // 발주 화면 [발주] 버튼용 — 카톡 전송 잡 등록.
 // GET: 내 버튼 노출 여부 + 발주기록별 전송 상태 (UI 표시용)
+// GET ?purchaseId=...: 전송될 메시지 미리보기 — 버튼 클릭 시 담당자가 확인하는 원문.
+//   실제 전송분과 어긋나지 않도록 서버의 buildOrderMessage 를 그대로 쓴다.
 // POST { purchaseId }: 전송 잡 등록 — 실제 전송은 맥 로컬 전송기가 큐를 폴링해 수행
 
-export async function GET() {
+export async function GET(req: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -21,6 +23,13 @@ export async function GET() {
   }
   // 허용 계정이 아니면 상태 맵도 주지 않는다 — 버튼 자체가 안 보이므로 필요 없다
   if (!canSendKakaoOrder(user.email)) return NextResponse.json({ allowed: false, jobs: {} });
+
+  const purchaseId = new URL(req.url).searchParams.get('purchaseId');
+  if (purchaseId) {
+    const record = await purchaseRecords.readOne(purchaseId);
+    if (!record) return NextResponse.json({ error: '발주 기록을 찾을 수 없습니다.' }, { status: 404 });
+    return NextResponse.json({ message: buildOrderMessage(record) });
+  }
 
   // readAll 은 오래된순 — 같은 발주의 잡이 여러 개면(실패 후 재시도) 최신 상태가 남는다
   const jobs: Record<string, KakaoNotifyJob['status']> = {};
