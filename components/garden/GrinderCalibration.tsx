@@ -22,9 +22,11 @@ const rowsFrom = (profiles: GrinderProfiles, id: StoreId): RowDraft[] =>
 export default function GrinderCalibration({
   profiles,
   onSaved,
+  loading,
 }: {
   profiles: GrinderProfiles;
   onSaved: () => void;
+  loading?: boolean; // 첫 조회 전 — '계산 불가' 안내가 로딩마다 깜빡이지 않게 보류
 }) {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<Record<StoreId, RowDraft[]>>({
@@ -136,6 +138,7 @@ export default function GrinderCalibration({
                         className="text-muted-foreground hover:text-foreground"
                         style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, flexShrink: 0 }}
                         title="측정점 삭제"
+                        aria-label="측정점 삭제"
                       >
                         ×
                       </button>
@@ -188,7 +191,7 @@ export default function GrinderCalibration({
             </div>
           ) : (
             <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>
-              아직 다이얼 대응 계산 불가 — 두 지점 모두 측정점이 2개 이상이어야 해요.
+              {loading ? '측정 데이터를 불러오는 중…' : '아직 다이얼 대응 계산 불가 — 두 지점 모두 측정점이 2개 이상이어야 해요.'}
             </p>
           )}
         </div>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { PricingSettings, PurchaseRecord } from '@/lib/types';
 import { DEFAULT_SETTINGS, normalize, priceAtMult } from '@/lib/pricing';
+import { fmtDate } from '@/lib/garden/format';
 
 // 판매가 설정 전용 화면 — 발주(GardenService)에서 저장된 기록의 판매가를 책정·공유한다.
 // 발주와 권한이 분리돼 있어(saleprice 탭) 책정 담당자만 이 화면을 쓴다.
@@ -18,11 +19,6 @@ const C = {
 };
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
-const fmtDate = (iso: string) => {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${String(d.getFullYear()).slice(2)}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
-};
 
 // 스프레드로 보여줄 배수 (3.0 ~ 7.0, 0.5 단위 — 가로 스와이프)
 const SPREAD = [3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7];
@@ -146,7 +142,7 @@ export default function GardenSalePrice() {
   return (
     <div style={{ width: '100%', minWidth: 0 }}>
       {error && (
-        <p className="text-[13px]" style={{ color: 'hsl(0 72% 45%)', margin: '0 0 16px' }}>
+        <p className="ta-error text-[13px]" style={{ margin: '0 0 16px' }}>
           {error}
         </p>
       )}
@@ -400,8 +396,25 @@ function Cell({
       style.borderBottomRightRadius = 7;
     }
   }
+  // 배수 선택이 이 화면의 핵심 동작이라 키보드로도 고를 수 있게 한다 (마우스 전용 div 방지)
   return (
-    <div onClick={onClick} className="tabular" style={style}>
+    <div
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+      className="tabular"
+      style={style}
+    >
       {children}
     </div>
   );

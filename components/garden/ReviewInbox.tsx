@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ISSUE_CATEGORIES } from '@/lib/garden/review-issue';
 import { REVIEW_POST_GRACE_MS, REVIEWS_CHANGED_EVENT } from '@/lib/garden/review-constants';
 import { STORES } from '@/lib/types';
+import { fmtDate } from '@/lib/garden/format';
 
 type DraftVariant = { tone: string; label: string; text: string };
 
@@ -248,7 +249,7 @@ export default function ReviewInbox() {
         })}
       </div>
 
-      {error && <p className="text-[13px]" style={{ color: '#c0392b', marginBottom: 12 }}>{error}</p>}
+      {error && <p className="ta-error text-[13px]" style={{ marginBottom: 12 }}>{error}</p>}
 
       {/* 이슈 탭 — 아직 분류되지 않은 과거 리뷰가 있으면 백필 실행을 안내 */}
       {tab === 'issues' && !loading && unclassified > 0 && (
@@ -305,7 +306,7 @@ export default function ReviewInbox() {
             <article key={r.id} className="rounded-lg bg-muted/40" style={{ padding: 16 }}>
               <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground" style={{ marginBottom: 8 }}>
                 <span className="font-medium text-foreground">{STORE_LABEL[r.store_key] ?? r.store_key}</span>
-                <span>{r.reviewed_at.slice(0, 10)}</span>
+                <span>{fmtDate(r.reviewed_at)}</span>
                 {r.rating != null && <span>★ {r.rating}</span>}
                 {r.author && <span>{r.author}</span>}
                 {r.visit_count != null && r.visit_count > 1 && <span>{r.visit_count}번째 방문</span>}
@@ -549,7 +550,7 @@ export default function ReviewInbox() {
               )}
 
               {r.post_error && (
-                <p className="text-[13px]" style={{ color: '#c0392b', marginTop: 8 }}>
+                <p className="ta-error text-[13px]" style={{ marginTop: 8 }}>
                   게시 실패: {r.post_error}
                 </p>
               )}

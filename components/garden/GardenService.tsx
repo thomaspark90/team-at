@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { GardenOptions, PricingSettings, PurchaseRecord } from '@/lib/types';
 import { DEFAULT_SETTINGS, computePricing, normalize } from '@/lib/pricing';
 import { toast } from '@/components/Toast';
+import { fmtDate } from '@/lib/garden/format';
 
 // 인라인 스타일에서 참조할 midday 토큰 (HSL 변수)
 const C = {
@@ -17,11 +18,6 @@ const C = {
 };
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
-const fmtDate = (iso: string) => {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${String(d.getFullYear()).slice(2)}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
-};
 
 // 발주 전용 화면 — 판매가 책정(배수 선택·공유)은 권한이 분리된 '판매가 설정' 탭
 // (GardenSalePrice)이 담당한다. 여기서는 발주 기록 저장과 원가 확인까지만 한다.
@@ -50,6 +46,14 @@ export default function GardenService() {
   const [kakaoSending, setKakaoSending] = useState<string | null>(null);
   // 발주 미리보기 카드 — 문구를 고쳐서 보낼 수 있다. 방은 서버 매핑 고정(오전송 방지).
   const [kakaoPreview, setKakaoPreview] = useState<{ recId: string; bean: string; room: string; message: string } | null>(null);
+
+  // 미리보기 모달 Escape 닫기 — 배경 클릭과 같은 동작을 키보드에도 연다
+  useEffect(() => {
+    if (!kakaoPreview) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setKakaoPreview(null);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [kakaoPreview]);
 
   const refreshPurchases = async () => {
     const res = await fetch('/api/purchases', { cache: 'no-store' });
@@ -587,6 +591,9 @@ export default function GardenService() {
         {kakaoPreview && (
           <div
             onClick={() => setKakaoPreview(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="발주 메시지 전송"
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
           >
             <div
@@ -601,6 +608,7 @@ export default function GardenService() {
                 </p>
               </div>
               <textarea
+                autoFocus
                 value={kakaoPreview.message}
                 onChange={(e) => setKakaoPreview((p) => (p ? { ...p, message: e.target.value } : p))}
                 rows={7}

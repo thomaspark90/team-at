@@ -175,6 +175,13 @@
   .ta-btn-primary {
     @apply inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-[13px] text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50;
   }
+  /* 에러 문구 공통색 — 컴포넌트별 하드코딩(#c0392b·text-red-500 등) 대체, 다크에서 한 단계 밝게 */
+  .ta-error {
+    color: hsl(0 72% 45%);
+  }
+  .dark .ta-error {
+    color: hsl(0 84% 68%);
+  }
 }
 
 /* 네이티브 드롭다운 대비 개선 — optgroup 그룹 헤더(재료비(원가) 등)가 기본 흐린 회색이라

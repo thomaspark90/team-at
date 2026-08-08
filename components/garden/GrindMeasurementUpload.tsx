@@ -365,7 +365,7 @@ export default function GrindMeasurementUpload() {
                           </a>
                         ))}
                       </div>
-                      <button onClick={() => remove(m.id)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }} title="측정 삭제">
+                      <button onClick={() => remove(m.id)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }} title="측정 삭제" aria-label="측정 삭제">
                         ×
                       </button>
                     </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { PurchaseRecord, RoasteryAssets } from '@/lib/types';
+import { fmtDate } from '@/lib/garden/format';
 
 // 원두카드 인쇄 — GS 필터 원두 인포 카드(일러스트 원본)를 웹으로 재현.
 // A4 세로 1장 = 3×3 카드 9장 + 재단선(+). 발주 기록으로 프리필하고 인쇄 전 수정 가능.
@@ -14,11 +15,6 @@ const MARGIN_MM = 10; // 시트 바깥 여백
 const CELL_W = (210 - MARGIN_MM * 2) / COLS; // 63.33mm
 const CELL_H = (297 - MARGIN_MM * 2) / ROWS; // 92.33mm
 
-const fmtDate = (iso: string) => {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${String(d.getFullYear()).slice(2)}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
-};
 
 export default function BeanCardPrint({ recordId }: { recordId: string | null }) {
   const [records, setRecords] = useState<PurchaseRecord[]>([]);

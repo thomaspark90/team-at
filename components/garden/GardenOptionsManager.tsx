@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { GardenOptions, RoasteryAssets } from '@/lib/types';
+import { toast } from '@/components/Toast';
 
 // 발주 입력 드롭다운 명단 관리 — 필터 원두 발주의 스탭이름·로스팅사 선택지를 추가/삭제.
 // 로스팅사에는 원두카드 인쇄용 로고·QR 이미지를 함께 등록한다.
@@ -34,7 +35,7 @@ export default function GardenOptionsManager() {
       body: JSON.stringify(next),
     });
     if (res.ok) setRooms(await res.json());
-    else alert((await res.json().catch(() => null))?.error ?? '카톡방 저장에 실패했습니다.');
+    else toast((await res.json().catch(() => null))?.error ?? '카톡방 저장에 실패했습니다.', 'error');
   };
 
   // 로스터리 로고·QR 업로드/삭제 — 원두카드 인쇄 시 자동 배치

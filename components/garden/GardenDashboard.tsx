@@ -12,13 +12,9 @@ import { toast } from '@/components/Toast';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import { pangyoDialText } from '@/lib/grinder-calibration';
 import { latestAlignmentDate, type AlignmentEvent } from '@/lib/grinder-alignments';
+import { fmtDate } from '@/lib/garden/format';
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
-const fmtDate = (iso: string) => {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${String(d.getFullYear()).slice(2)}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
-};
 
 const BREW_TYPES: BrewType[] = ['ice', 'hot'];
 const btOf = (r: DripRecipe): BrewType => r.brewType ?? 'ice';

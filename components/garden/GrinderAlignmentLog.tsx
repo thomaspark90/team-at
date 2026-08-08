@@ -134,7 +134,7 @@ export default function GrinderAlignmentLog() {
           {saving ? '저장 중…' : kind === 'check' ? '점검 기록' : '얼라인 기록'}
         </button>
       </div>
-      {error && <p className="text-[13px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{error}</p>}
+      {error && <p className="ta-error text-[13px]" style={{ margin: 0 }}>{error}</p>}
 
       {/* 이력 */}
       {history.length > 0 && (
@@ -151,7 +151,7 @@ export default function GrinderAlignmentLog() {
                 </span>
               )}
               {e.memo && <span className="text-[13px] text-muted-foreground" style={{ flex: 1 }}>{e.memo}</span>}
-              <button onClick={() => remove(e.id)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }} title="기록 삭제">
+              <button onClick={() => remove(e.id)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }} title="기록 삭제" aria-label="기록 삭제">
                 ×
               </button>
             </div>

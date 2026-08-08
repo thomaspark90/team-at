@@ -21,6 +21,7 @@ import type { GrinderProfiles, LatestAlignments } from '@/lib/grinder-calibratio
 import { REPEATABILITY_TOLERANCE_UM, pangyoDialText } from '@/lib/grinder-calibration';
 import { curveFromShots } from '@/lib/grind-calibration-report';
 import type { Shot } from '@/lib/grind-calibration-report';
+import { fmtDate } from '@/lib/garden/format';
 
 // 현행 캘리브레이션 리포트 — 최근 얼라인 이후 측정만 모아 지점 비교를 자동 갱신한다.
 // 2026-07-16 기준선 리포트(GrindCalibrationReport)는 아카이브로 아래에 남는다.
@@ -239,7 +240,7 @@ export default function GrindCalibrationReportLive() {
                 .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
                 .map((m) => (
                   <tr key={m.id}>
-                    <td style={{ textAlign: 'right', padding: '3px 10px' }}>{m.createdAt.slice(0, 10)}</td>
+                    <td style={{ textAlign: 'right', padding: '3px 10px' }}>{fmtDate(m.createdAt)}</td>
                     <td style={{ textAlign: 'right', padding: '3px 10px' }}>
                       {STORES.find((s) => s.id === m.store)?.short ?? m.store}
                     </td>

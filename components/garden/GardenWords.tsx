@@ -111,7 +111,7 @@ export default function GardenWords() {
       </div>
 
       {error && (
-        <p className="rounded-md bg-muted/40 px-4 py-3 text-[13px] text-red-500">{error}</p>
+        <p className="ta-error rounded-md bg-muted/40 px-4 py-3 text-[13px]">{error}</p>
       )}
 
       {words === null ? (
