@@ -3,6 +3,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { normalizeKey } from '@/lib/finance/normalize';
 import { hash } from '@/lib/finance/dedup';
 import { resolvePersonalCat, applyPersonalCategory } from '@/lib/finance/personal';
+import { resolveMisangCatId } from '@/lib/finance/misang';
 import { recordIngestSuccess } from '@/lib/ingest-health';
 
 export const runtime = 'nodejs';
@@ -113,6 +114,11 @@ export async function POST(req: Request) {
   // 개인(personal) 지출은 손익 제외 '개인지출' 카테고리로 자동 분류한다(공용 헬퍼).
   const hasPersonal = mapped.some((m) => m.brand === 'personal');
   const personalCat = hasPersonal ? await resolvePersonalCat(supabase) : { personalCatId: null, excludedIds: [] };
+  // 배송지 미매칭(_explicit_brand 없음) 건은 브랜드가 기본값(garden)으로 조용히 굳지 않도록
+  // 학습 규칙을 건너뛰고 무조건 '미상'으로 파킹한다 — 특정 가맹점이 평소 한 브랜드로
+  // 학습돼 있으면 미매칭 주문까지 조용히 같은 브랜드 지출로 섞여버리는 사고를 막기 위함(2026-08-09).
+  const hasUnmatched = mapped.some((m) => !m._explicit_brand);
+  const misangCatId = hasUnmatched ? await resolveMisangCatId(supabase) : null;
 
   // 이미 적재된 건도 브랜드·지점은 소급 갱신 — 도입 이전 적재분 백필.
   // 수집기가 배송지로 명시 판정한 건(_explicit_brand)만, 값이 다른 행만 갱신한다.
@@ -166,6 +172,12 @@ export async function POST(req: Request) {
   const now = new Date().toISOString();
   let autoClassified = 0;
   fresh.forEach((m) => {
+    if (!m._explicit_brand && misangCatId != null) {
+      m.category_id = misangCatId;
+      m.classified_at = now as never;
+      autoClassified++;
+      return;
+    }
     const cat = keyToCat.get(`${m.brand}|${m.normalized_key}`);
     if (cat != null) {
       m.category_id = cat;
