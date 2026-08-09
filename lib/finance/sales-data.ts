@@ -11,7 +11,9 @@ export interface SalesRow {
   store?: string | null; // 지점 — 스탭밀은 '' (2026-08-08 뷰에도 추가됨)
 }
 
-const PAGE = 1000;
+// ⚠️ 프로젝트 Max Rows(Settings→API, 2026-08-09 기준 20000) 이하로 유지 — 넘으면 응답이
+// 조용히 잘려 최근 달이 누락된다. 왕복 1회당 1~2초라 낮게 잡을수록(예전 1000) 느려진다.
+const PAGE = 20000;
 
 /**
  * table 선택 기준:

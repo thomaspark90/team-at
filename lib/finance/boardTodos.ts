@@ -30,7 +30,9 @@ interface BoardData {
 // Supabase 기본 응답 상한(1,000행) 회피 — 전 행을 페이지로 나눠 끝까지 수집.
 // 잘린 채 집계하면 상한 밖의 달이 '미입력'으로 오표시된다(2026-01 POS 오탐 원인).
 // build 가 매 페이지 새 쿼리를 만들어야 하고, 순서 고정용 order 는 build 안에서 건다.
-const FETCH_PAGE = 1000;
+// ⚠️ 프로젝트 Max Rows(Settings→API, 2026-08-09 기준 20000) 이하로 유지 — 넘으면 응답이
+// 조용히 잘려 달이 '미입력'으로 오표시된다. 왕복 1회당 1~2초라 낮게 잡을수록(예전 1000) 느려진다.
+const FETCH_PAGE = 20000;
 type QueryResult<T> = { data: T[] | null; error: { message: string } | null };
 async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<QueryResult<T>>): Promise<QueryResult<T>> {
   const all: T[] = [];

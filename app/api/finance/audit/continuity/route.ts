@@ -18,7 +18,8 @@ interface Break {
   actual: number;
 }
 
-const PAGE = 1000;
+// ⚠️ 프로젝트 Max Rows(Settings→API, 2026-08-09 기준 20000) 이하로 유지 — 넘으면 응답이 조용히 잘린다.
+const PAGE = 20000;
 
 export async function GET(req: Request) {
   const supabase = await createClient();

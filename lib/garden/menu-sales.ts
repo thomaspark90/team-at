@@ -21,7 +21,9 @@ export interface ItemRow {
   store?: string | null;
 }
 
-const PAGE = 1000;
+// ⚠️ 프로젝트 Max Rows(Settings→API, 2026-08-09 기준 20000) 이하로 유지 — 넘으면 응답이
+// 조용히 잘려 최근 달이 누락된다. 왕복 1회당 1~2초라 낮게 잡을수록(예전 1000) 느려진다.
+const PAGE = 20000;
 
 /** dashboard_pos_items 를 끝까지 페이지네이션 조회 (뷰라 id 없음 → 유니크 키 순 정렬). */
 export async function fetchItemRows(
