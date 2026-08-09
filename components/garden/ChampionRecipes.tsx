@@ -6,7 +6,8 @@ export default function ChampionRecipes() {
   return (
     <div className="divide-y divide-border" style={{ width: '100%', minWidth: 0 }}>
       <div className="min-w-0 pb-[54px]">
-        <p className="ta-label" style={{ marginBottom: 4 }}>필터 레시피 추천 — 월드 브루어스컵 챔피언</p>
+        {/* 내비 활성 탭이 이미 "필터 레시피 추천"을 알려줘서 캡션엔 안 겹치는 부분만(2026-08-09) */}
+        <p className="ta-label" style={{ marginBottom: 4 }}>월드 브루어스컵 챔피언</p>
         <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>
           24·25·26년 우승 레시피를 매장 카드 형식으로 정리했어요. 출처에 공개된 수치 그대로이며, 없는 값은 생략.
           바리스타 챔피언십(WBC)은 에스프레소 종목이라 필터 레시피가 없어 브루어스컵 기준이에요.
