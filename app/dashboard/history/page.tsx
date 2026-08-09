@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMember } from '@/lib/finance/access';
 import { fallbackRecipients } from '@/lib/notify';
 import TabNav from '@/components/TabNav';
@@ -12,9 +12,7 @@ import NotifyRecipients from '@/components/NotifyRecipients';
 // 송금 설정 — 알림 설정 + 수신자 관리(admin) + 대기/완료 전체 내역(월별)
 export default async function TransferManagePage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect('/');
 
   const { role, brandScope } = await resolveMember(supabase, user);

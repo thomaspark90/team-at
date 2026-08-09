@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { resolveRole } from '@/lib/finance/access';
+import { createClient, getSessionUser } from '@/lib/supabase/server';
+import { resolveRoleStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
 import { buildSankey, type SankTx, type SankCat, type SankeyData } from '@/lib/finance/sankey';
 import TabNav from '@/components/TabNav';
@@ -16,23 +16,23 @@ const fmtYm = (ym: string) => {
 
 export default async function FlowPage({ searchParams }: { searchParams: { brand?: string } }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect('/');
 
-  const role = await resolveRole(supabase, user);
+  const role = await resolveRoleStamped(supabase, user);
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
   // 브랜드별 회계 분리 — 자금 흐름도 브랜드로 필터('전체'는 합산)
   const seg = parseBrandSeg(searchParams.brand);
   let txQ = supabase.schema('finance').from('transactions').select('ym,category_id,amount_in,amount_out');
   if (seg !== 'all') txQ = txQ.eq('brand', seg);
-  const txnsRaw = unwrap(await txQ, '거래');
-  const catsRaw = unwrap(
-    await supabase.schema('finance').from('categories').select('id,type,name,parent_id'),
-    '계정과목',
-  );
+  // 서로 독립적인 조회라 병렬로
+  const [txQRes, catQRes] = await Promise.all([
+    txQ,
+    supabase.schema('finance').from('categories').select('id,type,name,parent_id'),
+  ]);
+  const txnsRaw = unwrap(txQRes, '거래');
+  const catsRaw = unwrap(catQRes, '계정과목');
 
   const txns = (txnsRaw as SankTx[] | null) ?? [];
   const cats = (catsRaw as SankCat[] | null) ?? [];

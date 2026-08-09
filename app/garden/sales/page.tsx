@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMember } from '@/lib/finance/access';
 import TabNav from '@/components/TabNav';
 import GardenNav from '@/components/garden/GardenNav';
@@ -23,9 +23,7 @@ const GRAN_TABS: { key: Granularity; label: string }[] = [
 // 지점 필터와 리뷰×매출 리포트를 본다. 접근 통제는 뷰의 my_role()/brand_scope 필터가 담당.
 export default async function GardenSalesPage({ searchParams }: { searchParams: { store?: string; gran?: string } }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect('/');
 
   const { role, brandScope } = await resolveMember(supabase, user);

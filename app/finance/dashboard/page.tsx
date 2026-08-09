@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { resolveRole } from '@/lib/finance/access';
+import { createClient, getSessionUser } from '@/lib/supabase/server';
+import { resolveRoleStamped } from '@/lib/access/stamp';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import TaskBoard from '@/components/finance/TaskBoard';
@@ -9,12 +9,10 @@ import TaskBoard from '@/components/finance/TaskBoard';
 // 대시보드 — 재무 담당자의 주간/월간 업무 칸반 보드. 차트는 지표(/finance/metrics)로 이동.
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect('/');
 
-  const role = await resolveRole(supabase, user);
+  const role = await resolveRoleStamped(supabase, user);
   if (!role) redirect('/finance');
   // 업무 보드는 재무 담당(admin/classifier)만 — viewer는 지표 화면으로
   if (!['admin', 'classifier'].includes(role)) redirect('/finance/metrics');

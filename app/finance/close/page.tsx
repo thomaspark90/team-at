@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { resolveMember, canConfirm } from '@/lib/finance/access';
+import { createClient, getSessionUser } from '@/lib/supabase/server';
+import { canConfirm } from '@/lib/finance/access';
+import { resolveMemberStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
@@ -12,12 +13,10 @@ import { unitOf } from '@/lib/finance/types';
 
 export default async function ClosePage({ searchParams }: { searchParams: { brand?: string; unit?: string } }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect('/');
 
-  const { role, brandScope } = await resolveMember(supabase, user);
+  const { role, brandScope } = await resolveMemberStamped(supabase, user);
   // 브랜드 스코프 멤버는 분류 화면이 홈
   if (brandScope) redirect('/finance/classify');
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { resolveRole } from '@/lib/finance/access';
+import { createClient, getSessionUser } from '@/lib/supabase/server';
+import { resolveRoleStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
 import { cashflow } from '@/lib/finance/cashflow';
 import TabNav from '@/components/TabNav';
@@ -20,12 +20,10 @@ interface CashTx {
 
 export default async function CashflowPage({ searchParams }: { searchParams: { brand?: string } }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect('/');
 
-  const role = await resolveRole(supabase, user);
+  const role = await resolveRoleStamped(supabase, user);
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
   // 계좌가 브랜드별로 분리 — 통장 현황도 브랜드로 필터('전체'는 두 브랜드 합)

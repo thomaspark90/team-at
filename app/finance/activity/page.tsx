@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { resolveRole, isOwner } from '@/lib/finance/access';
+import { createClient, getSessionUser } from '@/lib/supabase/server';
+import { isOwner } from '@/lib/finance/access';
+import { resolveRoleStamped } from '@/lib/access/stamp';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import ActivityLog, { type ActivityRow } from '@/components/finance/ActivityLog';
@@ -8,12 +9,10 @@ import ActivityLog, { type ActivityRow } from '@/components/finance/ActivityLog'
 // 활동 로그 — 대표(OWNER) 전용. 누가 어떤 기능을 썼는지.
 export default async function ActivityPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect('/');
 
-  const role = await resolveRole(supabase, user);
+  const role = await resolveRoleStamped(supabase, user);
   if (!isOwner(user.email)) redirect('/finance');
 
   const { data } = await supabase

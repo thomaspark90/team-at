@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMember } from '@/lib/finance/access';
 import { fallbackRecipients } from '@/lib/notify';
 import TabNav from '@/components/TabNav';
@@ -11,9 +11,7 @@ import NotifySettings from '@/components/NotifySettings';
 // 업로드는 구글 로그인만 하면 가능, 이체 완료 처리는 admin/classifier 만.
 export default async function TransferRequestPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect('/');
 
   const { role, brandScope } = await resolveMember(supabase, user);

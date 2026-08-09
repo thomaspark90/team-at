@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { resolveRole } from '@/lib/finance/access';
+import { createClient, getSessionUser } from '@/lib/supabase/server';
+import { resolveRoleStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
 import type { AggTx, AggCat } from '@/lib/finance/aggregate';
 import TabNav from '@/components/TabNav';
@@ -17,12 +17,10 @@ const Dashboard = dynamic(() => import('@/components/finance/Dashboard'), {
 // 지표 — 매출·이익·비율 추이 차트 (구 재무 대시보드). 대시보드는 업무 보드로 개편.
 export default async function MetricsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect('/');
 
-  const role = await resolveRole(supabase, user);
+  const role = await resolveRoleStamped(supabase, user);
   if (!role) redirect('/finance'); // 멤버(admin/classifier/viewer)만 — viewer는 이름 없는 안전 뷰로
 
   // ⚠️ 전량 조회(페이지네이션) — 예전엔 limit 없이 한 번만 select 해서 Supabase 기본 1000행 캡에
@@ -44,28 +42,36 @@ export default async function MetricsPage() {
   };
 
   // dashboard_tx = memo(이름) 없는 멤버 전용 뷰(viewer도 읽음). store 컬럼은 마이그레이션 전이면 없어 폴백.
-  const txOrder = ['tx_at', 'category_id', 'brand', 'store', 'amount_in', 'amount_out'];
-  let txRows = await fetchAll('dashboard_tx', 'tx_at,amount_in,amount_out,category_id,brand,store', txOrder);
-  if (txRows.error) {
-    txRows = await fetchAll('dashboard_tx', 'tx_at,amount_in,amount_out,category_id,brand', ['tx_at', 'category_id', 'brand', 'amount_in', 'amount_out']);
-  }
-  const txns = unwrap(txRows, '지표 거래');
-  const cats = unwrap(
-    await supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable'),
-    '계정과목',
-  );
+  const loadTxns = async () => {
+    const txOrder = ['tx_at', 'category_id', 'brand', 'store', 'amount_in', 'amount_out'];
+    let txRows = await fetchAll('dashboard_tx', 'tx_at,amount_in,amount_out,category_id,brand,store', txOrder);
+    if (txRows.error) {
+      txRows = await fetchAll('dashboard_tx', 'tx_at,amount_in,amount_out,category_id,brand', ['tx_at', 'category_id', 'brand', 'amount_in', 'amount_out']);
+    }
+    return unwrap(txRows, '지표 거래');
+  };
+
+  const loadCats = async () =>
+    unwrap(
+      await supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable'),
+      '계정과목',
+    );
+
   // 매출 = POS 공급가액(발생주의). memo-free 뷰(dashboard_pos), 없으면 pos_sales로 폴백.
-  let posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand,store', ['sale_date', 'brand', 'store', 'supply']);
-  if (posRows.error) posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
-  if (posRows.error) posRows = await fetchAll('pos_sales', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
-  const posSales = ((posRows.data as { sale_date: string; supply: number; brand?: string | null; store?: string | null }[] | null) ?? []).map((p) => ({ saleDate: p.sale_date, supply: p.supply, brand: p.brand, store: p.store ?? null }));
+  const loadPosSales = async () => {
+    let posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand,store', ['sale_date', 'brand', 'store', 'supply']);
+    if (posRows.error) posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
+    if (posRows.error) posRows = await fetchAll('pos_sales', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
+    return ((posRows.data as { sale_date: string; supply: number; brand?: string | null; store?: string | null }[] | null) ?? []).map((p) => ({ saleDate: p.sale_date, supply: p.supply, brand: p.brand, store: p.store ?? null }));
+  };
 
   // 통장 입출금·월말 잔액 월별 집계 — 지표 첫 차트용(2026-08-04 대표 지시).
   // dashboard_tx(안전 뷰)에는 은행·잔액이 없어 원본 transactions에서 별도 집계.
   // admin/classifier만(viewer는 RLS로 원본이 안 보여 차트 생략). 분할 자식 행 제외(이중계상 방지).
   type BankCashRow = { ym: string; brand: string; bank: string; inflow: number; outflow: number; balance: number };
-  const bankCash: BankCashRow[] = [];
-  if (['admin', 'classifier'].includes(role)) {
+  const loadBankCash = async (): Promise<BankCashRow[]> => {
+    const bankCash: BankCashRow[] = [];
+    if (!['admin', 'classifier'].includes(role)) return bankCash;
     const PAGE = 1000;
     const raw: { ym: string; bank: string; brand: string | null; tx_at: string; amount_in: number; amount_out: number; balance: number }[] = [];
     for (let from = 0; ; from += PAGE) {
@@ -112,7 +118,11 @@ export default async function MetricsPage() {
         }
       }
     }
-  }
+    return bankCash;
+  };
+
+  // 4개 테이블이 서로 독립적이라 병렬로 조회 — 예전엔 순차 await라 지표 페이지 로딩이 밀렸다.
+  const [txns, cats, posSales, bankCash] = await Promise.all([loadTxns(), loadCats(), loadPosSales(), loadBankCash()]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

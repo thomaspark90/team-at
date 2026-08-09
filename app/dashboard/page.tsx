@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMember } from '@/lib/finance/access';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
@@ -17,9 +17,7 @@ const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 // 내비 2단 구조: 상단에서 고른 단위(?unit=)가 업로드 보드의 브랜드를 고정한다.
 export default async function AccountingDashboardPage({ searchParams }: { searchParams: { unit?: string } }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect('/');
 
   // 멤버 조회·대기 송금 요약(로그인한 누구나 열람 가능, RLS 동일)·월 배지 집계는 서로 독립 — 병렬 조회.

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { resolveMember } from '@/lib/finance/access';
+import { createClient, getSessionUser } from '@/lib/supabase/server';
+import { resolveMemberStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
@@ -12,12 +12,10 @@ import { unitOf } from '@/lib/finance/types';
 // 파일을 한곳에서 확인·재다운로드. 스트리밍은 /api/finance/originals/[id] (권한 재검사).
 export default async function OriginalsPage({ searchParams }: { searchParams: { unit?: string } }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect('/');
 
-  const { role, brandScope } = await resolveMember(supabase, user);
+  const { role, brandScope } = await resolveMemberStamped(supabase, user);
   if (brandScope) redirect('/finance/classify');
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 

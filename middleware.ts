@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { isAllowedUser, isOwner, resolveRole } from '@/lib/finance/access';
+import { isAllowedUser, isOwner, resolveRole, resolveMember } from '@/lib/finance/access';
 import { SECTIONS, TA_ACCESS_HEADER, firstAllowedHref, sectionForPath, sectionsForApiPath } from '@/lib/access/sections';
 import { GARDEN_TABS, tabForPath as gardenTabForPath } from '@/lib/garden/tabs';
 import { STUDIO_TABS, tabForPath as studioTabForPath } from '@/lib/studio/tabs';
@@ -133,13 +133,29 @@ export async function middleware(request: NextRequest) {
   const section = sectionForPath(path);
   if (!section) return response;
 
-  const { data: access } = await supabase
-    .schema('finance')
-    .from('garden_tab_access')
-    .select('tabs, sections, studio_tabs')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  if (!access) return response; // 행 없음 = 전체 허용
+  // 회계/리포트(finance) 페이지는 역할·브랜드 스코프까지 같이 조회해 스탬프에 실어 보낸다 —
+  // 페이지가 auth.getUser() 는 이미 세션 캐시로 대체했고, 여기서 role/brandScope 까지 실으면
+  // 페이지 쪽 finance.members 재조회(resolveRole/resolveMember)도 생략할 수 있다.
+  const needsRole = section === 'accounting' || section === 'report';
+  const [{ data: access }, member] = await Promise.all([
+    supabase
+      .schema('finance')
+      .from('garden_tab_access')
+      .select('tabs, sections, studio_tabs')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+    needsRole ? resolveMember(supabase, user) : Promise.resolve(null),
+  ]);
+
+  const withRoleStamp = () => {
+    if (!needsRole || !member) return response;
+    const h = new Headers(request.headers);
+    h.delete(TA_ACCESS_HEADER);
+    h.set(TA_ACCESS_HEADER, JSON.stringify({ uid: user.id, role: member.role, brandScope: member.brandScope }));
+    return withCookies(NextResponse.next({ request: { headers: h } }));
+  };
+
+  if (!access) return withRoleStamp(); // 행 없음 = 전체 허용
 
   // 보낼 곳이 지금 경로와 같으면 무한 리다이렉트가 되므로, 그 경우엔 로그인 화면으로 돌린다.
   const goTo = (href: string | null | undefined) => {
@@ -174,7 +190,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return response;
+  return withRoleStamp();
 }
 
 export const config = {

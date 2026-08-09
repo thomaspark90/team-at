@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { resolveMember } from '@/lib/finance/access';
+import { createClient, getSessionUser } from '@/lib/supabase/server';
+import { resolveMemberStamped } from '@/lib/access/stamp';
 import { unitOf } from '@/lib/finance/types';
 import { getBrandBanks } from '@/lib/finance/brandBanks';
 import TabNav from '@/components/TabNav';
@@ -25,12 +25,10 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
   if (!unit) notFound();
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect('/');
 
-  const { role, brandScope } = await resolveMember(supabase, user);
+  const { role, brandScope } = await resolveMemberStamped(supabase, user);
   if (brandScope && brandScope !== unit.brand) redirect('/finance/classify');
   const isStaff = ['admin', 'classifier'].includes(role ?? '');
   if (!isStaff) redirect('/finance');

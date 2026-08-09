@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { resolveRole } from '@/lib/finance/access';
+import { createClient, getSessionUser } from '@/lib/supabase/server';
+import { resolveRoleStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
 import { buildPnl, benchmark, prevYm, CHANNEL_FEE_RATE, type PnlCat, type PnlTx, type PnlPosRow, type PnlInventory, type Signal } from '@/lib/finance/pnl';
 import { BRANDS, storeLabel, type Brand, type Store } from '@/lib/finance/types';
@@ -38,11 +38,9 @@ export default async function PnlPage({
   searchParams: { ym?: string; brand?: string; store?: string; mode?: string };
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser(supabase);
   if (!user) redirect('/');
-  const role = await resolveRole(supabase, user);
+  const role = await resolveRoleStamped(supabase, user);
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
   const seg: BrandSeg =
@@ -55,17 +53,20 @@ export default async function PnlPage({
       ? searchParams.store
       : null;
 
-  const posRaw = unwrap(
-    await supabase.schema('finance').from('pos_sales').select('ym,category,qty,gross,vat,supply,brand,store'),
-    'POS 매출',
-  );
+  // POS 매출과 사이드바 배지가 서로 독립적이라 병렬로
+  const [posRaw, initialTodos] = await Promise.all([
+    supabase
+      .schema('finance')
+      .from('pos_sales')
+      .select('ym,category,qty,gross,vat,supply,brand,store')
+      .then((r) => unwrap(r, 'POS 매출')),
+    // 좌측 연·월 사이드바 배지 — 선택 브랜드 몫('전체'는 전 브랜드 합산)
+    computeBoardTodos(supabase, seg !== 'all' ? seg : undefined).catch(() => undefined),
+  ]);
   const posAll = (posRaw as (PnlPosRow & { brand?: string; store?: string })[] | null) ?? [];
   // 구버전(마이그레이션 전) 행은 brand 컬럼이 없을 수 있음 → garden 취급
   const pos = seg === 'all' ? posAll : posAll.filter((p) => (p.brand ?? 'garden') === seg);
   const yms = Array.from(new Set(pos.map((p) => p.ym))).sort((a, b) => b.localeCompare(a));
-
-  // 좌측 연·월 사이드바 배지 — 선택 브랜드 몫('전체'는 전 브랜드 합산)
-  const initialTodos = await computeBoardTodos(supabase, seg !== 'all' ? seg : undefined).catch(() => undefined);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
