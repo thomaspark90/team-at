@@ -3,6 +3,8 @@ import { parsePosXlsx } from '@/lib/finance/pos';
 import { parsePayhereXlsx } from '@/lib/finance/payhere';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
+import { checkYmDuplicates } from '@/lib/finance/pos-apply';
+import type { Brand } from '@/lib/finance/types';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -24,6 +26,11 @@ export async function POST(req: Request) {
   const file = form.get('file');
   const password = String(form.get('password') ?? '0000') || '0000';
   const posType = String(form.get('posType') ?? 'toss') === 'payhere' ? 'payhere' : 'toss';
+  // 중복 감지용(선택) — 미리보기 단계에서 이미 저장된 자료와 겹치는 달을 알려주려면 필요.
+  // 안 실려 오면(구버전 클라이언트 등) 조용히 생략.
+  const rawBrand = String(form.get('brand') ?? '');
+  const brand: Brand | null = rawBrand === 'garden' || rawBrand === 'staffmeal' ? rawBrand : null;
+  const store = String(form.get('store') ?? '');
   if (!(file instanceof File)) return NextResponse.json({ error: '엑셀 파일을 선택하세요.' }, { status: 400 });
 
   let r;
@@ -49,6 +56,8 @@ export async function POST(req: Request) {
     );
   }
 
+  const duplicates = brand ? await checkYmDuplicates(supabase, { brand, store }, r.rows) : [];
+
   return NextResponse.json({
     ym: r.ym,
     yms: r.yms,
@@ -57,5 +66,6 @@ export async function POST(req: Request) {
     excluded: r.excluded,
     meta: r.meta,
     mapping,
+    duplicates,
   });
 }

@@ -11,6 +11,12 @@ interface CatAgg {
   qty: number;
   supply: number;
 }
+// 같은 달 재업로드가 이미 저장된 자료와 완전히 같은지 — 미리보기·저장 결과 둘 다에 실려 온다
+interface YmDup {
+  ym: string;
+  duplicate: boolean;
+  lastUploadedAt: string | null;
+}
 interface Preview {
   ym: string;
   yms: string[];
@@ -18,6 +24,7 @@ interface Preview {
   byCategory: CatAgg[];
   excluded: { rows: number; gross: number; vat: number };
   meta: { dataRows: number; completed: number; canceled: number };
+  duplicates?: YmDup[];
 }
 interface ApplyResult {
   ym: string;
@@ -25,7 +32,15 @@ interface ApplyResult {
   inserted: number;
   supply: number;
   excludedRows: number;
+  duplicateYms: string[];
+  changedYms: string[];
 }
+
+// KST 로 "8/9 11:31" 형태로 — 중복 안내에 "언제 올린 자료와 같은지" 보여줄 때 씀
+const fmtDt = (iso: string) => {
+  const d = new Date(new Date(iso).getTime() + 9 * 3600_000);
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+};
 
 // POS 단위 — 파일 하나 = 한 (브랜드, 지점). 지점마다 POS가 다르다:
 // 양재천=토스(암호화 0000), 판교·스탭밀=페이히어.
@@ -49,6 +64,7 @@ interface BatchRow {
   supply: number;
   inserted: number;
   excludedRows: number;
+  duplicateYms: string[];
   error?: string;
 }
 
@@ -82,6 +98,9 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
       fd.append('file', file);
       fd.append('password', password);
       fd.append('posType', unit.posType);
+      // 중복 감지용 — 이 브랜드·지점 자료 중 이미 저장된 달과 겹치는지 서버가 미리 비교해준다
+      fd.append('brand', unit.brand);
+      fd.append('store', unit.store);
       const res = await fetch('/api/finance/pos/parse', { method: 'POST', body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '읽기에 실패했어요.');
@@ -141,9 +160,16 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
         const j = await res.json();
         if (!res.ok) throw new Error(j.error || '저장 실패');
         const r = j as ApplyResult;
-        results.push({ name: f.name, yms: r.yms, supply: r.supply, inserted: r.inserted, excludedRows: r.excludedRows });
+        results.push({
+          name: f.name,
+          yms: r.yms,
+          supply: r.supply,
+          inserted: r.inserted,
+          excludedRows: r.excludedRows,
+          duplicateYms: r.duplicateYms ?? [],
+        });
       } catch (e) {
-        results.push({ name: f.name, yms: [], supply: 0, inserted: 0, excludedRows: 0, error: (e as Error).message });
+        results.push({ name: f.name, yms: [], supply: 0, inserted: 0, excludedRows: 0, duplicateYms: [], error: (e as Error).message });
       }
       setBatchResults([...results]);
     }
@@ -161,6 +187,9 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
   const batchFail = batchResults.filter((r) => r.error);
   const batchSupply = batchOk.reduce((s, r) => s + r.supply, 0);
   const batchYms = Array.from(new Set(batchOk.flatMap((r) => r.yms))).sort();
+  const batchDupYms = Array.from(new Set(batchOk.flatMap((r) => r.duplicateYms))).sort();
+  // 미리보기 단계 중복 안내 — 저장 누르기 전에 어느 달이 이미 있는 자료와 같은지 미리 알려준다
+  const previewDupYms = (preview?.duplicates ?? []).filter((d) => d.duplicate);
 
   if (!open) {
     return (
@@ -274,11 +303,20 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
 
       {done && (
         <div className="rounded-md bg-muted p-4 text-[13px]">
-          <div className="mb-1 text-foreground">✓ 저장 완료 — {done.yms.map(fmtYm).join(', ')} · 이어서 다음 파일을 올릴 수 있어요</div>
+          <div className="mb-1 text-foreground">
+            {done.changedYms.length > 0
+              ? `✓ 저장 완료 — ${done.changedYms.map(fmtYm).join(', ')} · 이어서 다음 파일을 올릴 수 있어요`
+              : '↷ 전부 이미 있는 자료와 동일해 아무것도 바뀌지 않았어요'}
+          </div>
           <div className="text-muted-foreground">
             공급가액 매출 <b className="text-foreground">{won(done.supply)}</b> · {done.inserted}개 집계행{done.excludedRows ? ` · 식권·상품권 ${done.excludedRows}건 제외` : ''} ·{' '}
             <a href={`/finance/pnl?ym=${done.ym}`} className="text-foreground underline">관리손익 보기 →</a>
           </div>
+          {done.duplicateYms.length > 0 && (
+            <div className="mt-1 text-muted-foreground">
+              ↷ {done.duplicateYms.map(fmtYm).join(', ')}은 이미 있는 자료와 동일해 건너뛰었어요(원본 재보관 안 함)
+            </div>
+          )}
         </div>
       )}
 
@@ -296,6 +334,11 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
             <div className="text-muted-foreground">
               공급가액 합계 <b className="text-foreground">{won(batchSupply)}</b> · 대상 월{' '}
               <b className="text-foreground">{batchYms.map(fmtYm).join(', ')}</b> · 이어서 다음 파일을 올릴 수 있어요
+            </div>
+          )}
+          {batchDupYms.length > 0 && (
+            <div className="text-muted-foreground">
+              ↷ {batchDupYms.map(fmtYm).join(', ')}은 이미 있는 자료와 동일해 건너뛰었어요(원본 재보관 안 함)
             </div>
           )}
         </div>
@@ -322,7 +365,12 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
                     {r.error ? (
                       <span className="text-destructive">❌ {r.error}</span>
                     ) : (
-                      <span className="text-positive">✓ {r.inserted}행{r.excludedRows ? ` · 식권·상품권 ${r.excludedRows}건 제외` : ''}</span>
+                      <span className="text-positive">
+                        ✓ {r.inserted}행{r.excludedRows ? ` · 식권·상품권 ${r.excludedRows}건 제외` : ''}
+                        {r.duplicateYms.length > 0 && (
+                          <span className="text-muted-foreground"> · {r.duplicateYms.map(fmtYm).join(', ')} 동일 자료 건너뜀</span>
+                        )}
+                      </span>
                     )}
                   </td>
                 </tr>
@@ -355,6 +403,17 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
           <p className="m-0 text-[13px] font-medium" style={{ color: 'hsl(25 85% 45%)' }}>
             ⚠️ 아직 저장 전이에요 — 내용 확인 후 아래 &lsquo;매출 저장&rsquo; 버튼을 눌러야 반영됩니다.
           </p>
+
+          {/* 중복 감지(2026-08-09) — 같은 파일 두 번 올리면 원본 자료함에 중복이 쌓인다는 지적 반영.
+              완전히 같은 달은 저장을 눌러도 재기재·재보관 없이 건너뛴다. */}
+          {previewDupYms.length > 0 && (
+            <p className="m-0 text-[13px] text-muted-foreground">
+              ↷ {previewDupYms
+                .map((d) => `${fmtYm(d.ym)}${d.lastUploadedAt ? `(${fmtDt(d.lastUploadedAt)}에 올린 자료와 동일)` : '(이미 동일한 자료 있음)'}`)
+                .join(', ')}
+              — 저장을 눌러도 이 달들은 그대로 건너뛰어요.
+            </p>
+          )}
 
           <div className="overflow-hidden rounded-md border border-border bg-background">
             <table className="w-full border-collapse text-[13px]">
