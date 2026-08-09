@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { SECTIONS, sectionForPath, sectionsForApiPath, firstAllowedHref, inAccounting } from '@/lib/access/sections';
 import { GARDEN_TABS, tabForPath } from '@/lib/garden/tabs';
+import { STUDIO_TABS, tabForPath as studioTabForPath } from '@/lib/studio/tabs';
 
 // 접근 통제 판정 고정 — middleware.ts 단일 관문이 이 순수 함수들에 기대고 있다.
 // 판정이 조용히 바뀌면 권한 구멍(또는 계정 잠김)이 되므로, 리팩터링 시 이 테스트를 함께 갱신한다.
@@ -84,5 +85,22 @@ describe('tabForPath — 가든 하위 탭 판정', () => {
 
   it('레지스트리 밖 경로는 undefined — 탭 권한과 무관하게 섹션 권한만 적용된다', () => {
     expect(tabForPath('/garden/unknown-page')).toBeUndefined();
+  });
+});
+
+describe('studioTabForPath — 스탭밀 하위 탭 판정', () => {
+  it('대시보드는 /studio 정확 일치만', () => {
+    expect(studioTabForPath('/studio')?.key).toBe('dashboard');
+    expect(studioTabForPath('/studio/sales')?.key).toBe('sales');
+  });
+
+  it('레지스트리의 모든 탭이 자기 href 로 판정된다 (등록 누락·오타 감지)', () => {
+    for (const t of STUDIO_TABS) {
+      expect(studioTabForPath(t.href)?.key).toBe(t.key);
+    }
+  });
+
+  it('레지스트리 밖 경로는 undefined', () => {
+    expect(studioTabForPath('/studio/unknown-page')).toBeUndefined();
   });
 });

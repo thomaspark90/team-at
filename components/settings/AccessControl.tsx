@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { GARDEN_TABS, GARDEN_TAB_KEYS } from '@/lib/garden/tabs';
+import { STUDIO_TABS, STUDIO_TAB_KEYS } from '@/lib/studio/tabs';
 import { SECTIONS, SECTION_KEYS } from '@/lib/access/sections';
 import { TEAM_DOMAIN } from '@/lib/finance/access';
 
-type UserRow = { id: string; email: string; tabs: string[] | null; sections: string[] | null };
-type Kind = 'tabs' | 'sections';
+type UserRow = { id: string; email: string; tabs: string[] | null; sections: string[] | null; studioTabs: string[] | null };
+type Kind = 'tabs' | 'sections' | 'studioTabs';
 
 // 페이지 접근 권한 — 사용자별로 상위 섹션과 가든 하위 탭을 토글로 켜고 끈다. (admin 전용, /settings)
 // 전부 켜짐 = 제한 없음, 일부 끄면 허용 목록으로 저장되고 미들웨어가 서버에서 강제한다.
@@ -134,15 +135,15 @@ export default function AccessControl() {
   const registered = new Set([...(users ?? []).map((u) => u.email.toLowerCase()), ...allowed.map((e) => e.toLowerCase())]);
   const preRegCandidates = manualEmails.filter((e) => !registered.has(e));
 
-  const allowedSet = (u: UserRow, kind: Kind) =>
-    new Set(u[kind] ?? (kind === 'tabs' ? GARDEN_TAB_KEYS : SECTION_KEYS));
+  const KIND_KEYS: Record<Kind, string[]> = { tabs: GARDEN_TAB_KEYS, studioTabs: STUDIO_TAB_KEYS, sections: SECTION_KEYS };
+
+  const allowedSet = (u: UserRow, kind: Kind) => new Set(u[kind] ?? KIND_KEYS[kind]);
 
   const toggle = async (u: UserRow, kind: Kind, key: string) => {
     const next = allowedSet(u, kind);
     if (next.has(key)) next.delete(key);
     else next.add(key);
-    const all = kind === 'tabs' ? GARDEN_TAB_KEYS : SECTION_KEYS;
-    const value = all.filter((k) => next.has(k));
+    const value = KIND_KEYS[kind].filter((k) => next.has(k));
     setBusyId(u.id);
     setError('');
     try {
@@ -154,7 +155,9 @@ export default function AccessControl() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? '저장에 실패했습니다.');
       setUsers((prev) =>
-        (prev ?? []).map((x) => (x.id === u.id ? { ...x, tabs: json.tabs, sections: json.sections } : x)),
+        (prev ?? []).map((x) =>
+          x.id === u.id ? { ...x, tabs: json.tabs, sections: json.sections, studioTabs: json.studioTabs } : x,
+        ),
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : '저장에 실패했습니다.');
@@ -165,9 +168,10 @@ export default function AccessControl() {
 
   const summary = (u: UserRow) => {
     const s = u.sections === null ? SECTION_KEYS.length : u.sections.length;
+    const st = u.studioTabs === null ? STUDIO_TAB_KEYS.length : u.studioTabs.length;
     const t = u.tabs === null ? GARDEN_TAB_KEYS.length : u.tabs.length;
-    if (u.sections === null && u.tabs === null) return '전체 접근';
-    return `섹션 ${s}/${SECTION_KEYS.length} · 가든 탭 ${t}/${GARDEN_TAB_KEYS.length}`;
+    if (u.sections === null && u.tabs === null && u.studioTabs === null) return '전체 접근';
+    return `섹션 ${s}/${SECTION_KEYS.length} · 스탭밀 탭 ${st}/${STUDIO_TAB_KEYS.length} · 가든 탭 ${t}/${GARDEN_TAB_KEYS.length}`;
   };
 
   // 외부 계정(비 팀 도메인) 여부 — 허용 목록에 없으면 로그인 자체가 차단된 상태
@@ -276,7 +280,9 @@ export default function AccessControl() {
           const open = openId === u.id;
           const sec = allowedSet(u, 'sections');
           const tab = allowedSet(u, 'tabs');
+          const studioTab = allowedSet(u, 'studioTabs');
           const gardenOn = sec.has('garden');
+          const studioOn = sec.has('studio');
           return (
             <div key={u.id} className="rounded-lg bg-muted/40" style={{ padding: 12 }}>
               <button
@@ -312,6 +318,34 @@ export default function AccessControl() {
                         on={sec.has(s.key)}
                         disabled={busyId === u.id}
                         onChange={() => toggle(u, 'sections', s.key)}
+                      />
+                    ))}
+                  </div>
+
+                  <p className="ta-label" style={{ marginTop: 32, marginBottom: 0 }}>
+                    Staff Meal 하위 탭
+                  </p>
+                  {!studioOn && (
+                    <p className="text-[13px] text-muted-foreground" style={{ margin: '4px 0 0' }}>
+                      Staff Meal 접근이 꺼져 있어 하위 탭 설정은 적용되지 않습니다.
+                    </p>
+                  )}
+                  <div
+                    style={{
+                      opacity: studioOn ? 1 : 0.45,
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                      columnGap: 28,
+                    }}
+                  >
+                    {STUDIO_TABS.map((t) => (
+                      <Row
+                        key={t.key}
+                        label={t.label}
+                        desc={t.desc}
+                        on={studioTab.has(t.key)}
+                        disabled={busyId === u.id || !studioOn}
+                        onChange={() => toggle(u, 'studioTabs', t.key)}
                       />
                     ))}
                   </div>

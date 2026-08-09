@@ -3,16 +3,17 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { resolveRole, isOwner, isAllowedEmail } from '@/lib/finance/access';
 import { GARDEN_TAB_KEYS } from '@/lib/garden/tabs';
+import { STUDIO_TAB_KEYS } from '@/lib/studio/tabs';
 import { SECTION_KEYS } from '@/lib/access/sections';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
 
-// 페이지 접근 권한 — 상위 섹션(sections)과 가든 하위 탭(tabs).
+// 페이지 접근 권한 — 상위 섹션(sections)과 가든/스탭밀 하위 탭(tabs/studioTabs).
 // GET: 내 권한(mine = 가든 탭, sections = 상위 섹션. 각각 null = 전체).
 //      admin 이면 전체 사용자 목록(users)과 외부 이메일 허용 목록(allowedEmails)도 함께.
-// PATCH: admin 전용 — { userId, email, tabs?, sections? } 부분 갱신.
-//        둘 다 전체 허용이면 행 삭제, 아니면 upsert.
+// PATCH: admin 전용 — { userId, email, tabs?, sections?, studioTabs? } 부분 갱신.
+//        셋 다 전체 허용이면 행 삭제, 아니면 upsert.
 // POST: admin 전용 — { email } 이메일 사전 등록. auth 계정을 미리 만들어 목록에 올리고
 //       (로그인 전에 권한 배정 가능), 외부 이메일이면 finance.allowed_emails 에도 넣어
 //       로그인을 연다. 같은 이메일로 구글 로그인하면 기존 계정에 자동 연결된다.
@@ -47,18 +48,20 @@ export async function GET(req: Request) {
   // 내 권한 — OWNER 는 항상 전체(null)
   let mine: string[] | null = null;
   let sections: string[] | null = null;
+  let mineStudio: string[] | null = null;
   if (!isOwner(g.user.email)) {
     const { data } = await svc
       .from('garden_tab_access')
-      .select('tabs, sections')
+      .select('tabs, sections, studio_tabs')
       .eq('user_id', g.user.id)
       .maybeSingle();
     mine = (data?.tabs as string[] | undefined) ?? null;
     sections = (data?.sections as string[] | undefined) ?? null;
+    mineStudio = (data?.studio_tabs as string[] | undefined) ?? null;
   }
 
   const role = await resolveRole(g.supabase, g.user);
-  if (mineOnly) return NextResponse.json({ mine, sections, isAdmin: role === 'admin' });
+  if (mineOnly) return NextResponse.json({ mine, mineStudio, sections, isAdmin: role === 'admin' });
 
   // 팀 전체 계정 이메일(대표·사전 등록 계정 포함) — 항목별 담당자 등 이메일 선택 드롭다운용.
   // admin 이 아니어도 내려준다(팀 내부 정보, 미들웨어가 팀 확인을 끝낸 뒤에만 도달).
@@ -69,13 +72,15 @@ export async function GET(req: Request) {
     .filter((e): e is string => !!e)
     .sort();
 
-  if (role !== 'admin') return NextResponse.json({ mine, sections, isAdmin: false, emails });
-  const { data: accessRows } = await svc.from('garden_tab_access').select('user_id, tabs, sections');
+  if (role !== 'admin') return NextResponse.json({ mine, mineStudio, sections, isAdmin: false, emails });
+  const { data: accessRows } = await svc.from('garden_tab_access').select('user_id, tabs, sections, studio_tabs');
   const accessMap = new Map(
-    (accessRows ?? []).map((r: { user_id: string; tabs: string[] | null; sections: string[] | null }) => [
-      r.user_id,
-      r,
-    ]),
+    (accessRows ?? []).map(
+      (r: { user_id: string; tabs: string[] | null; sections: string[] | null; studio_tabs: string[] | null }) => [
+        r.user_id,
+        r,
+      ],
+    ),
   );
 
   const users = usersData.users
@@ -85,6 +90,7 @@ export async function GET(req: Request) {
       email: u.email!,
       tabs: accessMap.get(u.id)?.tabs ?? null,
       sections: accessMap.get(u.id)?.sections ?? null,
+      studioTabs: accessMap.get(u.id)?.studio_tabs ?? null,
     }))
     .sort((a, b) => a.email.localeCompare(b.email));
 
@@ -92,7 +98,7 @@ export async function GET(req: Request) {
   const { data: allowRows } = await svc.from('allowed_emails').select('email');
   const allowedEmails = ((allowRows ?? []) as { email: string }[]).map((r) => r.email).sort();
 
-  return NextResponse.json({ mine, sections, isAdmin: true, users, allowedEmails, emails });
+  return NextResponse.json({ mine, mineStudio, sections, isAdmin: true, users, allowedEmails, emails });
 }
 
 // 이메일 사전 등록 — 계정이 없으면 만들어(비밀번호 없는 자리, 구글 로그인 시 자동 연결)
@@ -136,7 +142,7 @@ export async function POST(req: Request) {
 
   const { data: access } = await svc
     .from('garden_tab_access')
-    .select('tabs, sections')
+    .select('tabs, sections, studio_tabs')
     .eq('user_id', target.id)
     .maybeSingle();
 
@@ -146,6 +152,7 @@ export async function POST(req: Request) {
       email,
       tabs: (access?.tabs as string[] | null) ?? null,
       sections: (access?.sections as string[] | null) ?? null,
+      studioTabs: (access?.studio_tabs as string[] | null) ?? null,
     },
     allowed: !isAllowedEmail(email),
   });
@@ -222,8 +229,9 @@ export async function PATCH(req: Request) {
   const email = String(body?.email ?? '');
   const tabsIn = Array.isArray(body?.tabs) ? body.tabs.map(String) : undefined;
   const sectionsIn = Array.isArray(body?.sections) ? body.sections.map(String) : undefined;
-  if (!userId || !email || (tabsIn === undefined && sectionsIn === undefined)) {
-    return NextResponse.json({ error: 'userId, email 과 tabs 또는 sections 가 필요합니다.' }, { status: 400 });
+  const studioTabsIn = Array.isArray(body?.studioTabs) ? body.studioTabs.map(String) : undefined;
+  if (!userId || !email || (tabsIn === undefined && sectionsIn === undefined && studioTabsIn === undefined)) {
+    return NextResponse.json({ error: 'userId, email 과 tabs·sections·studioTabs 중 하나가 필요합니다.' }, { status: 400 });
   }
   // email 은 클라이언트가 보낸 값이라 그대로 믿으면 대표 계정 보호를 우회할 수 있다 — 실제 계정으로 확인
   const { data: target } = await svc.auth.admin.getUserById(userId);
@@ -240,23 +248,24 @@ export async function PATCH(req: Request) {
 
   const { data: existing } = await svc
     .from('garden_tab_access')
-    .select('tabs, sections')
+    .select('tabs, sections, studio_tabs')
     .eq('user_id', userId)
     .maybeSingle();
 
   const tabs = narrow(tabsIn, GARDEN_TAB_KEYS, (existing?.tabs as string[] | null) ?? null);
   const sections = narrow(sectionsIn, SECTION_KEYS, (existing?.sections as string[] | null) ?? null);
+  const studioTabs = narrow(studioTabsIn, STUDIO_TAB_KEYS, (existing?.studio_tabs as string[] | null) ?? null);
 
-  // 둘 다 제한 없음이면 행 삭제, 아니면 upsert
-  if (tabs === null && sections === null) {
+  // 셋 다 제한 없음이면 행 삭제, 아니면 upsert
+  if (tabs === null && sections === null && studioTabs === null) {
     const { error } = await svc.from('garden_tab_access').delete().eq('user_id', userId);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ ok: true, tabs: null, sections: null });
+    return NextResponse.json({ ok: true, tabs: null, sections: null, studioTabs: null });
   }
   const { error } = await svc.from('garden_tab_access').upsert(
-    { user_id: userId, email: realEmail, tabs, sections, updated_at: new Date().toISOString() },
+    { user_id: userId, email: realEmail, tabs, sections, studio_tabs: studioTabs, updated_at: new Date().toISOString() },
     { onConflict: 'user_id' },
   );
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, tabs, sections });
+  return NextResponse.json({ ok: true, tabs, sections, studioTabs });
 }
