@@ -111,9 +111,9 @@ export default function MonthShell({
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-4">
-          {/* 좁은 화면: 가로 월 스트립 */}
-          <div className="rounded-2xl border border-border bg-card px-3 py-2 lg:hidden">
-            <div className="flex items-center gap-1 pb-1 pt-1.5">
+          {/* 좁은 화면: 가로 월 스트립 — 카드 박스 없이 구분선만(2026-08-09, One line per layer) */}
+          <div className="border-b border-border pb-2 lg:hidden">
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => scrollStrip(-1)}
                 aria-label="이전 달들 보기"
