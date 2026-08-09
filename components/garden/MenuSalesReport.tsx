@@ -19,10 +19,12 @@ function SeriesRow({ s, buckets, gran, max }: { s: PeriodSeries; buckets: string
           <div
             key={buckets[i]}
             title={`${bucketLabel(buckets[i], gran)} · ${cnt(q)}건 · ${won(s.supply[i])}`}
-            className="min-w-0 flex-1 rounded-t"
+            className="min-w-0 flex-1"
             style={{
               height: `${Math.max(q > 0 ? 8 : 2, (q / max) * 100)}%`,
               background: q > 0 ? 'hsl(var(--number-colored) / 0.65)' : 'hsl(var(--border))',
+              // 전역 --radius(10px)는 이 얇은 막대엔 너무 커서 알약처럼 보인다 — 2px 고정
+              borderRadius: '2px 2px 0 0',
             }}
           />
         ))}

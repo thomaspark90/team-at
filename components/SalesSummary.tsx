@@ -77,10 +77,12 @@ export default function SalesSummary({ rows }: { rows: SalesRow[] }) {
             <div
               key={d.day}
               title={`${d.day} · ${won(d.supply)}`}
-              className="min-w-0 flex-1 rounded-t"
+              className="min-w-0 flex-1"
               style={{
                 height: `${Math.max(d.supply > 0 ? 6 : 2, (d.supply / chartMax) * 100)}%`,
                 background: d.supply > 0 ? 'hsl(var(--number-colored) / 0.75)' : 'hsl(var(--border))',
+                // 전역 --radius(10px)는 이 얇은 막대엔 너무 커서 알약처럼 보인다 — 2px 고정
+                borderRadius: '2px 2px 0 0',
               }}
             />
           ))}

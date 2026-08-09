@@ -37,10 +37,12 @@ export default function ReviewSalesReport({ data }: { data: StoreReviewSales[] }
                   <div key={w.week} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1" style={{ height: '100%' }}>
                     <div
                       title={`${w.week} 주 · ${won(w.sales)} · 리뷰 ${w.reviews}건${w.avgRating ? ` ★${w.avgRating.toFixed(1)}` : ''}`}
-                      className="w-full rounded-t"
+                      className="w-full"
                       style={{
                         height: `${Math.max(w.sales > 0 ? 6 : 2, (w.sales / max) * 100)}%`,
                         background: 'hsl(var(--number-colored) / 0.65)',
+                        // 전역 --radius(10px)는 이 얇은 막대엔 너무 커서 알약처럼 보인다 — 2px 고정
+                        borderRadius: '2px 2px 0 0',
                       }}
                     />
                   </div>
