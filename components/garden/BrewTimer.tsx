@@ -101,13 +101,14 @@ export default function BrewTimer({
       {/* 헤더 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+          {/* ICE/HOT 배지 — 장식적 컬러 액센트 없이(§1) 텍스트로만 구분, 진한 단색 칩으로 강조 */}
           <span
-            className="rounded-sm text-[11px]"
-            style={{ padding: '1px 6px', letterSpacing: '0.05em', fontWeight: 500, backgroundColor: brewType === 'ice' ? '#3b82f6' : '#dc2626', color: '#fff', flexShrink: 0 }}
+            className="rounded-sm bg-foreground text-[11px] font-medium text-background"
+            style={{ padding: '1px 6px', letterSpacing: '0.05em', flexShrink: 0 }}
           >
             {brewType.toUpperCase()}
           </span>
-          <span className="text-[15px]" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span className="text-[15px] font-medium" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {bean}
           </span>
         </span>
@@ -130,13 +131,13 @@ export default function BrewTimer({
           .join(' · ')}
       </p>
 
-      {/* 경과 시간 */}
+      {/* 경과 시간 — 램프 밖 대형 타이머 숫자는 §7 명시 예외(DESIGN_SYSTEM.md) */}
       <div style={{ textAlign: 'center', margin: '26px 0 18px' }}>
-        <div className="tabular" style={{ fontSize: 64, fontWeight: 500, lineHeight: 1, color: over ? '#dc2626' : undefined }}>
+        <div className={`tabular font-medium ${over ? 'text-destructive' : ''}`} style={{ fontSize: 64, lineHeight: 1 }}>
           {fmt(phase === 'done' ? doneAtRef.current : elapsed)}
         </div>
         {maxSec > 0 && (
-          <div className="tabular text-[13px]" style={{ marginTop: 6, color: over ? '#dc2626' : 'hsl(var(--muted-foreground))' }}>
+          <div className={`tabular text-[13px] ${over ? 'text-destructive' : 'text-muted-foreground'}`} style={{ marginTop: 6 }}>
             {over ? `최대 ${recipe.totalTime} 초과 — 드리퍼 분리` : `최대 ${recipe.totalTime}`}
           </div>
         )}
@@ -146,7 +147,7 @@ export default function BrewTimer({
       {phase === 'run' && cur && (
         <div className="rounded-md" style={{ border: '2px solid rgba(132, 204, 22, 0.55)', background: 'rgba(132, 204, 22, 0.14)', padding: '14px 16px', textAlign: 'center', marginBottom: 14 }}>
           <div className="text-[13px] text-muted-foreground">지금</div>
-          <div className="tabular" style={{ fontSize: 28, fontWeight: 500 }}>
+          <div className="tabular font-medium" style={{ fontSize: 28 }}>
             {stepName(stepIdx)} {cur.water}g
           </div>
           <div className="tabular text-[13px] text-muted-foreground">누적 {cumTo(stepIdx)}g까지 붓기</div>
@@ -154,7 +155,7 @@ export default function BrewTimer({
       )}
       {phase === 'done' && (
         <div className="rounded-md border border-border" style={{ padding: '14px 16px', textAlign: 'center', marginBottom: 14 }}>
-          <div className="tabular" style={{ fontSize: 22, fontWeight: 500 }}>추출 완료 · {fmt(doneAtRef.current)}</div>
+          <div className="tabular font-medium" style={{ fontSize: 22 }}>추출 완료 · {fmt(doneAtRef.current)}</div>
           {totalWater > 0 && <div className="tabular text-[13px] text-muted-foreground">총 {totalWater}g</div>}
         </div>
       )}

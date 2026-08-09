@@ -17,7 +17,7 @@ export default function ChampionRecipes() {
         <div key={r.year} className={`min-w-0 ${idx === CHAMPION_RECIPES.length - 1 ? 'pt-[54px]' : 'py-[54px]'}`} style={{ display: 'flex', flexDirection: 'column' }}>
           {/* 헤더 — 연도·대회·챔피언 */}
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-            <span className="text-[15px] text-foreground" style={{ fontWeight: 500 }}>
+            <span className="text-[15px] font-medium text-foreground">
               {r.year} {r.event} <span className="text-muted-foreground text-[11px]">({r.location})</span>
             </span>
             <span className="text-[13px] text-foreground" style={{ flexShrink: 0 }}>

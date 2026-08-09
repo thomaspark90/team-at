@@ -129,10 +129,12 @@ export function beanRegisteredAt(recipes: (DripRecipe | null | undefined)[]): st
   return min;
 }
 
-// D+ 배지 경고색 — D+24 넘으면(D+25부터) 주황, D+31부터 빨강 (기본은 undefined → muted 색 유지)
-export function dPlusColor(days: number): string | undefined {
-  if (days >= 31) return '#dc2626';
-  if (days >= 25) return '#ea580c';
+// D+ 배지 경고 단계 — D+24 넘으면(D+25부터) 주의, D+31부터 심각 (기본은 undefined → muted 색 유지)
+// 색은 호출부에서 디자인 시스템 토큰(amber/destructive)으로 매핑한다 — 하드코딩 hex 금지(§7).
+export type DPlusLevel = 'warn' | 'bad' | undefined;
+export function dPlusLevel(days: number): DPlusLevel {
+  if (days >= 31) return 'bad';
+  if (days >= 25) return 'warn';
   return undefined;
 }
 

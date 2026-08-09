@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { BeanMeta, BrewType, DripRecipe, DripRecipeSnapshot, PourStep, PurchaseRecord, StoreId } from '@/lib/types';
-import { STORES, STOCK_LEVELS, stockOf, beanRegisteredAt, daysSince, dPlusColor } from '@/lib/types';
+import { STORES, STOCK_LEVELS, stockOf, beanRegisteredAt, daysSince, dPlusLevel } from '@/lib/types';
 import { costPerCup, normalize } from '@/lib/pricing';
 import { applyPreset, presetById } from '@/lib/drip-presets';
 import { flavorGradient } from '@/lib/flavor-colors';
@@ -510,22 +510,26 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
         >
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
-              <span className="text-[15px] text-foreground" style={{ fontWeight: 500, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span className="text-[15px] font-medium text-foreground" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {g.bean}
               </span>
               {/* 등록 시점부터 경과일 — 등록 당일 D+0, D+25부터 주황·D+31부터 빨강 */}
               {regAt && (() => {
                 const n = daysSince(regAt);
-                const warn = dPlusColor(n);
+                const level = dPlusLevel(n);
+                const levelCls =
+                  level === 'bad' ? 'text-destructive font-medium'
+                  : level === 'warn' ? 'text-amber-600 dark:text-amber-500 font-medium'
+                  : 'text-muted-foreground';
                 return (
-                  <span className="tabular text-[11px] text-muted-foreground" style={{ flexShrink: 0, ...(warn ? { color: warn, fontWeight: 500 } : {}) }} title={`등록 ${fmtDate(regAt)}`}>
+                  <span className={`tabular text-[11px] ${levelCls}`} style={{ flexShrink: 0 }} title={`등록 ${fmtDate(regAt)}`}>
                     D+{n}
                   </span>
                 );
               })()}
             </span>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
-              {/* 지점별 재고량 칩 — 누르면 100~0% 선택. 20% 이하 빨간색 */}
+              {/* 지점별 재고량 칩 — 누르면 100~0% 선택. 20% 이하 주의색(amber, §1 상태색 토큰) */}
               {STORES.map((s) => {
                 const pct = stockOfBean(g.beanKey, s.id);
                 const low = pct <= 20;
@@ -538,9 +542,13 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                           key={lv}
                           onClick={() => setStock(g.beanKey, g.bean, s.id, lv)}
                           className={`rounded-sm border text-[11px] tabular ${
-                            lv === pct ? 'border-foreground text-foreground' : 'border-border text-muted-foreground hover:text-foreground'
+                            lv === pct
+                              ? 'border-foreground text-foreground'
+                              : lv <= 20
+                              ? 'border-amber-500/40 text-amber-600 dark:text-amber-500'
+                              : 'border-border text-muted-foreground hover:text-foreground'
                           }`}
-                          style={{ ...ghostBtn, padding: '1px 5px', ...(lv <= 20 ? { color: '#dc2626', borderColor: 'rgba(220, 38, 38, 0.4)' } : {}) }}
+                          style={{ ...ghostBtn, padding: '1px 5px' }}
                           title={`${s.label} 재고 ${lv}%`}
                         >
                           {lv}%
@@ -561,8 +569,10 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                   <button
                     key={s.id}
                     onClick={() => setStockPicker({ beanKey: g.beanKey, store: s.id })}
-                    className={`rounded-sm border text-[11px] tabular ${low ? '' : 'border-border text-foreground hover:bg-accent'}`}
-                    style={{ ...ghostBtn, padding: '1px 8px', ...(low ? { borderColor: 'rgba(220, 38, 38, 0.4)', color: '#dc2626' } : {}) }}
+                    className={`rounded-sm border text-[11px] tabular ${
+                      low ? 'border-amber-500/40 text-amber-600 dark:text-amber-500' : 'border-border text-foreground hover:bg-accent'
+                    }`}
+                    style={{ ...ghostBtn, padding: '1px 8px' }}
                     title={`${s.label} 재고량 변경`}
                   >
                     {s.short} {pct}%
@@ -1064,7 +1074,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           ).map(({ country, groups }) => (
             <div key={country} className="min-w-0">
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, borderBottom: '1px solid hsl(var(--border))', paddingBottom: 6, marginBottom: 24 }}>
-                <h3 className="text-[15px] text-foreground" style={{ margin: 0, fontWeight: 500 }}>{country}</h3>
+                <h3 className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>{country}</h3>
                 <span className="text-[11px] text-muted-foreground">{groups.length}종</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px 12px' }}>
@@ -1110,19 +1120,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   );
 }
 
-// ICE = 파란 배지 / HOT = 빨간 배지, 글자는 둘 다 흰색 (라이트/다크 공통 리터럴)
+// ICE/HOT 배지 — 장식적 컬러 액센트 없이(§1) 텍스트로만 구분, 진한 단색 칩으로 강조
 function BrewBadge({ bt }: { bt: BrewType }) {
   return (
     <span
-      className="rounded-sm text-[11px]"
-      style={{
-        padding: '1px 6px',
-        letterSpacing: '0.05em',
-        flexShrink: 0,
-        fontWeight: 500,
-        backgroundColor: bt === 'ice' ? '#3b82f6' : '#dc2626',
-        color: '#ffffff',
-      }}
+      className="rounded-sm bg-foreground text-[11px] font-medium text-background"
+      style={{ padding: '1px 6px', letterSpacing: '0.05em', flexShrink: 0 }}
     >
       {bt.toUpperCase()}
     </span>

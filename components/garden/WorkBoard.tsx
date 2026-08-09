@@ -63,7 +63,7 @@ function Card({ card }: { card: BoardCard }) {
         {dot(t.color)}
         {t.label}
       </span>
-      <p className="text-[13px] text-foreground" style={{ margin: 0, fontWeight: 500, lineHeight: 1.45 }}>
+      <p className="text-[13px] font-medium text-foreground" style={{ margin: 0, lineHeight: 1.45 }}>
         {card.title}
       </p>
       <Steps steps={card.steps} />
@@ -181,7 +181,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
       {/* 내 차례 — 들어오자마자 자기 일이 먼저 보이게 */}
       <div className="min-w-0 pb-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-          <span className="text-[15px] text-foreground" style={{ fontWeight: 500 }}>내 차례</span>
+          <span className="text-[15px] font-medium text-foreground">내 차례</span>
           <span
             className="tabular text-[11px]"
             style={{ padding: '1px 8px', borderRadius: 999, background: 'hsl(var(--foreground))', color: 'hsl(var(--background))' }}
@@ -202,7 +202,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
                 style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px' }}
               >
                 {dot(typeOf(c.type).color)}
-                <span className="text-[13px] text-foreground" style={{ fontWeight: 500 }}>{c.title}</span>
+                <span className="text-[13px] font-medium text-foreground">{c.title}</span>
                 <span className="text-[11px] text-muted-foreground">
                   {c.mineReason}
                   {c.meta[0] ? ` · ${c.meta[0].text}` : ''}
@@ -250,7 +250,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
           return (
             <div key={col.id} className="rounded-md bg-muted/40 p-6 min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="text-[11px] text-foreground" style={{ fontWeight: 500, letterSpacing: '0.04em' }}>{col.label}</span>
+                <span className="text-[11px] font-medium text-foreground" style={{ letterSpacing: '0.04em' }}>{col.label}</span>
                 <span className="tabular text-[11px] text-muted-foreground">{list.length}</span>
               </div>
               {list.length === 0 ? (

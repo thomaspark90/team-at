@@ -289,7 +289,8 @@ export default function WeatherStrip() {
                 flexShrink: 0,
                 cursor: 'pointer',
                 borderColor: today ? 'hsl(var(--foreground))' : undefined,
-                boxShadow: isSelected ? '0 0 0 1px hsl(var(--foreground))' : undefined,
+                // 인라인 boxShadow 금지(§7) — 레이아웃에 영향 없는 outline으로 선택 링 대체
+                outline: isSelected ? '1px solid hsl(var(--foreground))' : undefined,
               }}
             >
               {wet && (
