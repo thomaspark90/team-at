@@ -4,6 +4,9 @@ import { canSendKakaoOrder, readKakaoRooms, writeKakaoRooms } from '@/lib/kakao-
 
 // 로스터리별 발주 카톡방 매핑 — 가든 설정(발주 드롭다운 관리)에서 조회·수정.
 // GET 은 설정 화면 표시용(팀 확인은 미들웨어가 담당), PUT 은 발주 전송 권한자만.
+// GET 이 쿠키·헤더 등 동적 API를 전혀 쓰지 않아 Next.js가 이 라우트를 정적으로 최적화해버리면
+// PUT 이 항상 405(Method Not Allowed)로 막힌다 — force-dynamic 으로 그 최적화를 끈다.
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   return NextResponse.json(await readKakaoRooms());
