@@ -20,7 +20,7 @@ export const GARDEN_TAB_GROUPS: GardenTab[][] = [
   [
     { key: 'reviews', href: '/garden/reviews', label: '네이버 리뷰', desc: '리뷰 확인 · 답글 초안 작성' },
     { key: 'words', href: '/garden/words', label: '제철 단어', desc: '고객 제출 단어 검수' },
-    { key: 'settings', href: '/garden/settings', label: '설정', desc: '드롭다운 명단 · 알림 · 권한 관리' },
+    { key: 'settings', href: '/garden/settings', label: '설정', desc: '드롭다운 명단 · 알림 · 요청 보내기' },
   ],
 ];
 

@@ -15,13 +15,24 @@ export default function TabNav() {
   const router = useRouter();
   // undefined = 로딩 중, null = 전체 허용. 실제 차단은 미들웨어가 하고 여기선 숨김만.
   const [allowed, setAllowed] = useState<string[] | null | undefined>(undefined);
+  // 설정(계정별 접근 권한 관리) — 토글 대상이 아니라 admin 역할에게만 항상 노출.
+  const [isAdmin, setIsAdmin] = useState(false);
   // 모바일 햄버거 메뉴 — 좁은 화면에서 섹션·테마·로그아웃을 패널로 정리(2026-08-08)
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     // GardenNav와 같은 응답을 쓰므로 공유 캐시로 중복 fetch를 없앤다
-    fetchMyAccess().then((a) => setAllowed(a.sections));
+    fetchMyAccess().then((a) => {
+      setAllowed(a.sections);
+      setIsAdmin(a.isAdmin);
+    });
   }, []);
+
+  // 나비에 실제로 표시할 탭 — 섹션 토글 필터 + admin 전용 설정 탭
+  const visibleTabs = [
+    ...TABS.filter((t) => !Array.isArray(allowed) || allowed.includes(t.key)),
+    ...(isAdmin ? [{ href: '/settings', label: '설정', key: 'admin-settings' }] : []),
+  ];
 
   // 페이지 이동 시 햄버거 메뉴 닫기
   useEffect(() => {
@@ -45,7 +56,7 @@ export default function TabNav() {
 
         {/* 모바일에선 섹션 링크를 숨기고 햄버거 패널에 넣는다 — 가로 스크롤로 잘려 보이던 문제 해소 */}
         <nav className="scrollbar-hide hidden flex-1 items-center justify-center gap-1 overflow-x-auto sm:flex">
-          {TABS.filter((t) => !Array.isArray(allowed) || allowed.includes(t.key)).map((tab) => {
+          {visibleTabs.map((tab) => {
             const p = pathname ?? '';
             const active =
               tab.href === '/dashboard'
@@ -112,7 +123,7 @@ export default function TabNav() {
         <div className="flex h-full flex-col px-6 pb-8 pt-7">
           {/* 섹션 링크 — 큰 타이포, 현재 위치만 진하게 */}
           <div className="flex flex-col">
-            {TABS.filter((t) => !Array.isArray(allowed) || allowed.includes(t.key)).map((tab) => {
+            {visibleTabs.map((tab) => {
               const p = pathname ?? '';
               const active =
                 tab.href === '/dashboard'

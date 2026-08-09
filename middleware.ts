@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { isAllowedUser, isOwner } from '@/lib/finance/access';
+import { isAllowedUser, isOwner, resolveRole } from '@/lib/finance/access';
 import { SECTIONS, TA_ACCESS_HEADER, firstAllowedHref, sectionForPath, sectionsForApiPath } from '@/lib/access/sections';
 import { GARDEN_TABS, tabForPath } from '@/lib/garden/tabs';
 
@@ -9,7 +9,7 @@ import { GARDEN_TABS, tabForPath } from '@/lib/garden/tabs';
 //  2) /api/*     : 로그인 + 팀 도메인 (라우트마다 개별 확인하던 것을 여기서 일괄 강제)
 // 이렇게 두지 않으면 페이지는 막혀도 API 를 직접 호출해 같은 데이터를 가져갈 수 있다.
 
-const PROTECTED = ['/dashboard', '/studio', '/garden', '/finance'];
+const PROTECTED = ['/dashboard', '/studio', '/garden', '/finance', '/settings'];
 
 // 세션 쿠키 없이 호출되는 API — 각 라우트가 토큰/서명으로 자체 인증한다.
 // (외부 수집기·Blob 완료 웹훅·공개 단어 페이지)
@@ -94,6 +94,14 @@ export async function middleware(request: NextRequest) {
   // 여기부터는 사용자별 섹션/가든탭 접근 권한 — 대표는 항상 전체
   if (isOwner(user.email)) return response;
 
+  // 설정(계정별 접근 권한 관리)은 섹션 토글 대상이 아니라 admin 역할 전용 —
+  // 다른 섹션처럼 켜고 끄게 두면 매장 계정이 자기 권한을 스스로 열 수 있게 된다.
+  if (!isApi && (path === '/settings' || path.startsWith('/settings/'))) {
+    const role = await resolveRole(supabase, user);
+    if (role !== 'admin') return deny(403, '관리자만 접근할 수 있습니다.');
+    return response;
+  }
+
   // API 도 섹션 권한을 따른다 — 페이지에서 숨긴 데이터를 API 직접 호출로 가져가지 못하게.
   // 매핑되지 않은 공용 API(log·notify·push·upload 등)는 팀 확인까지만 하고 통과.
   if (isApi) {
@@ -166,5 +174,5 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   // 보호 페이지 + 모든 API. 정적 자산과 /, /s/*, /install, /garden-service/* 는 대상 아님.
-  matcher: ['/dashboard/:path*', '/studio/:path*', '/garden/:path*', '/finance/:path*', '/api/:path*'],
+  matcher: ['/dashboard/:path*', '/studio/:path*', '/garden/:path*', '/finance/:path*', '/settings/:path*', '/api/:path*'],
 };

@@ -9,7 +9,6 @@ import { EMPTY_TOPICS, topicsOfScope } from '@/lib/garden-notify-topics';
 import { type RecipientRow } from '@/components/NotifyRecipients';
 import NotifySettings from '@/components/NotifySettings';
 import GardenOptionsManager from '@/components/garden/GardenOptionsManager';
-import GardenTabAccess from '@/components/garden/GardenTabAccess';
 import EmailAddPicker, { useTeamEmails } from '@/components/EmailAddPicker';
 
 // 가든 설정 — 알림(내 채널 + 항목별 담당자), 요청 보내기, 발주 명단, 접근 권한, 투두리스트.
@@ -356,26 +355,14 @@ function RequestForms() {
 }
 
 export default function GardenSettings() {
-  // 알림 수신자·페이지 권한은 admin 전용 — 403이면 해당 부분을 숨긴다
+  // 알림 수신자는 admin 전용 — 403이면 해당 부분을 숨긴다
   const [recipients, setRecipients] = useState<RecipientRow[] | null>(null);
-  const [tabUsers, setTabUsers] = useState<
-    { id: string; email: string; tabs: string[] | null; sections: string[] | null }[] | null
-  >(null);
-  // 외부 이메일 허용 목록 — 페이지 접근 권한 카드의 사전 등록 UI 가 쓴다 (admin 응답에만 옴)
-  const [allowedEmails, setAllowedEmails] = useState<string[]>([]);
 
   useEffect(() => {
     fetch('/api/notify/recipients', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => setRecipients(j?.recipients ?? null))
       .catch(() => setRecipients(null));
-    fetch('/api/garden-tab-access', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        setTabUsers(j?.isAdmin && Array.isArray(j.users) ? j.users : null);
-        if (Array.isArray(j?.allowedEmails)) setAllowedEmails(j.allowedEmails);
-      })
-      .catch(() => setTabUsers(null));
   }, []);
 
   return (
@@ -391,12 +378,6 @@ export default function GardenSettings() {
       <div className="py-[54px]">
         <GardenOptionsManager />
       </div>
-      {/* 계정별 페이지 접근 권한(상위 메뉴 + 가든 하위 탭) — admin 전용 */}
-      {tabUsers && (
-        <div className="py-[54px]">
-          <GardenTabAccess initial={tabUsers} initialAllowed={allowedEmails} />
-        </div>
-      )}
       {/* 투두는 공용 컴포넌트(components/TodoList) — 스탭밀 설정과 공유 */}
       <div className="pt-[54px]">
         <TodoList

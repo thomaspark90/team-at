@@ -8,7 +8,7 @@ import { TEAM_DOMAIN } from '@/lib/finance/access';
 type UserRow = { id: string; email: string; tabs: string[] | null; sections: string[] | null };
 type Kind = 'tabs' | 'sections';
 
-// 페이지 접근 권한 — 사용자별로 상위 섹션과 가든 하위 탭을 토글로 켜고 끈다. (admin 전용)
+// 페이지 접근 권한 — 사용자별로 상위 섹션과 가든 하위 탭을 토글로 켜고 끈다. (admin 전용, /settings)
 // 전부 켜짐 = 제한 없음, 일부 끄면 허용 목록으로 저장되고 미들웨어가 서버에서 강제한다.
 // 이메일 사전 등록: 계정을 미리 만들어 로그인 전에 권한을 걸어두고, 외부 이메일(gmail 등)은
 // 허용 목록(finance.allowed_emails)에 함께 등록해 로그인을 연다.
@@ -88,24 +88,28 @@ function Row({
   );
 }
 
-export default function GardenTabAccess({
-  initial,
-  initialAllowed,
-}: {
-  initial: UserRow[];
-  initialAllowed: string[]; // 안정된 참조를 넘길 것 — 렌더마다 새 배열이면 동기화 이펙트가 무한 반복
-}) {
-  const [users, setUsers] = useState<UserRow[]>(initial);
+export default function AccessControl() {
+  const [users, setUsers] = useState<UserRow[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
   // 외부 이메일 허용 목록 + 사전 등록 폼 상태
-  const [allowed, setAllowed] = useState<string[]>(initialAllowed);
+  const [allowed, setAllowed] = useState<string[]>([]);
   const [newEmail, setNewEmail] = useState('');
   const [adding, setAdding] = useState(false);
   // 알림 설정(항목별 담당자·송금/재고 수신자)에 수기로 입력된 이메일 — 사전 등록 드롭다운 후보.
   // 조회 실패는 조용히 스킵: 드롭다운만 안 뜨고 직접 입력은 그대로 된다.
   const [manualEmails, setManualEmails] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch('/api/garden-tab-access', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        setUsers(j?.isAdmin && Array.isArray(j.users) ? j.users : []);
+        if (Array.isArray(j?.allowedEmails)) setAllowed(j.allowedEmails);
+      })
+      .catch(() => setUsers([]));
+  }, []);
 
   useEffect(() => {
     Promise.allSettled([
@@ -127,15 +131,8 @@ export default function GardenTabAccess({
   }, []);
 
   // 이미 계정이 있거나 허용 목록에 있는 이메일은 후보에서 제외
-  const registered = new Set([...users.map((u) => u.email.toLowerCase()), ...allowed.map((e) => e.toLowerCase())]);
+  const registered = new Set([...(users ?? []).map((u) => u.email.toLowerCase()), ...allowed.map((e) => e.toLowerCase())]);
   const preRegCandidates = manualEmails.filter((e) => !registered.has(e));
-
-  useEffect(() => {
-    setUsers(initial);
-  }, [initial]);
-  useEffect(() => {
-    setAllowed(initialAllowed);
-  }, [initialAllowed]);
 
   const allowedSet = (u: UserRow, kind: Kind) =>
     new Set(u[kind] ?? (kind === 'tabs' ? GARDEN_TAB_KEYS : SECTION_KEYS));
@@ -157,7 +154,7 @@ export default function GardenTabAccess({
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? '저장에 실패했습니다.');
       setUsers((prev) =>
-        prev.map((x) => (x.id === u.id ? { ...x, tabs: json.tabs, sections: json.sections } : x)),
+        (prev ?? []).map((x) => (x.id === u.id ? { ...x, tabs: json.tabs, sections: json.sections } : x)),
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : '저장에 실패했습니다.');
@@ -193,7 +190,10 @@ export default function GardenTabAccess({
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? '추가에 실패했습니다.');
       const u = json.user as UserRow;
-      setUsers((prev) => (prev.some((x) => x.id === u.id) ? prev : [...prev, u].sort((a, b) => a.email.localeCompare(b.email))));
+      setUsers((prev) => {
+        const list = prev ?? [];
+        return list.some((x) => x.id === u.id) ? list : [...list, u].sort((a, b) => a.email.localeCompare(b.email));
+      });
       if (json.allowed && !allowed.includes(email)) setAllowed((prev) => [...prev, email].sort());
       setNewEmail('');
       setOpenId(u.id); // 바로 권한을 걸 수 있게 펼쳐준다
@@ -220,7 +220,7 @@ export default function GardenTabAccess({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? '삭제에 실패했습니다.');
-      setUsers((prev) => prev.filter((x) => x.id !== u.id));
+      setUsers((prev) => (prev ?? []).filter((x) => x.id !== u.id));
       setAllowed((prev) => prev.filter((e) => e !== u.email.toLowerCase()));
       setOpenId(null);
     } catch (e) {
@@ -246,6 +246,10 @@ export default function GardenTabAccess({
       setError(e instanceof Error ? e.message : '삭제에 실패했습니다.');
     }
   };
+
+  if (users === null) {
+    return <p className="text-[13px] text-muted-foreground">불러오는 중…</p>;
+  }
 
   return (
     <section className="min-w-0">

@@ -57,8 +57,8 @@ export async function GET(req: Request) {
     sections = (data?.sections as string[] | undefined) ?? null;
   }
 
-  if (mineOnly) return NextResponse.json({ mine, sections });
   const role = await resolveRole(g.supabase, g.user);
+  if (mineOnly) return NextResponse.json({ mine, sections, isAdmin: role === 'admin' });
 
   // 팀 전체 계정 이메일(대표·사전 등록 계정 포함) — 항목별 담당자 등 이메일 선택 드롭다운용.
   // admin 이 아니어도 내려준다(팀 내부 정보, 미들웨어가 팀 확인을 끝낸 뒤에만 도달).
