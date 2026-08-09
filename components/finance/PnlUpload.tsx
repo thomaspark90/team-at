@@ -215,13 +215,18 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
   return (
     <div className="ta-card flex flex-col gap-8">
       <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-[15px] text-foreground">POS 매출 올리기</h2>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            지점의 POS 매출리포트 엑셀을 올리면 <b>공급가액 매출</b>이 월별로 반영돼요. 같은 달·같은 지점을 다시 올리면 교체돼요.
-            양재천=토스(비번 0000), 판교·스탭밀=페이히어. (식권·상품권 판매는 선수금이라 매출에서 제외 — 사용 시점에 매출로 잡혀요)
-          </p>
-        </div>
+        {/* fixedUnit(단위별 자료 입력 페이지)일 땐 페이지 자체 제목·설명이 이미 있어 중복 표시 안 함 */}
+        {fixedUnit ? (
+          <div />
+        ) : (
+          <div>
+            <h2 className="text-[15px] text-foreground">POS 매출 올리기</h2>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              지점의 POS 매출리포트 엑셀을 올리면 <b>공급가액 매출</b>이 월별로 반영돼요. 같은 달·같은 지점을 다시 올리면 교체돼요.
+              양재천=토스(비번 0000), 판교·스탭밀=페이히어. (식권·상품권 판매는 선수금이라 매출에서 제외 — 사용 시점에 매출로 잡혀요)
+            </p>
+          </div>
+        )}
         <button onClick={() => { setOpen(false); reset(); }} className="text-[13px] text-muted-foreground hover:text-foreground">닫기</button>
       </div>
 
