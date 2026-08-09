@@ -195,9 +195,10 @@ function parseProductDetailRows(rows: unknown[][], sheetName: string): PayherePa
   const iCat = ixLike('카테고리');
   const iProduct = ix('상품명');
   const iDate = ix('영업일');
+  // '판매량'은 상품 상세행에선 대부분 비어 있고(집계용 컬럼으로 추정, 2026-08-09 실측: 판교
+  // 8개월 7,151행 전부 0) '수량'에 실제 값이 들어있다 — '수량'을 우선하고 '판매량'은 보조로만.
   const iSold = ixLike('판매량');
   const iQtyCol = ix('수량');
-  const iQty = iSold >= 0 ? iSold : iQtyCol;
   const iGross = ixLike('총매출');
   const iNet = ixLike('실매출');
   if (iCat < 0 || iProduct < 0 || iDate < 0 || (iGross < 0 && iNet < 0)) return null;
@@ -215,7 +216,9 @@ function parseProductDetailRows(rows: unknown[][], sheetName: string): PayherePa
 
     const net = iNet >= 0 ? num(r[iNet]) : num(r[iGross]);
     const gross = Math.round(net);
-    const qty = iQty >= 0 ? num(r[iQty]) : 0;
+    const qtyCount = iQtyCol >= 0 ? num(r[iQtyCol]) : 0;
+    const qtySold = iSold >= 0 ? num(r[iSold]) : 0;
+    const qty = qtyCount !== 0 ? qtyCount : qtySold;
     if (gross === 0 && qty === 0) continue; // 완전 빈 행
 
     if (isGiftItem(product) || isGiftItem(category)) {
@@ -251,7 +254,7 @@ function parseProductDetailRows(rows: unknown[][], sheetName: string): PayherePa
     부가세: '(없음 — 과세 1/11 산출)',
     카테고리: '카테고리명',
     상품명: '상품명',
-    수량: iSold >= 0 ? '판매량' : '수량',
+    수량: iQtyCol >= 0 ? '수량(비어있으면 판매량)' : '판매량',
   });
   const items = Array.from(itemAgg.values()).sort(
     (a, b) =>
