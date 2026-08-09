@@ -3,7 +3,7 @@ import { parsePosXlsx, summarizeByDay, summarizeByProduct } from '@/lib/finance/
 import { parsePayhereXlsx } from '@/lib/finance/payhere';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
-import { checkYmDuplicates } from '@/lib/finance/pos-apply';
+import { checkPlausibility, checkYmDuplicates } from '@/lib/finance/pos-apply';
 import type { Brand } from '@/lib/finance/types';
 
 export const runtime = 'nodejs';
@@ -57,6 +57,8 @@ export async function POST(req: Request) {
   }
 
   const duplicates = brand ? await checkYmDuplicates(supabase, { brand, store }, r.rows) : [];
+  // 다른 지점·브랜드 파일을 잘못 골랐는지 미리보기 단계에서부터 경고(2026-08-09 사고 반영)
+  const plausibility = brand ? await checkPlausibility(supabase, { brand, store }, r.rows) : null;
 
   return NextResponse.json({
     ym: r.ym,
@@ -67,6 +69,7 @@ export async function POST(req: Request) {
     meta: r.meta,
     mapping,
     duplicates,
+    plausibility,
     // 카테고리별만으론 이상 여부를 가늠하기 어렵다는 지적(2026-08-09) — 상품별·일별 요약도 같이 준다.
     // 상품별은 items 를 만드는 파서(토스·페이히어 상품별 조회)에서만 채워짐.
     byDay: summarizeByDay(r.rows),

@@ -68,6 +68,83 @@ export async function checkYmDuplicates(
   });
 }
 
+export interface PlausibilityCheck {
+  suspicious: boolean;
+  reasons: string[];
+  existingAvgDaily: number;
+  newAvgDaily: number;
+  existingCategories: string[];
+  newCategories: string[];
+}
+
+// 다른 지점·브랜드 파일을 잘못 골라 올리는 사고 방지(2026-08-09, 판교 파일이 스탭밀로 올라가
+// 11개월치 스탭밀 매출을 덮어쓴 사고 — 원본 아카이브가 그 시점엔 없어 복구 불가했다). 이 유닛의
+// 최근 90일 실적과 견줘 일평균 매출이 크게 벗어나거나 카테고리 구성이 거의 안 겹치면 의심스럽다고
+// 본다. 기존 자료가 없거나 적으면(대상 없음) 비교하지 않고 통과 — 신규 지점 첫 업로드를 막지 않는다.
+export async function checkPlausibility(
+  supabase: SupabaseClient,
+  ctx: { brand: Brand; store: string },
+  newRows: PosDailyCat[],
+): Promise<PlausibilityCheck> {
+  const empty: PlausibilityCheck = {
+    suspicious: false,
+    reasons: [],
+    existingAvgDaily: 0,
+    newAvgDaily: 0,
+    existingCategories: [],
+    newCategories: [],
+  };
+  if (newRows.length === 0) return empty;
+
+  const since = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .schema('finance')
+    .from('pos_sales')
+    .select('sale_date, category, supply')
+    .eq('brand', ctx.brand)
+    .eq('store', ctx.store)
+    .gte('sale_date', since);
+  if (error || !data || data.length === 0) return empty; // 비교할 기존 자료가 없음 — 통과
+
+  const existingDays = new Set(data.map((d) => d.sale_date as string)).size;
+  const existingSupply = data.reduce((s, d) => s + Number(d.supply), 0);
+  const existingAvgDaily = existingDays ? existingSupply / existingDays : 0;
+  const existingCategories = Array.from(new Set(data.map((d) => d.category as string)));
+
+  const newDays = new Set(newRows.map((r) => r.saleDate)).size;
+  const newSupply = newRows.reduce((s, r) => s + r.supply, 0);
+  const newAvgDaily = newDays ? newSupply / newDays : 0;
+  const newCategories = Array.from(new Set(newRows.map((r) => r.category)));
+
+  const existingCatSet = new Set(existingCategories);
+  const overlap = newCategories.filter((c) => existingCatSet.has(c)).length;
+  const overlapRatio = newCategories.length ? overlap / newCategories.length : 1;
+
+  const won = (n: number) => `₩${Math.round(n).toLocaleString('ko-KR')}`;
+  const reasons: string[] = [];
+  // 기존 표본이 너무 적으면(2주 미만) 오탐 위험이 커서 스킵
+  if (existingDays >= 14 && existingAvgDaily > 0) {
+    const ratio = newAvgDaily / existingAvgDaily;
+    if (ratio < 0.4 || ratio > 2.5) {
+      reasons.push(`일평균 매출이 최근 90일 평균과 크게 달라요(기존 ${won(existingAvgDaily)}/일 · 이번 파일 ${won(newAvgDaily)}/일)`);
+    }
+  }
+  if (existingCategories.length > 0 && overlapRatio < 0.2) {
+    reasons.push(
+      `카테고리 구성이 기존과 거의 안 겹쳐요(기존: ${existingCategories.slice(0, 5).join(', ')} / 이번 파일: ${newCategories.slice(0, 5).join(', ')})`,
+    );
+  }
+
+  return {
+    suspicious: reasons.length > 0,
+    reasons,
+    existingAvgDaily,
+    newAvgDaily,
+    existingCategories: existingCategories.slice(0, 8),
+    newCategories: newCategories.slice(0, 8),
+  };
+}
+
 export interface PosApplySuccess {
   ym: string;
   yms: string[];
@@ -82,15 +159,17 @@ export interface PosApplySuccess {
   duplicateLastUploaded: Record<string, string>;
   changedYms: string[];
 }
-export type PosApplyOutcome = { ok: true; body: PosApplySuccess } | { ok: false; status: number; error: string };
+export type PosApplyOutcome =
+  | { ok: true; body: PosApplySuccess }
+  | { ok: false; status: number; error: string; needsConfirm?: PlausibilityCheck };
 
 export async function applyPosParseResult(
   supabase: SupabaseClient,
   user: { id: string },
-  ctx: { brand: Brand; store: string; posType: string; actionLabel: string },
+  ctx: { brand: Brand; store: string; posType: string; actionLabel: string; confirmMismatch?: boolean },
   r: PosParseResult,
 ): Promise<PosApplyOutcome> {
-  const { brand, store, posType, actionLabel } = ctx;
+  const { brand, store, posType, actionLabel, confirmMismatch } = ctx;
 
   // 확정된 달 보호 — 확정은 (ym, brand, store) 3단위, POS 는 정확히 그 단위로 귀속
   const { data: closed, error: closeErr } = await supabase
@@ -110,6 +189,19 @@ export async function applyPosParseResult(
       status: 409,
       error: `이미 확정된 달(${closed.map((c: { ym: string }) => c.ym).join(', ')})은 덮어쓸 수 없습니다.`,
     };
+  }
+
+  // 다른 지점·브랜드 파일을 잘못 올리는 사고 방지(2026-08-09) — 확인 없이는 저장하지 않는다.
+  if (!confirmMismatch) {
+    const plaus = await checkPlausibility(supabase, { brand, store }, r.rows);
+    if (plaus.suspicious) {
+      return {
+        ok: false,
+        status: 409,
+        error: `이 파일이 ${brandLabel(brand)}${store ? `·${storeLabel(store)}` : ''} 기존 자료와 많이 달라요 — ${plaus.reasons.join(' · ')}`,
+        needsConfirm: plaus,
+      };
+    }
   }
 
   // 이미 있는 자료와 완전히 같은 달은 재기재(재아카이브 포함)를 건너뛴다(2026-08-09).

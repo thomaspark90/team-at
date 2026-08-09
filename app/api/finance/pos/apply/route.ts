@@ -45,6 +45,8 @@ export async function POST(req: Request) {
   }
   const store = brand === 'garden' ? rawStore : '';
   const posType = String(form.get('posType') ?? 'toss') === 'payhere' ? 'payhere' : 'toss';
+  // 기존 자료와 많이 달라 확인이 필요하다고 판정됐을 때, 사용자가 "그래도 저장"을 눌렀는지(2026-08-09)
+  const confirmMismatch = String(form.get('confirmMismatch') ?? '') === 'true';
   if (!(file instanceof File)) return NextResponse.json({ error: '엑셀 파일을 선택하세요.' }, { status: 400 });
 
   let r;
@@ -58,8 +60,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '저장할 매출이 없습니다.' }, { status: 422 });
   }
 
-  const outcome = await applyPosParseResult(supabase, user, { brand, store, posType, actionLabel: 'POS 매출 업로드' }, r);
-  if (!outcome.ok) return NextResponse.json({ error: outcome.error }, { status: outcome.status });
+  const outcome = await applyPosParseResult(
+    supabase,
+    user,
+    { brand, store, posType, actionLabel: 'POS 매출 업로드', confirmMismatch },
+    r,
+  );
+  if (!outcome.ok) {
+    return NextResponse.json({ error: outcome.error, needsConfirm: outcome.needsConfirm ?? null }, { status: outcome.status });
+  }
 
   // 원본 보관 — 파서 개선 시 재업로드 요청 없이 재처리할 수 있게. 이번 파일이 전부 기존 자료와
   // 동일해 아무것도 안 바뀌었으면(changedYms 빈 배열) 원본 자료함에 중복 파일을 남기지 않는다.

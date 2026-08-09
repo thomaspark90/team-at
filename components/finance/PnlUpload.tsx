@@ -28,6 +28,15 @@ interface ProductSummary {
   qty: number;
   supply: number;
 }
+// 다른 지점·브랜드 파일을 잘못 골라 올리는 사고 방지(2026-08-09) — 기존 자료와 많이 다르면 뜬다
+interface Plausibility {
+  suspicious: boolean;
+  reasons: string[];
+  existingAvgDaily: number;
+  newAvgDaily: number;
+  existingCategories: string[];
+  newCategories: string[];
+}
 interface Preview {
   ym: string;
   yms: string[];
@@ -38,6 +47,7 @@ interface Preview {
   duplicates?: YmDup[];
   byDay?: DaySummary[];
   byProduct?: ProductSummary[];
+  plausibility?: Plausibility | null;
 }
 interface ApplyResult {
   ym: string;
@@ -98,10 +108,15 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [done, setDone] = useState<ApplyResult | null>(null);
+  // 다른 지점·브랜드 파일 오업로드 방지(2026-08-09) — 경고가 뜨면 이 체크를 눌러야 저장 버튼이 풀린다
+  const [confirmMismatch, setConfirmMismatch] = useState(false);
+  const [checking, setChecking] = useState(false); // 일괄 업로드 사전 점검 중
   // 일괄 업로드 완료 배너 표시용 — 파일 입력 자체를 리셋해 "선택된 파일 N개"가 낡은 채로 남지 않게 한다
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const reset = () => { setPreview(null); setDone(null); setError(null); setMapping(null); setBatchResults([]); };
+  const reset = () => {
+    setPreview(null); setDone(null); setError(null); setMapping(null); setBatchResults([]); setConfirmMismatch(false);
+  };
 
   async function analyze() {
     if (!file) return;
@@ -136,6 +151,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
       fd.append('brand', unit.brand);
       fd.append('store', unit.store);
       fd.append('posType', unit.posType);
+      fd.append('confirmMismatch', String(confirmMismatch));
       const res = await fetch('/api/finance/pos/apply', { method: 'POST', body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '저장에 실패했어요.');
@@ -155,8 +171,41 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
   // 끝나면 파일별 결과 표로 검증. 실패한 파일은 표에 남고 나머지는 계속 진행.
   async function applyBatch() {
     if (batchFiles.length === 0) return;
-    setApplying(true);
     setError(null);
+
+    // 사전 점검 — 실제 저장 전에 이 지점·브랜드 기존 자료와 많이 다른 파일이 있는지 훑는다
+    // (2026-08-09, 다른 지점 파일이 실수로 올라가 매출을 덮어쓴 사고 반영). 미리보기가 없는
+    // 일괄 업로드는 여기서 막지 않으면 확인할 기회가 아예 없다.
+    setChecking(true);
+    const suspects: string[] = [];
+    try {
+      for (const f of batchFiles) {
+        const fd = new FormData();
+        fd.append('file', f);
+        fd.append('password', password);
+        fd.append('posType', unit.posType);
+        fd.append('brand', unit.brand);
+        fd.append('store', unit.store);
+        const res = await fetch('/api/finance/pos/parse', { method: 'POST', body: fd });
+        const j = await res.json();
+        if (res.ok && j.plausibility?.suspicious) {
+          suspects.push(`${f.name} — ${(j.plausibility.reasons as string[]).join(' · ')}`);
+        }
+      }
+    } catch {
+      // 사전 점검 자체가 실패해도 비치명적 — 실제 저장 단계에서 서버가 한 번 더 검사한다
+    }
+    setChecking(false);
+
+    if (suspects.length > 0) {
+      const proceed = window.confirm(
+        `⚠ ${unit.label} 기존 자료와 많이 달라 보이는 파일이 ${suspects.length}개 있어요:\n\n${suspects.join('\n\n')}\n\n다른 지점·브랜드 파일을 잘못 고른 게 아닌지 확인하세요. 맞으면 확인을 눌러 계속 진행합니다.`,
+      );
+      if (!proceed) return;
+    }
+    const confirmMismatchAll = suspects.length > 0;
+
+    setApplying(true);
     setBatchResults([]);
     const results: BatchRow[] = [];
     for (let i = 0; i < batchFiles.length; i++) {
@@ -169,6 +218,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
         fd.append('brand', unit.brand);
         fd.append('store', unit.store);
         fd.append('posType', unit.posType);
+        fd.append('confirmMismatch', String(confirmMismatchAll));
         const res = await fetch('/api/finance/pos/apply', { method: 'POST', body: fd });
         const j = await res.json();
         if (!res.ok) throw new Error(j.error || '저장 실패');
@@ -275,8 +325,10 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
           />
         </label>
         {batchFiles.length > 1 ? (
-          <button onClick={applyBatch} disabled={applying} className="ta-btn-primary">
-            {applying && batchAt != null
+          <button onClick={applyBatch} disabled={applying || checking} className="ta-btn-primary">
+            {checking
+              ? '기존 자료와 비교하는 중…'
+              : applying && batchAt != null
               ? `${batchAt + 1}/${batchFiles.length} 업로드 중…`
               : `${batchFiles.length}개 파일 연속 업로드`}
           </button>
@@ -292,6 +344,15 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
           {batchFiles.length}개 파일을 순서대로 바로 저장해요(파일별 미리보기 없음 — 같은 달 재업로드는 교체라 안전).
           끝나면 파일별 결과 표로 확인해요.
         </p>
+      )}
+
+      {/* 사전 점검 중 안내(2026-08-09) — 실제 저장 전, 기존 자료와 많이 다른 파일이 있는지 훑는 단계 */}
+      {checking && (
+        <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-3 text-[13px]">
+          <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-foreground" aria-hidden />
+          <span className="text-foreground">⏳ 저장 전 기존 자료와 비교하는 중…</span>
+          <span className="text-muted-foreground">다른 지점 파일이 섞여 있는지 먼저 확인해요.</span>
+        </div>
       )}
 
       {/* 처리 중 안내 — 뭘 하고 있는지 화면에 명시(2026-08-01 대표 요청) */}
@@ -422,6 +483,24 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
             ⚠️ 아직 저장 전이에요 — 내용 확인 후 아래 &lsquo;매출 저장&rsquo; 버튼을 눌러야 반영됩니다.
           </p>
 
+          {/* 다른 지점·브랜드 파일 오업로드 방지(2026-08-09 사고 반영) — 체크해야 저장 버튼이 풀린다 */}
+          {preview.plausibility?.suspicious && (
+            <div className="rounded-md p-4 text-[13px]" style={{ background: 'hsl(25 85% 45% / 0.1)' }}>
+              <p className="m-0 font-medium text-foreground">
+                ⚠️ {unit.label} 기존 자료와 이 파일이 많이 달라요 — 다른 지점·브랜드 파일을 잘못 고르진 않았는지 확인해주세요.
+              </p>
+              <ul className="m-0 mt-1 list-disc pl-4 text-muted-foreground">
+                {preview.plausibility.reasons.map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
+              <label className="mt-2 flex items-center gap-2 text-foreground">
+                <input type="checkbox" checked={confirmMismatch} onChange={(e) => setConfirmMismatch(e.target.checked)} />
+                {unit.label}가 맞는 파일이에요 — 확인했고 그대로 저장할게요.
+              </label>
+            </div>
+          )}
+
           {/* 중복 감지(2026-08-09) — 같은 파일 두 번 올리면 원본 자료함에 중복이 쌓인다는 지적 반영.
               완전히 같은 달은 저장을 눌러도 재기재·재보관 없이 건너뛴다. */}
           {previewDupYms.length > 0 && (
@@ -520,7 +599,11 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
             </p>
           )}
 
-          <button onClick={apply} disabled={applying} className="ta-btn-primary self-start">
+          <button
+            onClick={apply}
+            disabled={applying || (preview.plausibility?.suspicious && !confirmMismatch)}
+            className="ta-btn-primary self-start"
+          >
             {applying
               ? '저장 중…'
               : `${unit.label} ${preview.yms.map(fmtYm).join(', ')} 매출 저장`}
