@@ -17,6 +17,17 @@ interface YmDup {
   duplicate: boolean;
   lastUploadedAt: string | null;
 }
+interface DaySummary {
+  date: string;
+  qty: number;
+  supply: number;
+}
+interface ProductSummary {
+  category: string;
+  product: string;
+  qty: number;
+  supply: number;
+}
 interface Preview {
   ym: string;
   yms: string[];
@@ -25,6 +36,8 @@ interface Preview {
   excluded: { rows: number; gross: number; vat: number };
   meta: { dataRows: number; completed: number; canceled: number };
   duplicates?: YmDup[];
+  byDay?: DaySummary[];
+  byProduct?: ProductSummary[];
 }
 interface ApplyResult {
   ym: string;
@@ -435,6 +448,63 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
               </tbody>
             </table>
           </div>
+
+          {/* 카테고리별만으론 이상 여부가 안 보인다는 지적(2026-08-09) — 상품별·일별 요약을 추가로
+              보여준다. 상품×일자 통짜 표는 여러 달치면 수백~수천 줄이라 오히려 못 읽어서,
+              상품별 총계 + 일별 총계 두 표로 나눴다. 둘 다 스크롤 — 기간이 길면 줄이 많다. */}
+          {preview.byProduct && preview.byProduct.length > 0 && (
+            <div>
+              <p className="m-0 mb-2 text-[13px] text-muted-foreground">상품별 합계(전체 기간, 매출 많은 순)</p>
+              <div className="max-h-64 overflow-y-auto rounded-md border border-border bg-background">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead className="sticky top-0 bg-background">
+                    <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+                      <th className="px-3 py-2 text-left font-normal">카테고리</th>
+                      <th className="px-3 py-2 text-left font-normal">상품명</th>
+                      <th className="px-3 py-2 text-right font-normal">수량</th>
+                      <th className="px-3 py-2 text-right font-normal">공급가액</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.byProduct.map((p) => (
+                      <tr key={`${p.category}|${p.product}`} className="border-t border-border">
+                        <td className="px-3 py-1.5 text-muted-foreground">{p.category}</td>
+                        <td className="px-3 py-1.5 text-foreground">{p.product}</td>
+                        <td className="px-3 py-1.5 text-right tabular text-muted-foreground">{p.qty.toLocaleString('ko-KR')}</td>
+                        <td className="px-3 py-1.5 text-right tabular text-foreground">{won(p.supply)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {preview.byDay && preview.byDay.length > 0 && (
+            <div>
+              <p className="m-0 mb-2 text-[13px] text-muted-foreground">일별 합계(날짜순, {preview.byDay.length}일)</p>
+              <div className="max-h-64 overflow-y-auto rounded-md border border-border bg-background">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead className="sticky top-0 bg-background">
+                    <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+                      <th className="px-3 py-2 text-left font-normal">날짜</th>
+                      <th className="px-3 py-2 text-right font-normal">건수</th>
+                      <th className="px-3 py-2 text-right font-normal">공급가액</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.byDay.map((d) => (
+                      <tr key={d.date} className="border-t border-border">
+                        <td className="px-3 py-1.5 text-foreground">{d.date}</td>
+                        <td className="px-3 py-1.5 text-right tabular text-muted-foreground">{d.qty.toLocaleString('ko-KR')}</td>
+                        <td className="px-3 py-1.5 text-right tabular text-foreground">{won(d.supply)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {mapping && (
             <p className="text-[13px] text-muted-foreground">

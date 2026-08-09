@@ -56,6 +56,45 @@ export interface PosParseResult {
   meta: { sheet: string; dataRows: number; completed: number; canceled: number };
 }
 
+export interface PosDaySummary {
+  date: string;
+  qty: number;
+  supply: number;
+}
+export interface PosProductSummary {
+  category: string;
+  product: string;
+  qty: number;
+  supply: number;
+}
+
+// 업로드 미리보기용 요약 — 카테고리별만으로는 "이상한지" 감이 안 온다는 지적(2026-08-09) 반영.
+// 일별은 rows(day×category)로 만들어 품목 데이터가 없는 파서(결제 요약 등)에서도 항상 나오고,
+// 상품별은 items 가 있을 때만(토스·페이히어 상품별 조회) 나온다.
+export function summarizeByDay(rows: PosDailyCat[]): PosDaySummary[] {
+  const m = new Map<string, PosDaySummary>();
+  for (const d of rows) {
+    const c = m.get(d.saleDate) ?? { date: d.saleDate, qty: 0, supply: 0 };
+    c.qty += Number(d.qty);
+    c.supply += Number(d.supply);
+    m.set(d.saleDate, c);
+  }
+  return Array.from(m.values()).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export function summarizeByProduct(items: PosItemRow[] | undefined): PosProductSummary[] {
+  if (!items || items.length === 0) return [];
+  const m = new Map<string, PosProductSummary>();
+  for (const it of items) {
+    const key = `${it.category}|${it.product}`;
+    const c = m.get(key) ?? { category: it.category, product: it.product, qty: 0, supply: 0 };
+    c.qty += Number(it.qty);
+    c.supply += Number(it.supply);
+    m.set(key, c);
+  }
+  return Array.from(m.values()).sort((a, b) => b.supply - a.supply);
+}
+
 const SHEET_NAME = '상품 주문 상세내역';
 const isGiftCategory = (c: string) => /금액권|선불권|상품권/.test(c);
 

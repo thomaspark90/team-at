@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { parsePosXlsx } from '@/lib/finance/pos';
+import { parsePosXlsx, summarizeByDay, summarizeByProduct } from '@/lib/finance/pos';
 import { parsePayhereXlsx } from '@/lib/finance/payhere';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
@@ -67,5 +67,9 @@ export async function POST(req: Request) {
     meta: r.meta,
     mapping,
     duplicates,
+    // 카테고리별만으론 이상 여부를 가늠하기 어렵다는 지적(2026-08-09) — 상품별·일별 요약도 같이 준다.
+    // 상품별은 items 를 만드는 파서(토스·페이히어 상품별 조회)에서만 채워짐.
+    byDay: summarizeByDay(r.rows),
+    byProduct: summarizeByProduct(r.items),
   });
 }
