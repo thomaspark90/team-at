@@ -30,12 +30,25 @@ export default function StudioNav() {
     }
   }, [allowed, pathname, router]);
 
-  const items = STUDIO_TABS.filter((t) => !Array.isArray(allowed) || allowed.includes(t.key));
+  const isTabAllowed = (key: string) => !Array.isArray(allowed) || allowed.includes(key);
 
   return (
     <nav className="border-b border-border bg-card/40">
-      <div className="mx-auto flex max-w-[1100px] items-center justify-center gap-x-5 px-6 py-3">
-        {items.map(({ href, label }) => {
+      {/* 미허용 탭도 지우지 않고 비활성 텍스트로 둔다(2026-08-09, GardenNav·TabNav와 동일 처리) */}
+      <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-center gap-x-5 gap-y-2 px-6 py-3">
+        {STUDIO_TABS.map(({ key, href, label, desc }) => {
+          if (!isTabAllowed(key)) {
+            return (
+              <span
+                key={href}
+                aria-disabled="true"
+                title={desc ? `${desc} — 접근 권한이 없어요` : '접근 권한이 없어요'}
+                className="cursor-not-allowed whitespace-nowrap text-[13px] text-muted-foreground/40"
+              >
+                {label}
+              </span>
+            );
+          }
           const active = pathname === href;
           return (
             <Link
