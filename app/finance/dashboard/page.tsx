@@ -23,14 +23,14 @@ export default async function DashboardPage() {
       <FinanceNav role={role} />
       <div className="mx-auto max-w-[1120px] px-6 py-8">
         <div className="mb-5 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">재무 대시보드</h1>
+          <h1 className="m-0 text-[22px] tracking-[-0.5px]">리포트 홈</h1>
           <Link href="/finance/metrics" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
             지표 보기 →
           </Link>
         </div>
         <p className="mb-5 text-[13px] text-muted-foreground">
           POS 매출·채널수수료·관리손익 검토 등 보고 준비 업무를 칸반으로 관리해요. 자료 업로드·분류·월 확정은{' '}
-          <Link href="/dashboard" className="underline">회계 대시보드</Link>, 추이 차트는 <Link href="/finance/metrics" className="underline">지표</Link>에서 봐요.
+          <Link href="/dashboard" className="underline">회계 홈</Link>, 추이 차트는 <Link href="/finance/metrics" className="underline">지표</Link>에서 봐요.
         </p>
         <TaskBoard board="finance" />
       </div>

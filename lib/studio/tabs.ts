@@ -4,7 +4,7 @@
 export type StudioTab = { key: string; href: string; label: string; desc?: string };
 
 export const STUDIO_TABS: StudioTab[] = [
-  { key: 'dashboard', href: '/studio', label: '대시보드', desc: '스탭밀 작업 보드 — 메뉴 스토리·송금 요청' },
+  { key: 'dashboard', href: '/studio', label: '작업 보드', desc: '스탭밀 작업 보드 — 메뉴 스토리·송금 요청' },
   { key: 'menu', href: '/studio/menu', label: 'IG 메뉴 업데이트', desc: '인스타 스토리 이미지 생성' },
   { key: 'meals', href: '/studio/meals', label: '메뉴 기록', desc: '스탭밀 메뉴 기록 아카이브' },
   { key: 'sales', href: '/studio/sales', label: '매출', desc: '지점별 POS 매출 요약 (재무 멤버)' },

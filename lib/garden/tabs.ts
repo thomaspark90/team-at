@@ -5,7 +5,7 @@ export type GardenTab = { key: string; href: string; label: string; desc?: strin
 
 // 대시보드 | 필터(운영) | 리뷰·단어·설정 세 그룹
 export const GARDEN_TAB_GROUPS: GardenTab[][] = [
-  [{ key: 'dashboard', href: '/garden', label: '대시보드', desc: '재고·레시피 미설정 원두 한눈에 보기' }],
+  [{ key: 'dashboard', href: '/garden', label: '작업 보드', desc: '재고·레시피 미설정 원두 한눈에 보기' }],
   [
     { key: 'pricing', href: '/garden/pricing', label: '필터 원두 발주', desc: '원두 정보·매입가 입력 · 발주 기록' },
     // 발주(pricing)와 판매가 책정을 분리 — 책정 권한만 다른 인원에게 줄 수 있다

@@ -37,7 +37,7 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
 
   const u = unit.id;
   const isPersonal = u === 'personal';
-  const HOME = [{ href: '/dashboard', label: '대시보드' }];
+  const HOME = [{ href: '/dashboard', label: '회계 홈' }];
   const TRANSFER = [
     { href: '/dashboard/transfer', label: '송금 요청' },
     { href: '/dashboard/history', label: '송금 설정' },

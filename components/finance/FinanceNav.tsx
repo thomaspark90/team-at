@@ -8,7 +8,7 @@ import { isOwner } from '@/lib/finance/access';
 
 // 리포트(분석·보고) 하위 내비게이션 — 기장·결산(분류·월확정 등)은 회계 탭(AccountingNav)으로 이동.
 const LEFT = [
-  { href: '/finance/dashboard', label: '대시보드' },
+  { href: '/finance/dashboard', label: '리포트 홈' },
   { href: '/finance/metrics', label: '지표' },
   { href: '/finance/pnl', label: '관리손익' },
   { href: '/finance/cashflow', label: '월별 요약' },
