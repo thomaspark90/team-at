@@ -136,41 +136,9 @@ export default async function FinancePage({ searchParams }: { searchParams: { br
           <div className="flex flex-col gap-8">
             <BrandSegments basePath="/finance" seg={seg} />
             <Overview o={overview} />
-            <section className="flex flex-col gap-8">
-              <div>
-                <h2 className="m-0 text-[15px] text-foreground">자료 입력</h2>
-                <p className="mt-1 text-[13px] text-muted-foreground">
-                  회계가 브랜드별로 분리돼 있어요. <b>브랜드 페이지에서 올려야</b> 그 브랜드 회계로 정확히 들어가요.
-                  올린 뒤 <Link href="/finance/classify" className="underline">지출 자료 분류</Link>에서 계정을 지정해요.
-                </p>
-              </div>
-              {/* 단위별 업로드 페이지 진입 — 스탭밀 / 가든 양재천점 / 가든 판교점 */}
-              <div className="grid gap-x-3 gap-y-6 sm:grid-cols-3">
-                <Link
-                  href="/finance/upload/staffmeal"
-                  className="ta-card flex flex-col gap-1 p-5 transition-colors hover:border-foreground/40"
-                >
-                  <span className="text-[15px] font-medium">스탭밀 →</span>
-                  <span className="text-[13px] text-muted-foreground">통장 PDF · 신한카드 · POS(페이히어)</span>
-                </Link>
-                <Link
-                  href="/finance/upload/yangjae"
-                  className="ta-card flex flex-col gap-1 p-5 transition-colors hover:border-foreground/40"
-                >
-                  <span className="text-[15px] font-medium">가든서비스 양재천점 →</span>
-                  <span className="text-[13px] text-muted-foreground">POS(토스) · 가든 공용 통장·카드</span>
-                </Link>
-                <Link
-                  href="/finance/upload/pangyo"
-                  className="ta-card flex flex-col gap-1 p-5 transition-colors hover:border-foreground/40"
-                >
-                  <span className="text-[15px] font-medium">가든서비스 판교점 →</span>
-                  <span className="text-[13px] text-muted-foreground">POS(페이히어) · 가든 공용 통장·카드</span>
-                </Link>
-              </div>
-              {/* 네이버페이 자동 수집 설정 — 배송지로 브랜드를 자동 판정하는 공용 설정 */}
-              <NaverpayConfig />
-            </section>
+            {/* 자료 입력 카드·빠른 이동 링크는 상단 내비(단위 필·회계/리포트 탭)와 완전히 겹쳐 삭제(2026-08-09) —
+                이 화면은 이제 재무 요약·해야 할 일 확인 + 네이버페이 설정 전용. */}
+            <NaverpayConfig />
           </div>
         ) : (
           <NoAccess email={user.email ?? ''} />
@@ -233,22 +201,6 @@ function Overview({ o }: { o: OverviewData }) {
                 href="/dashboard/transfer"
                 cta="이체 처리"
               />
-            ))}
-          </div>
-
-          {/* 빠른 이동 */}
-          <div className="flex flex-wrap gap-2">
-            {[
-              { href: '/finance/classify', label: '지출 자료 분류' },
-              { href: '/finance/flow', label: '자금 흐름' },
-              { href: '/finance/dashboard', label: '대시보드' },
-              { href: '/finance/metrics', label: '지표' },
-              { href: '/finance/cashflow', label: '월별 요약' },
-              { href: '/finance/uploads', label: '자료 이력' },
-            ].map((l) => (
-              <Link key={l.href} href={l.href} className="ta-btn h-8 px-3 text-[13px]">
-                {l.label}
-              </Link>
             ))}
           </div>
         </>
