@@ -316,7 +316,7 @@ export default function Dashboard({
 
       <ChartCard title="매출 추이" subtitle="점선=평균">
         <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={lineData} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+          <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
             <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
             <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
@@ -324,7 +324,7 @@ export default function Dashboard({
             <ReferenceLine y={avgRev} stroke={REF} strokeDasharray="4 4" />
             {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
             <Line type="monotone" dataKey="매출" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
-              <LabelList dataKey="매출" position="top" offset={8} formatter={wonLabel} style={pointLabel} />
+              <LabelList dataKey="매출" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
             </Line>
           </LineChart>
         </ResponsiveContainer>
@@ -332,7 +332,7 @@ export default function Dashboard({
 
       <ChartCard title="영업이익 추이" subtitle="EBIT · 당기순이익">
         <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={lineData} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+          <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 40, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
             <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
             <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
@@ -341,10 +341,10 @@ export default function Dashboard({
             <ReferenceLine y={0} stroke={REF} />
             {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
             <Line type="monotone" dataKey="EBIT" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
-              <LabelList dataKey="EBIT" position="top" offset={8} formatter={wonLabel} style={pointLabel} />
+              <LabelList dataKey="EBIT" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
             </Line>
             <Line type="monotone" dataKey="순이익" stroke={LINE2} strokeWidth={1.5} dot={{ r: 2, fill: LINE2 }}>
-              <LabelList dataKey="순이익" position="bottom" offset={8} formatter={wonLabel} style={pointLabel} />
+              <LabelList dataKey="순이익" position="bottom" offset={30} formatter={wonLabel} style={pointLabel} />
             </Line>
           </LineChart>
         </ResponsiveContainer>
@@ -353,7 +353,7 @@ export default function Dashboard({
       {unit === 'month' && hasCapex && (
         <ChartCard title="감가상각 반영 영업이익" subtitle="자본적지출을 5년 정액 상각해 뺀 실질 영업이익 · 위 EBIT와 비교">
           <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={depData} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+            <LineChart data={depData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
               <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
               <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
@@ -362,7 +362,7 @@ export default function Dashboard({
               <ReferenceLine y={0} stroke={REF} />
               <Line type="monotone" dataKey="영업이익" stroke={LINE2} strokeWidth={1.5} strokeDasharray="4 3" dot={{ r: 2, fill: LINE2 }} />
               <Line type="monotone" dataKey="감가상각 반영" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
-                <LabelList dataKey="감가상각 반영" position="top" offset={8} formatter={wonLabel} style={pointLabel} />
+                <LabelList dataKey="감가상각 반영" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
               </Line>
             </LineChart>
           </ResponsiveContainer>
@@ -371,14 +371,14 @@ export default function Dashboard({
 
       <ChartCard title="손익 추이 %" subtitle="영업이익률 = EBIT ÷ 매출">
         <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={ratioData} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+          <LineChart data={ratioData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
             <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
             <YAxis tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={AXIS} width={44} />
             <Tooltip content={<ChartTooltip fmt={(v: number) => `${v}%`} />} />
             <ReferenceLine y={0} stroke={REF} />
             <Line type="monotone" dataKey="손익률" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }} connectNulls>
-              <LabelList dataKey="손익률" position="top" offset={8} formatter={pctLabel} style={pointLabel} />
+              <LabelList dataKey="손익률" position="top" offset={30} formatter={pctLabel} style={pointLabel} />
             </Line>
           </LineChart>
         </ResponsiveContainer>
@@ -388,7 +388,7 @@ export default function Dashboard({
         <div className="flex flex-col gap-4 md:flex-row md:items-center">
           <div className="min-w-0 flex-1">
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={barData} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+              <BarChart data={barData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
                 <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
                 <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
@@ -397,7 +397,7 @@ export default function Dashboard({
                 {barKeys.map((k, i) => (
                   <Bar key={k} dataKey={k} stackId="a" fill={colorOf(k, i)} stroke={CAT_SURFACE} strokeWidth={1}>
                     {i === barKeys.length - 1 && (
-                      <LabelList dataKey="총지출" position="top" offset={6} formatter={wonLabel} style={pointLabel} />
+                      <LabelList dataKey="총지출" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
                     )}
                   </Bar>
                 ))}
@@ -421,14 +421,14 @@ export default function Dashboard({
 
       <ChartCard title="재료비 %" subtitle="원가율 = 재료비 ÷ 매출 · 카페 벤치마크 25~37%">
         <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={costData} margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+          <LineChart data={costData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
             <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
             <YAxis tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={AXIS} width={44} />
             <Tooltip content={<ChartTooltip fmt={(v: number) => `${v}%`} />} />
             <ReferenceLine y={37} stroke={REF} strokeDasharray="4 4" />
             <Line type="monotone" dataKey="재료비율" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }} connectNulls>
-              <LabelList dataKey="재료비율" position="top" offset={8} formatter={pctLabel} style={pointLabel} />
+              <LabelList dataKey="재료비율" position="top" offset={30} formatter={pctLabel} style={pointLabel} />
             </Line>
           </LineChart>
         </ResponsiveContainer>
