@@ -8,7 +8,7 @@ import ThemeToggle, { ThemeOptions } from '@/components/ThemeToggle';
 import { SECTIONS, inAccounting } from '@/lib/access/sections';
 import { fetchMyAccess } from '@/lib/access/tab-access-client';
 
-const TABS = SECTIONS.map((s) => ({ href: s.href, label: s.label, key: s.key }));
+const TABS = SECTIONS.map((s) => ({ href: s.href, label: s.label, key: s.key, desc: s.desc }));
 
 export default function TabNav() {
   const pathname = usePathname();
@@ -31,7 +31,7 @@ export default function TabNav() {
   // 나비에 표시할 탭 — 섹션 토글로 막힌 것도 지우지 않고 비활성으로 그대로 둔다(2026-08-09,
   // GardenNav와 동일 처리: 어떤 섹션이 있는지, 왜 못 들어가는지 알 수 있게). admin 전용 설정
   // 탭은 토글 대상이 아니라 admin일 때만 추가되고 항상 활성.
-  const navTabs = [...TABS, ...(isAdmin ? [{ href: '/settings', label: '설정', key: 'admin-settings' }] : [])];
+  const navTabs = [...TABS, ...(isAdmin ? [{ href: '/settings', label: '설정', key: 'admin-settings', desc: '계정별 접근 권한 관리' }] : [])];
   const isTabAllowed = (key: string) => key === 'admin-settings' || !Array.isArray(allowed) || allowed.includes(key);
 
   // 페이지 이동 시 햄버거 메뉴 닫기
@@ -81,6 +81,7 @@ export default function TabNav() {
                 key={tab.href}
                 href={tab.href}
                 aria-current={active ? 'page' : undefined}
+                title={tab.desc}
                 className={`shrink-0 whitespace-nowrap px-2.5 py-1.5 text-[13px] transition-colors sm:px-3 ${
                   active
                     ? 'font-medium text-foreground underline decoration-foreground/30 underline-offset-[10px]'
