@@ -16,11 +16,15 @@ const Dashboard = dynamic(() => import('@/components/finance/Dashboard'), {
 
 // 지표 — 매출·이익·비율 추이 차트 (구 재무 대시보드). 대시보드는 업무 보드로 개편.
 export default async function MetricsPage() {
+  const tPageStart = Date.now();
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
+  console.log(`[perf-metrics] getSessionUser ${Date.now() - tPageStart}ms`);
   if (!user) redirect('/');
 
+  const tRole = Date.now();
   const role = await resolveRoleStamped(supabase, user);
+  console.log(`[perf-metrics] resolveRoleStamped ${Date.now() - tRole}ms`);
   if (!role) redirect('/finance'); // 멤버(admin/classifier/viewer)만 — viewer는 이름 없는 안전 뷰로
 
   // ⚠️ 전량 조회(페이지네이션) — 예전엔 limit 없이 한 번만 select 해서 Supabase 기본 1000행 캡에
@@ -30,14 +34,20 @@ export default async function MetricsPage() {
     const PAGE = 1000;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const out: any[] = [];
+    let pageCount = 0;
+    const t0 = Date.now();
     for (let from = 0; ; from += PAGE) {
       let q = supabase.schema('finance').from(table).select(cols);
       for (const c of order) q = q.order(c, { ascending: true, nullsFirst: true });
+      const pageT0 = Date.now();
       const { data, error } = await q.range(from, from + PAGE - 1);
+      pageCount++;
+      console.log(`[perf-metrics] ${table} page${pageCount} ${Date.now() - pageT0}ms rows=${data?.length ?? 0} err=${!!error}`);
       if (error) return { data: out, error };
       out.push(...(data ?? []));
       if (!data || data.length < PAGE) break;
     }
+    console.log(`[perf-metrics] ${table} TOTAL ${Date.now() - t0}ms pages=${pageCount} rows=${out.length}`);
     return { data: out, error: null as null };
   };
 
@@ -51,11 +61,15 @@ export default async function MetricsPage() {
     return unwrap(txRows, '지표 거래');
   };
 
-  const loadCats = async () =>
-    unwrap(
+  const loadCats = async () => {
+    const t0 = Date.now();
+    const r = unwrap(
       await supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable'),
       '계정과목',
     );
+    console.log(`[perf-metrics] categories TOTAL ${Date.now() - t0}ms`);
+    return r;
+  };
 
   // 매출 = POS 공급가액(발생주의). memo-free 뷰(dashboard_pos), 없으면 pos_sales로 폴백.
   const loadPosSales = async () => {
@@ -74,7 +88,10 @@ export default async function MetricsPage() {
     if (!['admin', 'classifier'].includes(role)) return bankCash;
     const PAGE = 1000;
     const raw: { ym: string; bank: string; brand: string | null; tx_at: string; amount_in: number; amount_out: number; balance: number }[] = [];
+    const t0 = Date.now();
+    let pageCount = 0;
     for (let from = 0; ; from += PAGE) {
+      const pageT0 = Date.now();
       const { data, error } = await supabase
         .schema('finance')
         .from('transactions')
@@ -83,10 +100,13 @@ export default async function MetricsPage() {
         .is('split_parent_id', null)
         .order('id')
         .range(from, from + PAGE - 1);
+      pageCount++;
+      console.log(`[perf-metrics] bankCash page${pageCount} ${Date.now() - pageT0}ms rows=${data?.length ?? 0} err=${!!error}`);
       if (error) break;
       raw.push(...((data ?? []) as typeof raw));
       if (!data || data.length < PAGE) break;
     }
+    console.log(`[perf-metrics] bankCash TOTAL ${Date.now() - t0}ms pages=${pageCount}`);
     // (브랜드,은행)별 월 집계 + 월말 잔액(그 달 마지막 거래), 거래 없는 달은 잔액 이월
     const agg = new Map<string, Map<string, { inflow: number; outflow: number; lastAt: string; balance: number }>>();
     for (const t of raw) {
@@ -122,7 +142,9 @@ export default async function MetricsPage() {
   };
 
   // 4개 테이블이 서로 독립적이라 병렬로 조회 — 예전엔 순차 await라 지표 페이지 로딩이 밀렸다.
+  const tData = Date.now();
   const [txns, cats, posSales, bankCash] = await Promise.all([loadTxns(), loadCats(), loadPosSales(), loadBankCash()]);
+  console.log(`[perf-metrics] Promise.all TOTAL ${Date.now() - tData}ms, page TOTAL ${Date.now() - tPageStart}ms`);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
