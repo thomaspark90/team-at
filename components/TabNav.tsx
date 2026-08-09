@@ -28,11 +28,11 @@ export default function TabNav() {
     });
   }, []);
 
-  // 나비에 실제로 표시할 탭 — 섹션 토글 필터 + admin 전용 설정 탭
-  const visibleTabs = [
-    ...TABS.filter((t) => !Array.isArray(allowed) || allowed.includes(t.key)),
-    ...(isAdmin ? [{ href: '/settings', label: '설정', key: 'admin-settings' }] : []),
-  ];
+  // 나비에 표시할 탭 — 섹션 토글로 막힌 것도 지우지 않고 비활성으로 그대로 둔다(2026-08-09,
+  // GardenNav와 동일 처리: 어떤 섹션이 있는지, 왜 못 들어가는지 알 수 있게). admin 전용 설정
+  // 탭은 토글 대상이 아니라 admin일 때만 추가되고 항상 활성.
+  const navTabs = [...TABS, ...(isAdmin ? [{ href: '/settings', label: '설정', key: 'admin-settings' }] : [])];
+  const isTabAllowed = (key: string) => key === 'admin-settings' || !Array.isArray(allowed) || allowed.includes(key);
 
   // 페이지 이동 시 햄버거 메뉴 닫기
   useEffect(() => {
@@ -56,7 +56,19 @@ export default function TabNav() {
 
         {/* 모바일에선 섹션 링크를 숨기고 햄버거 패널에 넣는다 — 가로 스크롤로 잘려 보이던 문제 해소 */}
         <nav className="scrollbar-hide hidden flex-1 items-center justify-center gap-1 overflow-x-auto sm:flex">
-          {visibleTabs.map((tab) => {
+          {navTabs.map((tab) => {
+            if (!isTabAllowed(tab.key)) {
+              return (
+                <span
+                  key={tab.href}
+                  aria-disabled="true"
+                  title="접근 권한이 없어요"
+                  className="shrink-0 cursor-not-allowed whitespace-nowrap px-2.5 py-1.5 text-[13px] text-muted-foreground/40 sm:px-3"
+                >
+                  {tab.label}
+                </span>
+              );
+            }
             const p = pathname ?? '';
             const active =
               tab.href === '/dashboard'
@@ -123,7 +135,18 @@ export default function TabNav() {
         <div className="flex h-full flex-col px-6 pb-8 pt-7">
           {/* 섹션 링크 — 큰 타이포, 현재 위치만 진하게 */}
           <div className="flex flex-col">
-            {visibleTabs.map((tab) => {
+            {navTabs.map((tab) => {
+              if (!isTabAllowed(tab.key)) {
+                return (
+                  <span
+                    key={tab.href}
+                    aria-disabled="true"
+                    className="cursor-not-allowed py-2 text-[20px] leading-snug tracking-[-0.3px] text-foreground/25"
+                  >
+                    {tab.label}
+                  </span>
+                );
+              }
               const p = pathname ?? '';
               const active =
                 tab.href === '/dashboard'
