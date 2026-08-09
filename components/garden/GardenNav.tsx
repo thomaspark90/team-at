@@ -75,40 +75,53 @@ export default function GardenNav() {
   return (
     <nav className="border-b border-border bg-card/40">
       {/* 링크를 한 컨테이너에 평탄화 — 그룹 div로 감싸면 그룹 통째로 줄바꿈돼 모바일에서
-          '대시보드' 혼자 한 줄을 차지하는 식으로 4줄까지 늘어났다. 구분선은 데스크톱 전용. */}
+          '대시보드' 혼자 한 줄을 차지하는 식으로 4줄까지 늘어났다. 구분선은 데스크톱 전용.
+          미허용 탭도 지우지 않고 비활성 텍스트로 그대로 둔다(2026-08-09) — 어떤 메뉴가
+          있는지, 왜 못 들어가는지 알 수 있게. 클릭 불가 + 배지 없음(어차피 카운트 fetch를
+          안 하니 0). */}
       <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-start gap-x-4 gap-y-2 px-4 py-3 sm:justify-center sm:gap-x-5 sm:gap-y-1.5 sm:px-6">
-        {GARDEN_TAB_GROUPS.map((tabs) => tabs.filter((t) => visible(t.key)))
-          .filter((tabs) => tabs.length > 0)
-          .map((shown, i) => (
-            <Fragment key={shown[0].key}>
-              {i > 0 && <span aria-hidden className="hidden h-3 w-px bg-border sm:block" />}
-              {shown.map(({ key, href, label }) => {
-                const active = pathname === href;
-                const badge =
-                  key === 'reviews' ? reviewCount
-                  : key === 'saleprice' ? unpricedCount
-                  : key === 'words' ? pendingWords
-                  : 0;
+        {GARDEN_TAB_GROUPS.map((tabs, i) => (
+          <Fragment key={tabs[0].key}>
+            {i > 0 && <span aria-hidden className="hidden h-3 w-px bg-border sm:block" />}
+            {tabs.map(({ key, href, label, desc }) => {
+              if (!visible(key)) {
                 return (
-                  <Link
+                  <span
                     key={href}
-                    href={href}
-                    aria-current={active ? 'page' : undefined}
-                    className={`inline-flex items-center gap-1 whitespace-nowrap text-[13px] transition-colors ${
-                      active ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
-                    }`}
+                    aria-disabled="true"
+                    title={desc ? `${desc} — 접근 권한이 없어요` : '접근 권한이 없어요'}
+                    className="inline-flex cursor-not-allowed items-center gap-1 whitespace-nowrap text-[13px] text-muted-foreground/40"
                   >
                     {label}
-                    {badge > 0 && (
-                      <span className="inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-medium leading-none text-white">
-                        {badge > 999 ? '999+' : badge}
-                      </span>
-                    )}
-                  </Link>
+                  </span>
                 );
-              })}
-            </Fragment>
-          ))}
+              }
+              const active = pathname === href;
+              const badge =
+                key === 'reviews' ? reviewCount
+                : key === 'saleprice' ? unpricedCount
+                : key === 'words' ? pendingWords
+                : 0;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? 'page' : undefined}
+                  className={`inline-flex items-center gap-1 whitespace-nowrap text-[13px] transition-colors ${
+                    active ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                  {badge > 0 && (
+                    <span className="inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-medium leading-none text-white">
+                      {badge > 999 ? '999+' : badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </Fragment>
+        ))}
       </div>
     </nav>
   );
