@@ -73,7 +73,7 @@ export default function StatusMatrix({
     : 0;
 
   return (
-    <details open className="rounded-2xl border border-border bg-card p-5">
+    <details open className="rounded-2xl bg-card p-5">
       <summary className="cursor-pointer select-none list-none text-[15px] font-medium [&::-webkit-details-marker]:hidden">
         {brandLabel(brand)} · 전체 자료 현황
         {data && (

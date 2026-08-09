@@ -15,7 +15,7 @@
 // 형식이 다른 페이히어 리포트(다른 내보내기 종류)는 헤더 자동탐지 폴백으로 시도한다.
 import * as officeCrypto from 'officecrypto-tool';
 import * as XLSX from 'xlsx';
-import type { PosParseResult, PosDailyCat, PosCategoryAgg } from './pos';
+import type { PosParseResult, PosDailyCat, PosCategoryAgg, PosItemRow } from './pos';
 
 const isGiftItem = (item: string) => /식권|선불권|상품권|금액권/.test(item);
 
@@ -171,6 +171,95 @@ function parseSummaryRows(rows: unknown[][], sheetName: string): PayhereParseRes
   });
 }
 
+// ---------- 1-1) 실측 형식: '상품 분석_상품별 조회(일자별)' — 상품 단위 상세(2026-08-09) ----------
+// 결제 요약과 달리 실제 카테고리·상품명·수량이 행 단위로 나와 finance.pos_items(품목 리포트)를
+// 판교도 채울 수 있다. 서브토탈 행('전체 합계'·'부분 분할결제'·'일자별 합계 : …')은 상품명 칸이
+// 비어 있는 걸로 걸러낸다 — 안 걸러내면 그 날 상세행 합계 + 소계 행이 같이 잡혀 매출이 정확히
+// 2배가 된다(2026-08-09 판교 2025-10~12 실측: 필터 전 ₩92,482,971 vs 실제 ₩46,445,639).
+// VAT·공급가액 컬럼이 없어 과세 1/11 산출(다른 페이히어 폴백과 동일 규칙)로 근사한다.
+function parseProductDetailRows(rows: unknown[][], sheetName: string): PayhereParseResult | null {
+  let hdr = -1;
+  let norm: string[] = [];
+  for (let i = 0; i < Math.min(rows.length, 12); i++) {
+    const n = (rows[i] ?? []).map((x) => String(x ?? '').replace(/\s+/g, ''));
+    if (n.includes('영업일') && n.includes('상품명') && n.some((h) => h.includes('카테고리'))) {
+      hdr = i;
+      norm = n;
+      break;
+    }
+  }
+  if (hdr < 0) return null;
+
+  const ix = (name: string) => norm.findIndex((h) => h === name);
+  const ixLike = (name: string) => norm.findIndex((h) => h.includes(name));
+  const iCat = ixLike('카테고리');
+  const iProduct = ix('상품명');
+  const iDate = ix('영업일');
+  const iSold = ixLike('판매량');
+  const iQtyCol = ix('수량');
+  const iQty = iSold >= 0 ? iSold : iQtyCol;
+  const iGross = ixLike('총매출');
+  const iNet = ixLike('실매출');
+  if (iCat < 0 || iProduct < 0 || iDate < 0 || (iGross < 0 && iNet < 0)) return null;
+
+  const agg = newAgg();
+  const itemAgg = new Map<string, PosItemRow>();
+  for (let i = hdr + 1; i < rows.length; i++) {
+    const r = rows[i] ?? [];
+    const category = String(r[iCat] ?? '').trim();
+    const product = String(r[iProduct] ?? '').trim();
+    // 상품명이 비었거나 '합계' 라벨이 섞여 있으면 소계/합계 행 — 스킵
+    if (!product || category.includes('합계') || product.includes('합계')) continue;
+    const saleDate = toYmd(r[iDate]);
+    if (!saleDate) continue;
+
+    const net = iNet >= 0 ? num(r[iNet]) : num(r[iGross]);
+    const gross = Math.round(net);
+    const qty = iQty >= 0 ? num(r[iQty]) : 0;
+    if (gross === 0 && qty === 0) continue; // 완전 빈 행
+
+    if (isGiftItem(product) || isGiftItem(category)) {
+      const vatExcl = Math.round(gross - gross / 1.1);
+      agg.excluded.rows++;
+      agg.excluded.gross += gross;
+      agg.excluded.vat += vatExcl;
+      continue;
+    }
+
+    agg.dataRows++;
+    if (gross < 0) agg.canceled++;
+    else agg.completed++;
+    const vat = Math.round(gross - gross / 1.1);
+    const supply = gross - vat;
+    const cat = category || '기타';
+    addRow(agg, saleDate, cat, gross, vat, supply, qty);
+
+    const key = `${saleDate}|${cat}|${product}`;
+    const it =
+      itemAgg.get(key) ?? { ym: saleDate.slice(0, 7), saleDate, category: cat, product, option: '', qty: 0, gross: 0, vat: 0, supply: 0 };
+    it.qty += qty;
+    it.gross += gross;
+    it.vat += vat;
+    it.supply += supply;
+    itemAgg.set(key, it);
+  }
+  if (agg.dataRows === 0) return null;
+
+  const base = finish(agg, sheetName, {
+    날짜: '영업일',
+    금액: iNet >= 0 ? '실매출(총매출−할인)' : '총 매출',
+    부가세: '(없음 — 과세 1/11 산출)',
+    카테고리: '카테고리명',
+    상품명: '상품명',
+    수량: iSold >= 0 ? '판매량' : '수량',
+  });
+  const items = Array.from(itemAgg.values()).sort(
+    (a, b) =>
+      a.saleDate.localeCompare(b.saleDate) || a.category.localeCompare(b.category) || a.product.localeCompare(b.product),
+  );
+  return { ...base, items };
+}
+
 // ---------- 2) 폴백: 헤더 자동탐지(다른 내보내기 형식 대비) ----------
 const DATE_HEADERS = ['영업일', '결제일시', '주문일시', '거래일시', '판매일시', '판매일자', '영업일자', '일자', '날짜'];
 const AMOUNT_HEADERS = ['결제금액', '실매출', '실판매금액', '판매금액', '총매출', '합계금액', '금액'];
@@ -270,7 +359,7 @@ export async function parsePayhereXlsx(
     const ws = wb.Sheets[name];
     if (!ws) continue;
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' }) as unknown[][];
-    const r = parseSummaryRows(rows, name) ?? parseGenericRows(rows, name);
+    const r = parseProductDetailRows(rows, name) ?? parseSummaryRows(rows, name) ?? parseGenericRows(rows, name);
     if (r && (!best || r.meta.dataRows > best.meta.dataRows)) best = r;
   }
   if (!best || best.rows.length === 0) {

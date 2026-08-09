@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { useRefresh } from '@/components/Refresh';
 import { won, fmtYm } from '@/lib/finance/format';
@@ -69,6 +69,8 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [done, setDone] = useState<ApplyResult | null>(null);
+  // 일괄 업로드 완료 배너 표시용 — 파일 입력 자체를 리셋해 "선택된 파일 N개"가 낡은 채로 남지 않게 한다
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => { setPreview(null); setDone(null); setError(null); setMapping(null); setBatchResults([]); };
 
@@ -148,8 +150,17 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
     setBatchAt(null);
     setBatchFiles([]);
     setApplying(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
     refresh();
   }
+
+  // 일괄 업로드 완료 배너 — 끝난 뒤에도 "뭐가 어떻게 됐는지" 화면에 또렷이 남긴다(2026-08-09,
+  // 처리 자체가 빨라서 결과 없이 조용히 끝난 것처럼 보인다는 피드백)
+  const batchDone = !applying && batchFiles.length === 0 && batchResults.length > 0;
+  const batchOk = batchResults.filter((r) => !r.error);
+  const batchFail = batchResults.filter((r) => r.error);
+  const batchSupply = batchOk.reduce((s, r) => s + r.supply, 0);
+  const batchYms = Array.from(new Set(batchOk.flatMap((r) => r.yms))).sort();
 
   if (!open) {
     return (
@@ -193,6 +204,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
           </div>
         )}
         <input
+          ref={fileInputRef}
           type="file"
           multiple
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -267,6 +279,25 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
             공급가액 매출 <b className="text-foreground">{won(done.supply)}</b> · {done.inserted}개 집계행{done.excludedRows ? ` · 식권·상품권 ${done.excludedRows}건 제외` : ''} ·{' '}
             <a href={`/finance/pnl?ym=${done.ym}`} className="text-foreground underline">관리손익 보기 →</a>
           </div>
+        </div>
+      )}
+
+      {batchDone && (
+        <div
+          className="rounded-md p-4 text-[13px]"
+          style={{ background: batchFail.length > 0 ? 'hsl(25 85% 45% / 0.1)' : 'hsl(150 60% 35% / 0.1)' }}
+        >
+          <div className="mb-1 font-medium text-foreground">
+            {batchFail.length === 0
+              ? `✓ ${batchOk.length}개 파일 전부 저장 완료`
+              : `⚠️ ${batchOk.length}개 저장 완료 · ${batchFail.length}개 실패 — 아래 표에서 실패 사유를 확인하세요`}
+          </div>
+          {batchOk.length > 0 && (
+            <div className="text-muted-foreground">
+              공급가액 합계 <b className="text-foreground">{won(batchSupply)}</b> · 대상 월{' '}
+              <b className="text-foreground">{batchYms.map(fmtYm).join(', ')}</b> · 이어서 다음 파일을 올릴 수 있어요
+            </div>
+          )}
         </div>
       )}
 
