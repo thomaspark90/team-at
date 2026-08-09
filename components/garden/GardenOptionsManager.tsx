@@ -254,7 +254,7 @@ function RoasteryList({
                     }}
                     disabled={busy}
                     className="text-muted-foreground hover:text-foreground"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, padding: 0, flexShrink: 0 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, padding: 6, margin: -6, flexShrink: 0 }}
                     title="이름 수정 — 등록된 로고·QR도 새 이름으로 유지"
                   >
                     수정
@@ -267,7 +267,7 @@ function RoasteryList({
                 onClick={() => remove(v)}
                 disabled={busy}
                 className="text-muted-foreground hover:text-foreground"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 0, lineHeight: 1, flexShrink: 0 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 6, margin: -6, lineHeight: 1, flexShrink: 0 }}
                 title="삭제"
               >
                 ×
@@ -352,7 +352,7 @@ function AssetSlot({
           onClick={onRemove}
           disabled={busy}
           className="text-muted-foreground hover:text-foreground"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, padding: 0 }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, padding: 6, margin: -6 }}
           title={`${label} 제거`}
         >
           ×
@@ -429,7 +429,7 @@ function OptionList({
                 onClick={() => remove(v)}
                 disabled={busy}
                 className="text-muted-foreground hover:text-foreground"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 0, lineHeight: 1 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 4, lineHeight: 1 }}
                 title="삭제"
               >
                 ×

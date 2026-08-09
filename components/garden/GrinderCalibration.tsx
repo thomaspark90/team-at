@@ -136,7 +136,7 @@ export default function GrinderCalibration({
                       <button
                         onClick={() => removeRow(s.id, i)}
                         className="text-muted-foreground hover:text-foreground"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, flexShrink: 0 }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, flexShrink: 0, padding: 4, margin: -4 }}
                         title="측정점 삭제"
                         aria-label="측정점 삭제"
                       >

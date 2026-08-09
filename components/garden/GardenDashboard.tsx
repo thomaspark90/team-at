@@ -808,7 +808,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
               disabled={deletingBean === normalize(rec.bean)}
               title="발주 기록 삭제"
               className="text-muted-foreground hover:text-foreground"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, flexShrink: 0 }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, flexShrink: 0, padding: 6, margin: -6 }}
             >
               ×
             </button>

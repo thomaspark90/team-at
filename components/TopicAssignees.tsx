@@ -81,7 +81,7 @@ export default function TopicAssignees({
                     onClick={() => save(t.id, map[t.id].filter((e) => e !== email))}
                     disabled={busy}
                     className="text-muted-foreground hover:text-foreground"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, fontSize: 11 }}
                     title={`${email} 제거`}
                   >
                     ×

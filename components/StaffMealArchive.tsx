@@ -112,7 +112,7 @@ export default function StaffMealArchive({ initial }: { initial: StaffMealRecord
                     onClick={() => deleteRecord(rec.id)}
                     disabled={deletingId === rec.id}
                     className="text-[11px] text-muted-foreground hover:text-foreground"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, margin: -6 }}
                   >
                     {deletingId === rec.id ? '삭제 중…' : '삭제'}
                   </button>

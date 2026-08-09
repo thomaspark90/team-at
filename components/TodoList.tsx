@@ -87,7 +87,7 @@ export default function TodoList({
               <span className="tabular text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>
                 {t.done ? `${fmt(t.doneAt)} 완료${t.doneBy ? ` · ${t.doneBy.split('@')[0]}` : ''}` : `${fmt(t.createdAt)}${t.createdBy ? ` · ${t.createdBy.split('@')[0]}` : ''}`}
               </span>
-              <button onClick={() => remove(t)} disabled={busy} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, flexShrink: 0 }} title="삭제">
+              <button onClick={() => remove(t)} disabled={busy} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, flexShrink: 0, padding: 6, margin: -6 }} title="삭제">
                 ×
               </button>
             </div>

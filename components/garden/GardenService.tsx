@@ -572,7 +572,7 @@ export default function GardenService() {
                           <button
                             onClick={() => deletePurchase(rec.id)}
                             className="gs-del text-muted-foreground hover:text-foreground"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 6, margin: -6 }}
                           >
                             ×
                           </button>
@@ -594,12 +594,12 @@ export default function GardenService() {
             role="dialog"
             aria-modal="true"
             aria-label="발주 메시지 전송"
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4"
           >
             <div
-              className="ta-card bg-background"
+              className="ta-card bg-background max-h-[92vh] w-full overflow-y-auto rounded-t-2xl sm:max-w-[420px] sm:rounded-md"
               onClick={(e) => e.stopPropagation()}
-              style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 10 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
             >
               <div>
                 <p className="ta-label" style={{ margin: 0 }}>발주 메시지 전송</p>

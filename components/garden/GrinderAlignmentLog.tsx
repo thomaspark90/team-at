@@ -151,7 +151,7 @@ export default function GrinderAlignmentLog() {
                 </span>
               )}
               {e.memo && <span className="text-[13px] text-muted-foreground" style={{ flex: 1 }}>{e.memo}</span>}
-              <button onClick={() => remove(e.id)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }} title="기록 삭제" aria-label="기록 삭제">
+              <button onClick={() => remove(e.id)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 6, margin: -6 }} title="기록 삭제" aria-label="기록 삭제">
                 ×
               </button>
             </div>

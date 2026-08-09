@@ -286,8 +286,14 @@ export default function MonthlyCloseManager({
 
       {/* 일괄 확정 보류 게이트 — 자료가 덜 올라와 건너뛴 달 목록 + 강행 옵션 */}
       {bulkGate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setBulkGate(null)}>
-          <div className="w-full max-w-[480px] rounded-2xl border border-border bg-card p-5" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+          onClick={() => setBulkGate(null)}
+        >
+          <div
+            className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-card p-5 sm:max-w-[480px] sm:rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="m-0 text-[15px] font-medium">⚠ 자료가 덜 올라온 {bulkGate.length}개월은 보류했어요</h3>
             <p className="mt-1 text-[13px] text-muted-foreground">
               지금 확정하면 아래 자료가 빠진 채로 그 달 손익이 잠겨요. 자료 입력에서 마저 올린 뒤 다시 일괄
@@ -324,8 +330,14 @@ export default function MonthlyCloseManager({
 
       {/* 확정 게이트 — 빠졌거나 부분인 업로드가 있는 달을 확정하기 전 마지막 확인 */}
       {gate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setGate(null)}>
-          <div className="w-full max-w-[440px] rounded-2xl border border-border bg-card p-5" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+          onClick={() => setGate(null)}
+        >
+          <div
+            className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-card p-5 sm:max-w-[440px] sm:rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="m-0 text-[15px] font-medium">⚠ {fmtYm(gate.ym)} 자료가 아직 덜 올라왔어요</h3>
             <p className="mt-1 text-[13px] text-muted-foreground">
               지금 확정하면 아래 자료가 빠진 채로 그 달 손익이 잠겨요. 회계 대시보드에서 마저 올린 뒤

@@ -107,9 +107,12 @@ export default function SplitModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-[480px] rounded-2xl border border-border bg-card p-5 shadow-xl"
+        className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-card p-5 shadow-xl sm:max-w-[480px] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="m-0 text-[15px] font-medium">건별 분할</h3>

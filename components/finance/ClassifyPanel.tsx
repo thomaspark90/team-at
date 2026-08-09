@@ -629,19 +629,23 @@ export default function ClassifyPanel({
             ))}
           </select>
         )}
-        <div className="inline-flex gap-1 rounded-md border border-border p-1">
-          {['all', ...banks].map((b) => {
-            const on = filterBank === b;
-            return (
-              <button
-                key={b}
-                onClick={() => setFilterBank(b)}
-                className={`rounded-sm px-3 py-1 text-[13px] ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                {b === 'all' ? '전체 출처' : bankSourceLabel(b)}
-              </button>
-            );
-          })}
+        {/* 출처 종류(banks)는 데이터에 따라 늘어난다 — 세그먼트가 화면 폭을 넘으면
+            줄바꿈 대신 가로 스크롤(2026-08-09, 회계 내비와 동일 패턴). */}
+        <div className="min-w-0 max-w-full overflow-x-auto scrollbar-hide">
+          <div className="inline-flex w-max gap-1 rounded-md border border-border p-1">
+            {['all', ...banks].map((b) => {
+              const on = filterBank === b;
+              return (
+                <button
+                  key={b}
+                  onClick={() => setFilterBank(b)}
+                  className={`shrink-0 rounded-sm px-3 py-1 text-[13px] ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  {b === 'all' ? '전체 출처' : bankSourceLabel(b)}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <button
           onClick={() => {
