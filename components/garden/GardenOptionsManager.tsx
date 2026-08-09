@@ -25,17 +25,22 @@ export default function GardenOptionsManager() {
       .then((j) => setRooms(j ?? {}));
   }, []);
 
-  // 카톡방 매핑 저장 — 빈 값은 서버가 매핑 해제로 처리
-  const saveRoom = async (roastery: string, room: string) => {
+  // 카톡방 매핑 저장 — 빈 값은 서버가 매핑 해제로 처리.
+  // 성공해야만 rooms를 갱신한다(낙관적 갱신 금지) — 실패했는데도 저장된 것처럼 보이던 문제(RoomInput 참고).
+  const saveRoom = async (roastery: string, room: string): Promise<boolean> => {
     const next = { ...rooms, [roastery]: room };
-    setRooms(next);
     const res = await fetch('/api/kakao-notify/rooms', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(next),
     });
-    if (res.ok) setRooms(await res.json());
-    else toast((await res.json().catch(() => null))?.error ?? '카톡방 저장에 실패했습니다.', 'error');
+    if (res.ok) {
+      setRooms(await res.json());
+      toast('발주 카톡방을 저장했어요.');
+      return true;
+    }
+    toast((await res.json().catch(() => null))?.error ?? '카톡방 저장에 실패했습니다.', 'error');
+    return false;
   };
 
   // 로스터리 로고·QR 업로드/삭제 — 원두카드 인쇄 시 자동 배치
@@ -153,7 +158,7 @@ function RoasteryList({
   onUpload: (roastery: string, kind: 'logo' | 'qr', file: File) => void;
   onRemoveAsset: (roastery: string, kind: 'logo' | 'qr') => void;
   onRename: (from: string, to: string) => void;
-  onRoomChange: (roastery: string, room: string) => void;
+  onRoomChange: (roastery: string, room: string) => Promise<boolean>;
 }) {
   const [input, setInput] = useState('');
   const [editing, setEditing] = useState<string | null>(null); // 수정 중인 항목(원래 이름)
@@ -284,12 +289,22 @@ function RoasteryList({
 
 // 발주 카톡방 입력 — [발주] 버튼이 이 이름으로 맥 카톡앱에서 방을 검색해 전송한다.
 // 카톡 채팅 리스트의 표시 이름과 '정확히' 일치해야 하며, 비우면 매핑 해제(전송 차단).
-function RoomInput({ value, busy, onSave }: { value: string; busy: boolean; onSave: (room: string) => void }) {
+// blur 시 조용히 저장되던 걸 명시적 '저장' 버튼으로 바꿨다 — 저장됐는지 알 길이 없어 헷갈린다는 피드백(2026-08-09).
+// 실패하면 입력값을 원래 값으로 되돌린다 — 실패했는데도 새 값이 남아 저장된 것처럼 보이던 문제 방지.
+function RoomInput({ value, busy, onSave }: { value: string; busy: boolean; onSave: (room: string) => Promise<boolean> }) {
   const [v, setV] = useState(value);
+  const [saving, setSaving] = useState(false);
   useEffect(() => setV(value), [value]);
-  const commit = () => {
-    if (v.trim() !== value.trim()) onSave(v.trim());
+  const dirty = v.trim() !== value.trim();
+
+  const commit = async () => {
+    if (!dirty || saving) return;
+    setSaving(true);
+    const ok = await onSave(v.trim());
+    setSaving(false);
+    if (!ok) setV(value);
   };
+
   return (
     <label style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
       <span className="text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>발주 카톡방</span>
@@ -297,13 +312,23 @@ function RoomInput({ value, busy, onSave }: { value: string; busy: boolean; onSa
         type="text"
         value={v}
         onChange={(e) => setV(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => e.key === 'Enter' && commit()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') setV(value);
+        }}
         placeholder="카톡 채팅방 표시 이름 (정확히 일치해야 전송됨)"
         className="ta-input"
         style={{ flex: 1, minWidth: 0, height: 28 }}
-        disabled={busy}
+        disabled={busy || saving}
       />
+      <button
+        onClick={commit}
+        disabled={busy || saving || !dirty}
+        className="ta-btn-primary"
+        style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 12, flexShrink: 0, opacity: dirty ? 1 : 0.4 }}
+      >
+        {saving ? '저장 중…' : '저장'}
+      </button>
     </label>
   );
 }
