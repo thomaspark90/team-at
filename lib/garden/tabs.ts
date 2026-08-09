@@ -14,7 +14,7 @@ export const GARDEN_TAB_GROUPS: GardenTab[][] = [
     { key: 'recommended', href: '/garden/recommended', label: '필터 레시피 추천', desc: '원두별 추천 레시피 조회' },
     { key: 'calibration', href: '/garden/calibration', label: '분쇄도 측정', desc: 'EK43 캘리브레이션 업로드 · 차트' },
     { key: 'beancard', href: '/garden/beancard', label: '원두카드', desc: '매장 비치용 원두카드 인쇄' },
-    { key: 'sales', href: '/garden/sales', label: '매출', desc: '지점별 POS 매출 요약 (재무 멤버)' },
+    { key: 'sales', href: '/garden/sales', label: '상품 추이', desc: '지점별 POS 매출 요약 (재무 멤버)' },
     { key: 'weather', href: '/garden/weather', label: '날씨 분석', desc: '기온·강수 밴드별 판매 효과 리포트' },
   ],
   [

@@ -92,7 +92,7 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
         <div className="flex flex-col gap-8">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h1 className="m-0 text-[22px]">가든 판매 추이</h1>
+              <h1 className="m-0 text-[22px]">상품 추이</h1>
               <p className="mt-1 text-[13px] text-muted-foreground">
                 토스(양재천)·페이히어(판교) POS 업로드 기준 발생주의 매출이에요. 월 자료가 업로드돼야 반영됩니다.
               </p>
@@ -139,7 +139,7 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
             <section className="py-[54px]">
               <p className="m-0 text-[13px] text-muted-foreground">
                 {scopedOut
-                  ? '스탭밀 전용 계정이라 가든 판매 추이는 볼 수 없어요.'
+                  ? '스탭밀 전용 계정이라 상품 추이는 볼 수 없어요.'
                   : '매출은 재무 멤버만 볼 수 있어요. 필요하면 대표에게 멤버 등록(viewer)을 요청하세요.'}
               </p>
             </section>
@@ -164,4 +164,4 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
   );
 }
 
-export const metadata = { title: '가든 판매 추이' };
+export const metadata = { title: '상품 추이' };
