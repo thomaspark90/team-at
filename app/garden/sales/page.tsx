@@ -91,12 +91,10 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
       <div className="mx-auto max-w-[1100px] px-6 py-8">
         <div className="flex flex-col gap-8">
           <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h1 className="m-0 text-[22px]">상품 추이</h1>
-              <p className="mt-1 text-[13px] text-muted-foreground">
-                토스(양재천)·페이히어(판교) POS 업로드 기준 발생주의 매출이에요. 월 자료가 업로드돼야 반영됩니다.
-              </p>
-            </div>
+            {/* 페이지 제목은 내비 활성 탭이 이미 알려줘서 생략 — 전제조건 설명만 남김(2026-08-09) */}
+            <p className="m-0 text-[13px] text-muted-foreground">
+              토스(양재천)·페이히어(판교) POS 업로드 기준 발생주의 매출이에요. 월 자료가 업로드돼야 반영됩니다.
+            </p>
             {isMember && !scopedOut && (
               <div className="flex gap-1 rounded-xl border border-border bg-card p-1">
                 {storeTabs.map((t) => (

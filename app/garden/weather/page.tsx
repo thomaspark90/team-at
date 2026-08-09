@@ -12,13 +12,11 @@ export default function GardenWeatherPage() {
       <TabNav />
       <GardenNav />
       <div className="mx-auto max-w-[1100px] px-6 py-8" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div>
-          <h1 className="m-0 text-[22px]">날씨 × 판매 분석</h1>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            POS 매출(pos_sales) 전 기간을 과거 날씨와 조인해 기온·강수 밴드별 효과를 추정합니다. 기준: 일최고 10–20° ·
-            비 없음 · 요일/트렌드 통제.
-          </p>
-        </div>
+        {/* 페이지 제목은 내비 활성 탭이 이미 알려줘서 생략 — 분석 전제조건 설명만 남김(2026-08-09) */}
+        <p className="m-0 text-[13px] text-muted-foreground">
+          POS 매출(pos_sales) 전 기간을 과거 날씨와 조인해 기온·강수 밴드별 효과를 추정합니다. 기준: 일최고 10–20° ·
+          비 없음 · 요일/트렌드 통제.
+        </p>
         <OrderOutlookCard />
         <WeatherSalesReport />
       </div>

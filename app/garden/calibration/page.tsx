@@ -18,10 +18,8 @@ export default function GardenCalibrationPage() {
       <TabNav />
       <GardenNav />
       <div className="mx-auto max-w-[1100px] px-6 py-8" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <h1 className="text-[22px]" style={{ margin: 0 }}>
-            분쇄도 측정
-          </h1>
+        {/* 페이지 제목은 내비 활성 탭이 이미 알려줘서 생략(2026-08-09) */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <a href="/garden/calibration/report" className="text-[13px] underline text-muted-foreground hover:text-foreground">
             2026-07-16 기준선 리포트 보기 →
           </a>

@@ -10,9 +10,7 @@ export default function GardenReviewsPage() {
       <TabNav />
       <GardenNav />
       <div className="mx-auto max-w-[1100px] px-6 py-8">
-        <h1 className="text-[22px]" style={{ margin: '0 0 4px' }}>
-          네이버 리뷰
-        </h1>
+        {/* 페이지 제목은 내비 활성 탭이 이미 알려줘서 생략(2026-08-09) */}
         <p className="text-[13px] text-muted-foreground" style={{ margin: '0 0 20px' }}>
           톤 3종 초안 중 하나를 골라 확정하면 1시간 뒤 스마트플레이스에 등록됩니다. 그 전에는 취소하고 다시 선택할 수 있습니다.
         </p>
