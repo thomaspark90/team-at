@@ -87,7 +87,7 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
             {/* 1) POS 매출 — 지점 단위 귀속 (#pos: 월별 보드의 POS 칸에서 앵커 이동) */}
             <div id="pos" className="flex flex-col gap-6 scroll-mt-4 py-[54px]">
               <div>
-                <h2 className="m-0 text-[15px] text-foreground">POS 매출</h2>
+                <h2 className="m-0 text-[15px] font-medium text-foreground">POS 매출</h2>
                 <p className="mt-1 text-[13px] text-muted-foreground">
                   {unit.id === 'yangjae' ? '토스 매출리포트(비번 0000)' : '페이히어 매출 리포트'} 엑셀 — {unit.label} 매출로
                   저장돼요.
