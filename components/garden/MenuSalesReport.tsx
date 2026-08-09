@@ -1,4 +1,5 @@
 import { bucketLabel, granUnitLabel, type AmericanoPeriod, type MenuPeriod, type PeriodSeries } from '@/lib/garden/menu-sales';
+import MenuTrendChart from '@/components/garden/MenuTrendChart';
 
 // 메뉴 판매 리포트 — 가든 매출 페이지 섹션(서버 컴포넌트, 재무 권한자 전용).
 // ① 아메리카노 아이스/핫 비교(합계 카드 + 기간별 막대), ② 아메리카노 원두별(스테이=메인/
@@ -51,7 +52,6 @@ export default function MenuSalesReport({ americano, menus }: { americano: Ameri
   if (!hasAme && !hasMenus) return null;
 
   const ameMax = Math.max(1, ...americano.temps.flatMap((s) => s.qty), ...americano.beans.flatMap((s) => s.qty));
-  const menuMax = Math.max(1, ...menus.menus.flatMap((s) => s.qty));
   const ice = americano.temps.find((s) => s.label === '아이스');
   const hot = americano.temps.find((s) => s.label === '핫');
   const unit = granUnitLabel(americano.gran);
@@ -59,8 +59,8 @@ export default function MenuSalesReport({ americano, menus }: { americano: Ameri
   return (
     <>
       {hasAme && (
-        // 카드 해체(2026-08-08) — 페이지 최상위 섹션은 박스 없이
-        <section>
+        // 카드 해체(2026-08-08) — 페이지 최상위 섹션은 박스 없이 가로 구분선+py-[54px]로 구획(§6.1)
+        <section className="py-[54px]">
           <h2 className="m-0 text-[15px] font-medium">아메리카노 — 아이스/핫 · 원두별 추이</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
             오픈 이후 전체 {americano.buckets.length}{unit}, 판매 건수 기준(원두: 스테이=메인 블렌드, 라이트=시즈널). 금액은 공급가액.
@@ -118,18 +118,15 @@ export default function MenuSalesReport({ americano, menus }: { americano: Ameri
       )}
 
       {hasMenus && (
-        // 카드 해체(2026-08-08) — 페이지 최상위 섹션은 박스 없이
-        <section>
+        // 카드 해체(2026-08-08) — 페이지 최상위 섹션은 박스 없이 가로 구분선+py-[54px]로 구획(§6.1)
+        <section className="py-[54px]">
           <h2 className="m-0 text-[15px] font-medium">메뉴별 판매 추이 — 상위 {menus.menus.length}개</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            오픈 이후 전체 {menus.buckets.length}{granUnitLabel(menus.gran)} 판매 건수 상위 메뉴. 막대에 마우스를 올리면 기간·건수·금액이 보여요.
+            오픈 이후 전체 {menus.buckets.length}{granUnitLabel(menus.gran)} 판매 건수 상위 메뉴. 라인에 마우스를 올리면 기간·건수가 보여요.
           </p>
-          <div className="mt-8 flex flex-col gap-3">
-            {menus.menus.map((s) => (
-              <SeriesRow key={s.label} s={s} buckets={menus.buckets} gran={menus.gran} max={menuMax} />
-            ))}
+          <div className="mt-8">
+            <MenuTrendChart menus={menus} />
           </div>
-          <BucketAxis buckets={menus.buckets} gran={menus.gran} />
         </section>
       )}
     </>

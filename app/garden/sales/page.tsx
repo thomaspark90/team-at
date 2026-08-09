@@ -90,72 +90,80 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <GardenNav />
-      <div className="mx-auto max-w-[1100px] px-6 py-8" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="m-0 text-[22px]">가든 매출</h1>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              토스(양재천)·페이히어(판교) POS 업로드 기준 발생주의 매출이에요. 월 자료가 업로드돼야 반영됩니다.
-            </p>
+      <div className="mx-auto max-w-[1100px] px-6 py-8">
+        <div className="flex flex-col gap-8">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 className="m-0 text-[22px]">가든 판매 추이</h1>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                토스(양재천)·페이히어(판교) POS 업로드 기준 발생주의 매출이에요. 월 자료가 업로드돼야 반영됩니다.
+              </p>
+            </div>
+            {isMember && !scopedOut && (
+              <div className="flex gap-1 rounded-xl border border-border bg-card p-1">
+                {storeTabs.map((t) => (
+                  <Link
+                    key={t.key}
+                    href={hrefFor(t.key, gran)}
+                    className={`rounded-lg px-3 py-1 text-[13px] ${
+                      storeParam === t.key ? 'bg-foreground font-medium text-background' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {t.label}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
-          {isMember && !scopedOut && (
-            <div className="flex gap-1 rounded-xl border border-border bg-card p-1">
-              {storeTabs.map((t) => (
-                <Link
-                  key={t.key}
-                  href={hrefFor(t.key, gran)}
-                  className={`rounded-lg px-3 py-1 text-[13px] ${
-                    storeParam === t.key ? 'bg-foreground font-medium text-background' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {t.label}
-                </Link>
-              ))}
+          {isMember && !scopedOut && shown.length > 0 && (
+            <div className="flex items-center gap-3">
+              <span className="text-[13px] text-muted-foreground">메뉴 리포트 단위</span>
+              <div className="flex gap-1 rounded-xl border border-border bg-card p-1">
+                {GRAN_TABS.map((g) => (
+                  <Link
+                    key={g.key}
+                    href={hrefFor(storeParam, g.key)}
+                    className={`rounded-lg px-3 py-1 text-[13px] ${
+                      gran === g.key ? 'bg-foreground font-medium text-background' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {g.label}
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
         </div>
-        {isMember && !scopedOut && shown.length > 0 && (
-          <div className="flex items-center gap-3">
-            <span className="text-[13px] text-muted-foreground">메뉴 리포트 단위</span>
-            <div className="flex gap-1 rounded-xl border border-border bg-card p-1">
-              {GRAN_TABS.map((g) => (
-                <Link
-                  key={g.key}
-                  href={hrefFor(storeParam, g.key)}
-                  className={`rounded-lg px-3 py-1 text-[13px] ${
-                    gran === g.key ? 'bg-foreground font-medium text-background' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {g.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-        {!isMember || scopedOut ? (
-          <section>
-            <p className="m-0 text-[13px] text-muted-foreground">
-              {scopedOut
-                ? '스탭밀 전용 계정이라 가든 매출은 볼 수 없어요.'
-                : '매출은 재무 멤버만 볼 수 있어요. 필요하면 대표에게 멤버 등록(viewer)을 요청하세요.'}
-            </p>
-          </section>
-        ) : shown.length === 0 ? (
-          <section>
-            <p className="m-0 text-[13px] text-muted-foreground">
-              아직 집계된 POS 매출이 없어요. 회계 → 자료 입력에서 매출리포트를 올리면 여기에 나타납니다.
-            </p>
-          </section>
-        ) : (
-          <>
-            <SalesSummary rows={shown} />
-            <MenuSalesReport americano={americano} menus={menuSeries} />
-            {reviewSales.length > 0 && <ReviewSalesReport data={reviewSales} />}
-          </>
-        )}
+        {/* 서로 다른 기능 단위(요약·아메리카노·메뉴·리뷰)는 divide-y + py-[54px]로 일관되게 구획한다
+            (DESIGN_SYSTEM §6.1) — 각 리포트 컴포넌트가 자기 <section>에 직접 py-[54px]를 준다. */}
+        <div className="mt-8 divide-y divide-border">
+          {!isMember || scopedOut ? (
+            <section className="py-[54px]">
+              <p className="m-0 text-[13px] text-muted-foreground">
+                {scopedOut
+                  ? '스탭밀 전용 계정이라 가든 판매 추이는 볼 수 없어요.'
+                  : '매출은 재무 멤버만 볼 수 있어요. 필요하면 대표에게 멤버 등록(viewer)을 요청하세요.'}
+              </p>
+            </section>
+          ) : shown.length === 0 ? (
+            <section className="py-[54px]">
+              <p className="m-0 text-[13px] text-muted-foreground">
+                아직 집계된 POS 매출이 없어요. 회계 → 자료 입력에서 매출리포트를 올리면 여기에 나타납니다.
+              </p>
+            </section>
+          ) : (
+            <>
+              <div className="py-[54px]">
+                <SalesSummary rows={shown} />
+              </div>
+              <MenuSalesReport americano={americano} menus={menuSeries} />
+              {reviewSales.length > 0 && <ReviewSalesReport data={reviewSales} />}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-export const metadata = { title: '가든 매출' };
+export const metadata = { title: '가든 판매 추이' };

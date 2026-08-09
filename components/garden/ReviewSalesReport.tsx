@@ -13,8 +13,8 @@ export default function ReviewSalesReport({ data }: { data: StoreReviewSales[] }
   if (nonEmpty.length === 0) return null;
 
   return (
-    // 카드 해체(2026-08-08) — 페이지 최상위 섹션은 박스 없이
-    <section>
+    // 카드 해체(2026-08-08) — 페이지 최상위 섹션은 박스 없이 가로 구분선+py-[54px]로 구획(§6.1)
+    <section className="py-[54px]">
       <h2 className="m-0 text-[15px] font-medium">리뷰 × 매출 — 주간 흐름</h2>
       <p className="mt-1 text-[13px] text-muted-foreground">
         네이버 리뷰 유입(수집 시점 기준)과 주간 매출을 겹쳐 봅니다. 상관은 인과가 아니에요 —
