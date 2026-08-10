@@ -31,6 +31,34 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
   const [translating, setTranslating] = useState(false); // 한글 원두명 → 영문 AI 변환 중
   const [translateMsg, setTranslateMsg] = useState<string | null>(null);
 
+  // 되돌리기 — 레시피가 잘못됐으면 레시피 담당자에게 재검토를 요청한다
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewNote, setReviewNote] = useState('');
+  const [reviewSending, setReviewSending] = useState(false);
+  const [reviewMsg, setReviewMsg] = useState<string | null>(null);
+
+  const requestRecipeReview = async () => {
+    if (!record || reviewSending) return;
+    setReviewSending(true);
+    setReviewMsg(null);
+    try {
+      const res = await fetch('/api/purchases/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: record.id, target: 'recipe', note: reviewNote.trim() || undefined }),
+      });
+      const updated = await res.json();
+      if (!res.ok) throw new Error(updated.error ?? '요청에 실패했어요.');
+      setRecords((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      setReviewOpen(false);
+      setReviewNote('');
+    } catch (e) {
+      setReviewMsg(`⚠ ${(e as Error).message}`);
+    } finally {
+      setReviewSending(false);
+    }
+  };
+
   const translateEn = async () => {
     if (translating || !beanKo.trim()) return;
     setTranslating(true);
@@ -117,6 +145,40 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
               </option>
             ))}
           </select>
+
+          {/* 되돌리기 — 이 발주의 레시피가 잘못됐으면 레시피 담당자에게 재검토를 요청 */}
+          {record && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {record.recipeReview ? (
+                <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+                  레시피 재검토 요청됨 · {fmtDate(record.recipeReview.at)}
+                  {record.recipeReview.note ? ` · ${record.recipeReview.note}` : ''}
+                </p>
+              ) : reviewOpen ? (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input
+                    value={reviewNote}
+                    onChange={(e) => setReviewNote(e.target.value)}
+                    placeholder="사유 (선택)"
+                    className="ta-input"
+                    style={{ flex: '1 1 200px', minWidth: 0 }}
+                  />
+                  <button onClick={requestRecipeReview} disabled={reviewSending} className="ta-btn-primary" style={{ height: 34 }}>
+                    {reviewSending ? '요청 중…' : '요청 보내기'}
+                  </button>
+                  <button onClick={() => setReviewOpen(false)} className="ta-btn" style={{ height: 34 }}>
+                    취소
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setReviewOpen(true)} className="ta-btn" style={{ height: 34, alignSelf: 'flex-start' }}>
+                  레시피 재검토 요청 (되돌리기)
+                </button>
+              )}
+              {reviewMsg && <p className="text-[13px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{reviewMsg}</p>}
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <input value={roastery} onChange={(e) => setRoastery(e.target.value)} placeholder="로스터리 (예: UFO coffee)" className="ta-input w-full" />
             <div style={{ display: 'flex', gap: 8, minWidth: 0 }}>

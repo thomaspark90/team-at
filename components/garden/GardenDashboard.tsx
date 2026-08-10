@@ -180,6 +180,10 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   const [deletingBean, setDeletingBean] = useState<string | null>(null);
   // 국가 필터 칩 (recipes 모드)
   const [selectedCountry, setSelectedCountry] = useState('전체');
+  // 되돌리기 — 판매가가 잘못됐으면 판매가 담당자에게 재검토를 요청 (beanKey 단위로 노트 입력창 하나만 연다)
+  const [priceReviewOpenFor, setPriceReviewOpenFor] = useState<string | null>(null);
+  const [priceReviewNote, setPriceReviewNote] = useState('');
+  const [priceReviewSending, setPriceReviewSending] = useState(false);
 
   const refresh = async () => {
     try {
@@ -206,6 +210,27 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   useEffect(() => {
     refresh();
   }, []);
+
+  const requestPriceReview = async (purchaseId: string) => {
+    if (priceReviewSending) return;
+    setPriceReviewSending(true);
+    try {
+      const res = await fetch('/api/purchases/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: purchaseId, target: 'price', note: priceReviewNote.trim() || undefined }),
+      });
+      const updated = await res.json();
+      if (!res.ok) throw new Error(updated.error ?? '요청에 실패했어요.');
+      setPurchases((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      setPriceReviewOpenFor(null);
+      setPriceReviewNote('');
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    } finally {
+      setPriceReviewSending(false);
+    }
+  };
 
   // 원두별 최신 발주 기록 (표시명·책정 판매가 참조용)
   const latestByBean = useMemo(() => {
@@ -625,6 +650,61 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
               </span>
             )}
           </div>
+          {/* 되돌리기 — 원두카드 담당자가 이 레시피를 되돌렸으면 배지로, 이 레시피의 판매가가
+              잘못됐으면 판매가 담당자에게 되돌리기 요청 */}
+          {latest && (latest.recipeReview || latest.chosenPrice != null) && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {latest.recipeReview && (
+                <p className="text-[11px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>
+                  ⚠ 원두카드 담당자가 레시피 재검토를 요청했어요 · {fmtDate(latest.recipeReview.at)}
+                  {latest.recipeReview.note ? ` · ${latest.recipeReview.note}` : ''}
+                </p>
+              )}
+              {latest.chosenPrice != null &&
+                (latest.priceReview ? (
+                  <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>
+                    판매가 재검토 요청됨 · {fmtDate(latest.priceReview.at)}
+                    {latest.priceReview.note ? ` · ${latest.priceReview.note}` : ''}
+                  </p>
+                ) : priceReviewOpenFor === g.beanKey ? (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <input
+                      value={priceReviewNote}
+                      onChange={(e) => setPriceReviewNote(e.target.value)}
+                      placeholder="사유 (선택)"
+                      className="ta-input"
+                      style={{ flex: '1 1 160px', minWidth: 0, height: 28, fontSize: 12 }}
+                    />
+                    <button
+                      onClick={() => requestPriceReview(latest.id)}
+                      disabled={priceReviewSending}
+                      className="ta-btn-primary"
+                      style={{ height: 28, paddingLeft: 8, paddingRight: 8, fontSize: 12 }}
+                    >
+                      {priceReviewSending ? '…' : '요청'}
+                    </button>
+                    <button
+                      onClick={() => setPriceReviewOpenFor(null)}
+                      className="text-muted-foreground hover:text-foreground"
+                      style={{ ...ghostBtn, fontSize: 12 }}
+                    >
+                      취소
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setPriceReviewOpenFor(g.beanKey);
+                      setPriceReviewNote('');
+                    }}
+                    className="text-[11px] text-muted-foreground hover:text-foreground"
+                    style={{ ...ghostBtn, textAlign: 'left' }}
+                  >
+                    판매가 재검토 요청 (되돌리기)
+                  </button>
+                ))}
+            </div>
+          )}
         </div>
 
         <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>

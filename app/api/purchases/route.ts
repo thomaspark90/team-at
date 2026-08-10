@@ -180,6 +180,7 @@ export async function PATCH(req: Request) {
     record.chosenMult = mult;
     record.chosenPrice = priceAtMult(record.purchasePrice, mult, { ...DEFAULT_SETTINGS, ...record.settings });
   }
+  record.priceReview = undefined; // 담당자가 다시 책정했으니 되돌리기 요청은 처리된 것으로 간주
   await purchaseRecords.writeOne(record);
   await logActivity(
     supabase,

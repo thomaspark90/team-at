@@ -1,7 +1,8 @@
 import { APP_URL } from '@/lib/app-url';
 import { NextResponse } from 'next/server';
 import type { DripRecipe, DripRecipeSnapshot } from '@/lib/types';
-import { dripRecipeRecords, type StoredDripRecipe } from '@/lib/blob-records';
+import { dripRecipeRecords, purchaseRecords, type StoredDripRecipe } from '@/lib/blob-records';
+import { normalize } from '@/lib/pricing';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { notifyGardenEvent } from '@/lib/notify';
@@ -110,6 +111,20 @@ export async function POST(req: Request) {
     }
   }
   await dripRecipeRecords.writeOne(recipe as StoredDripRecipe);
+
+  // 담당자가 다시 레시피를 저장했으니 되돌리기 요청은 처리된 것으로 간주 — 걸려있던 원두만 클리어
+  try {
+    const flagged = (await purchaseRecords.readAll()).filter(
+      (p) => normalize(p.bean) === recipe.beanKey && p.recipeReview
+    );
+    for (const p of flagged) {
+      p.recipeReview = undefined;
+      await purchaseRecords.writeOne(p);
+    }
+  } catch (e) {
+    console.error('recipeReview 클리어 실패:', e);
+  }
+
   await logActivity(
     supabase,
     user,

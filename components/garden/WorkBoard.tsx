@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { BoardCard, BoardScope, BoardType } from '@/lib/garden/board';
 import { BOARD_COLUMNS, BOARD_TYPES } from '@/lib/garden/board';
@@ -149,12 +149,20 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
   const [cards, setCards] = useState<BoardCard[] | null>(null);
   const [filter, setFilter] = useState<'all' | 'mine' | BoardType>('all');
 
-  useEffect(() => {
+  const load = useCallback(() => {
     fetch(`/api/garden-board?scope=${scope}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : { cards: [] }))
       .then((j) => setCards(Array.isArray(j.cards) ? j.cards : []))
       .catch(() => setCards([]));
   }, [scope]);
+
+  useEffect(() => {
+    load();
+    // 세부 화면(레시피 설정 등)에 다녀오면 보드가 자동 갱신되도록 탭 복귀 시 재조회
+    const onVisible = () => document.visibilityState === 'visible' && load();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [load]);
 
   const mineCards = useMemo(() => (cards ?? []).filter((c) => c.mine && c.column !== 'done'), [cards]);
 

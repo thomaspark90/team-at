@@ -223,6 +223,12 @@ export default function GardenSalePrice() {
                           {openId === rec.id ? '접기' : '변경'}
                         </button>
                       </div>
+                      {rec.priceReview && (
+                        <p className="text-[11px]" style={{ margin: '4px 0 0', color: 'hsl(0 72% 45%)' }}>
+                          ⚠ 레시피 담당자가 재검토를 요청했어요 · {fmtDate(rec.priceReview.at)}
+                          {rec.priceReview.note ? ` · ${rec.priceReview.note}` : ''}
+                        </p>
+                      )}
                       {openId === rec.id && (
                         <div style={{ marginTop: 8 }}>
                           <RecordPricer

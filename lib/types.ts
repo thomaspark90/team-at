@@ -50,6 +50,15 @@ export interface PurchaseRecord {
   chosenMult: number | null; // 사장님이 선택한 배수
   chosenPrice: number | null; // 선택한 배수의 책정 판매가
   createdBy?: string; // 저장한 사람 이메일 (구 기록엔 없음)
+  priceReview?: StageReview; // 레시피 담당자가 요청한 판매가 재검토
+  recipeReview?: StageReview; // 원두카드 담당자가 요청한 레시피 재검토
+}
+
+// 발주 흐름(발주→판매가→레시피→원두카드) 중간 단계 담당자가 이전 단계를 되돌릴 때 남기는 표시
+export interface StageReview {
+  by: string; // 요청한 사람 이메일
+  at: string; // ISO
+  note?: string;
 }
 
 // 로스터리별 원두카드 이미지(로고·QR) — 설정에서 업로드, Blob public URL
