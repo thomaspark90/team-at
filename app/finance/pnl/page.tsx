@@ -245,7 +245,14 @@ async function PnlBody({
       .select('settled_tx_id,statement_total')
       .in('settled_tx_id', lumpIds);
     for (const u of (settledUps ?? []) as { settled_tx_id: number; statement_total: number | null }[]) {
-      if (u.settled_tx_id != null) settledUsageById.set(u.settled_tx_id, u.statement_total);
+      if (u.settled_tx_id == null) continue;
+      // 한 인출에 여러 명세가 연결될 수 있다(예: 4·5월 명세 → 6/9 결제) — 사용액은 합산.
+      // null(구버전 합계 미기록)은 합산에서 제외하되 연결 자체는 유효.
+      const prev = settledUsageById.get(u.settled_tx_id);
+      settledUsageById.set(
+        u.settled_tx_id,
+        u.statement_total == null ? (prev ?? null) : (prev ?? 0) + u.statement_total,
+      );
     }
   }
   let cardReconcile: { unsettledLump: number; settledWithdrawn: number; settledUsage: number } | null = null;
