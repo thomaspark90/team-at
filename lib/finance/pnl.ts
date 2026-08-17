@@ -5,7 +5,8 @@
 // 재료비 = 기초(전월 기말) + 당월매입(cogs) − 기말      ← 기말 미입력 월은 '매입 그대로'
 //   식자재 = cogs 중 포장재 외 전부 / 포장소모품 = cogs 포장재
 // 인건비 = sga '인건비'(+하위)   ·  고정비 = sga 나머지  ·  미분류 = category 없는 유출(경고)
-// 영업외·손익제외(카드대금정산/영수증분해 포함) = 관리손익 제외
+// 영업외·손익제외(영수증분해 등) = 관리손익 제외. 단 카드대금정산·쿠팡대체·네이버페이대체는
+// 대응 세부 자료(명세 연결·자동수집)가 있을 때만 제외 — 없으면 '미분해 lump' 지출로 포함(아래 규칙).
 // VAT: 매출은 POS 공급가액(VAT 제외). 지출도 대칭 위해 과세 매입은 공급가액(÷1.1)으로 순액 처리.
 import { VAT_DIVISOR } from './aggregate';
 
@@ -68,8 +69,9 @@ export interface PnlResult {
   fixed: number; // 고정비(나머지 판관비)
   unclassified: number; // 미분류 유출(경고)
   misang: number; // '미상' 계정(용도 불명 보류) — 지출로 포함하되 별도 줄로 경고 표시
-  cardLump: number; // 카드대금 결제 총액(세부 미분해 지출) — 간이 모드는 전액, 정밀 모드는 '명세 미연결' 인출만
+  cardLump: number; // 명세 미연결 카드대금 인출 — '카드 지출(미분해)' 지출 줄
   cardReconcile: (PnlCardReconcile & { diff: number }) | null; // 인출↔명세 대사(diff=인출−사용액). 미전달 시 null
+  payLump: { coupang: number; naverpay: number } | null; // 세부 미수집 달의 통장 대체 출금 — '쿠팡(미분류)'·'네이버페이(미분류)' 줄
   operatingProfit: number; // 영업이익(EBIT 근사)
   metrics: {
     foodCostRate: number; // 식자재원가율 = 식자재재료비 / 매출
@@ -93,10 +95,11 @@ const kindOf = (cat: PnlCat): InvKind => (cat.name === '포장재' ? '포장소�
 // 실제 금액을 입력하면 이 추정은 무시된다.
 export const CHANNEL_FEE_RATE = 0.017;
 
-// opts.bankOnly = 간이(은행 기준) 모드 — 쿠팡·네이버·카드 세부내역 없이도 지출 총량을 보는 근사 손익.
-// 호출 측이 txns를 통장(source='bank') 행만으로 필터해 넘겨야 하고(세부 행과 이중계상 방지),
-// 정밀 모드에서 손익 제외되는 '카드대금정산' 결제를 "카드 지출(세부 미분해)" 지출 줄로 포함한다.
-// 카드대금은 재료·판관·VAT가 섞인 총액이라 순액화하지 않는다(캡션에 명시).
+// 세부 자료가 빠진 달도 지출이 증발하지 않게 하는 '미분해 lump' 규칙(2026-08-17, 간이 모드 흡수·폐지):
+// - 카드대금: 명세 연결 시 제외(세부가 대체), 미연결이면 cardReconcile.unsettledLump → '카드 지출(미분해)'
+// - 쿠팡·네이버페이: 통장 대체(쿠팡대체·네이버페이대체) 출금은 그 달 세부 수집이 있으면 제외,
+//   없으면 payLump → '쿠팡(미분류)'·'네이버페이(미분류)' 지출 줄로 포함
+// lump 금액은 재료·판관·VAT가 섞인 총액이라 순액화하지 않는다(캡션에 명시).
 export function buildPnl(
   ym: string,
   data: {
@@ -105,9 +108,9 @@ export function buildPnl(
     cats: PnlCat[];
     inventory: PnlInventory[];
     channelFee?: number | null;
-    cardReconcile?: PnlCardReconcile | null; // 정밀 모드 전용 — 간이 모드에선 무시(카드대금은 이미 cardLump로 전액 포함)
+    cardReconcile?: PnlCardReconcile | null;
+    payLump?: { coupang: number; naverpay: number } | null; // 세부 미수집 달의 통장 대체 출금(호출 측이 판정)
   },
-  opts?: { bankOnly?: boolean },
 ): PnlResult {
   const { pos, txns, cats, inventory } = data;
   const byId = new Map(cats.map((c) => [c.id, c]));
@@ -135,7 +138,6 @@ export function buildPnl(
   sales.byCategory = Array.from(catMap.values()).sort((a, b) => b.supply - a.supply);
 
   // ---- 지출(거래분류) ----
-  const cardSettleId = cats.find((c) => c.type === 'excluded' && c.name === '카드대금정산')?.id;
   // '미상'(용도 불명 보류) — 어느 유형에 만들었든 지출로 포함하고 별도 줄로 표시(이익 부풀림 방지)
   const misangId = cats.find((c) => c.name.includes('미상'))?.id;
   let 식자재매입 = 0;
@@ -156,10 +158,6 @@ export function buildPnl(
     if (!c) continue;
     if (misangId != null && c.id === misangId) {
       misang += gross; // 용도 불명 — 과세여부를 몰라 총액 그대로(미분류와 동일 취급)
-      continue;
-    }
-    if (opts?.bankOnly && cardSettleId != null && c.id === cardSettleId) {
-      cardLump += gross; // 카드대금 결제 = 세부 미분해 지출(총액 그대로)
       continue;
     }
     // 과세 매입은 공급가액(÷1.1)으로 순액 — 매출(공급가액)과 기준 통일. 면세(인건비·이자·세금 등)는 그대로.
@@ -197,16 +195,19 @@ export function buildPnl(
   const cogsTotal = 식자재.재료비 + 포장소모품.재료비;
   const invMissing = !식자재.기말입력 || !포장소모품.기말입력;
 
-  // 카드대금 연결 기반 트리거(정밀 모드) — '카드대금정산' 분류만으로는 손익 제외가 완성이 아니다.
+  // 카드대금 연결 기반 트리거 — '카드대금정산' 분류만으로는 손익 제외가 완성이 아니다.
   // 명세가 연결 안 된 인출은 '카드 지출(미분해)'로 포함해, 명세 미업로드 달의 지출 증발을 막는다.
-  const reconcile = !opts?.bankOnly ? (data.cardReconcile ?? null) : null;
+  const reconcile = data.cardReconcile ?? null;
   if (reconcile) cardLump += reconcile.unsettledLump;
+  // 쿠팡·네이버페이 통장 대체 출금 — 그 달 세부 수집이 없으면 '(미분류)' 지출로 포함(같은 원리)
+  const payLump = data.payLump ?? null;
+  const payLumpTotal = (payLump?.coupang ?? 0) + (payLump?.naverpay ?? 0);
 
   // 채널수수료: 입력값 있으면 실제, 없으면 공급가액×기본율 추정. 순매출 = 공급가액 − 채널수수료.
   const feeAmount = data.channelFee != null ? data.channelFee : Math.round(sales.supply * CHANNEL_FEE_RATE);
   const netSales = sales.supply - feeAmount;
   const grossProfit = netSales - cogsTotal;
-  const operatingProfit = grossProfit - labor - fixed - unclassified - misang - cardLump;
+  const operatingProfit = grossProfit - labor - fixed - unclassified - misang - cardLump - payLumpTotal;
 
   const div = (n: number) => (sales.supply > 0 ? n / sales.supply : 0);
   return {
@@ -222,6 +223,7 @@ export function buildPnl(
     misang,
     cardLump,
     cardReconcile: reconcile ? { ...reconcile, diff: reconcile.settledWithdrawn - reconcile.settledUsage } : null,
+    payLump,
     operatingProfit,
     metrics: {
       foodCostRate: div(식자재.재료비),

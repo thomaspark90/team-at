@@ -47,19 +47,18 @@ describe('buildPnl 카드대금 대사', () => {
     });
   });
 
-  it('간이(은행 기준) 모드: cardReconcile은 무시하고 카드대금 전액을 cardLump로 잡는다(이중계상 방지)', () => {
-    const p = buildPnl(
-      '2026-07',
-      {
-        pos: POS,
-        txns: [lump(800000)],
-        cats: CATS,
-        inventory: [],
-        cardReconcile: { unsettledLump: 800000, settledWithdrawn: 0, settledUsage: 0 },
-      },
-      { bankOnly: true },
-    );
-    expect(p.cardLump).toBe(800000); // 카테고리 루프에서 1회만 — reconcile로 두 번 더하지 않음
-    expect(p.cardReconcile).toBeNull();
+  it('쿠팡·네이버페이 대체 출금: 세부 미수집 몫(payLump)은 지출로 포함돼 영업이익을 줄인다', () => {
+    const base = buildPnl('2026-07', { pos: POS, txns: [], cats: CATS, inventory: [] });
+    expect(base.payLump).toBeNull(); // 미전달(구 호출) — 기존 동작 유지
+
+    const p = buildPnl('2026-07', {
+      pos: POS,
+      txns: [],
+      cats: CATS,
+      inventory: [],
+      payLump: { coupang: 120000, naverpay: 80000 },
+    });
+    expect(p.payLump).toEqual({ coupang: 120000, naverpay: 80000 });
+    expect(p.operatingProfit).toBe(base.operatingProfit - 200000);
   });
 });
