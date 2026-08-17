@@ -95,14 +95,16 @@ export function aggregate(
     }
 
     // 매출은 POS(발생주의)에서 잡으므로 은행 매출 입금(revenue)은 손익 집계에 넣지 않음.
+    // 비용 계정의 입금은 매입 환불(환입) — 잡손익이 아니라 해당 비용에서 차감해야
+    // 재료비율·EBIT 구성이 정확하다(2026-08-17 미트박스 환불 건).
     if (c.type === 'cogs') {
-      const amt = netAmt(t.amount_out, c);
+      const amt = netAmt(t.amount_out, c) - netAmt(t.amount_in, c);
       mo.cogs += amt;
       const k = nameOf(c);
       mo.expense[k] = (mo.expense[k] || 0) + amt;
       expenseKeys.add(k);
     } else if (c.type === 'sga') {
-      const amt = netAmt(t.amount_out, c);
+      const amt = netAmt(t.amount_out, c) - netAmt(t.amount_in, c);
       mo.sga += amt;
       const k = nameOf(c);
       mo.expense[k] = (mo.expense[k] || 0) + amt;

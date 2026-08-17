@@ -405,7 +405,11 @@ export default function ClassifyPanel({
     // 플랫폼명 키('쿠팡'·'네이버페이')는 가맹점 구분력이 없어 전파하면 전 행이 덮인다
     // (2026-08-08 사고 — 기수집 레거시 행 보호. 새 수집분은 상품명 포함 키라 정상 전파).
     const generic = tx.normalized_key === '쿠팡' || tx.normalized_key === '네이버페이';
-    const key = opts?.single || generic ? null : tx.normalized_key;
+    // 입금(+) 건은 항상 단건 분류 — 환불이 가맹점 키로 전파·학습되면 출금(비용) 건까지
+    // 통째로 뒤집힌다(2026-08-17 미트박스 환불 건). 환불은 원 비용 계정으로 분류하면
+    // 집계(aggregate.ts)에서 그 비용이 순액 차감된다.
+    const inflow = tx.amount_in > 0;
+    const key = opts?.single || generic || inflow ? null : tx.normalized_key;
 
     // 대량 전파 가드 — 전파가 몇 건을 덮는지 보여주고 확인받는다(같은 사고의 근본 처방).
     // 임계 15건: 통상 가맹점 월 반복은 한 자릿수, 수십 건이면 키가 뭉쳤을 가능성이 크다.
@@ -593,7 +597,9 @@ export default function ClassifyPanel({
       if (tx.category_id != null || !tx.normalized_key || isLocked(tx) || seen.has(`${tx.brand}|${tx.normalized_key}`)) continue;
       const cat = ruleFor(tx);
       if (!cat) continue;
-      seen.add(`${tx.brand}|${tx.normalized_key}`);
+      // 입금(환불) 행은 classify()가 단건 처리하므로 seen에 넣지 않는다 —
+      // 넣으면 같은 키의 출금 행들이 이번 적용에서 빠진다.
+      if (!(tx.amount_in > 0)) seen.add(`${tx.brand}|${tx.normalized_key}`);
       await classify(tx, cat);
     }
     setAiApplying(false);
