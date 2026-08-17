@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       counts:
         kind === 'uncl'
-          ? await computeUnclassifiedByMonth(supabase, brand)
+          ? await computeUnclassifiedByMonth(supabase, brand, store)
           : await computeBoardTodos(supabase, brand, store),
     });
   } catch (e) {

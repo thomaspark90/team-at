@@ -226,11 +226,16 @@ export async function computeBoardTodos(
 // 분류 화면=그 달의 미분류 '건수'(화면에서 실제로 처리할 개수와 일치).
 export async function computeUnclassifiedByMonth(
   supabase: SupabaseClient,
-  brand?: string
+  brand?: string,
+  store?: string
 ): Promise<Record<string, number>> {
   const { data, error } = await fetchAll<{ ym: string }>((a, b) => {
-    const s = supabase.schema('finance').from('transactions').select('ym').is('category_id', null);
-    return (brand ? s.eq('brand', brand) : s).order('id').range(a, b);
+    let s = supabase.schema('finance').from('transactions').select('ym').is('category_id', null);
+    if (brand) s = s.eq('brand', brand);
+    // 지점 페이지(예: 양재천) 배지는 그 지점 화면에서 실제로 보이는 행만 —
+    // 지점 지정된 다른 지점 거래는 제외, 지점 미지정(공용) 거래는 포함(ClassifyPanel의 storeMatches와 동일 기준).
+    if (store) s = s.or(`store.eq.${store},store.is.null`);
+    return s.order('id').range(a, b);
   });
   if (error) throw new Error(error.message);
   const counts: Record<string, number> = {};

@@ -78,7 +78,10 @@ export default async function ClassifyPage({
     brandScope ??
     (presetBrand && ['garden', 'staffmeal', 'personal'].includes(presetBrand) ? presetBrand : undefined);
   // 분류 화면 배지 = 월별 '미분류 건수' — 화면에서 실제로 처리할 개수와 일치(자료 입력의 '남은 업무 수'와 다름)
-  const initialTodos = await computeUnclassifiedByMonth(supabase, shellBrand ?? undefined).catch(() => undefined);
+  // 지점 단위(unit) 진입이면 지점 필터까지 반영 — 안 그러면 배지가 다른 지점 미분류까지 세어 화면 표시 건수와 어긋난다.
+  const initialTodos = await computeUnclassifiedByMonth(supabase, shellBrand ?? undefined, unit?.store ?? undefined).catch(
+    () => undefined,
+  );
 
   // 학습된 규칙(정규화키→계정) — 미분류 행에 '추천'으로 미리 선택
   const ruleRows = unwrap(
@@ -120,7 +123,7 @@ export default async function ClassifyPage({
         </div>
         {/* 좌측 연·월 사이드바 — 달을 고르면 URL(?ym=)로 이동해 그 달 거래만 서버에서 다시 조회.
             navigate 필수: 예전엔 클라 상태만 바꿔 서버가 그 달을 다시 안 불러 오래된 달이 비어 보였다(2026-08-03). */}
-        <MonthShell brand={shellBrand} initialTodos={initialTodos} badgeKind="uncl" navigate>
+        <MonthShell brand={shellBrand} store={unit?.store ?? undefined} initialTodos={initialTodos} badgeKind="uncl" navigate>
           <ClassifyPanel
             txns={(txns as TxRow[]) ?? []}
             cats={(cats as Cat[]) ?? []}
