@@ -218,7 +218,7 @@ async function PnlBody({
   const posView = store ? pos.filter((p) => (p.store ?? '') === store) : pos;
 
   // 지출·재고·수수료도 브랜드로 필터 — '전체'는 합산, 지점 뷰는 store 까지
-  let txnsQ = supabase.schema('finance').from('transactions').select('category_id,amount_in,amount_out').eq('ym', selectedYm);
+  let txnsQ = supabase.schema('finance').from('transactions').select('id,category_id,amount_in,amount_out').eq('ym', selectedYm);
   // '전체'는 사업 브랜드만 합산 — 개인(personal)은 손익 제외라 카테고리와 무관하게 뺀다.
   if (seg !== 'all') txnsQ = txnsQ.eq('brand', seg);
   else txnsQ = txnsQ.neq('brand', 'personal');
@@ -230,7 +230,7 @@ async function PnlBody({
     ? supabase
         .schema('finance')
         .from('transactions')
-        .select('category_id,amount_out')
+        .select('id,category_id,amount_out')
         .eq('ym', selectedYm)
         .eq('brand', 'garden')
         .is('store', null)
@@ -242,7 +242,7 @@ async function PnlBody({
     supabase.schema('finance').from('channel_fees').select('amount,brand').eq('ym', selectedYm),
     unassignedQ ?? Promise.resolve(null),
   ]);
-  const txns = (unwrap(txnsRes, '거래') as PnlTx[] | null) ?? [];
+  const txns = (unwrap(txnsRes, '거래') as (PnlTx & { id: number })[] | null) ?? [];
   const cats = (unwrap(catsRes, '계정과목') as PnlCat[] | null) ?? [];
   const invAll = (unwrap(invRes, '기말재고') as (PnlInventory & { brand?: string })[] | null) ?? [];
   // 재고: 브랜드 필터, '전체'는 (ym,kind) 합산 — buildPnl 은 (ym,kind) 단위를 기대.
@@ -271,12 +271,50 @@ async function PnlBody({
 
   // 지점 미지정 지출(손익 계정만) — 지점 뷰 합계에서 빠져 있음을 경고
   const catTypeById = new Map(cats.map((c) => [c.id, c.type]));
-  const unassignedRows = (unassignedRes && !unassignedRes.error ? (unassignedRes.data as { category_id: number | null; amount_out: number }[] | null) : null) ?? [];
+  const unassignedRows = (unassignedRes && !unassignedRes.error ? (unassignedRes.data as { id: number; category_id: number | null; amount_out: number }[] | null) : null) ?? [];
+
+  // 카드대금 대사 — 이 달 '카드대금정산' 인출이 카드 명세(uploads.settled_tx_id)와 연결됐는지 판정.
+  // 미연결 인출은 손익 제외가 아니라 '카드 지출(미분해)'로 포함(이익 과대 방지, 2026-08-17 대표 지시).
+  // 지점 뷰에선 인출이 가든 공용(지점 미지정)이라 unassignedRows 쪽에 있다 → 미지정 경고액에 합산.
+  const cardSettleCatId = cats.find((c) => c.type === 'excluded' && c.name === '카드대금정산')?.id ?? null;
+  const txnLumps = cardSettleCatId != null ? txns.filter((t) => t.category_id === cardSettleCatId) : [];
+  const unassignedLumps = cardSettleCatId != null ? unassignedRows.filter((r) => r.category_id === cardSettleCatId) : [];
+  const lumpIds = [...txnLumps.map((t) => t.id), ...unassignedLumps.map((r) => r.id)];
+  const settledUsageById = new Map<number, number | null>();
+  if (lumpIds.length > 0) {
+    const { data: settledUps } = await supabase
+      .schema('finance')
+      .from('uploads')
+      .select('settled_tx_id,statement_total')
+      .in('settled_tx_id', lumpIds);
+    for (const u of (settledUps ?? []) as { settled_tx_id: number; statement_total: number | null }[]) {
+      if (u.settled_tx_id != null) settledUsageById.set(u.settled_tx_id, u.statement_total);
+    }
+  }
+  let cardReconcile: { unsettledLump: number; settledWithdrawn: number; settledUsage: number } | null = null;
+  if (mode !== 'simple' && seg !== 'all' && !store) {
+    cardReconcile = { unsettledLump: 0, settledWithdrawn: 0, settledUsage: 0 };
+    for (const t of txnLumps) {
+      const amt = (t.amount_out || 0) - (t.amount_in || 0);
+      if (settledUsageById.has(t.id)) {
+        cardReconcile.settledWithdrawn += amt;
+        // 구버전 연결(합계 미기록)은 사용액=인출액으로 간주(차액 0) — 대사 불능을 차액으로 오표시하지 않게
+        cardReconcile.settledUsage += settledUsageById.get(t.id) ?? amt;
+      } else cardReconcile.unsettledLump += amt;
+    }
+  }
+
   const unassignedOut = unassignedRows
-    .filter((r) => r.category_id == null || catTypeById.get(r.category_id) !== 'excluded')
+    .filter(
+      (r) =>
+        r.category_id == null ||
+        catTypeById.get(r.category_id) !== 'excluded' ||
+        // 미연결 카드대금은 손익에 포함돼야 할 지출 — 지점 뷰에서도 '빠진 지출'로 경고
+        (r.category_id === cardSettleCatId && !settledUsageById.has(r.id)),
+    )
     .reduce((s, r) => s + r.amount_out, 0);
 
-  const p = buildPnl(selectedYm, { pos: posView, txns, cats, inventory, channelFee }, { bankOnly: mode === 'simple' });
+  const p = buildPnl(selectedYm, { pos: posView, txns, cats, inventory, channelFee, cardReconcile }, { bankOnly: mode === 'simple' });
   const foodSig = SIG[benchmark('food', p.metrics.foodCostRate)];
   const laborSig = SIG[benchmark('labor', p.metrics.laborRate)];
   const primeSig = SIG[benchmark('prime', p.metrics.primeCost)];
@@ -321,6 +359,21 @@ async function PnlBody({
           </span>
           <Link href={`/finance/classify?ym=${selectedYm}&unclassified=1`} className="whitespace-nowrap underline">
             미분류 분류하러 →
+          </Link>
+        </div>
+      )}
+
+      {mode !== 'simple' && p.cardLump > 0 && (
+        <div className="mb-10 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+          <span className="text-foreground">
+            ⚠️ 카드 명세가 연결되지 않은 <b>카드대금 {won(p.cardLump)}</b>을 '카드 지출(미분해)'로 잡았어요.
+            신한카드 이용내역을 올려 정산 연결하면 재료비·판관비로 분해돼요.
+          </span>
+          <Link
+            href={`/finance/upload/${seg === 'staffmeal' ? 'staffmeal' : 'yangjae'}#card`}
+            className="whitespace-nowrap underline"
+          >
+            명세 올리고 연결하러 →
           </Link>
         </div>
       )}
@@ -391,6 +444,13 @@ async function PnlBody({
               <Row label="영업이익 (EBIT 근사)" amount={p.operatingProfit} bold big sub="감가상각 전" />
             </tbody>
           </table>
+          {p.cardReconcile && p.cardReconcile.settledWithdrawn > 0 && (
+            <p className={`mt-4 text-[11px] ${p.cardReconcile.diff !== 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+              카드 정산 대사 — 카드대금 인출 {won(p.cardReconcile.settledWithdrawn)} ↔ 연결 명세 사용액{' '}
+              {won(p.cardReconcile.settledUsage)}
+              {p.cardReconcile.diff !== 0 ? ` · 차액 ${won(Math.abs(p.cardReconcile.diff))} ⚠️` : ' · 일치 ✓'}
+            </p>
+          )}
           <p className="mt-4 text-[11px] text-muted-foreground">
             {mode === 'simple' ? (
               <>

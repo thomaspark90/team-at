@@ -7,6 +7,7 @@ import { getBrandBanks } from '@/lib/finance/brandBanks';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import PnlUpload from '@/components/finance/PnlUpload';
+import CardReconcile from '@/components/finance/CardReconcile';
 import AccountingBoards from '@/components/finance/AccountingBoards';
 import MonthShell from '@/components/finance/MonthShell';
 import StatusMatrix from '@/components/finance/StatusMatrix';
@@ -97,6 +98,15 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
                   </p>
                 </div>
                 <PnlUpload fixedUnitKey={posUnitKey} />
+              </div>
+            )}
+
+            {/* 1-1) 신한카드 이용내역 · 정산 연결 (#card: 월별 보드의 '주지출 카드' 칸에서 앵커 이동) —
+                통장의 카드대금 인출 건과 1:1 연결해야 그 인출이 손익에서 세부 지출로 대체된다.
+                미연결이면 관리손익에 '카드 지출(미분해)'로 남는다(2026-08-17 복원, PRD prd-card-statement.md). */}
+            {unit.brand !== 'personal' && (
+              <div id="card" className="scroll-mt-4 py-[54px]">
+                <CardReconcile brand={unit.brand} />
               </div>
             )}
 

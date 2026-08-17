@@ -241,6 +241,9 @@ export default function MonthlyUploadBoard({
               {SLOTS.filter((s) => s.group === group).map((s) => {
                 const st = slots?.[s.key];
                 const busy = parsing && activeSlot === s.key;
+                // 카드 명세는 정산 연결 섹션(#card)에서만 업로드 — 일반 엑셀 경로로 올리면
+                // 통장 카드대금 건과 연결이 안 돼 손익 대사가 깨진다(2026-08-17).
+                const cardAnchor = !readOnly && s.key === 'card_main';
                 if (s.auto) {
                   // 네이버 — 매일 자동수집 소스: 칸 클릭은 업로드가 아니라 지출 자료 분류(네이버 필터)로
                   // 이동한다. 이 달 수집 건수를 숫자로 표기하고, 엑셀 추가 업로드는 보조(+)로만 남긴다.
@@ -304,19 +307,29 @@ export default function MonthlyUploadBoard({
                         {st.count > 0 && `${st.count}건`}
                         {st.via === 'auto' ? ' · 자동 반영' : st.at ? ` · ${fmtDay(st.at)}` : ''}
                         <span>· 내역 →</span>
-                        {!readOnly && (
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              pickSlot(s.key);
-                            }}
-                            className="rounded border border-border px-1.5 py-0.5 hover:text-foreground"
-                            title="추가 파일 올리기"
-                          >
-                            +
-                          </button>
-                        )}
+                        {!readOnly &&
+                          (cardAnchor ? (
+                            <a
+                              href="#card"
+                              onClick={(e) => e.stopPropagation()}
+                              className="rounded border border-border px-1.5 py-0.5 hover:text-foreground"
+                              title="정산 연결에서 추가 업로드"
+                            >
+                              +
+                            </a>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                pickSlot(s.key);
+                              }}
+                              className="rounded border border-border px-1.5 py-0.5 hover:text-foreground"
+                              title="추가 파일 올리기"
+                            >
+                              +
+                            </button>
+                          ))}
                       </span>
                     </Link>
                   );
@@ -342,6 +355,8 @@ export default function MonthlyUploadBoard({
                     'relative flex items-center justify-between gap-2 rounded-xl border border-dashed border-amber-500/60 bg-amber-500/5 px-3.5 py-2.5 text-left transition-colors hover:border-amber-600 disabled:opacity-60';
                   return readOnly ? (
                     <Link key={s.key} href={uploadHref} className={partialCls}>{partialInner}</Link>
+                  ) : cardAnchor ? (
+                    <a key={s.key} href="#card" className={partialCls}>{partialInner}</a>
                   ) : (
                     <button key={s.key} onClick={() => pickSlot(s.key)} disabled={parsing} className={partialCls}>
                       {partialInner}
@@ -353,7 +368,15 @@ export default function MonthlyUploadBoard({
                     {slots && <ActionBadge />}
                     <span className="text-[13px] font-medium">{s.label}</span>
                     <span className="text-[11px] text-muted-foreground">
-                      {readOnly ? '없음 — 자료 입력에서 올리기 →' : busy ? '읽는 중…' : !slots ? '확인 중…' : '업로드 →'}
+                      {readOnly
+                        ? '없음 — 자료 입력에서 올리기 →'
+                        : busy
+                          ? '읽는 중…'
+                          : !slots
+                            ? '확인 중…'
+                            : cardAnchor
+                              ? '아래 정산 연결에서 올리기 ↓'
+                              : '업로드 →'}
                     </span>
                   </>
                 );
@@ -361,6 +384,8 @@ export default function MonthlyUploadBoard({
                   'relative flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 text-left transition-colors hover:border-foreground/40 disabled:opacity-60';
                 return readOnly ? (
                   <Link key={s.key} href={uploadHref} className={emptyCls}>{emptyInner}</Link>
+                ) : cardAnchor ? (
+                  <a key={s.key} href="#card" className={emptyCls}>{emptyInner}</a>
                 ) : (
                   <button key={s.key} onClick={() => pickSlot(s.key)} disabled={parsing || !slots} className={emptyCls}>
                     {emptyInner}
