@@ -8,6 +8,7 @@ import { wonNum as won, fmtYm as fmtYmLabel } from '@/lib/finance/format';
 import SplitModal, { type SplitTarget, type SplitRuleSuggestion } from './SplitModal';
 import { useMonthCtx } from './MonthShell';
 import { storeLabel, bankSourceLabel, type Brand, type Store } from '@/lib/finance/types';
+import { classifyDraftKey, loadClassifyDraft, saveClassifyDraft } from '@/lib/finance/classifyDraft';
 
 export interface TxRow {
   id: number;
@@ -117,6 +118,9 @@ export default function ClassifyPanel({
   // 방금 분류한 행 id — '미분류만 보기'에서도 그 자리에 남겨 오클릭을 바로 수정할 수 있게(2026-08-03 대표 요청).
   // 서버 재조회(txns 교체) 때 비운다 — 그때는 분류가 저장 반영된 뒤라 목록에서 빠져도 자연스럽다.
   const keepVisible = useRef<Set<number>>(new Set());
+  // keepVisible은 ref라 .current를 비우기만 해서는 리렌더가 안 된다 — 비운 뒤 이 카운터를
+  // 올려서 강제로 다시 그리게 한다(아래 필터 변경 effect에서 사용, 2026-08-17 버그 수정).
+  const [, forceRender] = useState(0);
   // 사이드바에서 자료 업로드 후 router.refresh() 되면 새 거래를 반영
   useEffect(() => {
     setRows(sortTxns(txns));
@@ -172,6 +176,41 @@ export default function ClassifyPanel({
   const [moveScope, setMoveScope] = useState<'selected' | 'key'>('selected');
   const [moving, setMoving] = useState(false);
   const [moveNotice, setMoveNotice] = useState<string | null>(null);
+
+  // ── 작업 상태 임시저장(2026-08-17 대표 요청) ──────────────────────────────
+  // 계정과목 설정 등에 다녀오면 리마운트로 AI 추천·필터·선택·페이지가 날아가던 문제.
+  // sessionStorage에 자동 저장하고 마운트 시 복원 — 단, URL로 명시된 필터(다른 화면에서
+  // 걸어 들어온 링크)는 드래프트보다 우선한다. 분류 확정 자체는 이미 DB 즉시 저장.
+  const draftKey = classifyDraftKey(fixedUnit ? `${fixedUnit.brand}:${fixedUnit.store ?? ''}` : lockedBrand ?? 'all');
+  const skipFilterReset = useRef(false); // 복원으로 인한 필터 변경이 페이지를 1로 되돌리지 않게
+  useEffect(() => {
+    const d = loadClassifyDraft(draftKey);
+    if (!d) return;
+    // 필터류 복원은 스킵 플래그를 함께 세운다(아래 '필터 변경 → 1페이지' 효과 1회 무시)
+    const restore = (fn: () => void) => {
+      skipFilterReset.current = true;
+      fn();
+    };
+    if (!ctx && d.filterYm && d.filterYm !== filterYm) restore(() => setFilterYm(d.filterYm!));
+    if (d.filterBank && d.filterBank !== filterBank && !sp.get('bank')) restore(() => setFilterBank(d.filterBank!));
+    if (d.srcFilter && d.srcFilter !== srcFilter && !initialFilter?.source) restore(() => setSrcFilter(d.srcFilter!));
+    if (!lockedBrand && !fixedUnit && !initialFilter?.brand && d.brandFilter && d.brandFilter !== brandFilter && ['all', 'garden', 'staffmeal'].includes(d.brandFilter))
+      restore(() => setBrandFilter(d.brandFilter!));
+    if (!initialFilter?.store && d.storeFilter && d.storeFilter !== storeFilter && ['all', 'pangyo', 'yangjae', 'none'].includes(d.storeFilter))
+      restore(() => setStoreFilter(d.storeFilter!));
+    if (d.unclOnly != null && d.unclOnly !== unclOnly && !initialFilter?.unclassified) restore(() => setUnclOnly(d.unclOnly!));
+    if (d.misangOnly != null && d.misangOnly !== misangOnly) restore(() => setMisangOnly(d.misangOnly!));
+    if (d.search != null && d.search !== search && !sp.get('q')) restore(() => setSearch(d.search!));
+    if (d.catFilter && (d.catFilter.type ?? '') !== (catFilter.type ?? '') && !initialFilter?.type) restore(() => setCatFilter(d.catFilter!));
+    if (d.suggestions) setSuggestions(d.suggestions);
+    // 페이지·선택은 같은 달로 돌아왔을 때만 — 다른 달에선 행 id·페이지 번호가 의미 없다
+    const sameYm = !ctx?.ym || !d.ym || d.ym === ctx.ym;
+    if (sameYm) {
+      if (d.page && !sp.get('page')) setPage(d.page);
+      if (d.selected?.length) setSelected(new Set(d.selected));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const catById = new Map(cats.map((c) => [c.id, c]));
   const leafNameOf = (c: Cat) => {
@@ -250,9 +289,19 @@ export default function ClassifyPanel({
       filtersMounted.current = true;
       return;
     }
+    // 임시저장 복원으로 인한 필터 변경 — 복원된 페이지를 1로 되돌리지 않는다
+    if (skipFilterReset.current) {
+      skipFilterReset.current = false;
+      return;
+    }
     setPage(1);
-    // 필터를 바꾸면 '방금 분류한 행 유지'도 정리 — 미분류만 보기를 다시 켜면 진짜 미분류만 남는다
-    keepVisible.current = new Set();
+    // 필터를 바꾸면 '방금 분류한 행 유지'도 정리 — 미분류만 보기를 다시 켜면 진짜 미분류만 남는다.
+    // keepVisible은 ref라 비워도 리렌더가 안 된다 — 이미 1페이지면 setPage(1)도 무시돼
+    // 방금 분류한 행들이 미분류만 보기에 그대로 남던 버그(2026-08-17) → 비운 뒤 강제 리렌더.
+    if (keepVisible.current.size) {
+      keepVisible.current = new Set();
+      forceRender((n) => n + 1);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterYm, filterBank, srcFilter, brandFilter, storeFilter, unclOnly, misangOnly, q, catFilter.type, catFilter.cat]);
 
@@ -278,6 +327,32 @@ export default function ClassifyPanel({
     window.history.replaceState(null, '', url);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterYm, filterBank, srcFilter, brandFilter, storeFilter, catFilter.type, catFilter.cat, unclOnly, search, curPage]);
+
+  // 작업 상태 자동 저장(임시저장) — 상태가 바뀔 때마다 sessionStorage에 기록.
+  // 첫 렌더는 건너뛴다 — 복원되기 전 기본값으로 기존 드래프트를 덮지 않게.
+  const draftMounted = useRef(false);
+  useEffect(() => {
+    if (!draftMounted.current) {
+      draftMounted.current = true;
+      return;
+    }
+    saveClassifyDraft(draftKey, {
+      ym: ctx?.ym,
+      ...(ctx ? {} : { filterYm }),
+      filterBank,
+      srcFilter,
+      brandFilter,
+      storeFilter,
+      unclOnly,
+      misangOnly,
+      search,
+      catFilter,
+      page: curPage,
+      selected: Array.from(selected),
+      suggestions,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterYm, filterBank, srcFilter, brandFilter, storeFilter, unclOnly, misangOnly, search, catFilter, curPage, selected, suggestions]);
 
   // 다중 선택(현재 필터·미확정 대상) — 헤더 체크박스는 현재 페이지만 선택
   const selectableIds = filtered.filter((r) => !isLocked(r)).map((r) => r.id);
