@@ -61,7 +61,10 @@ export async function POST(req: Request) {
 
   const mapped = valid.map((r) => {
     const merchant = (r.merchant || '네이버페이').trim();
-    const isRefund = /취소|환불/.test(r.pay_status || '');
+    // '부분취소'는 전액 환불이 아니라 감액 후 결제 유지(미트박스 실중량 정산 등) — 출금(원금)으로 적재.
+    // 전액 '취소/환불'만 입금 처리. (2026-08-17: 미트박스 21개월치가 전액 입금으로 오적재됐던 사고의 처방)
+    const status = r.pay_status || '';
+    const isRefund = /취소|환불/.test(status) && !/부분\s*취소/.test(status);
     const txAt = toKstIso(r.paid_at);
     // 수집기가 배송지로 판정한 브랜드·지점 — 값이 유효할 때만 신뢰, 아니면 DB 기본(garden)/null
     // personal = 개인(자택 배송 등 사적 지출, 2026-07-31) — migration_personal_brand.sql 선행 필요
