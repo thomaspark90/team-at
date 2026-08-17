@@ -143,8 +143,8 @@ export async function GET(req: Request) {
   }
 
   // 4) POS 매출 — 지점 단위 존재 여부(대시보드 현황 보드용). 업로드는 자료 입력 페이지에서.
-  //    가든은 지점 2개(양재천 토스/판교 페이히어), 스탭밀은 단일('').
-  const posStores = brand === 'garden' ? ['yangjae', 'pangyo'] : [''];
+  //    가든 POS = 양재천(토스)만 — 판교 페이히어는 가든 회계와 무관(2026-08-17 대표 지시), 스탭밀은 단일('').
+  const posStores = brand === 'garden' ? ['yangjae'] : [''];
   const pos: Record<string, { done: boolean; days: number; supply: number }> = {};
   for (const st of posStores) {
     const { data: posRows } = await supabase

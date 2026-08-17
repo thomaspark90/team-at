@@ -57,7 +57,8 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
               <p className="mt-1 text-[13px] text-muted-foreground">
                 {unit.store ? (
                   <>
-                    POS 매출은 이 지점으로 바로 들어가요. 통장·신한카드는 <b>가든 공용</b>이라 올린 뒤{' '}
+                    {unit.id === 'yangjae' && <>POS 매출은 이 지점으로 바로 들어가요. </>}
+                    통장·신한카드는 <b>가든 공용</b>이라 올린 뒤{' '}
                     <Link href={`/finance/classify?unit=${unit.id}`} className="underline">지출 자료 분류</Link>에서 지점을
                     지정하거나 건별 분할로 나눠요.
                   </>
@@ -84,17 +85,20 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
               <ContinuityAudit brand={unit.brand} />
             </div>
 
-            {/* 1) POS 매출 — 지점 단위 귀속 (#pos: 월별 보드의 POS 칸에서 앵커 이동) */}
-            <div id="pos" className="flex flex-col gap-6 scroll-mt-4 py-[54px]">
-              <div>
-                <h2 className="m-0 text-[15px] font-medium text-foreground">POS 매출</h2>
-                <p className="mt-1 text-[13px] text-muted-foreground">
-                  {unit.id === 'yangjae' ? '토스 매출리포트(비번 0000)' : '페이히어 매출 리포트'} 엑셀 — {unit.label} 매출로
-                  저장돼요.
-                </p>
+            {/* 1) POS 매출 — 지점 단위 귀속 (#pos: 월별 보드의 POS 칸에서 앵커 이동).
+                판교점은 POS 없음 — 페이히어는 가든 회계와 무관(2026-08-17 대표 지시). */}
+            {unit.id !== 'pangyo' && (
+              <div id="pos" className="flex flex-col gap-6 scroll-mt-4 py-[54px]">
+                <div>
+                  <h2 className="m-0 text-[15px] font-medium text-foreground">POS 매출</h2>
+                  <p className="mt-1 text-[13px] text-muted-foreground">
+                    {unit.id === 'yangjae' ? '토스 매출리포트(비번 0000)' : '페이히어 매출 리포트'} 엑셀 — {unit.label} 매출로
+                    저장돼요.
+                  </p>
+                </div>
+                <PnlUpload fixedUnitKey={posUnitKey} />
               </div>
-              <PnlUpload fixedUnitKey={posUnitKey} />
-            </div>
+            )}
 
             {/* 2) 월별 회계자료 업로드 보드 — 은행·카드 엑셀 슬롯 (대시보드에서 이관, 2026-08-01).
                 은행 거래내역은 스탭밀·가든 모두 엑셀로 올리므로, 이 그리드가 유일한 업로드 경로다.

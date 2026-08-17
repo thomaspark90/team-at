@@ -93,8 +93,9 @@ async function collectBoardData(supabase: SupabaseClient, brand?: string, store?
     if (!posByYm.has(ym)) posByYm.set(ym, new Set());
     posByYm.get(ym)!.add(String(p.store ?? ''));
   }
+  // 가든 POS = 양재천(토스)만 — 판교 페이히어는 가든 회계와 무관해 요구 목록에서 제외(2026-08-17 대표 지시).
   const posStores =
-    brand === 'garden' ? (store ? [store] : ['yangjae', 'pangyo']) : brand === 'staffmeal' ? [''] : [];
+    brand === 'garden' ? (store === 'pangyo' ? [] : ['yangjae']) : brand === 'staffmeal' ? [''] : [];
 
   // 월확정은 단위별 (ym,brand,store) — 가든은 양재천·판교 둘 다 확정돼야 그 달 완료.
   // 그 외(스탭밀 등·브랜드 미지정 전역)는 확정 행이 있으면 완료(기존 동작 유지).

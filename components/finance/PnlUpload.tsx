@@ -66,7 +66,8 @@ const fmtDt = (iso: string) => {
 };
 
 // POS 단위 — 파일 하나 = 한 (브랜드, 지점). 지점마다 POS가 다르다:
-// 양재천=토스(암호화 0000), 판교·스탭밀=페이히어.
+// 양재천=토스(암호화 0000), 스탭밀=페이히어.
+// 가든·판교(페이히어)는 가든 회계와 무관해 업로드 대상에서 제외(2026-08-17 대표 지시 — 기존 데이터는 보존).
 interface PosUnit {
   key: string;
   brand: Brand;
@@ -76,7 +77,6 @@ interface PosUnit {
 }
 const POS_UNITS: PosUnit[] = [
   { key: 'garden-yangjae', brand: 'garden', store: 'yangjae', posType: 'toss', label: '가든 · 양재천 (토스)' },
-  { key: 'garden-pangyo', brand: 'garden', store: 'pangyo', posType: 'payhere', label: '가든 · 판교 (페이히어)' },
   { key: 'staffmeal', brand: 'staffmeal', store: '', posType: 'payhere', label: '스탭밀 (페이히어)' },
 ];
 
@@ -273,7 +273,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
             <h2 className="text-[15px] text-foreground">POS 매출 올리기</h2>
             <p className="mt-1 text-[13px] text-muted-foreground">
               지점의 POS 매출리포트 엑셀을 올리면 <b>공급가액 매출</b>이 월별로 반영돼요. 같은 달·같은 지점을 다시 올리면 교체돼요.
-              양재천=토스(비번 0000), 판교·스탭밀=페이히어. (식권·상품권 판매는 선수금이라 매출에서 제외 — 사용 시점에 매출로 잡혀요)
+              양재천=토스(비번 0000), 스탭밀=페이히어. (식권·상품권 판매는 선수금이라 매출에서 제외 — 사용 시점에 매출로 잡혀요)
             </p>
           </div>
         )}

@@ -65,7 +65,11 @@ export default async function MetricsPage() {
     let posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand,store', ['sale_date', 'brand', 'store', 'supply']);
     if (posRows.error) posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
     if (posRows.error) posRows = await fetchAll('pos_sales', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
-    return ((posRows.data as { sale_date: string; supply: number; brand?: string | null; store?: string | null }[] | null) ?? []).map((p) => ({ saleDate: p.sale_date, supply: p.supply, brand: p.brand, store: p.store ?? null }));
+    // 가든·판교(페이히어) POS는 집계 제외 — 스탭밀 파일과 동일 데이터라 가든 회계와 무관(2026-08-17 대표 지시).
+    // store 컬럼 없는 폴백 경로에선 구분 불가라 그대로 두고, 정상 경로에서만 거른다.
+    return ((posRows.data as { sale_date: string; supply: number; brand?: string | null; store?: string | null }[] | null) ?? [])
+      .filter((p) => !(p.brand === 'garden' && p.store === 'pangyo'))
+      .map((p) => ({ saleDate: p.sale_date, supply: p.supply, brand: p.brand, store: p.store ?? null }));
   };
 
   // 통장 입출금·월말 잔액 월별 집계 — 지표 첫 차트용(2026-08-04 대표 지시).

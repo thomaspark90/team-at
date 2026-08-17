@@ -63,7 +63,10 @@ export default async function PnlPage({
     // 좌측 연·월 사이드바 배지 — 선택 브랜드 몫('전체'는 전 브랜드 합산)
     computeBoardTodos(supabase, seg !== 'all' ? seg : undefined).catch(() => undefined),
   ]);
-  const posAll = (posRaw as (PnlPosRow & { brand?: string; store?: string })[] | null) ?? [];
+  const posRows = (posRaw as (PnlPosRow & { brand?: string; store?: string })[] | null) ?? [];
+  // 가든·판교(페이히어) POS는 손익 집계 제외 — 스탭밀 파일과 동일 데이터라 가든 회계와 무관
+  // (2026-08-17 대표 지시, DB 행은 보존). '전체' 세그먼트에서도 스탭밀과 이중계상되지 않게 뺀다.
+  const posAll = posRows.filter((p) => !((p.brand ?? 'garden') === 'garden' && p.store === 'pangyo'));
   // 구버전(마이그레이션 전) 행은 brand 컬럼이 없을 수 있음 → garden 취급
   const pos = seg === 'all' ? posAll : posAll.filter((p) => (p.brand ?? 'garden') === seg);
   const yms = Array.from(new Set(pos.map((p) => p.ym))).sort((a, b) => b.localeCompare(a));
