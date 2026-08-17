@@ -9,6 +9,7 @@ import SplitModal, { type SplitTarget, type SplitRuleSuggestion } from './SplitM
 import { useMonthCtx } from './MonthShell';
 import { storeLabel, bankSourceLabel, type Brand, type Store } from '@/lib/finance/types';
 import { classifyDraftKey, loadClassifyDraft, saveClassifyDraft } from '@/lib/finance/classifyDraft';
+import { guessStoreFromMemo, type StoreCode } from '@/lib/finance/storeGuess';
 
 export interface TxRow {
   id: number;
@@ -68,6 +69,7 @@ export default function ClassifyPanel({
   confirmed = [],
   rules = [],
   splitRules = [],
+  storeRules = [],
   initialFilter,
   lockedBrand = null,
   fixedUnit = null,
@@ -78,6 +80,7 @@ export default function ClassifyPanel({
   confirmed?: { ym: string; brand: string; store?: string | null }[]; // 확정은 3단위 — (ym, brand, store)
   rules?: { normalized_key: string; category_id: number; brand: string }[];
   splitRules?: SplitRule[];
+  storeRules?: { normalized_key: string; store: string }[]; // 학습된 가맹점→지점(2026-08-17, 지점 미지정 보완)
   initialFilter?: { ym?: string; type?: string; cat?: string; unclassified?: boolean; source?: string; brand?: string; store?: string };
   lockedBrand?: 'staffmeal' | 'garden' | null; // 브랜드 스코프 멤버 — 서버에서 해당 브랜드만 내려옴, 브랜드 탭 숨김
   // 단위 고정 뷰(내비 2단 구조) — 스탭밀/양재천점/판교점 페이지: 브랜드·지점 탭 숨김.
@@ -93,6 +96,13 @@ export default function ClassifyPanel({
   const ruleFor = (t: TxRow) => (t.normalized_key ? ruleMap.get(`${t.brand}|${t.normalized_key}`) : undefined);
   const splitRuleMap = new Map(splitRules.map((r) => [`${r.brand}|${r.normalized_key}`, r]));
   const splitRuleFor = (t: TxRow) => (t.normalized_key ? splitRuleMap.get(`${t.brand}|${t.normalized_key}`) : undefined);
+  // 지점 미지정 보완 — 학습된 가맹점→지점 규칙, 없으면 가맹점명 휴리스틱('양재'/'판교' 문자열)으로 제안.
+  // 둘 다 자동 확정이 아니라 '제안' 표시 → 한 클릭으로 사람이 확인해야 지정된다.
+  const storeRuleMap = new Map(storeRules.map((r) => [r.normalized_key, r.store as StoreCode]));
+  const storeSugFor = (t: TxRow): StoreCode | undefined => {
+    if (t.brand !== 'garden' || t.store) return undefined;
+    return storeRuleMap.get(t.normalized_key) ?? guessStoreFromMemo(t.memo) ?? undefined;
+  };
   // 확정 잠금은 3단위(ym, brand, store) — 한 단위 확정이 다른 단위 분류를 막지 않는다.
   // 가든의 지점 미지정(store null) 행은 두 지점 모두 확정된 달에만 잠근다(확정 시 미지정 0건이 강제되므로 사후 유입분 보호용).
   const confirmedSet = new Set(confirmed.map((c) => `${c.ym}|${c.brand}|${c.store ?? ''}`));
@@ -435,6 +445,27 @@ export default function ClassifyPanel({
     }
   }
 
+  // 지점 제안(학습 규칙·가맹점명 휴리스틱) 원클릭 적용 — 해당 건만 이동, 학습 규칙도 갱신된다
+  // (서버가 reclassify-brand 처리 중 지점을 학습하므로 이후 같은 가맹점은 규칙 추천으로 올라온다).
+  async function quickAssignStore(tx: TxRow, store: StoreCode) {
+    setBusy(tx.id);
+    setError(null);
+    try {
+      const res = await fetch('/api/finance/reclassify-brand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [tx.id], brand: 'garden', store, scope: 'selected' }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || '지점 지정에 실패했어요.');
+      refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function moveBrandStore() {
     if (!moveBrand) return;
     const ids = Array.from(selected).filter((id) => {
@@ -653,6 +684,8 @@ export default function ClassifyPanel({
   }
 
   const unclassified = filtered.filter((r) => r.category_id == null).length;
+  // 지점 미지정 — 카테고리는 이미 있어도 지점이 없으면 방치되기 쉬워 미분류와 별도로 센다(2026-08-17).
+  const unassignedStore = filtered.filter((r) => r.brand === 'garden' && !r.store).length;
   const hasSug = Object.keys(suggestions).length > 0;
   const confidentKeys = new Set<string>();
   for (const r of rows) {
@@ -860,7 +893,11 @@ export default function ClassifyPanel({
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex-1">
           <p className="text-[13px] text-muted-foreground">
-            <b className="text-foreground">{won(filtered.length)}건</b> · 미분류 <b className="text-foreground">{won(unclassified)}건</b> · 분류 {progress}%
+            <b className="text-foreground">{won(filtered.length)}건</b> · 미분류 <b className="text-foreground">{won(unclassified)}건</b>
+            {unassignedStore > 0 && (
+              <> · 지점 미지정 <b className="text-amber-600">{won(unassignedStore)}건</b></>
+            )}{' '}
+            · 분류 {progress}%
           </p>
           <div className="mt-1.5 h-1.5 w-full max-w-[280px] overflow-hidden rounded-full bg-muted">
             <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
@@ -994,6 +1031,7 @@ export default function ClassifyPanel({
                   : ['cogs', 'sga', 'non_operating', 'excluded'];
                 const [date, time] = tx.tx_at.split('T');
                 const selVal = tx.category_id ?? sug?.categoryId ?? ruleSug ?? '';
+                const storeSug = !locked ? storeSugFor(tx) : undefined;
                 return (
                   <tr
                     key={tx.id}
@@ -1025,18 +1063,29 @@ export default function ClassifyPanel({
                     </Td>
                     <td className="px-3 py-2 align-middle">
                       <div className="flex max-w-[380px] items-center gap-1.5">
-                        {tx.source === 'card' && <span title="신한카드 이용내역" className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">💳</span>}
                         {tx.source === 'naverpay' && <span title="네이버페이 결제내역" className="shrink-0 rounded bg-positive/10 px-1.5 py-0.5 text-[11px] font-medium text-positive">N</span>}
                         <span
-                          title="브랜드·지점 — 이 거래가 귀속된 회계 단위"
+                          title="출처(은행 통장 거래는 접두어 없음)·브랜드·지점 — 이 거래가 귀속된 회계 단위"
                           className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground"
                         >
+                          {tx.source === 'card' && '신한카드 '}
                           {tx.brand === 'personal'
                             ? '개인'
                             : tx.brand === 'staffmeal'
                             ? '스탭밀'
                             : `가든${tx.store ? `·${storeLabel(tx.store)}` : ''}`}
                         </span>
+                        {storeSug && (
+                          <button
+                            type="button"
+                            title="가맹점명·학습 규칙 기반 지점 제안 — 클릭하면 이 건만 지정돼요"
+                            onClick={() => quickAssignStore(tx, storeSug)}
+                            disabled={busy === tx.id}
+                            className="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 hover:bg-amber-500/20"
+                          >
+                            제안: {storeLabel(storeSug)}
+                          </button>
+                        )}
                         {tx.split_parent_id != null && (
                           <span title="건별 분할로 생긴 행" className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">🔀</span>
                         )}
