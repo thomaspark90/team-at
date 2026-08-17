@@ -232,7 +232,9 @@ async function PnlBody({
 
   // 카드대금 대사 — 이 달 '카드대금정산' 인출이 카드 명세(uploads.settled_tx_id)와 연결됐는지 판정.
   // 미연결 인출은 손익 제외가 아니라 '카드 지출(미분해)'로 포함(이익 과대 방지, 2026-08-17 대표 지시).
-  // 지점 뷰에선 인출이 가든 공용(지점 미지정)이라 unassignedRows 쪽에 있다 → 미지정 경고액에 합산.
+  // txnLumps 는 이미 txns(브랜드 또는 지점 필터)에서 걸러진 값이라 지점 뷰에서도 그대로 유효 —
+  // store 지정 은행 거래(2026-08-17 양재천 일괄 지정 이후)는 txns 쪽에 잡히고, 아직 지점 미지정인
+  // 신규 업로드분만 unassignedRows(경고용)에 남는다.
   const cardSettleCatId = cats.find((c) => c.type === 'excluded' && c.name === '카드대금정산')?.id ?? null;
   const txnLumps = cardSettleCatId != null ? txns.filter((t) => t.category_id === cardSettleCatId) : [];
   const unassignedLumps = cardSettleCatId != null ? unassignedRows.filter((r) => r.category_id === cardSettleCatId) : [];
@@ -256,7 +258,7 @@ async function PnlBody({
     }
   }
   let cardReconcile: { unsettledLump: number; settledWithdrawn: number; settledUsage: number } | null = null;
-  if (seg !== 'all' && !store) {
+  if (seg !== 'all') {
     cardReconcile = { unsettledLump: 0, settledWithdrawn: 0, settledUsage: 0 };
     for (const t of txnLumps) {
       const amt = (t.amount_out || 0) - (t.amount_in || 0);
@@ -270,6 +272,7 @@ async function PnlBody({
 
   // 쿠팡·네이버페이 통장 대체 출금 — 같은 원리(2026-08-17): 그 달 세부 수집(자동수집 행)이 있으면
   // 세부가 대체하므로 제외 유지, 없으면 '쿠팡(미분류)'·'네이버페이(미분류)' 지출로 포함.
+  // (카드대금과 동일하게 지점 뷰도 txns 기준으로 계산 — store 지정 은행 거래에 적용된다)
   const coupangSubstId = cats.find((c) => c.type === 'excluded' && c.name === '쿠팡대체')?.id ?? null;
   const naverSubstId = cats.find((c) => c.type === 'excluded' && c.name === '네이버페이대체')?.id ?? null;
   const substSum = (rows: { category_id: number | null; amount_out: number }[], catId: number | null) =>
@@ -295,7 +298,7 @@ async function PnlBody({
     ? await Promise.all([hasDetail('coupang'), hasDetail('naverpay')])
     : [true, true];
   const payLump =
-    seg !== 'all' && !store
+    seg !== 'all'
       ? {
           coupang: coupangHasDetail ? 0 : txnCoupangSubst,
           naverpay: naverHasDetail ? 0 : txnNaverSubst,
