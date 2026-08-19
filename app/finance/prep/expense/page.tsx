@@ -43,7 +43,7 @@ export default async function PrepExpensePage({
   let q = supabase
     .schema('finance')
     .from('transactions')
-    .select('tx_at,ym,source,memo,amount_out,amount_in,category_id,categories(type)')
+    .select('tx_at,ym,source,memo,amount_out,amount_in,category_id,categories(type,name)')
     .eq('brand', unit.brand)
     .limit(50000);
   if (unit.store) q = q.eq('store', unit.store);
@@ -51,7 +51,7 @@ export default async function PrepExpensePage({
   if (error) throw new Error(`거래 조회 실패: ${error.message}`);
 
   const txns: ExpenseTx[] = (
-    (data as unknown as (Omit<ExpenseTx, 'cat_type'> & { categories: { type: string } | null })[] | null) ?? []
+    (data as unknown as (Omit<ExpenseTx, 'cat_type' | 'cat_name'> & { categories: { type: string; name: string } | null })[] | null) ?? []
   ).map((t) => ({
     tx_at: t.tx_at,
     ym: t.ym,
@@ -61,6 +61,7 @@ export default async function PrepExpensePage({
     amount_in: t.amount_in,
     category_id: t.category_id,
     cat_type: t.categories?.type ?? null,
+    cat_name: t.categories?.name ?? null,
   }));
 
   const { buckets: allBuckets, rows, warnings } = buildExpensePrep(txns, grain);

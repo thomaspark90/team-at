@@ -27,6 +27,8 @@ export interface ExpenseTx {
   category_id: number | null;
   /** 계정과목 성격 — cogs·sga 만 지출로 집계 */
   cat_type: string | null;
+  /** 계정과목 이름 — '카드대금정산'(대사 완료 표식) 판별용 */
+  cat_name: string | null;
 }
 
 export interface ExpenseRow {
@@ -59,6 +61,14 @@ export const CARD_PAYMENT_RE =
 /** 지출로 집계하는 계정 성격 — 매출·비영업·제외 계정은 뺀다 */
 const EXPENSE_TYPES = new Set(['cogs', 'sga']);
 
+/**
+ * 카드 명세와 대사가 끝난 인출인가. 대사되면 CardReconcile 이 그 인출을 '카드대금정산'
+ * (type=excluded)으로 바꾸고, 실제 사용 건들이 source='card' 로 들어온다. 그때부터 이 인출은
+ * 덩어리가 아니라 '이미 분해된 것'이라 지출에서 빠져야 한다.
+ */
+const SETTLED_CARD_CAT = '카드대금정산';
+const isSettledCard = (t: ExpenseTx) => t.cat_type === 'excluded' && t.cat_name === SETTLED_CARD_CAT;
+
 const add = (m: Record<string, number>, k: string, v: number) => {
   m[k] = (m[k] ?? 0) + v;
 };
@@ -83,6 +93,8 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
   const coupang: Record<string, number> = {};
   const cardStatement: Record<string, number> = {};
   const unclassified: Record<string, number> = {};
+  // 명세와 대사가 끝난 카드대금 — 지출에는 안 넣지만, '카드대금이 없는 달' 경고를 걸러내는 데 쓴다
+  const settledCard: Record<string, number> = {};
 
   for (const t of txns) {
     const b = bucketOf(t, grain);
@@ -105,9 +117,15 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
         break;
       default: {
         // 은행 — 카드대금 인출은 '무엇을 샀는지 모르는 덩어리'라 계정과 무관하게 따로 센다
-        // (현재 재료비로 분류돼 있지만 실제로는 소모품·유류비 등이 섞여 있다)
-        if (CARD_PAYMENT_RE.test(t.memo ?? '') && net > 0) add(cardPayment, b, net);
-        else if (isExpenseCat) add(bankDirect, b, net);
+        // (현재 재료비로 분류돼 있지만 실제로는 소모품·유류비 등이 섞여 있다).
+        //
+        // 단 이미 명세와 대사된 인출은 제외한다. 대사가 끝나면 그 인출은 '카드대금정산'
+        // (type=excluded)으로 바뀌고 실제 사용 건들이 source='card' 로 따로 들어오기 때문 —
+        // 여기서 덩어리로 또 세면 명세 줄과 겹쳐 이중계상이 된다.
+        if (CARD_PAYMENT_RE.test(t.memo ?? '') && net > 0) {
+          if (isSettledCard(t)) add(settledCard, b, net);
+          else add(cardPayment, b, net);
+        } else if (isExpenseCat) add(bankDirect, b, net);
       }
     }
   }
@@ -135,7 +153,8 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
     const cp = coupang[b] ?? 0;
     const rest = pay - np - cp;
     cardOther[b] = Math.max(0, rest);
-    if (pay === 0 && np + cp > 0) {
+    // 대사가 끝난 달은 카드대금이 0 이어도 정상 — 명세가 그 자리를 대신한다
+    if (pay === 0 && np + cp > 0 && !(settledCard[b] ?? 0)) {
       warnings.push({
         bucket: b,
         message: '이 달 카드대금 인출이 없어요 — 은행 자료가 아직 안 올라왔다면 수집분이 통째로 지출로 잡혀요.',
