@@ -54,6 +54,16 @@ export interface PosParseResult {
   totals: { qty: number; gross: number; vat: number; supply: number };
   excluded: { rows: number; gross: number; vat: number }; // 제외된 상품권
   meta: { sheet: string; dataRows: number; completed: number; canceled: number };
+  /**
+   * 파서가 읽은 원본 시트 — 로우데이터 레이어(finance.raw_rows) 적재용.
+   * POS 는 파서가 (일×카테고리)로 집계해 저장해서 원본 행이 남지 않았고, 그래서 요약본과
+   * 상품별본의 매출이 어긋나도 대조할 기준이 없었다(2026-08-20). 집계 전 행을 그대로 실어 보낸다.
+   */
+  raw?: {
+    rows: unknown[][]; // 헤더 행 포함, 시트에서 읽은 그대로
+    header: unknown[] | null; // 헤더 행(있으면)
+    dates: (string | null)[]; // rows 와 같은 길이 — 각 행의 영업일('YYYY-MM-DD')
+  };
 }
 
 export interface PosDaySummary {

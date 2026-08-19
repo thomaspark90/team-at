@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import { archiveOriginal } from '@/lib/finance/original-archive';
 import { applyPosParseResult } from '@/lib/finance/pos-apply';
+import { saveRawBatchSafe } from '@/lib/finance/raw';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -68,6 +69,27 @@ export async function POST(req: Request) {
   );
   if (!outcome.ok) {
     return NextResponse.json({ error: outcome.error, needsConfirm: outcome.needsConfirm ?? null }, { status: outcome.status });
+  }
+
+  // 로우데이터 적재 — 파서가 읽은 시트를 집계 전 행 그대로 남긴다. changedYms 와 무관하게
+  // 남긴다: 전부 중복인 재업로드가 바로 '과거 파일의 원본을 소급 보관하는' 경로이기 때문(은행과 동일).
+  if (r.raw && r.raw.rows.length > 0) {
+    const dates = r.raw.dates.filter((d): d is string => d != null).sort();
+    await saveRawBatchSafe(
+      supabase,
+      {
+        source: 'pos',
+        issuer: posType,
+        brand,
+        store: store || null,
+        filename: file.name,
+        header: r.raw.header,
+        periodStart: dates[0] ?? null,
+        periodEnd: dates[dates.length - 1] ?? null,
+        userId: user.id,
+      },
+      r.raw.rows.map((row, i) => ({ rowIndex: i, payload: row }))
+    );
   }
 
   // 원본 보관 — 파서 개선 시 재업로드 요청 없이 재처리할 수 있게. 이번 파일이 전부 기존 자료와

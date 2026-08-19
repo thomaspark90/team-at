@@ -47,6 +47,11 @@ function categoryOf(item: string): string {
 export interface PayhereParseResult extends PosParseResult {
   // 어떤 컬럼을 읽었는지 — 업로드 미리보기에서 확인용
   mapping: { sheet: string; header: Record<string, string> };
+  /**
+   * 원본 시트에서의 위치 — 파서가 이긴 시트의 raw 행을 담을 때 쓴다(로우데이터 레이어).
+   * 세 파서(상품별·요약·자동탐지)가 각자 찾은 헤더 행·영업일 열을 여기에 실어 보낸다.
+   */
+  layout?: { headerRow: number; dateCol: number };
 }
 
 interface Agg {
@@ -161,14 +166,17 @@ function parseSummaryRows(rows: unknown[][], sheetName: string): PayhereParseRes
   }
   if (agg.dataRows === 0) return null;
 
-  return finish(agg, sheetName, {
-    날짜: '영업일',
-    금액: '결제 금액(할인 반영·VAT 포함)',
-    공급가액: iSupply >= 0 ? '공급가액' : '(없음 — 결제금액−부가세)',
-    부가세: iVat >= 0 ? '부가세' : '(없음 — 과세 1/11 산출)',
-    카테고리: iItem >= 0 ? '결제 내역(메뉴명)' : '(없음)',
-    식권: '판매 제외(선수금) · 사용은 포함',
-  });
+  return {
+    ...finish(agg, sheetName, {
+      날짜: '영업일',
+      금액: '결제 금액(할인 반영·VAT 포함)',
+      공급가액: iSupply >= 0 ? '공급가액' : '(없음 — 결제금액−부가세)',
+      부가세: iVat >= 0 ? '부가세' : '(없음 — 과세 1/11 산출)',
+      카테고리: iItem >= 0 ? '결제 내역(메뉴명)' : '(없음)',
+      식권: '판매 제외(선수금) · 사용은 포함',
+    }),
+    layout: { headerRow: hdr, dateCol: iDate },
+  };
 }
 
 // ---------- 1-1) 실측 형식: '상품 분석_상품별 조회(일자별)' — 상품 단위 상세(2026-08-09) ----------
@@ -260,7 +268,7 @@ function parseProductDetailRows(rows: unknown[][], sheetName: string): PayherePa
     (a, b) =>
       a.saleDate.localeCompare(b.saleDate) || a.category.localeCompare(b.category) || a.product.localeCompare(b.product),
   );
-  return { ...base, items };
+  return { ...base, items, layout: { headerRow: hdr, dateCol: iDate } };
 }
 
 // ---------- 2) 폴백: 헤더 자동탐지(다른 내보내기 형식 대비) ----------
@@ -330,14 +338,17 @@ function parseGenericRows(rows: unknown[][], sheetName: string): PayhereParseRes
   }
   if (agg.dataRows === 0) return null;
 
-  return finish(agg, sheetName, {
-    날짜: headerOf(loc.date),
-    금액: headerOf(loc.amount),
-    부가세: loc.vat >= 0 ? headerOf(loc.vat) : '(없음 — 과세 1/11 산출)',
-    카테고리: headerOf(loc.category),
-    수량: headerOf(loc.qty),
-    상태: headerOf(loc.state),
-  });
+  return {
+    ...finish(agg, sheetName, {
+      날짜: headerOf(loc.date),
+      금액: headerOf(loc.amount),
+      부가세: loc.vat >= 0 ? headerOf(loc.vat) : '(없음 — 과세 1/11 산출)',
+      카테고리: headerOf(loc.category),
+      수량: headerOf(loc.qty),
+      상태: headerOf(loc.state),
+    }),
+    layout: { headerRow: loc.hdr, dateCol: loc.date },
+  };
 }
 
 async function decryptIfNeeded(data: Uint8Array | Buffer, password: string): Promise<Buffer> {
@@ -363,7 +374,19 @@ export async function parsePayhereXlsx(
     if (!ws) continue;
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' }) as unknown[][];
     const r = parseProductDetailRows(rows, name) ?? parseSummaryRows(rows, name) ?? parseGenericRows(rows, name);
-    if (r && (!best || r.meta.dataRows > best.meta.dataRows)) best = r;
+    if (r && (!best || r.meta.dataRows > best.meta.dataRows)) {
+      // 이긴 시트의 원본 행을 그대로 싣는다(로우데이터 레이어 적재용). 날짜는 파서가 찾은
+      // 영업일 열에서 행별로 뽑아 함께 보낸다 — 소계·메타 행은 날짜가 null 로 남는다.
+      const dateCol = r.layout?.dateCol ?? -1;
+      best = {
+        ...r,
+        raw: {
+          rows,
+          header: r.layout != null ? (rows[r.layout.headerRow] ?? null) : null,
+          dates: rows.map((row) => (dateCol >= 0 ? toYmd(row?.[dateCol]) : null)),
+        },
+      };
+    }
   }
   if (!best || best.rows.length === 0) {
     throw new Error(
