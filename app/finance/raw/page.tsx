@@ -6,23 +6,13 @@ import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import RawTable from '@/components/finance/RawTable';
 import { unitOf, UNITS } from '@/lib/finance/types';
-import {
-  deriveColumns,
-  fetchRawBatches,
-  fetchRawRows,
-  isRawSource,
-  RAW_SOURCES,
-  type RawSource,
-} from '@/lib/finance/rawQuery';
+import { deriveColumns, fetchRawBatches, fetchRawRows, RAW_SOURCES } from '@/lib/finance/rawQuery';
+import { parseRawQuery } from '@/lib/finance/rawParams';
 
 // 로우데이터 — 파서가 읽은 원본 행을 가공 전 그대로 보는 화면(2026-08-19).
 // 스프레드시트 시절의 '로우데이터 시트'에 해당한다. 여기서 원본을 확인한 뒤 전처리 화면으로
 // 넘어가는 순서로 봐야, 집계 단계에서 생긴 이중계상·오분류를 작은 단위에서 잡을 수 있다.
-export default async function RawPage({
-  searchParams,
-}: {
-  searchParams: { unit?: string; source?: string; ym?: string };
-}) {
+export default async function RawPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
   if (!user) redirect('/');
@@ -32,23 +22,26 @@ export default async function RawPage({
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
   const unit = unitOf(searchParams.unit) ?? UNITS[0];
-  const source: RawSource = isRawSource(searchParams.source) ? searchParams.source : 'bank';
-  const ym = /^\d{4}-\d{2}$/.test(searchParams.ym ?? '') ? searchParams.ym! : null;
-
-  const batches = await fetchRawBatches(supabase, { source, brand: unit.brand, ym });
-  const rows = await fetchRawRows(
-    supabase,
-    batches.map((b) => b.id),
-    { offset: 0, limit: 200 }
+  const sp = new URLSearchParams(
+    Object.entries(searchParams).filter((e): e is [string, string] => e[1] != null)
   );
+  const query = { ...parseRawQuery(sp), brand: unit.brand };
+
+  const batches = await fetchRawBatches(supabase, {
+    source: query.source,
+    brand: unit.brand,
+    from: query.from,
+    to: query.to,
+  });
+  const rows = await fetchRawRows(supabase, query, { offset: 0, limit: 200 });
   const columns = deriveColumns(batches, rows);
 
-  // 분류 이름 — 가공 결과 배지에 계정과목을 표시하려고
+  // 분류 이름 — 가공 결과 열에 계정과목을 표시하려고
   const { data: cats } = await supabase.schema('finance').from('categories').select('id,name');
   const categoryNames: Record<number, string> = {};
   (cats ?? []).forEach((c: { id: number; name: string }) => (categoryNames[c.id] = c.name));
 
-  // 월 필터 후보 — 적재된 배치들이 걸쳐 있는 달
+  // 월 단축 후보 — 적재된 배치들이 걸쳐 있는 달
   const months = Array.from(
     new Set(
       batches.flatMap((b) => {
@@ -61,11 +54,12 @@ export default async function RawPage({
   ).sort((a, b) => b.localeCompare(a));
 
   const href = (next: { source?: string; ym?: string | null }) => {
-    const p = new URLSearchParams({ unit: unit.id, source: next.source ?? source });
-    const nextYm = next.ym === undefined ? ym : next.ym;
-    if (nextYm) p.set('ym', nextYm);
+    const p = new URLSearchParams({ unit: unit.id, source: next.source ?? query.source });
+    if (next.ym) p.set('ym', next.ym);
     return `/finance/raw?${p}`;
   };
+  const activeYm =
+    query.from && query.to && query.from.slice(0, 7) === query.to.slice(0, 7) ? query.from.slice(0, 7) : null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -84,18 +78,21 @@ export default async function RawPage({
         <p className="mb-5 text-[13px] text-muted-foreground">
           <b>{unit.label}</b> 자료의 원본 행이에요 — 파서가 파일에서 읽은 그대로, 부호 변환·분류·중복제거를
           거치기 전 상태예요. 행 번호는 원본 파일에서의 위치라 엑셀과 나란히 두고 대조할 수 있어요.
+          컬럼 제목을 누르면 정렬되고, 그 아래 칸에 입력하면 그 열로 걸러져요.
         </p>
 
-        {/* 출처 탭 */}
+        {/* 출처 탭 + 월 단축 */}
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <div className="flex overflow-hidden rounded-md border border-border">
             {RAW_SOURCES.map((s) => (
               <Link
                 key={s.key}
-                href={href({ source: s.key, ym: null })}
-                aria-current={s.key === source ? 'page' : undefined}
+                href={href({ source: s.key })}
+                aria-current={s.key === query.source ? 'page' : undefined}
                 className={`px-3 py-1.5 text-[13px] transition-colors ${
-                  s.key === source ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+                  s.key === query.source
+                    ? 'bg-foreground text-background'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {s.label}
@@ -106,9 +103,11 @@ export default async function RawPage({
             <div className="flex flex-wrap items-center gap-1.5">
               <Link
                 href={href({ ym: null })}
-                aria-current={!ym ? 'page' : undefined}
+                aria-current={!activeYm ? 'page' : undefined}
                 className={`rounded-md border px-2.5 py-1 text-[12px] transition-colors ${
-                  !ym ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:text-foreground'
+                  !activeYm
+                    ? 'border-foreground bg-foreground text-background'
+                    : 'border-border text-muted-foreground hover:text-foreground'
                 }`}
               >
                 전체
@@ -117,9 +116,11 @@ export default async function RawPage({
                 <Link
                   key={m}
                   href={href({ ym: m })}
-                  aria-current={m === ym ? 'page' : undefined}
+                  aria-current={m === activeYm ? 'page' : undefined}
                   className={`rounded-md border px-2.5 py-1 text-[12px] tabular-nums transition-colors ${
-                    m === ym ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:text-foreground'
+                    m === activeYm
+                      ? 'border-foreground bg-foreground text-background'
+                      : 'border-border text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {m}
@@ -144,9 +145,7 @@ export default async function RawPage({
         )}
 
         <RawTable
-          source={source}
-          brand={unit.brand}
-          ym={ym}
+          query={query}
           columns={columns}
           initialRows={rows}
           initialHasMore={rows.length === 200}

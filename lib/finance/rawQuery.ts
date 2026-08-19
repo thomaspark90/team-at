@@ -1,7 +1,7 @@
 // 로우데이터 조회 공용 로직 — 페이지(서버 컴포넌트)·행 API·CSV 내보내기가 같은 규칙을 쓰도록.
 //
-// 화면 단위는 "배치"가 아니라 "월"이다. 사용자는 '2026년 6월 우리은행 원본'을 보고 싶지
-// '3번 배치'를 보고 싶은 게 아니기 때문. 그래서 월 → 그 달에 걸친 배치들 → 배치의 원본 행 순으로 읽는다.
+// 정렬·필터·기간은 전부 서버(finance.raw_rows_page)에서 처리한다. 클라이언트에서 하면
+// '지금 불러온 200행' 안에서만 정렬돼 스크롤할수록 순서가 바뀌는 거짓 표가 되기 때문.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { RawSource } from './raw';
@@ -31,9 +31,28 @@ export interface RawRowView {
   id: number;
   batch_id: number;
   row_index: number;
+  row_date: string | null;
   payload: unknown;
   /** 이 원본 행에서 만들어진 거래(있으면) — 가공 결과로 되짚어 가는 링크 */
   tx?: { id: number; category_id: number | null; amount_out: number; amount_in: number } | null;
+}
+
+/** 표 정렬 상태 — 'row'=원본 순, 'date'=행 날짜, 'col'=특정 열 */
+export interface RawSort {
+  by: 'row' | 'date' | 'col';
+  col?: number | null;
+  numeric?: boolean;
+  desc?: boolean;
+}
+
+export interface RawQuery {
+  source: RawSource;
+  brand?: string | null;
+  from?: string | null; // 'YYYY-MM-DD'
+  to?: string | null;
+  q?: string | null; // 전체 검색
+  filters?: Record<string, string> | null; // { '3': '카드' } — 키는 payload 열 인덱스
+  sort?: RawSort;
 }
 
 export const RAW_SOURCES: { key: RawSource; label: string }[] = [
@@ -48,8 +67,8 @@ export function isRawSource(v: unknown): v is RawSource {
   return typeof v === 'string' && RAW_SOURCES.some((s) => s.key === v);
 }
 
-/** 'YYYY-MM' → 그 달의 [첫날, 말일] */
-function monthRange(ym: string): [string, string] {
+/** 'YYYY-MM' → 그 달의 [첫날, 말일] — 월 단축 선택이 기간으로 바뀌는 지점 */
+export function monthRange(ym: string): [string, string] {
   const [y, m] = ym.split('-').map(Number);
   const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
   return [`${ym}-01`, `${ym}-${String(last).padStart(2, '0')}`];
@@ -61,7 +80,7 @@ function monthRange(ym: string): [string, string] {
  */
 export async function fetchRawBatches(
   supabase: AnyClient,
-  opts: { source: RawSource; brand?: string | null; ym?: string | null }
+  opts: { source: RawSource; brand?: string | null; from?: string | null; to?: string | null }
 ): Promise<RawBatchRow[]> {
   let q = supabase
     .schema('finance')
@@ -72,10 +91,11 @@ export async function fetchRawBatches(
     .limit(200);
 
   if (opts.brand) q = q.or(`brand.eq.${opts.brand},brand.is.null`);
-  if (opts.ym) {
-    // 기간이 그 달과 겹치는 배치 — 여러 달이 담긴 파일도 잡히게(겹침 조건)
-    const [from, to] = monthRange(opts.ym);
-    q = q.or(`and(period_start.lte.${to},period_end.gte.${from}),and(period_start.is.null,period_end.is.null)`);
+  if (opts.from && opts.to) {
+    // 기간이 겹치는 배치만 — 여러 달이 담긴 파일도 잡히게
+    q = q.or(
+      `and(period_start.lte.${opts.to},period_end.gte.${opts.from}),and(period_start.is.null,period_end.is.null)`
+    );
   }
 
   const { data, error } = await q;
@@ -83,21 +103,27 @@ export async function fetchRawBatches(
   return (data as RawBatchRow[] | null) ?? [];
 }
 
-/** 배치들의 원본 행을 순서대로 — 무한스크롤용 오프셋 페이징 */
+/** 원본 행 한 페이지 — 정렬·필터·기간은 DB 함수가 처리한다 */
 export async function fetchRawRows(
   supabase: AnyClient,
-  batchIds: number[],
-  opts: { offset: number; limit: number }
+  query: RawQuery,
+  page: { offset: number; limit: number }
 ): Promise<RawRowView[]> {
-  if (batchIds.length === 0) return [];
-  const { data, error } = await supabase
-    .schema('finance')
-    .from('raw_rows')
-    .select('id,batch_id,row_index,payload')
-    .in('batch_id', batchIds)
-    .order('batch_id', { ascending: true })
-    .order('row_index', { ascending: true })
-    .range(opts.offset, opts.offset + opts.limit - 1);
+  const sort = query.sort ?? { by: 'row' };
+  const { data, error } = await supabase.schema('finance').rpc('raw_rows_page', {
+    p_source: query.source,
+    p_brand: query.brand ?? null,
+    p_from: query.from ?? null,
+    p_to: query.to ?? null,
+    p_q: query.q ?? null,
+    p_filters: query.filters && Object.keys(query.filters).length > 0 ? query.filters : null,
+    p_sort: sort.by,
+    p_sort_col: sort.by === 'col' ? (sort.col ?? null) : null,
+    p_numeric: !!sort.numeric,
+    p_desc: !!sort.desc,
+    p_offset: page.offset,
+    p_limit: page.limit,
+  });
   if (error) throw new Error(`원본 행 조회 실패: ${error.message}`);
 
   const rows = (data as RawRowView[] | null) ?? [];
@@ -113,8 +139,9 @@ export async function fetchRawRows(
       rows.map((r) => r.id)
     );
   const byRaw = new Map<number, RawRowView['tx']>();
-  (txs ?? []).forEach((t: { id: number; raw_row_id: number; category_id: number | null; amount_out: number; amount_in: number }) =>
-    byRaw.set(t.raw_row_id, { id: t.id, category_id: t.category_id, amount_out: t.amount_out, amount_in: t.amount_in })
+  (txs ?? []).forEach(
+    (t: { id: number; raw_row_id: number; category_id: number | null; amount_out: number; amount_in: number }) =>
+      byRaw.set(t.raw_row_id, { id: t.id, category_id: t.category_id, amount_out: t.amount_out, amount_in: t.amount_in })
   );
   return rows.map((r) => ({ ...r, tx: byRaw.get(r.id) ?? null }));
 }
@@ -140,4 +167,19 @@ export function deriveColumns(batches: RawBatchRow[], sampleRows: RawRowView[]):
   const arr = sampleRows.find((r) => Array.isArray(r.payload));
   if (arr) return (arr.payload as unknown[]).map((_, i) => `열${i + 1}`);
   return [];
+}
+
+/** 표 형식(배열) 원본에서 이 열이 숫자 열인지 — 정렬 방식(숫자/문자) 판단용 */
+export function isNumericColumn(rows: RawRowView[], col: number): boolean {
+  let seen = 0;
+  let numeric = 0;
+  for (const r of rows) {
+    if (!Array.isArray(r.payload)) continue;
+    const v = String(r.payload[col] ?? '').trim();
+    if (!v) continue;
+    seen++;
+    if (/^-?[0-9,]*\.?[0-9]+$/.test(v)) numeric++;
+    if (seen >= 30) break;
+  }
+  return seen > 0 && numeric / seen > 0.7;
 }
