@@ -142,50 +142,52 @@ export default async function PrepExpensePage({
           <table className="w-max min-w-full border-collapse text-[13px]">
             <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b border-border text-muted-foreground">
-                <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">구분</th>
-                {buckets.map((b) => (
-                  <th key={b} className="whitespace-nowrap px-3 py-2 text-right font-normal tabular-nums">
-                    {warnByBucket.has(b) && <span title={warnByBucket.get(b)}>⚠ </span>}
-                    {bucketLabel(b)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
-                const isTotal = r.kind === 'total';
-                const isNote = r.kind === 'note';
-                const isDeduction = r.kind === 'deduction';
-                const isDerived = r.kind === 'derived';
-                return (
-                  <tr
-                    key={r.key}
-                    className={`border-b border-border/50 last:border-0 ${
-                      isTotal ? 'border-t-2 border-t-border font-medium' : ''
-                    } ${isNote ? 'text-muted-foreground' : ''}`}
-                  >
-                    <td
-                      className={`sticky left-0 z-10 whitespace-nowrap bg-background px-3 py-1.5 ${
-                        isDeduction || isDerived ? 'pl-6 text-muted-foreground' : ''
-                      }`}
+                <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">기간</th>
+                {rows.map((r) => {
+                  const isTotal = r.kind === 'total';
+                  const isMutedCol = r.kind === 'deduction' || r.kind === 'derived' || r.kind === 'note';
+                  return (
+                    <th
+                      key={r.key}
                       title={r.hint}
+                      className={`whitespace-nowrap px-3 py-2 text-right font-normal ${
+                        isTotal ? 'border-l-2 border-l-border font-medium text-foreground' : ''
+                      } ${isMutedCol ? 'text-muted-foreground/70' : ''}`}
                     >
                       {r.label}
                       {r.hint && <span className="ml-1 text-muted-foreground/50">ⓘ</span>}
-                    </td>
-                    {buckets.map((b) => (
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {buckets.map((b) => (
+                <tr key={b} className="border-b border-border/50 last:border-0">
+                  <td
+                    className="sticky left-0 z-10 whitespace-nowrap bg-background px-3 py-1.5 tabular-nums"
+                    title={warnByBucket.get(b)}
+                  >
+                    {warnByBucket.has(b) && <span title={warnByBucket.get(b)}>⚠ </span>}
+                    {bucketLabel(b)}
+                  </td>
+                  {rows.map((r) => {
+                    const isTotal = r.kind === 'total';
+                    const isNote = r.kind === 'note';
+                    const isDeduction = r.kind === 'deduction';
+                    return (
                       <td
-                        key={b}
+                        key={r.key}
                         className={`whitespace-nowrap px-3 py-1.5 text-right tabular-nums ${
-                          isDeduction ? 'text-muted-foreground' : ''
-                        }`}
+                          isTotal ? 'border-l-2 border-l-border font-medium' : ''
+                        } ${isDeduction || isNote ? 'text-muted-foreground' : ''}`}
                       >
                         {isDeduction && r.amounts[b] ? `−${won(r.amounts[b])}` : won(r.amounts[b] ?? 0)}
                       </td>
-                    ))}
-                  </tr>
-                );
-              })}
+                    );
+                  })}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
