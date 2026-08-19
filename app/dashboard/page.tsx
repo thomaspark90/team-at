@@ -8,7 +8,7 @@ import AccountingBoards from '@/components/finance/AccountingBoards';
 import MonthShell from '@/components/finance/MonthShell';
 import { unitOf } from '@/lib/finance/types';
 import { computeBoardTodos } from '@/lib/finance/boardTodos';
-import { readIngestHealth } from '@/lib/ingest-health';
+import { readIngestHealth, checkInfraHealth } from '@/lib/ingest-health';
 import IngestHealthCard from '@/components/finance/IngestHealthCard';
 
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
@@ -23,11 +23,12 @@ export default async function AccountingDashboardPage({ searchParams }: { search
   // 멤버 조회·대기 송금 요약(로그인한 누구나 열람 가능, RLS 동일)·월 배지 집계는 서로 독립 — 병렬 조회.
   // 배지는 부가 정보라 실패해도 페이지는 뜨게 하고, 클라이언트에서 재조회한다.
   const unit = unitOf(searchParams.unit) ?? unitOf('staffmeal')!;
-  const [{ role, brandScope }, { data: pending }, initialTodos, ingestHealth] = await Promise.all([
+  const [{ role, brandScope }, { data: pending }, initialTodos, ingestHealth, infraHealth] = await Promise.all([
     resolveMember(supabase, user),
     supabase.schema('finance').from('transfer_requests').select('amount').eq('status', 'pending'),
     computeBoardTodos(supabase, unit.brand).catch(() => undefined),
     readIngestHealth().catch(() => []), // 상태 카드는 부가 정보 — 실패해도 페이지는 뜬다
+    checkInfraHealth().catch(() => null), // Blob 생사 — 정지 사고(2026-08-20) 후 홈에서 상시 확인
   ]);
   // 브랜드 스코프 멤버는 분류 화면이 홈
   if (brandScope) redirect('/finance/classify');
@@ -70,7 +71,7 @@ export default async function AccountingDashboardPage({ searchParams }: { search
 
         {/* 무인 수집기(쿠팡·네이버페이·리뷰) 상태 — 실패 이메일이 안 오는 '무소식' 사각지대 감지용 */}
         <div className="py-[54px]">
-          <IngestHealthCard health={ingestHealth} />
+          <IngestHealthCard health={ingestHealth} infra={infraHealth} />
         </div>
 
         {/* 월별 자료 현황 + 지출 자료 분류 보드 — 기장 권한자만.

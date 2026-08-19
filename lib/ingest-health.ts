@@ -122,3 +122,27 @@ export async function markAlerted(pipelines: IngestPipeline[]): Promise<void> {
     /* 중복 방지 기록 실패 = 다음 날 한 번 더 알릴 뿐 — 치명적이지 않다 */
   }
 }
+
+// ── 인프라 상태 (2026-08-20) ─────────────────────────────────────────
+// Vercel Blob 스토어가 한도 초과로 정지(suspended)돼 원본 자료함·업무 보드가 전부 403이
+// 났는데 며칠간 아무도 몰랐다. 회계 홈을 열 때마다 Blob 생사를 직접 찔러봐서, 로컬
+// 헬스체크(scripts/infra-healthcheck.sh, 매일 09시)와 별개로 화면에서도 바로 보이게 한다.
+
+export interface InfraHealth {
+  blob: { ok: boolean; note: string };
+}
+
+/** Blob 생사 확인 — 목록 1건 조회(쓰기 없음). 정지 상태면 403 'store has been suspended'. */
+export async function checkInfraHealth(): Promise<InfraHealth> {
+  try {
+    const { list } = await import('@vercel/blob');
+    await list({ limit: 1 });
+    return { blob: { ok: true, note: '원본 자료함·업무 보드 저장소 정상' } };
+  } catch (e) {
+    const msg = (e as Error).message ?? '';
+    const note = /suspend|blocked/i.test(msg)
+      ? '스토어가 정지됐어요 — Vercel 대시보드 Storage에서 결제/한도를 확인하세요'
+      : `접속 실패: ${msg.slice(0, 80)}`;
+    return { blob: { ok: false, note } };
+  }
+}

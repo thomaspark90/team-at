@@ -1,4 +1,11 @@
-import { PIPELINES, STALE_HOURS, judgeIngest, type IngestHealth, type IngestStatus } from '@/lib/ingest-health';
+import {
+  PIPELINES,
+  STALE_HOURS,
+  judgeIngest,
+  type IngestHealth,
+  type IngestStatus,
+  type InfraHealth,
+} from '@/lib/ingest-health';
 
 // 무인 수집기 상태 카드 — 회계 홈에서 쿠팡·네이버페이·리뷰 파이프라인의 마지막 수신을 보여준다.
 // 판정 규칙은 lib/ingest-health.judgeIngest — 크론 알림과 같은 기준을 쓴다.
@@ -22,7 +29,7 @@ const DOT: Record<Status, string> = {
 
 const LABEL: Record<Status, string> = { ok: '정상', late: '지연', failed: '실패', none: '기록 없음' };
 
-export default function IngestHealthCard({ health }: { health: IngestHealth[] }) {
+export default function IngestHealthCard({ health, infra }: { health: IngestHealth[]; infra?: InfraHealth | null }) {
   const byKey = new Map(health.map((h) => [h.pipeline, h]));
   return (
     <section>
@@ -32,6 +39,20 @@ export default function IngestHealthCard({ health }: { health: IngestHealth[] })
       </p>
       {/* 박스 안의 박스는 시각적 소음 — 상태는 색 점이 이미 전달하므로 보더 없는 행으로 (2026-08-08) */}
       <div className="mt-4 divide-y divide-border/60">
+        {/* 인프라(파일 저장소) 생사 — Blob 정지 사고(2026-08-20) 후 페이지 열 때마다 직접 확인 */}
+        {infra && (
+          <div className="flex items-center gap-2 py-5">
+            <span
+              aria-hidden
+              style={{ width: 8, height: 8, borderRadius: 99, background: infra.blob.ok ? DOT.ok : DOT.failed, flexShrink: 0 }}
+            />
+            <span className="shrink-0 text-[13px] font-medium">파일 저장소</span>
+            <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground" title={infra.blob.note}>
+              {infra.blob.note}
+            </span>
+            <span className="shrink-0 text-[11px] text-muted-foreground">{infra.blob.ok ? '정상' : '장애'}</span>
+          </div>
+        )}
         {PIPELINES.map(({ key, label }) => {
           const h = byKey.get(key) ?? { pipeline: key };
           const { status, note } = judgeIngest(h);

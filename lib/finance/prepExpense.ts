@@ -95,6 +95,8 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
   const unclassified: Record<string, number> = {};
   // 명세와 대사가 끝난 카드대금 — 지출에는 안 넣지만, '카드대금이 없는 달' 경고를 걸러내는 데 쓴다
   const settledCard: Record<string, number> = {};
+  // 수집분 중 비용 아닌 계정(설비·미상·개인·잡손익 등) — 참고 표시용
+  const collectedNonExpense: Record<string, number> = {};
 
   for (const t of txns) {
     const b = bucketOf(t, grain);
@@ -103,7 +105,17 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
     const net = (t.amount_out || 0) - (t.amount_in || 0);
     const isExpenseCat = t.cat_type != null && EXPENSE_TYPES.has(t.cat_type);
 
-    if (t.category_id == null && (t.amount_out || 0) > 0) add(unclassified, b, t.amount_out);
+    // 미분류 참고 줄은 은행분만 — 수집분(네이버페이·쿠팡)의 미분류는 소스 줄에 이미 전액
+    // 포함돼 있어서, 여기 또 넣으면 같은 돈이 두 줄에 보이고 힌트("합계 밖")도 거짓이 된다.
+    if (t.category_id == null && (t.amount_out || 0) > 0 && t.source !== 'naverpay' && t.source !== 'coupang')
+      add(unclassified, b, t.amount_out);
+
+    // 수집분 중 비용 아닌 계정(설비·미상·개인·잡손익 등) — 차감 줄엔 전액이 맞지만(카드 청구엔
+    // 개인 구매도 포함), 카드대금이 0인 달엔 수집분이 곧 합계라 이 오염이 그대로 드러난다.
+    // 규모를 참고 줄로 표시해 "합계 중 이만큼은 비용이 아닐 수 있다"를 알린다.
+    const isCollected = t.source === 'naverpay' || t.source === 'coupang';
+    if (isCollected && t.category_id != null && t.cat_type != null && !EXPENSE_TYPES.has(t.cat_type))
+      add(collectedNonExpense, b, net);
 
     switch (t.source) {
       case 'naverpay':
@@ -122,7 +134,9 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
         // 단 이미 명세와 대사된 인출은 제외한다. 대사가 끝나면 그 인출은 '카드대금정산'
         // (type=excluded)으로 바뀌고 실제 사용 건들이 source='card' 로 따로 들어오기 때문 —
         // 여기서 덩어리로 또 세면 명세 줄과 겹쳐 이중계상이 된다.
-        if (CARD_PAYMENT_RE.test(t.memo ?? '') && net > 0) {
+        // '건별분할' 부모는 제외 — 카드대금 인출을 분할하면 자식들이 각자 집계되므로,
+        // 부모까지 카드대금으로 잡으면 이중이 된다(현재 데이터 0건, 방어용).
+        if (CARD_PAYMENT_RE.test(t.memo ?? '') && net > 0 && t.cat_name !== '건별분할') {
           if (isSettledCard(t)) add(settledCard, b, net);
           else add(cardPayment, b, net);
         } else if (isExpenseCat) add(bankDirect, b, net);
@@ -234,8 +248,19 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
       label: '미분류 (참고)',
       kind: 'note',
       amounts: unclassified,
-      hint: '아직 계정이 없는 출금이에요. 합계에 안 들어가니 이 금액이 크면 지출 총합이 실제보다 작아요.',
+      hint: '아직 계정이 없는 은행 출금이에요. 합계에 안 들어가니 이 금액이 크면 지출 총합이 실제보다 작아요. (수집분 미분류는 소스 줄에 이미 포함)',
     },
+    ...(Object.keys(collectedNonExpense).length > 0
+      ? [
+          {
+            key: 'collected_non_expense',
+            label: '수집분 중 비용 외 계정 (참고)',
+            kind: 'note' as const,
+            amounts: collectedNonExpense,
+            hint: '네이버페이·쿠팡 수집분 중 설비·미상·개인 등 비용이 아닌 계정으로 분류된 몫이에요. 합계에는 들어 있으니, 카드대금이 없는 달엔 이만큼 지출이 과대일 수 있어요.',
+          },
+        ]
+      : []),
   ];
 
   return { grain, buckets, rows, warnings };

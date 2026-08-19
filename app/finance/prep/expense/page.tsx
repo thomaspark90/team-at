@@ -34,6 +34,8 @@ export default async function PrepExpensePage({
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
   const unit = unitOf(searchParams.unit) ?? UNITS[0];
+  // 개인(personal)은 손익 제외 사적 지출 — 관리손익과 같은 규칙으로 이 화면에서도 뺀다
+  if (unit.brand === 'personal') redirect('/finance/classify?unit=personal');
   const grain: ExpenseGrain = GRAINS.some((g) => g.key === searchParams.grain)
     ? (searchParams.grain as ExpenseGrain)
     : 'month';
