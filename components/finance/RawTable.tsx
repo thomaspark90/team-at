@@ -121,10 +121,13 @@ export default function RawTable({
     reload({ ...query, sort: next });
   };
 
+  // 정렬 표시 — 활성 열은 방향 화살표, 나머지는 흐린 ⇅ 로 '클릭하면 정렬된다'는 단서를 준다
+  // (제목이 평문으로 보여서 정렬 기능이 있는 줄 모르는 문제, 2026-08-20)
   const sortMark = (col: number) => {
     const s = query.sort;
-    if (!s || s.by !== 'col' || s.col !== col) return '';
-    return s.desc ? ' ↓' : ' ↑';
+    if (!s || s.by !== 'col' || s.col !== col)
+      return <span className="ml-0.5 text-muted-foreground/40">⇅</span>;
+    return <span className="ml-0.5 text-foreground">{s.desc ? '↓' : '↑'}</span>;
   };
 
   const setRange = (from: string | null, to: string | null) => reload({ ...query, from, to });
@@ -162,7 +165,7 @@ export default function RawTable({
           className="ml-2 h-8 w-48 rounded-md border border-border bg-background px-2.5 text-[13px] outline-none focus:border-foreground/40"
         />
         <span className="text-muted-foreground">
-          {rows.length.toLocaleString()}행{hasMore ? '+' : ''}
+          {loading ? '정렬·필터 적용 중…' : `${rows.length.toLocaleString()}행${hasMore ? '+' : ''}`}
         </span>
         <a
           href={`/api/finance/raw/export?${rawQueryToParams(query)}`}
@@ -177,7 +180,13 @@ export default function RawTable({
           {error ?? '이 조건에 해당하는 원본 행이 없어요.'}
         </p>
       ) : (
-        <div className="max-h-[70vh] overflow-auto rounded-md border border-border">
+        {/* 재조회 중엔 표를 흐리게 — 정렬·필터 응답이 몇 초 걸릴 때 '클릭이 안 먹었다'는 오해를 막는다 */}
+        <div
+          className={`max-h-[70vh] overflow-auto rounded-md border border-border transition-opacity ${
+            loading ? 'pointer-events-none opacity-40' : ''
+          }`}
+          aria-busy={loading}
+        >
           <table className="w-max min-w-full border-collapse text-[12px]">
             <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b border-border text-left text-muted-foreground">
@@ -194,7 +203,12 @@ export default function RawTable({
                     }}
                     className="transition-colors hover:text-foreground"
                   >
-                    날짜{query.sort?.by === 'date' ? (query.sort.desc ? ' ↓' : ' ↑') : ''}
+                    날짜
+                    {query.sort?.by === 'date' ? (
+                      <span className="ml-0.5 text-foreground">{query.sort.desc ? '↓' : '↑'}</span>
+                    ) : (
+                      <span className="ml-0.5 text-muted-foreground/40">⇅</span>
+                    )}
                   </button>
                 </th>
                 {columns.map((c, i) => (
