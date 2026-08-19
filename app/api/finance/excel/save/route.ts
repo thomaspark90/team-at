@@ -105,6 +105,24 @@ export async function POST(req: Request) {
 
   const { fresh: freshAll, duplicates } = dedupe(result.transactions, existing);
 
+  // 중복 건도 원본에 이어 붙인다 — raw 도입 전에 적재된 거래는 raw_row_id 가 비어 있는데,
+  // 같은 파일을 다시 올리면 '전부 중복'이라 새 거래가 안 생겨 영영 연결될 기회가 없다.
+  // 그래서 중복으로 걸러진 건의 dedup_hash 로 기존 행을 찾아 원본 행을 채워준다(소급 연결).
+  if (rawSaved) {
+    const dupLinks = result.transactions
+      .filter((t) => existing.has(t.dedupHash) && t.rawRowIndex != null)
+      .map((t) => ({ hash: t.dedupHash, rawId: rawSaved.rowIdByIndex.get(t.rawRowIndex!) }))
+      .filter((d): d is { hash: string; rawId: number } => d.rawId != null);
+    if (dupLinks.length > 0) {
+      // 행마다 왕복하면 수천 건에서 타임아웃 — 한 번의 UPDATE 로 처리한다
+      const { error: linkErr } = await supabase.schema('finance').rpc('link_raw_rows', {
+        p_hashes: dupLinks.map((d) => d.hash),
+        p_raw_ids: dupLinks.map((d) => d.rawId),
+      });
+      if (linkErr) console.error('[raw] 중복분 원본 연결 실패:', linkErr.message);
+    }
+  }
+
   // 확정월 가드 — 확정된 달의 거래는 저장하지 않는다(POS·분할과 동일한 409 규칙,
   // 여러 달 파일은 확정월 몫만 제외하고 나머지는 저장).
   const locked = await lockedYms(supabase, brand);
