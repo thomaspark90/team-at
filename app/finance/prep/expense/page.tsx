@@ -176,14 +176,17 @@ export default async function PrepExpensePage({
                     const isNote = r.kind === 'note';
                     const isDeduction = r.kind === 'deduction';
                     const amount = r.amounts[b] ?? 0;
-                    // 미분류·미상 금액은 분류 화면으로 가는 문 — 셀을 누르면 그 달의 해당 건들이
-                    // 필터된 상태로 열려 바로 분류할 수 있다(분류 화면은 월 단위라 일·주는 속한 달로).
-                    const classifyYm = isMonth ? b : b.slice(0, 7);
+                    // 미분류·미상 금액은 분류 화면으로 가는 문 — 셀을 누르면 해당 건들이
+                    // 필터된 상태로 열려 바로 분류할 수 있다. 분류 화면은 월 단위라:
+                    //   월·일 뷰 → 그 달로 필터. 주 뷰 → 주가 두 달에 걸치면 시작월 필터가
+                    //   일부 건을 숨기므로(실측 13건·20.9M) 달 필터 없이 전체 미분류로 연다.
+                    const classifyYm = grain === 'week' ? null : isMonth ? b : b.slice(0, 7);
+                    const ymParam = classifyYm ? `&ym=${classifyYm}` : '&ym=all';
                     const classifyHref =
                       r.key === 'unclassified' && amount > 0
-                        ? `/finance/classify?unit=${unit.id}&ym=${classifyYm}&unclassified=1`
+                        ? `/finance/classify?unit=${unit.id}${ymParam}&unclassified=1`
                         : r.key === 'misang' && amount !== 0
-                          ? `/finance/classify?unit=${unit.id}&ym=${classifyYm}&type=excluded&cat=${encodeURIComponent('미상')}`
+                          ? `/finance/classify?unit=${unit.id}${ymParam}&type=excluded&cat=${encodeURIComponent('미상')}`
                           : null;
                     return (
                       <td

@@ -128,6 +128,9 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
         break;
       case 'card':
         if (isExpenseCat) add(cardStatement, b, net);
+        // 명세 속 '미상'도 지출 포함(관리손익과 동일) — 조용히 빠지면 두 화면이 어긋난다.
+        // 미분류 카드 건은 위의 공통 미분류 집계가 이미 담는다.
+        else if (t.cat_name === '미상') add(misang, b, net);
         break;
       default: {
         // 은행 — 카드대금 인출은 '무엇을 샀는지 모르는 덩어리'라 계정과 무관하게 따로 센다
@@ -147,6 +150,8 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
     }
   }
 
+  // 미분류·미상도 버킷 유도에 포함 — 그 날 거래가 미분류/미상뿐이면 행 자체가 사라져
+  // 일 뷰에서 7일·18.2M이 무표시되던 결함(2026-08-20 점검에서 발견)
   const buckets = Array.from(
     new Set([
       ...Object.keys(bankDirect),
@@ -154,6 +159,8 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
       ...Object.keys(naverpay),
       ...Object.keys(coupang),
       ...Object.keys(cardStatement),
+      ...Object.keys(unclassified),
+      ...Object.keys(misang),
     ])
   ).sort((a, b) => b.localeCompare(a));
 
@@ -241,15 +248,6 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
       ? [{ key: 'card_statement', label: '카드 명세', kind: 'source' as const, amounts: cardStatement }]
       : []),
     {
-      key: 'total',
-      label: isMonth ? '지출 합계 (비용)' : '현금 유출 합계',
-      kind: 'total',
-      amounts: total,
-      hint: isMonth
-        ? '카드대금에서 수집분을 뺀 실제 비용이에요.'
-        : '통장·카드에서 실제로 나간 돈이에요. 카드대금 덩어리와 그 안의 수집분이 겹쳐 있어 비용보다 커요.',
-    },
-    {
       key: 'unclassified',
       label: '미분류 지출',
       kind: 'source',
@@ -263,6 +261,16 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
       amounts: misang,
       hint: "용도를 아직 판단하지 못해 '미상'으로 보류한 지출이에요. 이익이 부풀려 보이지 않게 지출에 포함해요(관리손익과 동일).",
     },
+    {
+      key: 'total',
+      label: isMonth ? '지출 합계 (비용)' : '현금 유출 합계',
+      kind: 'total',
+      amounts: total,
+      hint: isMonth
+        ? '카드대금에서 수집분을 뺀 실제 비용이에요.'
+        : '통장·카드에서 실제로 나간 돈이에요. 카드대금 덩어리와 그 안의 수집분이 겹쳐 있어 비용보다 커요.',
+    },
+
     ...(Object.keys(collectedNonExpense).length > 0
       ? [
           {
@@ -270,7 +278,9 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
             label: '수집분 중 비용 외 계정 (참고)',
             kind: 'note' as const,
             amounts: collectedNonExpense,
-            hint: '네이버페이·쿠팡 수집분 중 설비·미상·개인 등 비용이 아닌 계정으로 분류된 몫이에요. 합계에는 들어 있으니, 카드대금이 없는 달엔 이만큼 지출이 과대일 수 있어요.',
+            hint: isMonth
+              ? '네이버페이·쿠팡 수집분 중 설비·미상·개인 등 비용이 아닌 계정으로 분류된 몫이에요. 합계에는 들어 있으니, 카드대금이 없는 달엔 이만큼 지출이 과대일 수 있어요.'
+              : '네이버페이·쿠팡 수집분 중 설비·미상·개인 등 비용이 아닌 계정으로 분류된 몫이에요. 현금 유출 합계에는 들어 있어요.',
           },
         ]
       : []),
