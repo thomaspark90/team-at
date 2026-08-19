@@ -97,6 +97,8 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
   const settledCard: Record<string, number> = {};
   // 수집분 중 비용 아닌 계정(설비·미상·개인·잡손익 등) — 참고 표시용
   const collectedNonExpense: Record<string, number> = {};
+  // '미상'(용도 불명 보류) 은행 지출 — 관리손익과 같은 규칙으로 지출에 포함하되 별도 줄
+  const misang: Record<string, number> = {};
 
   for (const t of txns) {
     const b = bucketOf(t, grain);
@@ -140,6 +142,7 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
           if (isSettledCard(t)) add(settledCard, b, net);
           else add(cardPayment, b, net);
         } else if (isExpenseCat) add(bankDirect, b, net);
+        else if (t.cat_name === '미상') add(misang, b, net);
       }
     }
   }
@@ -181,10 +184,13 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
     }
   }
 
+  // 합계 규칙은 관리손익(pnl)과 동일하게 보수적으로 — 미분류·미상도 지출에 포함해
+  // 이익이 부풀려 보이지 않게 한다(2026-08-20 대표 확정). 두 화면 숫자가 같아야 교차검증이 된다.
   const total: Record<string, number> = {};
   for (const b of buckets) {
     total[b] =
-      (bankDirect[b] ?? 0) + (cardOther[b] ?? 0) + (naverpay[b] ?? 0) + (coupang[b] ?? 0) + (cardStatement[b] ?? 0);
+      (bankDirect[b] ?? 0) + (cardOther[b] ?? 0) + (naverpay[b] ?? 0) + (coupang[b] ?? 0) +
+      (cardStatement[b] ?? 0) + (unclassified[b] ?? 0) + (misang[b] ?? 0);
   }
 
   const rows: ExpenseRow[] = [
@@ -245,10 +251,17 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
     },
     {
       key: 'unclassified',
-      label: '미분류 (참고)',
-      kind: 'note',
+      label: '미분류 지출',
+      kind: 'source',
       amounts: unclassified,
-      hint: '아직 계정이 없는 은행 출금이에요. 합계에 안 들어가니 이 금액이 크면 지출 총합이 실제보다 작아요. (수집분 미분류는 소스 줄에 이미 포함)',
+      hint: '아직 계정이 없는 은행 출금이에요. 관리손익과 같은 규칙으로 지출에 포함해요 — 분류를 마치면 이 줄이 은행 직접지출 등으로 옮겨가요.',
+    },
+    {
+      key: 'misang',
+      label: '미상 (용도 불명)',
+      kind: 'source',
+      amounts: misang,
+      hint: "용도를 아직 판단하지 못해 '미상'으로 보류한 지출이에요. 이익이 부풀려 보이지 않게 지출에 포함해요(관리손익과 동일).",
     },
     ...(Object.keys(collectedNonExpense).length > 0
       ? [
