@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   LineChart,
   Line,
@@ -52,6 +52,11 @@ const CAT = [
 const CAT_OTHER = 'var(--chart-cat-other)';
 const CAT_SURFACE = 'var(--chart-surface)';
 const CAT_MAX = 8; // 8색까지, 초과 카테고리는 '기타'로 접음
+
+// 지표 페이지 차트 순서 — 헤더 그립을 드래그해서 바꾸면 이 브라우저에 저장(계정과 무관)
+const DEFAULT_CHART_ORDER = ['bank', 'revenue', 'ebit', 'capex', 'ratio', 'expense', 'cost', 'menu'] as const;
+type ChartId = (typeof DEFAULT_CHART_ORDER)[number];
+const CHART_ORDER_KEY = 'finance-metrics-chart-order-v1';
 
 const axisTick = { fontSize: 11, fill: AXIS };
 // x축 각 지점마다 상시 노출하는 값 라벨 스타일
@@ -130,6 +135,34 @@ export default function Dashboard({
   const { brand, store } = seg;
   // 좌측 연·월 사이드바(MonthShell)와 동기 — 고른 달의 요약 타일·구성비를 비춘다. 셸 밖(구 화면)이면 null → 최근 달.
   const ctx = useMonthCtx();
+
+  // 차트 순서 — 헤더 그립을 드래그해서 바꾸고 이 브라우저에 저장(계정과 무관, localStorage)
+  const [order, setOrder] = useState<ChartId[]>([...DEFAULT_CHART_ORDER]);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(CHART_ORDER_KEY) ?? 'null') as ChartId[] | null;
+      if (!saved) return;
+      const known = saved.filter((id) => (DEFAULT_CHART_ORDER as readonly string[]).includes(id));
+      const missing = DEFAULT_CHART_ORDER.filter((id) => !known.includes(id));
+      setOrder([...known, ...missing]);
+    } catch {
+      /* localStorage 접근 불가(프라이빗 모드 등) — 기본 순서로 진행 */
+    }
+  }, []);
+  const reorderChart = (draggedId: string, targetId: string) => {
+    if (draggedId === targetId || !(DEFAULT_CHART_ORDER as readonly string[]).includes(draggedId)) return;
+    setOrder((prev) => {
+      if (!prev.includes(targetId as ChartId)) return prev;
+      const next = prev.filter((x) => x !== draggedId);
+      next.splice(next.indexOf(targetId as ChartId), 0, draggedId as ChartId);
+      try {
+        localStorage.setItem(CHART_ORDER_KEY, JSON.stringify(next));
+      } catch {
+        /* 저장 실패는 무시 — 이번 세션 순서만 적용 */
+      }
+      return next;
+    });
+  };
 
   // 통장 입출금·잔액 월별 시계열 — 브랜드 필터만 적용(통장은 브랜드 단위, 가든 지점 구분 없음).
   // 선두의 전부-0 달은 잘라 실데이터 시작부터 그린다.
@@ -304,6 +337,208 @@ export default function Dashboard({
   const prevExpense = prev ? prev.cogs + prev.sga : null;
   const unitLabel = unit === 'month' ? (isPast ? `${focusP}` : '이번 달') : '이번 주';
 
+  // 차트별 노드 — order 배열 순서대로 렌더링(드래그로 순서 변경). 조건부로 안 그리는 차트는 키 자체를 비움.
+  const chartNodes: Partial<Record<ChartId, React.ReactNode>> = {};
+  if (unit === 'month' && bankData.length > 0) {
+    chartNodes.bank = (
+      <ChartCard
+        key="bank"
+        id="bank"
+        onReorder={reorderChart}
+        title="통장 입출금·잔액"
+        subtitle={`월별 입금·출금(막대)과 월말 잔액(선) · 분류 무관 통장 기준${
+          brand === 'garden' && store !== 'all' ? ' · 통장은 가든 공용(지점 구분 없음)' : ''
+        }`}
+      >
+        <ResponsiveContainer width="100%" height={280}>
+          <ComposedChart data={bankData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+            <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+            <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={52} />
+            <Tooltip content={<ChartTooltip fmt={won} />} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            {/* 극성 색 — 입금=초록(양수 숫자색과 통일), 출금=빨강. 카테고리 팔레트가 아닌 의미색 */}
+            <Bar dataKey="입금" fill="hsl(var(--number-colored))" maxBarSize={18} />
+            <Bar dataKey="출금" fill="hsl(var(--destructive))" maxBarSize={18} />
+            <Line type="monotone" dataKey="월말 잔액" stroke={LINE} strokeWidth={2} dot={{ r: 2, fill: LINE }}>
+              {/* 라벨이 잔액 선과 겹치지 않게 선 위 30px — 경사 구간에서도 선이 라벨을 안 지나가게 */}
+              <LabelList dataKey="월말 잔액" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
+            </Line>
+          </ComposedChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    );
+  }
+
+  chartNodes.revenue = (
+    <ChartCard key="revenue" id="revenue" onReorder={reorderChart} title="매출 추이" subtitle="점선=평균">
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+          <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
+          <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
+          <ReferenceLine y={avgRev} stroke={REF} strokeDasharray="4 4" />
+          {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
+          <Line type="monotone" dataKey="매출" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
+            <LabelList dataKey="매출" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
+          </Line>
+        </LineChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  );
+
+  chartNodes.ebit = (
+    <ChartCard key="ebit" id="ebit" onReorder={reorderChart} title="영업이익 추이" subtitle="EBIT · 당기순이익">
+      <ResponsiveContainer width="100%" height={260}>
+        <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 40, left: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+          <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
+          <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
+          <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} />
+          <ReferenceLine y={0} stroke={REF} />
+          {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
+          <Line type="monotone" dataKey="EBIT" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
+            <LabelList dataKey="EBIT" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
+          </Line>
+          <Line type="monotone" dataKey="순이익" stroke={LINE2} strokeWidth={1.5} dot={{ r: 2, fill: LINE2 }}>
+            <LabelList dataKey="순이익" position="bottom" offset={30} formatter={wonLabel} style={pointLabel} />
+          </Line>
+        </LineChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  );
+
+  if (unit === 'month' && hasCapex) {
+    chartNodes.capex = (
+      <ChartCard
+        key="capex"
+        id="capex"
+        onReorder={reorderChart}
+        title="감가상각 반영 영업이익"
+        subtitle="자본적지출을 5년 정액 상각해 뺀 실질 영업이익 · 위 EBIT와 비교"
+      >
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={depData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+            <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+            <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
+            <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
+            <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} />
+            <ReferenceLine y={0} stroke={REF} />
+            <Line type="monotone" dataKey="영업이익" stroke={LINE2} strokeWidth={1.5} strokeDasharray="4 3" dot={{ r: 2, fill: LINE2 }} />
+            <Line type="monotone" dataKey="감가상각 반영" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
+              <LabelList dataKey="감가상각 반영" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
+            </Line>
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    );
+  }
+
+  chartNodes.ratio = (
+    <ChartCard key="ratio" id="ratio" onReorder={reorderChart} title="손익 추이 %" subtitle="영업이익률 = EBIT ÷ 매출">
+      <ResponsiveContainer width="100%" height={240}>
+        <LineChart data={ratioData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+          <YAxis tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={AXIS} width={44} />
+          <Tooltip content={<ChartTooltip fmt={(v: number) => `${v}%`} />} />
+          <ReferenceLine y={0} stroke={REF} />
+          <Line type="monotone" dataKey="손익률" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }} connectNulls>
+            <LabelList dataKey="손익률" position="top" offset={30} formatter={pctLabel} style={pointLabel} />
+          </Line>
+        </LineChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  );
+
+  chartNodes.expense = (
+    <ChartCard
+      key="expense"
+      id="expense"
+      onReorder={reorderChart}
+      title="지출 구분"
+      subtitle={`월별 카테고리 지출(누적) · 오른쪽은 ${breakdownLabel} 구성비`}
+    >
+      <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="min-w-0 flex-1">
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={barData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+              <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+              <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
+              <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} share />} />
+              {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
+              {barKeys.map((k, i) => (
+                <Bar key={k} dataKey={k} stackId="a" fill={colorOf(k, i)} stroke={CAT_SURFACE} strokeWidth={1}>
+                  {i === barKeys.length - 1 && (
+                    <LabelList dataKey="총지출" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
+                  )}
+                </Bar>
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="w-full shrink-0 md:w-[230px]">
+          <ul className="flex flex-col gap-1.5">
+            {breakdown.map((b) => (
+              <li key={b.name} className="flex items-center gap-2 text-[11px]">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{ background: b.color }} aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-foreground" title={b.name}>{b.name}</span>
+                <span className="tabular shrink-0 text-[11px] text-muted-foreground">{won(b.value)}</span>
+                <span className="tabular w-[46px] shrink-0 text-right font-medium text-foreground">{b.pct.toFixed(1)}%</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </ChartCard>
+  );
+
+  chartNodes.cost = (
+    <ChartCard key="cost" id="cost" onReorder={reorderChart} title="재료비 %" subtitle="원가율 = 재료비 ÷ 매출 · 카페 벤치마크 25~37%">
+      <ResponsiveContainer width="100%" height={240}>
+        <LineChart data={costData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+          <YAxis tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={AXIS} width={44} />
+          <Tooltip content={<ChartTooltip fmt={(v: number) => `${v}%`} />} />
+          <ReferenceLine y={37} stroke={REF} strokeDasharray="4 4" />
+          <Line type="monotone" dataKey="재료비율" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }} connectNulls>
+            <LabelList dataKey="재료비율" position="top" offset={30} formatter={pctLabel} style={pointLabel} />
+          </Line>
+        </LineChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  );
+
+  if (unit === 'month' && brand === 'staffmeal' && menuQtyData.length > 0) {
+    chartNodes.menu = (
+      <ChartCard key="menu" id="menu" onReorder={reorderChart} title="메뉴 판매량 추이" subtitle="Newbie · Staff · Boss — 매장/포장 판매 수량(개)">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {MENU_TIERS.map((tier) => (
+            <div key={tier}>
+              <div className="mb-2 px-1 text-[12px] text-foreground">{tier}</div>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={menuQtyData} margin={{ top: 30, right: 8, bottom: 4, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+                  <XAxis dataKey="p" tick={{ fontSize: 10, fill: AXIS }} stroke={AXIS} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 10, fill: AXIS }} stroke={AXIS} width={30} />
+                  <Tooltip content={<ChartTooltip fmt={(v: number) => `${Number(v).toLocaleString()}개`} />} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  <Line type="monotone" dataKey={`${tier}-매장`} name="매장" stroke={LINE} strokeWidth={1.5} dot={{ r: 1.5, fill: LINE }} connectNulls />
+                  <Line type="monotone" dataKey={`${tier}-포장`} name="포장" stroke={LINE2} strokeWidth={1.5} dot={{ r: 1.5, fill: LINE2 }} connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ))}
+        </div>
+      </ChartCard>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-10">
       {isPast && (
@@ -327,175 +562,9 @@ export default function Dashboard({
       )}
 
       <div className="divide-y divide-border">
-      {/* 1) 통장 입출금·잔액 — 분류와 무관한 통장 자체의 현금 흐름(대표 지시로 첫 차트, 2026-08-04) */}
-      {unit === 'month' && bankData.length > 0 && (
-        <ChartCard
-          title="통장 입출금·잔액"
-          subtitle={`월별 입금·출금(막대)과 월말 잔액(선) · 분류 무관 통장 기준${
-            brand === 'garden' && store !== 'all' ? ' · 통장은 가든 공용(지점 구분 없음)' : ''
-          }`}
-        >
-          <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={bankData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-              <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
-              <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={52} />
-              <Tooltip content={<ChartTooltip fmt={won} />} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              {/* 극성 색 — 입금=초록(양수 숫자색과 통일), 출금=빨강. 카테고리 팔레트가 아닌 의미색 */}
-              <Bar dataKey="입금" fill="hsl(var(--number-colored))" maxBarSize={18} />
-              <Bar dataKey="출금" fill="hsl(var(--destructive))" maxBarSize={18} />
-              <Line type="monotone" dataKey="월말 잔액" stroke={LINE} strokeWidth={2} dot={{ r: 2, fill: LINE }}>
-                {/* 라벨이 잔액 선과 겹치지 않게 선 위 30px — 경사 구간에서도 선이 라벨을 안 지나가게 */}
-                <LabelList dataKey="월말 잔액" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
-              </Line>
-            </ComposedChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      )}
-
-      <ChartCard title="매출 추이" subtitle="점선=평균">
-        <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-            <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
-            <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
-            <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
-            <ReferenceLine y={avgRev} stroke={REF} strokeDasharray="4 4" />
-            {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
-            <Line type="monotone" dataKey="매출" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
-              <LabelList dataKey="매출" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
-            </Line>
-          </LineChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
-      <ChartCard title="영업이익 추이" subtitle="EBIT · 당기순이익">
-        <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 40, left: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-            <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
-            <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
-            <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
-            <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} />
-            <ReferenceLine y={0} stroke={REF} />
-            {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
-            <Line type="monotone" dataKey="EBIT" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
-              <LabelList dataKey="EBIT" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
-            </Line>
-            <Line type="monotone" dataKey="순이익" stroke={LINE2} strokeWidth={1.5} dot={{ r: 2, fill: LINE2 }}>
-              <LabelList dataKey="순이익" position="bottom" offset={30} formatter={wonLabel} style={pointLabel} />
-            </Line>
-          </LineChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
-      {unit === 'month' && hasCapex && (
-        <ChartCard title="감가상각 반영 영업이익" subtitle="자본적지출을 5년 정액 상각해 뺀 실질 영업이익 · 위 EBIT와 비교">
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={depData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-              <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
-              <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
-              <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
-              <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} />
-              <ReferenceLine y={0} stroke={REF} />
-              <Line type="monotone" dataKey="영업이익" stroke={LINE2} strokeWidth={1.5} strokeDasharray="4 3" dot={{ r: 2, fill: LINE2 }} />
-              <Line type="monotone" dataKey="감가상각 반영" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
-                <LabelList dataKey="감가상각 반영" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
-              </Line>
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      )}
-
-      <ChartCard title="손익 추이 %" subtitle="영업이익률 = EBIT ÷ 매출">
-        <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={ratioData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-            <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
-            <YAxis tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={AXIS} width={44} />
-            <Tooltip content={<ChartTooltip fmt={(v: number) => `${v}%`} />} />
-            <ReferenceLine y={0} stroke={REF} />
-            <Line type="monotone" dataKey="손익률" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }} connectNulls>
-              <LabelList dataKey="손익률" position="top" offset={30} formatter={pctLabel} style={pointLabel} />
-            </Line>
-          </LineChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
-      <ChartCard title="지출 구분" subtitle={`월별 카테고리 지출(누적) · 오른쪽은 ${breakdownLabel} 구성비`}>
-        <div className="flex flex-col gap-4 md:flex-row md:items-center">
-          <div className="min-w-0 flex-1">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={barData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-                <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
-                <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
-                <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} share />} />
-                {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
-                {barKeys.map((k, i) => (
-                  <Bar key={k} dataKey={k} stackId="a" fill={colorOf(k, i)} stroke={CAT_SURFACE} strokeWidth={1}>
-                    {i === barKeys.length - 1 && (
-                      <LabelList dataKey="총지출" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
-                    )}
-                  </Bar>
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="w-full shrink-0 md:w-[230px]">
-            <ul className="flex flex-col gap-1.5">
-              {breakdown.map((b) => (
-                <li key={b.name} className="flex items-center gap-2 text-[11px]">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{ background: b.color }} aria-hidden />
-                  <span className="min-w-0 flex-1 truncate text-foreground" title={b.name}>{b.name}</span>
-                  <span className="tabular shrink-0 text-[11px] text-muted-foreground">{won(b.value)}</span>
-                  <span className="tabular w-[46px] shrink-0 text-right font-medium text-foreground">{b.pct.toFixed(1)}%</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </ChartCard>
-
-      <ChartCard title="재료비 %" subtitle="원가율 = 재료비 ÷ 매출 · 카페 벤치마크 25~37%">
-        <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={costData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-            <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
-            <YAxis tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={AXIS} width={44} />
-            <Tooltip content={<ChartTooltip fmt={(v: number) => `${v}%`} />} />
-            <ReferenceLine y={37} stroke={REF} strokeDasharray="4 4" />
-            <Line type="monotone" dataKey="재료비율" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }} connectNulls>
-              <LabelList dataKey="재료비율" position="top" offset={30} formatter={pctLabel} style={pointLabel} />
-            </Line>
-          </LineChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
-      {unit === 'month' && brand === 'staffmeal' && menuQtyData.length > 0 && (
-        <ChartCard title="메뉴 판매량 추이" subtitle="Newbie · Staff · Boss — 매장/포장 판매 수량(개)">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {MENU_TIERS.map((tier) => (
-              <div key={tier}>
-                <div className="mb-2 px-1 text-[12px] text-foreground">{tier}</div>
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={menuQtyData} margin={{ top: 30, right: 8, bottom: 4, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-                    <XAxis dataKey="p" tick={{ fontSize: 10, fill: AXIS }} stroke={AXIS} interval="preserveStartEnd" />
-                    <YAxis tick={{ fontSize: 10, fill: AXIS }} stroke={AXIS} width={30} />
-                    <Tooltip content={<ChartTooltip fmt={(v: number) => `${Number(v).toLocaleString()}개`} />} />
-                    <Legend wrapperStyle={{ fontSize: 10 }} />
-                    <Line type="monotone" dataKey={`${tier}-매장`} name="매장" stroke={LINE} strokeWidth={1.5} dot={{ r: 1.5, fill: LINE }} connectNulls />
-                    <Line type="monotone" dataKey={`${tier}-포장`} name="포장" stroke={LINE2} strokeWidth={1.5} dot={{ r: 1.5, fill: LINE2 }} connectNulls />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            ))}
-          </div>
-        </ChartCard>
-      )}
+        {/* 1) 통장 입출금·잔액 — 분류와 무관한 통장 자체의 현금 흐름(대표 지시로 첫 차트, 2026-08-04).
+            이제 차트 순서는 그립(⠿)을 드래그해 바꿀 수 있어 order 배열 순서대로 렌더링한다. */}
+        {order.map((id) => chartNodes[id] ?? null)}
       </div>
 
       <p className="m-0 text-[11px] text-muted-foreground">
@@ -525,14 +594,55 @@ function Stat({ label, value, delta }: { label: string; value: string; delta: st
   );
 }
 
-function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function ChartCard({
+  id,
+  title,
+  subtitle,
+  children,
+  onReorder,
+}: {
+  id: string;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  // 그립(⠿) 드래그 → 카드에 드롭 시 (드래그한 차트 id, 이 차트 id) 순서로 호출
+  onReorder: (draggedId: string, targetId: string) => void;
+}) {
   const [open, setOpen] = useState(true);
+  const [dragOver, setDragOver] = useState(false);
   return (
-    <div className="pb-[54px] pt-[54px] first:pt-0 last:pb-0">
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      }}
+      onDragEnter={() => setDragOver(true)}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const draggedId = e.dataTransfer.getData('text/plain');
+        if (draggedId) onReorder(draggedId, id);
+      }}
+      className={`pb-[54px] pt-[54px] first:pt-0 last:pb-0 transition-colors ${dragOver ? 'bg-muted/30' : ''}`}
+    >
       <div className="flex items-start justify-between gap-3 px-1.5 pb-3">
-        <div>
-          <h3 className="m-0 text-[15px] text-foreground">{title}</h3>
-          {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}
+        <div className="flex items-start gap-2">
+          <span
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', id);
+            }}
+            title="드래그해서 차트 순서 바꾸기"
+            className="mt-0.5 shrink-0 cursor-grab select-none text-[13px] leading-none tracking-tighter text-muted-foreground/50 hover:text-muted-foreground active:cursor-grabbing"
+          >
+            ⠿
+          </span>
+          <div>
+            <h3 className="m-0 text-[15px] text-foreground">{title}</h3>
+            {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}
+          </div>
         </div>
         <button
           type="button"
