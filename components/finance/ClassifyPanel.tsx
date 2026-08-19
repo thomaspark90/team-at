@@ -96,12 +96,17 @@ export default function ClassifyPanel({
   const ruleFor = (t: TxRow) => (t.normalized_key ? ruleMap.get(`${t.brand}|${t.normalized_key}`) : undefined);
   const splitRuleMap = new Map(splitRules.map((r) => [`${r.brand}|${r.normalized_key}`, r]));
   const splitRuleFor = (t: TxRow) => (t.normalized_key ? splitRuleMap.get(`${t.brand}|${t.normalized_key}`) : undefined);
-  // 지점 미지정 보완 — 학습된 가맹점→지점 규칙, 없으면 가맹점명 휴리스틱('양재'/'판교' 문자열)으로 제안.
+  // 지점 미지정 보완 — 학습된 가맹점→지점 규칙, 없으면 memo/channel(쿠팡 배송지 요약 포함) 휴리스틱('양재'/'판교' 문자열)으로 제안.
   // 둘 다 자동 확정이 아니라 '제안' 표시 → 한 클릭으로 사람이 확인해야 지정된다.
   const storeRuleMap = new Map(storeRules.map((r) => [r.normalized_key, r.store as StoreCode]));
   const storeSugFor = (t: TxRow): StoreCode | undefined => {
     if (t.brand !== 'garden' || t.store) return undefined;
-    return storeRuleMap.get(t.normalized_key) ?? guessStoreFromMemo(t.memo) ?? undefined;
+    return (
+      storeRuleMap.get(t.normalized_key) ??
+      guessStoreFromMemo(t.memo) ??
+      guessStoreFromMemo(t.channel ?? '') ??
+      undefined
+    );
   };
   // 확정 잠금은 3단위(ym, brand, store) — 한 단위 확정이 다른 단위 분류를 막지 않는다.
   // 가든의 지점 미지정(store null) 행은 두 지점 모두 확정된 달에만 잠근다(확정 시 미지정 0건이 강제되므로 사후 유입분 보호용).
@@ -248,7 +253,6 @@ export default function ClassifyPanel({
   // 계정을 이름으로 감지(유형 무관), 기존에 미상으로 분류한 건들도 자동 포함된다.
   const misangCat = cats.find((c) => c.name.includes('미상'));
   const [misangOnly, setMisangOnly] = useState(false);
-  const misangCount = misangCat ? rows.filter((r) => r.category_id === misangCat.id).length : 0;
 
   const matchesCat = (r: TxRow): boolean => {
     if (catFilter.type) {
@@ -270,7 +274,9 @@ export default function ClassifyPanel({
   const unitMatches = (r: TxRow) =>
     !fixedUnit ||
     (r.brand === fixedUnit.brand && (fixedUnit.store == null || r.store === fixedUnit.store || r.store == null));
-  const filtered = rows.filter(
+  // 미상 필터를 뺀 나머지 필터 — 미상 버튼의 건수 표기가 실제 클릭 결과와 항상 일치하도록
+  // filtered와 같은 기준(단위·월·은행·출처·브랜드·지점·미분류·검색·카테고리)을 공유한다.
+  const filteredExceptMisang = rows.filter(
     (r) =>
       unitMatches(r) &&
       (filterYm === 'all' || r.tx_at.slice(0, 7) === filterYm) &&
@@ -279,10 +285,16 @@ export default function ClassifyPanel({
       // 브랜드 필터 — 실제 brand 컬럼 기준(전 소스). 가든이면 지점(store) 하위 필터까지. 단위 고정 시 생략.
       (!!fixedUnit || brandFilter === 'all' || r.brand === brandFilter) &&
       (!!fixedUnit || (brandFilter !== 'garden' && lockedBrand !== 'garden') || storeMatches(r)) &&
-      (!unclOnly || r.category_id == null || keepVisible.current.has(r.id)) &&
-      (!misangOnly || (misangCat != null && r.category_id === misangCat.id)) &&
+      // '미분류만'은 사이드바 배지(computeUnclassifiedByMonth)와 같은 정의를 쓴다 — 카테고리
+      // 미지정뿐 아니라 가든의 '지점 미지정'(카테고리는 있어도 store가 없는 건)도 남겨야
+      // 배지 숫자와 이 필터를 켰을 때 보이는 건수가 일치한다(2026-08-17 사이드바 "1" ↔ 미분류만 0건 불일치).
+      (!unclOnly || r.category_id == null || (r.brand === 'garden' && !r.store) || keepVisible.current.has(r.id)) &&
       (!q || r.memo.toLowerCase().includes(q) || r.normalized_key.toLowerCase().includes(q) || (r.channel ?? '').toLowerCase().includes(q)) &&
       matchesCat(r)
+  );
+  const misangCount = misangCat ? filteredExceptMisang.filter((r) => r.category_id === misangCat.id).length : 0;
+  const filtered = filteredExceptMisang.filter(
+    (r) => !misangOnly || (misangCat != null && r.category_id === misangCat.id)
   );
   const classifiedCount = filtered.filter((r) => r.category_id != null).length;
   const progress = filtered.length ? Math.round((classifiedCount / filtered.length) * 100) : 0;

@@ -6,6 +6,7 @@ import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
 import { fetchExistingHashes } from '@/lib/finance/dedup';
 import { archiveOriginal } from '@/lib/finance/original-archive';
+import { fetchStoreRuleMap } from '@/lib/finance/storeRules';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -106,11 +107,16 @@ export async function POST(req: Request) {
     }
     uploadId = up.id;
 
+    // 학습된 지점 규칙(가든 공용 카드라 지점을 모름 — 가맹점명으로 채워본다, 2026-08-17)
+    const cardKeys = Array.from(new Set(fresh.map((t) => t.normalizedKey)));
+    const keyToStore = brand === 'garden' ? await fetchStoreRuleMap(supabase, cardKeys) : new Map();
+
     const rows = fresh.map((t) => ({
       bank: 'shinhan',
       source: 'card',
       card_issuer: '신한',
       brand,
+      store: keyToStore.get(t.normalizedKey) ?? null,
       is_installment: !!t.isInstallment,
       tx_at: t.txAt,
       ym: t.ym,

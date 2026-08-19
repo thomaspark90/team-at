@@ -97,6 +97,10 @@ export default async function ClassifyPage({
     .select('normalized_key,brand,allocations');
   const splitRules = (splitRuleRows as SplitRule[] | null) ?? [];
 
+  // 학습된 지점 규칙(가맹점→지점) — 지점 미지정 행에 '제안'으로 원클릭 지정 가능하게(2026-08-17)
+  const { data: storeRuleRows } = await supabase.schema('finance').from('store_rules').select('normalized_key,store');
+  const storeRules = (storeRuleRows as { normalized_key: string; store: string }[] | null) ?? [];
+
   // 설정에서 '재무로'로 돌아올 때 지금 이 분류 화면(단위·월·필터 그대로)으로 오도록 현재 URL을 from으로 넘긴다.
   const backQs = new URLSearchParams();
   for (const [k, v] of Object.entries(searchParams)) if (typeof v === 'string' && v) backQs.set(k, v);
@@ -131,6 +135,7 @@ export default async function ClassifyPage({
             confirmed={confirmed}
             rules={rules}
             splitRules={splitRules}
+            storeRules={storeRules}
             lockedBrand={brandScope}
             fixedUnit={unit ? { brand: unit.brand, store: unit.store } : null}
             initialFilter={{

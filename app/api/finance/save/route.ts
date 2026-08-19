@@ -8,6 +8,7 @@ import { fetchExistingHashes } from '@/lib/finance/dedup';
 import { lockedYms } from '@/lib/finance/monthLock';
 import type { BankSource, Brand } from '@/lib/finance/types';
 import { archiveOriginal } from '@/lib/finance/original-archive';
+import { fetchStoreRuleMap } from '@/lib/finance/storeRules';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -97,6 +98,8 @@ export async function POST(req: Request) {
       keyToCat.set(r.normalized_key, r.category_id)
     );
   }
+  // 학습된 지점 규칙(가든 공용 계좌라 은행 업로드는 지점을 모름 — 가맹점명으로 채워본다, 2026-08-17)
+  const keyToStore = brand === 'garden' ? await fetchStoreRuleMap(supabase, keys) : new Map();
 
   // 업로드 기록
   const dates = fresh.map((t) => t.txAt).sort();
@@ -123,6 +126,7 @@ export async function POST(req: Request) {
     return {
       bank: t.bank,
       brand,
+      store: keyToStore.get(t.normalizedKey) ?? null,
       tx_at: t.txAt,
       ym: t.ym,
       channel: t.channel,

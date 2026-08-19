@@ -4,7 +4,7 @@ import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveRoleStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
 import { buildPnl, benchmark, prevYm, CHANNEL_FEE_RATE, type PnlCat, type PnlTx, type PnlPosRow, type PnlInventory, type Signal } from '@/lib/finance/pnl';
-import { BRANDS, storeLabel, type Brand, type Store } from '@/lib/finance/types';
+import { UNITS, unitOf, storeLabel, type Brand, type Store } from '@/lib/finance/types';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import MonthShell from '@/components/finance/MonthShell';
@@ -23,15 +23,15 @@ const SIG: Record<Signal, { cls: string; label: string }> = {
   bad: { cls: 'text-destructive', label: '높음' },
 };
 
-// 브랜드 세그먼트 — 기본 가든(기존 숫자와 동일), 'all' = 두 사업 브랜드 합산 보기.
-// 개인(personal)은 손익 제외라 관리손익 세그먼트에 없다(BRANDS = 사업 브랜드만).
-type BrandSeg = Exclude<Brand, 'personal'> | 'all';
-const SEGMENTS: { id: BrandSeg; label: string }[] = [...BRANDS, { id: 'all', label: '전체' }];
+// 브랜드 세그먼트 — 상단 매장 필(FinanceNav)이 정하는 단위. 개인(personal)은 손익 제외라 없다.
+type BrandSeg = Exclude<Brand, 'personal'>;
+const unitLabelFor = (seg: BrandSeg, store: Store | null) =>
+  UNITS.find((u) => u.brand === seg && u.store === store)?.label ?? seg;
 
 export default async function PnlPage({
   searchParams,
 }: {
-  searchParams: { ym?: string; brand?: string; store?: string };
+  searchParams: { ym?: string; unit?: string };
 }) {
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
@@ -39,13 +39,10 @@ export default async function PnlPage({
   const role = await resolveRoleStamped(supabase, user);
   if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
 
-  const seg: BrandSeg =
-    searchParams.brand === 'staffmeal' ? 'staffmeal' : searchParams.brand === 'all' ? 'all' : 'garden';
+  const unit = unitOf(searchParams.unit) ?? UNITS[0];
+  const seg = unit.brand as BrandSeg;
   // 지점 필터 — 가든에서만 의미(판교=페이히어, 양재천=토스). 지점 손익은 재고·수수료 안분 근사치.
-  const store: Store | null =
-    seg === 'garden' && (searchParams.store === 'pangyo' || searchParams.store === 'yangjae')
-      ? searchParams.store
-      : null;
+  const store: Store | null = unit.store;
 
   // POS 매출과 사이드바 배지가 서로 독립적이라 병렬로
   const [posRaw, initialTodos] = await Promise.all([
@@ -54,15 +51,12 @@ export default async function PnlPage({
       .from('pos_sales')
       .select('ym,category,qty,gross,vat,supply,brand,store')
       .then((r) => unwrap(r, 'POS 매출')),
-    // 좌측 연·월 사이드바 배지 — 선택 브랜드 몫('전체'는 전 브랜드 합산)
-    computeBoardTodos(supabase, seg !== 'all' ? seg : undefined).catch(() => undefined),
+    // 좌측 연·월 사이드바 배지 — 선택 매장 몫
+    computeBoardTodos(supabase, seg, store ?? undefined).catch(() => undefined),
   ]);
   const posRows = (posRaw as (PnlPosRow & { brand?: string; store?: string })[] | null) ?? [];
-  // 가든·판교(페이히어) POS는 손익 집계 제외 — 스탭밀 파일과 동일 데이터라 가든 회계와 무관
-  // (2026-08-17 대표 지시, DB 행은 보존). '전체' 세그먼트에서도 스탭밀과 이중계상되지 않게 뺀다.
-  const posAll = posRows.filter((p) => !((p.brand ?? 'garden') === 'garden' && p.store === 'pangyo'));
   // 구버전(마이그레이션 전) 행은 brand 컬럼이 없을 수 있음 → garden 취급
-  const pos = seg === 'all' ? posAll : posAll.filter((p) => (p.brand ?? 'garden') === seg);
+  const pos = posRows.filter((p) => (p.brand ?? 'garden') === seg);
   const yms = Array.from(new Set(pos.map((p) => p.ym))).sort((a, b) => b.localeCompare(a));
 
   return (
@@ -81,56 +75,18 @@ export default async function PnlPage({
         </p>
 
         {/* 좌측 연·월 사이드바 — 달 선택 시 ?ym= 내비게이션으로 서버가 그 달 손익을 다시 계산(2026-08-03) */}
-        <MonthShell brand={seg !== 'all' ? seg : undefined} initialTodos={initialTodos} navigate>
-        {/* 브랜드 세그먼트 */}
-        <div className="mb-10 flex flex-wrap items-center gap-3">
-          <div className="flex overflow-hidden rounded-md border border-border">
-            {SEGMENTS.map((s) => (
-              <Link
-                key={s.id}
-                href={`/finance/pnl?brand=${s.id}`}
-                aria-current={s.id === seg ? 'page' : undefined}
-                className={`px-3 py-1.5 text-[13px] transition-colors ${
-                  s.id === seg ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {s.label}
-              </Link>
-            ))}
-          </div>
-          {seg === 'garden' && (
-            // 가든 지점 세그먼트 — 지점 손익은 재고·수수료를 매출비율로 안분한 근사치
-            <div className="flex overflow-hidden rounded-md border border-border">
-              {[
-                { id: '', label: '전체 지점' },
-                { id: 'pangyo', label: '판교' },
-                { id: 'yangjae', label: '양재천' },
-              ].map((s) => (
-                <Link
-                  key={s.id || 'all'}
-                  href={`/finance/pnl?brand=garden${s.id ? `&store=${s.id}` : ''}`}
-                  aria-current={(store ?? '') === s.id ? 'page' : undefined}
-                  className={`px-3 py-1.5 text-[13px] transition-colors ${
-                    (store ?? '') === s.id ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {s.label}
-                </Link>
-              ))}
-            </div>
-          )}
-          {store && (
-            <span className="text-[11px] text-muted-foreground">
-              지점 손익은 근사치예요 — 기말재고·채널수수료는 지점 매출비율로 안분해요.
-            </span>
-          )}
-        </div>
+        <MonthShell brand={seg} initialTodos={initialTodos} navigate>
+        {store && (
+          <p className="mb-10 text-[11px] text-muted-foreground">
+            지점 손익은 근사치예요 — 기말재고·채널수수료는 지점 매출비율로 안분해요.
+          </p>
+        )}
 
         {yms.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-10 text-center">
             <div className="text-[32px]">🧾</div>
             <p className="m-0 text-[13px] text-muted-foreground">
-              먼저 {SEGMENTS.find((s) => s.id === seg)?.label} POS 매출리포트를 올려주세요.
+              먼저 {unitLabelFor(seg, store)} POS 매출리포트를 올려주세요.
             </p>
             <PnlUpload />
           </div>
@@ -176,11 +132,8 @@ async function PnlBody({
   const storeRatio = store && brandSupply > 0 ? storeSupply / brandSupply : store ? 0 : 1;
   const posView = store ? pos.filter((p) => (p.store ?? '') === store) : pos;
 
-  // 지출·재고·수수료도 브랜드로 필터 — '전체'는 합산, 지점 뷰는 store 까지
-  let txnsQ = supabase.schema('finance').from('transactions').select('id,category_id,amount_in,amount_out').eq('ym', selectedYm);
-  // '전체'는 사업 브랜드만 합산 — 개인(personal)은 손익 제외라 카테고리와 무관하게 뺀다.
-  if (seg !== 'all') txnsQ = txnsQ.eq('brand', seg);
-  else txnsQ = txnsQ.neq('brand', 'personal');
+  // 지출·재고·수수료도 브랜드로 필터, 지점 뷰는 store 까지
+  let txnsQ = supabase.schema('finance').from('transactions').select('id,category_id,amount_in,amount_out').eq('ym', selectedYm).eq('brand', seg);
   if (store) txnsQ = txnsQ.eq('store', store);
   // 지점 뷰에서 빠지는 '지점 미지정' 가든 지출 — 경고 표기용
   const unassignedQ = store
@@ -202,27 +155,15 @@ async function PnlBody({
   const txns = (unwrap(txnsRes, '거래') as (PnlTx & { id: number })[] | null) ?? [];
   const cats = (unwrap(catsRes, '계정과목') as PnlCat[] | null) ?? [];
   const invAll = (unwrap(invRes, '기말재고') as (PnlInventory & { brand?: string })[] | null) ?? [];
-  // 재고: 브랜드 필터, '전체'는 (ym,kind) 합산 — buildPnl 은 (ym,kind) 단위를 기대.
-  // 지점 뷰는 브랜드 재고를 이번 달 매출비율로 안분(근사치 — 지점별 실사는 안 함, 2026-07-28 확정).
-  const invBrand: PnlInventory[] =
-    seg === 'all'
-      ? Array.from(
-          invAll
-            .reduce((m, i) => {
-              const k = `${i.ym}|${i.kind}`;
-              const cur = m.get(k) ?? { ym: i.ym, kind: i.kind, amount: 0 };
-              cur.amount += i.amount;
-              return m.set(k, cur);
-            }, new Map<string, PnlInventory>())
-            .values(),
-        )
-      : invAll.filter((i) => (i.brand ?? 'garden') === seg);
+  // 재고: 브랜드 필터. 지점 뷰는 브랜드 재고를 이번 달 매출비율로 안분(근사치 — 지점별 실사는
+  // 안 함, 2026-07-28 확정). 입력은 항상 브랜드 단위(가든 전체) — 지점 뷰에서도 아래 입력란에 그대로 넣는다.
+  const invBrand: PnlInventory[] = invAll.filter((i) => (i.brand ?? 'garden') === seg);
   const inventory: PnlInventory[] = store
     ? invBrand.map((i) => ({ ...i, amount: Math.round(i.amount * storeRatio) }))
     : invBrand;
-  // 채널수수료 실제 입력값 — '전체'는 입력된 브랜드 합(모두 미입력이면 null → 추정), 지점 뷰는 매출비율 안분
+  // 채널수수료 실제 입력값, 지점 뷰는 매출비율 안분
   const feeRows = feeRes.error ? [] : ((feeRes.data as { amount: number; brand?: string }[] | null) ?? []);
-  const myFees = seg === 'all' ? feeRows : feeRows.filter((f) => (f.brand ?? 'garden') === seg);
+  const myFees = feeRows.filter((f) => (f.brand ?? 'garden') === seg);
   const feeSum = myFees.length > 0 ? myFees.reduce((s, f) => s + f.amount, 0) : null;
   const channelFee = feeSum != null ? (store ? Math.round(feeSum * storeRatio) : feeSum) : null;
 
@@ -257,17 +198,14 @@ async function PnlBody({
       );
     }
   }
-  let cardReconcile: { unsettledLump: number; settledWithdrawn: number; settledUsage: number } | null = null;
-  if (seg !== 'all') {
-    cardReconcile = { unsettledLump: 0, settledWithdrawn: 0, settledUsage: 0 };
-    for (const t of txnLumps) {
-      const amt = (t.amount_out || 0) - (t.amount_in || 0);
-      if (settledUsageById.has(t.id)) {
-        cardReconcile.settledWithdrawn += amt;
-        // 구버전 연결(합계 미기록)은 사용액=인출액으로 간주(차액 0) — 대사 불능을 차액으로 오표시하지 않게
-        cardReconcile.settledUsage += settledUsageById.get(t.id) ?? amt;
-      } else cardReconcile.unsettledLump += amt;
-    }
+  const cardReconcile = { unsettledLump: 0, settledWithdrawn: 0, settledUsage: 0 };
+  for (const t of txnLumps) {
+    const amt = (t.amount_out || 0) - (t.amount_in || 0);
+    if (settledUsageById.has(t.id)) {
+      cardReconcile.settledWithdrawn += amt;
+      // 구버전 연결(합계 미기록)은 사용액=인출액으로 간주(차액 0) — 대사 불능을 차액으로 오표시하지 않게
+      cardReconcile.settledUsage += settledUsageById.get(t.id) ?? amt;
+    } else cardReconcile.unsettledLump += amt;
   }
 
   // 쿠팡·네이버페이 통장 대체 출금 — 같은 원리(2026-08-17): 그 달 세부 수집(자동수집 행)이 있으면
@@ -297,13 +235,10 @@ async function PnlBody({
   const [coupangHasDetail, naverHasDetail] = needSubstCheck
     ? await Promise.all([hasDetail('coupang'), hasDetail('naverpay')])
     : [true, true];
-  const payLump =
-    seg !== 'all'
-      ? {
-          coupang: coupangHasDetail ? 0 : txnCoupangSubst,
-          naverpay: naverHasDetail ? 0 : txnNaverSubst,
-        }
-      : null;
+  const payLump = {
+    coupang: coupangHasDetail ? 0 : txnCoupangSubst,
+    naverpay: naverHasDetail ? 0 : txnNaverSubst,
+  };
 
   const unassignedOut = unassignedRows
     .filter(
@@ -317,6 +252,7 @@ async function PnlBody({
     )
     .reduce((s, r) => s + r.amount_out, 0);
 
+  const unitId = seg === 'staffmeal' ? 'staffmeal' : (store ?? 'yangjae');
   const p = buildPnl(selectedYm, { pos: posView, txns, cats, inventory, channelFee, cardReconcile, payLump });
   const foodSig = SIG[benchmark('food', p.metrics.foodCostRate)];
   const laborSig = SIG[benchmark('labor', p.metrics.laborRate)];
@@ -333,7 +269,7 @@ async function PnlBody({
           {yms.map((ym) => (
             <Link
               key={ym}
-              href={`/finance/pnl?ym=${ym}&brand=${seg}${store ? `&store=${store}` : ''}`}
+              href={`/finance/pnl?ym=${ym}&unit=${unitId}`}
               aria-current={ym === selectedYm ? 'page' : undefined}
               className={`rounded-md border px-3 py-1.5 text-[13px] transition-colors ${
                 ym === selectedYm
@@ -374,7 +310,7 @@ async function PnlBody({
             신한카드 이용내역을 올려 정산 연결하면 재료비·판관비로 분해돼요.
           </span>
           <Link
-            href={`/finance/upload/${seg === 'staffmeal' ? 'staffmeal' : 'yangjae'}#card`}
+            href={`/finance/upload/${unitId}#card`}
             className="whitespace-nowrap underline"
           >
             명세 올리고 연결하러 →
@@ -468,39 +404,33 @@ async function PnlBody({
           </p>
         </div>
 
-        {/* 우측: 기말재고 + 매출 구성 — 재고·수수료 입력은 브랜드 단위(전체·지점 탭에선 숨김) */}
+        {/* 우측: 기말재고 + 매출 구성 — 입력은 항상 브랜드(가든서비스 전체/스탭밀) 단위.
+            지점 필을 선택 중이어도 여기서 그대로 입력하면 가든서비스 전체 값이 바뀐다(지점별 입력 아님). */}
         <div id="pnl-inputs" className="flex flex-col gap-10">
-          {store ? (
-            <div className="rounded-md bg-muted/40 p-6 text-[13px] text-muted-foreground">
+          {store && (
+            <div className="rounded-md bg-muted/40 p-4 text-[13px] text-muted-foreground">
               지점 뷰의 재료비·수수료는 {storeLabel(store)} 매출비율({pct(storeRatio)})로 안분한 근사치예요.
-              기말재고·채널수수료 입력은 가든서비스 전체 탭에서 해요.
-            </div>
-          ) : seg !== 'all' ? (
-            <>
-              <InventoryInput
-                ym={selectedYm}
-                brand={seg}
-                initial={{
-                  식자재: p.cogs.식자재.기말입력 ? p.cogs.식자재.기말 : null,
-                  포장소모품: p.cogs.포장소모품.기말입력 ? p.cogs.포장소모품.기말 : null,
-                }}
-                prevMonth={{
-                  식자재: inventory.find((i) => i.ym === prevYm(selectedYm) && i.kind === '식자재')?.amount ?? null,
-                  포장소모품: inventory.find((i) => i.ym === prevYm(selectedYm) && i.kind === '포장소모품')?.amount ?? null,
-                }}
-              />
-              <ChannelFeeInput
-                ym={selectedYm}
-                brand={seg}
-                initial={p.channelFee.estimated ? null : p.channelFee.amount}
-                estimate={Math.round(p.sales.supply * CHANNEL_FEE_RATE)}
-              />
-            </>
-          ) : (
-            <div className="rounded-md bg-muted/40 p-6 text-[13px] text-muted-foreground">
-              기말재고·채널수수료는 브랜드별로 입력해요 — 가든서비스/스탭밀 탭에서 넣어주세요.
+              아래 입력은 가든서비스 전체 기준이에요.
             </div>
           )}
+          <InventoryInput
+            ym={selectedYm}
+            brand={seg}
+            initial={{
+              식자재: invBrand.find((i) => i.ym === selectedYm && i.kind === '식자재')?.amount ?? null,
+              포장소모품: invBrand.find((i) => i.ym === selectedYm && i.kind === '포장소모품')?.amount ?? null,
+            }}
+            prevMonth={{
+              식자재: invBrand.find((i) => i.ym === prevYm(selectedYm) && i.kind === '식자재')?.amount ?? null,
+              포장소모품: invBrand.find((i) => i.ym === prevYm(selectedYm) && i.kind === '포장소모품')?.amount ?? null,
+            }}
+          />
+          <ChannelFeeInput
+            ym={selectedYm}
+            brand={seg}
+            initial={store ? (myFees.length > 0 ? myFees.reduce((s, f) => s + f.amount, 0) : null) : (p.channelFee.estimated ? null : p.channelFee.amount)}
+            estimate={Math.round((store ? brandSupply : p.sales.supply) * CHANNEL_FEE_RATE)}
+          />
           <div className="rounded-md bg-muted/40 p-6">
             <h2 className="mb-3 text-[15px] text-foreground">매출 구성</h2>
             <table className="w-full border-collapse text-[13px]">

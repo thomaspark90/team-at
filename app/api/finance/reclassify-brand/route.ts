@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
 import { brandLabel, storeLabel } from '@/lib/finance/types';
+import { learnStoreRule } from '@/lib/finance/storeRules';
+import type { StoreCode } from '@/lib/finance/storeGuess';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -79,6 +81,11 @@ export async function POST(req: Request) {
         .select('id');
       if (error) return NextResponse.json({ error: `이동 실패: ${error.message}` }, { status: 500 });
       moved = data?.length ?? 0;
+      // 지점 학습 — 이 가맹점을 다음부터 자동으로 채우기 위해 기록(2026-08-17, 지점 미지정 보완)
+      if (brand === 'garden' && store) {
+        const keys = Array.from(new Set(ok.map((r) => r.normalized_key).filter(Boolean)));
+        for (const key of keys) await learnStoreRule(supabase, key, store as StoreCode, user.id);
+      }
     }
   } else {
     // 가맹점 전체 소급 — 선택 행들의 (정규화 키, 현재 브랜드) 그룹별로 과거 전체 이동.
@@ -124,6 +131,9 @@ export async function POST(req: Request) {
             { onConflict: 'normalized_key,brand', ignoreDuplicates: true },
           );
       }
+
+      // 지점 학습 — 이 가맹점을 다음부터 자동으로 채우기 위해 기록(2026-08-17, 지점 미지정 보완)
+      if (brand === 'garden' && store) await learnStoreRule(supabase, g.key, store as StoreCode, user.id);
     }
   }
 

@@ -8,6 +8,7 @@ import { dedupe } from '@/lib/finance/parse';
 import { fileToRows, rowsToTransactions, type ExcelMapping } from '@/lib/finance/excel';
 import { SLOT_KEYS, UPLOAD_SLOTS } from '@/lib/finance/uploadSlots';
 import { archiveOriginal } from '@/lib/finance/original-archive';
+import { fetchStoreRuleMap } from '@/lib/finance/storeRules';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -129,6 +130,8 @@ export async function POST(req: Request) {
       keyToCat.set(r.normalized_key, r.category_id)
     );
   }
+  // 학습된 지점 규칙(가든 공용 계좌·카드라 지점을 모름 — 가맹점명으로 채워본다, 2026-08-17)
+  const keyToStore = brand === 'garden' ? await fetchStoreRuleMap(supabase, keys) : new Map();
 
   // 업로드 기록
   const { data: up, error: upErr } = await supabase
@@ -163,6 +166,7 @@ export async function POST(req: Request) {
       bank: bankLabel,
       source,
       brand,
+      store: keyToStore.get(t.normalizedKey) ?? null,
       tx_at: t.txAt,
       ym: t.ym,
       channel: t.channel,

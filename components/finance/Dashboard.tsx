@@ -118,6 +118,7 @@ export default function Dashboard({
   posSales = [],
   bankCash = [],
   menuItems = [],
+  reportUnit,
 }: {
   txns: AggTx[];
   cats: AggCat[];
@@ -126,11 +127,14 @@ export default function Dashboard({
   bankCash?: { ym: string; brand: string; bank: string; inflow: number; outflow: number; balance: number }[];
   // 스탭밀 상품별 판매량(finance.pos_items) — 메뉴 판매량 추이 차트 전용
   menuItems?: { saleDate: string; category: string; product: string; qty: number }[];
+  // 상단 매장 필(FinanceNav ?unit=)이 정하는 브랜드+지점 — 이 화면 자체 토글은 없앴다(2026-08-19).
+  reportUnit: { brand: 'staffmeal' | 'garden'; store: 'pangyo' | 'yangjae' | null };
 }) {
   const [unit, setUnit] = useState<Unit>('month');
   const [netVat, setNetVat] = useState(true);
-  // 통합 단위 칩 하나로 브랜드+지점을 함께 고른다(회계 자료 화면과 동일). brand 없는 구 데이터는 garden 취급.
-  const [segId, setSegId] = useState<SegId>('all');
+  // 브랜드+지점은 상단 매장 필에서만 바뀐다 — 페이지가 서버에서 다시 그려지며 이 prop이 갱신된다.
+  const segId: SegId =
+    reportUnit.brand === 'staffmeal' ? 'staffmeal' : reportUnit.store === 'yangjae' ? 'garden-yangjae' : reportUnit.store === 'pangyo' ? 'garden-pangyo' : 'garden';
   const seg = SEGMENTS.find((s) => s.id === segId) ?? SEGMENTS[0];
   const { brand, store } = seg;
   // 좌측 연·월 사이드바(MonthShell)와 동기 — 고른 달의 요약 타일·구성비를 비춘다. 셸 밖(구 화면)이면 null → 최근 달.
@@ -219,22 +223,6 @@ export default function Dashboard({
 
   const toggle = (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="inline-flex flex-wrap gap-1 rounded-md border border-border p-1">
-        {SEGMENTS.map((s) => {
-          const on = segId === s.id;
-          return (
-            <button
-              key={s.id}
-              onClick={() => setSegId(s.id)}
-              className={`rounded-sm px-3 py-1 text-[13px] transition-colors ${
-                on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {s.label}
-            </button>
-          );
-        })}
-      </div>
       <div className="inline-flex gap-1 rounded-md border border-border p-1">
         {(['month', 'week'] as Unit[]).map((u) => {
           const on = unit === u;

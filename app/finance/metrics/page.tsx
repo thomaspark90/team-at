@@ -4,6 +4,7 @@ import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveRoleStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
 import type { AggTx, AggCat } from '@/lib/finance/aggregate';
+import { UNITS, unitOf } from '@/lib/finance/types';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import MonthShell from '@/components/finance/MonthShell';
@@ -15,13 +16,14 @@ const Dashboard = dynamic(() => import('@/components/finance/Dashboard'), {
 });
 
 // 지표 — 매출·이익·비율 추이 차트 (구 재무 대시보드). 대시보드는 업무 보드로 개편.
-export default async function MetricsPage() {
+export default async function MetricsPage({ searchParams }: { searchParams: { unit?: string } }) {
   const supabase = await createClient();
   const user = await getSessionUser(supabase);
   if (!user) redirect('/');
 
   const role = await resolveRoleStamped(supabase, user);
   if (!role) redirect('/finance'); // 멤버(admin/classifier/viewer)만 — viewer는 이름 없는 안전 뷰로
+  const unit = unitOf(searchParams.unit) ?? UNITS[0];
 
   // ⚠️ 전량 조회(페이지네이션) — limit 없이 한 번만 select 하면 PostgREST 응답이 프로젝트
   // Max Rows(Settings→API, 2026-08-09 기준 20000)에서 잘린다. POS 일별 행이 그 이상이면
@@ -65,10 +67,7 @@ export default async function MetricsPage() {
     let posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand,store', ['sale_date', 'brand', 'store', 'supply']);
     if (posRows.error) posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
     if (posRows.error) posRows = await fetchAll('pos_sales', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
-    // 가든·판교(페이히어) POS는 집계 제외 — 스탭밀 파일과 동일 데이터라 가든 회계와 무관(2026-08-17 대표 지시).
-    // store 컬럼 없는 폴백 경로에선 구분 불가라 그대로 두고, 정상 경로에서만 거른다.
     return ((posRows.data as { sale_date: string; supply: number; brand?: string | null; store?: string | null }[] | null) ?? [])
-      .filter((p) => !(p.brand === 'garden' && p.store === 'pangyo'))
       .map((p) => ({ saleDate: p.sale_date, supply: p.supply, brand: p.brand, store: p.store ?? null }));
   };
 
@@ -166,7 +165,14 @@ export default async function MetricsPage() {
         {/* 좌측 연·월 사이드바 — 회계 자료 화면과 동일한 셸. 지표는 모든 데이터가 이미 클라이언트에 있어
             서버 재조회가 필요 없다 → navigate=false(얕은 갱신). 배지 없음(initialTodos={{}}). */}
         <MonthShell navigate={false} initialTodos={{}}>
-          <Dashboard txns={(txns as AggTx[]) ?? []} cats={(cats as AggCat[]) ?? []} posSales={posSales} bankCash={bankCash} menuItems={menuItems} />
+          <Dashboard
+            txns={(txns as AggTx[]) ?? []}
+            cats={(cats as AggCat[]) ?? []}
+            posSales={posSales}
+            bankCash={bankCash}
+            menuItems={menuItems}
+            reportUnit={{ brand: unit.brand as 'staffmeal' | 'garden', store: unit.store }}
+          />
         </MonthShell>
       </div>
     </div>

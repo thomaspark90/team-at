@@ -5,6 +5,7 @@ import { hash } from '@/lib/finance/dedup';
 import { resolvePersonalCat, applyPersonalCategory } from '@/lib/finance/personal';
 import { resolveMisangCatId } from '@/lib/finance/misang';
 import { recordIngestSuccess } from '@/lib/ingest-health';
+import { fetchStoreRuleMap } from '@/lib/finance/storeRules';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -198,9 +199,17 @@ export async function POST(req: Request) {
     const { data: rules } = await supabase.from('rules').select('normalized_key,category_id,brand').in('normalized_key', keys.slice(i, i + 100));
     (rules ?? []).forEach((r: { normalized_key: string; category_id: number; brand: string }) => keyToCat.set(`${r.brand}|${r.normalized_key}`, r.category_id));
   }
+  // 학습된 지점 규칙 — 배송지가 지점까지 못 짚은 가든 건을 가맹점명으로 보완(2026-08-17).
+  // 브랜드가 명시 판정(_explicit_brand)된 건에만 적용 — 미매칭 건까지 덮으면 '미상' 파킹 취지가 무너진다.
+  const storeCandidateKeys = fresh.filter((m) => m._explicit_brand === 'garden' && !m.store).map((m) => m.normalized_key);
+  const keyToStore = await fetchStoreRuleMap(supabase, storeCandidateKeys);
   const now = new Date().toISOString();
   let autoClassified = 0;
   fresh.forEach((m) => {
+    if (m._explicit_brand === 'garden' && !m.store) {
+      const s = keyToStore.get(m.normalized_key);
+      if (s) m.store = s;
+    }
     if (!m._explicit_brand && misangCatId != null) {
       m.category_id = misangCatId;
       m.classified_at = now as never;

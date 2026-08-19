@@ -224,17 +224,22 @@ export async function computeBoardTodos(
 // ---------- 월별 미분류 건수 — 분류 화면 사이드바 배지용 ----------
 // 배지 의미를 화면 목적에 맞춘다(2026-08-03 대표 지시): 자료 입력=남은 업무 수,
 // 분류 화면=그 달의 미분류 '건수'(화면에서 실제로 처리할 개수와 일치).
+// 가든 지점 페이지(store 지정)는 미분류(category_id null)뿐 아니라 '지점 미지정'(store null,
+// 카테고리는 이미 있는 건 포함)도 함께 센다 — 카테고리만 채워지고 지점이 조용히 방치되는 사고
+// (2026-08-17 미트박스 건: category_id=재료비인데 store=null이라 어떤 배지에도 안 걸렸음)를 막기 위함.
 export async function computeUnclassifiedByMonth(
   supabase: SupabaseClient,
   brand?: string,
   store?: string
 ): Promise<Record<string, number>> {
   const { data, error } = await fetchAll<{ ym: string }>((a, b) => {
-    let s = supabase.schema('finance').from('transactions').select('ym').is('category_id', null);
-    if (brand) s = s.eq('brand', brand);
-    // 지점 페이지(예: 양재천) 배지는 그 지점 화면에서 실제로 보이는 행만 —
-    // 지점 지정된 다른 지점 거래는 제외, 지점 미지정(공용) 거래는 포함(ClassifyPanel의 storeMatches와 동일 기준).
-    if (store) s = s.or(`store.eq.${store},store.is.null`);
+    let s = supabase.schema('finance').from('transactions').select('ym');
+    if (store) {
+      s = s.eq('brand', 'garden').or(`store.is.null,and(store.eq.${store},category_id.is.null)`);
+    } else {
+      s = s.is('category_id', null);
+      if (brand) s = s.eq('brand', brand);
+    }
     return s.order('id').range(a, b);
   });
   if (error) throw new Error(error.message);
