@@ -463,13 +463,28 @@ function Stat({ label, value, delta }: { label: string; value: string; delta: st
 }
 
 function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
   return (
     <div className="pb-[54px] pt-[54px] first:pt-0 last:pb-0">
-      <div className="px-1.5 pb-3">
-        <h3 className="m-0 text-[15px] text-foreground">{title}</h3>
-        {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}
+      <div className="flex items-start justify-between gap-3 px-1.5 pb-3">
+        <div>
+          <h3 className="m-0 text-[15px] text-foreground">{title}</h3>
+          {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={open}
+          onClick={() => setOpen((v) => !v)}
+          title={open ? '차트 접기' : '차트 펼치기'}
+          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${open ? 'bg-primary' : 'bg-muted'}`}
+        >
+          <span
+            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-background transition-transform ${open ? 'translate-x-[18px]' : 'translate-x-1'}`}
+          />
+        </button>
       </div>
-      {children}
+      {open && children}
     </div>
   );
 }
