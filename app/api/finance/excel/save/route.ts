@@ -9,6 +9,7 @@ import { fileToRows, rowsToTransactions, type ExcelMapping } from '@/lib/finance
 import { SLOT_KEYS, UPLOAD_SLOTS } from '@/lib/finance/uploadSlots';
 import { archiveOriginal } from '@/lib/finance/original-archive';
 import { fetchStoreRuleMap } from '@/lib/finance/storeRules';
+import { buildRawRows, saveRawBatchSafe } from '@/lib/finance/raw';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -57,9 +58,10 @@ export async function POST(req: Request) {
   }
 
   let result;
+  let sheetRows: string[][] = [];
   try {
-    const rows = fileToRows(new Uint8Array(await file.arrayBuffer()));
-    result = rowsToTransactions(rows, mapping);
+    sheetRows = fileToRows(new Uint8Array(await file.arrayBuffer()));
+    result = rowsToTransactions(sheetRows, mapping);
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 422 });
   }
@@ -83,6 +85,23 @@ export async function POST(req: Request) {
     brand,
     note: bankLabel,
   });
+
+  // 로우데이터 적재 — dedup 앞에서 한다. 이미 올린 파일을 다시 올리는 경우(raw 도입 전 자료의
+  // 소급 보관)에도 원본이 남아야 하기 때문. 실패해도 본 저장은 계속한다.
+  const rawSaved = await saveRawBatchSafe(
+    supabase,
+    {
+      source: 'bank',
+      issuer: bankLabel,
+      brand,
+      filename: file.name,
+      header: mapping.header_row != null ? (sheetRows[mapping.header_row] ?? null) : null,
+      periodStart,
+      periodEnd,
+      userId: user.id,
+    },
+    buildRawRows(sheetRows)
+  );
 
   const { fresh: freshAll, duplicates } = dedupe(result.transactions, existing);
 
@@ -159,6 +178,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: friendly }, { status: 500 });
   }
 
+  // 원본 배치를 이번 업로드 기록에 연결(배치 메타는 수정 가능 — append-only 는 raw_rows 만)
+  if (rawSaved) {
+    await supabase.schema('finance').from('raw_batches').update({ upload_id: up.id }).eq('id', rawSaved.batchId);
+  }
+
   const now = new Date().toISOString();
   const insertRows = fresh.map((t) => {
     const cat = keyToCat.get(t.normalizedKey) ?? null;
@@ -181,6 +205,8 @@ export async function POST(req: Request) {
       classified_by: cat ? user.id : null,
       classified_at: cat ? now : null,
       upload_id: up.id,
+      // 원본 행 역참조 — 로우데이터 페이지에서 "이 거래는 파일 몇 번째 줄" 을 되짚는다
+      raw_row_id: t.rawRowIndex != null ? (rawSaved?.rowIdByIndex.get(t.rawRowIndex) ?? null) : null,
     };
   });
 

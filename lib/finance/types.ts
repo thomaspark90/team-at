@@ -92,6 +92,7 @@ export interface ParsedTransaction {
   cardIssuer?: string; // 카드 발급사(예: '신한')
   isInstallment?: boolean; // 할부 여부(표기용)
   approvalNo?: string; // 카드 승인번호(영수증 매출전표 조인용)
+  rawRowIndex?: number; // 원본 파일에서의 행 번호(0-base 절대 위치) — raw 레이어 역참조용
 }
 
 // 파싱 결과 요약 (업로드 미리보기용)

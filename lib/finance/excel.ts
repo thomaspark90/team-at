@@ -193,8 +193,11 @@ export function rowsToTransactions(
   const start = mapping.header_row != null ? mapping.header_row + 1 : 0;
   const txns: ParsedTransaction[] = [];
   let skipped = 0;
-  for (const row of rows.slice(start)) {
-    const cell = (i: number | null) => (i != null ? String(row[i] ?? '').trim() : '');
+  for (let r = start; r < rows.length; r++) {
+    const row = rows[r];
+    // 원본 파일에서의 절대 행 번호 — raw 레이어(finance.raw_rows.row_index)와 맞춘다
+    const rawRowIndex = r;
+    const cell = (i: number | null) => (i != null ? String(row?.[i] ?? '').trim() : '');
     const d = parseDate(cell(mapping.date));
     if (!d) {
       skipped++;
@@ -232,6 +235,7 @@ export function rowsToTransactions(
       branch: null,
       dedupHash: hash('excel', txAt, amountOut, amountIn, balance, memo),
       normalizedKey: normalizeKey(memo),
+      rawRowIndex,
     });
   }
   return {

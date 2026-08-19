@@ -6,6 +6,7 @@ import { resolvePersonalCat, applyPersonalCategory } from '@/lib/finance/persona
 import { resolveMisangCatId } from '@/lib/finance/misang';
 import { recordIngestSuccess } from '@/lib/ingest-health';
 import { fetchStoreRuleMap } from '@/lib/finance/storeRules';
+import { buildRawRowsFromObjects, saveRawBatchSafe } from '@/lib/finance/raw';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
 
   const supabase = createServiceClient(url, serviceKey, { db: { schema: 'finance' } });
 
-  const mapped = valid.map((r) => {
+  const mapped = valid.map((r, rawIdx) => {
     const merchant = (r.merchant || '쿠팡').trim();
     const isRefund = /취소|환불|반품/.test(r.pay_status || '');
     const txAt = toKstIso(r.paid_at);
@@ -76,6 +77,7 @@ export async function POST(req: Request) {
     const store = branch === '판교' ? 'pangyo' : branch === '양재천' ? 'yangjae' : null;
     return {
       _explicit_brand: brand, // insert 전에 제거 — dedup 시 기존 행 brand·branch 갱신용
+      _raw_idx: rawIdx, // insert 전에 제거 — 수집 원본 행(raw_rows) 역참조용
       brand: brand ?? 'garden',
       store,
       bank: 'coupang',
@@ -247,7 +249,26 @@ export async function POST(req: Request) {
   }
   fresh.forEach((m) => { m.upload_id = up.id; });
 
-  const insertRows = fresh.map(({ _explicit_brand, ...rest }) => rest);
+  // 로우데이터 적재 — 수집기가 보낸 JSON 을 손대지 않고 그대로 남긴다. 브랜드는 행마다
+  // 배송지로 갈리므로 배치 브랜드는 null('행마다 다름').
+  const rawSaved = await saveRawBatchSafe(
+    supabase,
+    {
+      source: 'coupang',
+      issuer: 'coupang',
+      brand: null,
+      uploadId: up.id,
+      periodStart: dates[0]?.slice(0, 10),
+      periodEnd: dates[dates.length - 1]?.slice(0, 10),
+      preScoped: true,
+    },
+    buildRawRowsFromObjects(valid)
+  );
+
+  const insertRows = fresh.map(({ _explicit_brand, _raw_idx, ...rest }) => ({
+    ...rest,
+    raw_row_id: rawSaved?.rowIdByIndex.get(_raw_idx) ?? null,
+  }));
   const { error: insErr } = await supabase.from('transactions').insert(insertRows);
   if (insErr) {
     await supabase.from('uploads').delete().eq('id', up.id);
