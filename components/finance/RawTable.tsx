@@ -180,7 +180,7 @@ export default function RawTable({
           {error ?? '이 조건에 해당하는 원본 행이 없어요.'}
         </p>
       ) : (
-        {/* 재조회 중엔 표를 흐리게 — 정렬·필터 응답이 몇 초 걸릴 때 '클릭이 안 먹었다'는 오해를 막는다 */}
+        // 재조회 중엔 표를 흐리게 — 정렬·필터 응답이 몇 초 걸릴 때 '클릭이 안 먹었다'는 오해를 막는다
         <div
           className={`max-h-[70vh] overflow-auto rounded-md border border-border transition-opacity ${
             loading ? 'pointer-events-none opacity-40' : ''
