@@ -89,17 +89,38 @@ function ChartTooltip({ active, payload, label, fmt, share }: any) {
   );
 }
 
+// 상품명에서 급식 티어(Newbie/Staff/Boss)와 매장/포장 여부를 뽑아낸다. 표기가 파일마다 들쭉날쭉해서
+// (영문·한글, 괄호·슬래시, 공백 유무) 정규식으로 느슨하게 매칭한다. '포장' 표기가 없는 배달앱 주문은
+// 매장 취식이 아니므로 포장으로 묶는다(2026-08-19 대표 요청 — 매장/포장만 필요).
+const MENU_TIERS = ['Staff', 'Newbie', 'Boss'] as const;
+type MenuTier = (typeof MENU_TIERS)[number];
+const MENU_TIER_PATTERN: Record<MenuTier, RegExp> = {
+  Staff: /staff|스태프|스탭/i,
+  Newbie: /newbie|뉴비/i,
+  Boss: /boss|보스/i,
+};
+function tierOf(product: string): MenuTier | null {
+  for (const t of MENU_TIERS) if (MENU_TIER_PATTERN[t].test(product)) return t;
+  return null;
+}
+function channelOf(product: string): '매장' | '포장' {
+  return /포장/.test(product) ? '포장' : '매장';
+}
+
 export default function Dashboard({
   txns,
   cats,
   posSales = [],
   bankCash = [],
+  menuItems = [],
 }: {
   txns: AggTx[];
   cats: AggCat[];
   posSales?: { saleDate: string; supply: number; brand?: string | null; store?: string | null }[];
   // 통장 입출금·월말 잔액 월별 집계(서버 프리페치) — 첫 차트용. viewer는 빈 배열 → 차트 생략
   bankCash?: { ym: string; brand: string; bank: string; inflow: number; outflow: number; balance: number }[];
+  // 스탭밀 상품별 판매량(finance.pos_items) — 메뉴 판매량 추이 차트 전용
+  menuItems?: { saleDate: string; category: string; product: string; qty: number }[];
 }) {
   const [unit, setUnit] = useState<Unit>('month');
   const [netVat, setNetVat] = useState(true);
@@ -141,6 +162,25 @@ export default function Dashboard({
     }
     return aggregate(tx, cats, unit, netVat, pos);
   }, [txns, cats, unit, netVat, posSales, brand, store]);
+
+  // 메뉴 판매량 추이(Newbie/Staff/Boss × 매장/포장) — 스탭밀 세그먼트에서만, 월 단위로만 그린다
+  // (상품별 리포트가 일자별이라 주 단위 집계까지는 필요 없다고 판단).
+  const menuQtyData = useMemo(() => {
+    if (brand !== 'staffmeal') return [];
+    const byMonth = new Map<string, Record<string, number>>();
+    for (const it of menuItems) {
+      const tier = tierOf(it.product);
+      if (!tier) continue;
+      const ym = it.saleDate.slice(0, 7);
+      const row = byMonth.get(ym) ?? {};
+      const key = `${tier}-${channelOf(it.product)}`;
+      row[key] = (row[key] ?? 0) + it.qty;
+      byMonth.set(ym, row);
+    }
+    return Array.from(byMonth.keys())
+      .sort()
+      .map((ym) => ({ p: ym.slice(2).replace('-', '.'), ...byMonth.get(ym) }));
+  }, [menuItems, brand]);
 
   const fmtP = (key: string) => (unit === 'month' ? key.slice(2).replace('-', '.') : key.slice(5).replace('-', '/'));
 
@@ -433,6 +473,29 @@ export default function Dashboard({
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>
+
+      {unit === 'month' && brand === 'staffmeal' && menuQtyData.length > 0 && (
+        <ChartCard title="메뉴 판매량 추이" subtitle="Newbie · Staff · Boss — 매장/포장 판매 수량(개)">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {MENU_TIERS.map((tier) => (
+              <div key={tier}>
+                <div className="mb-2 px-1 text-[12px] text-foreground">{tier}</div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={menuQtyData} margin={{ top: 30, right: 8, bottom: 4, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+                    <XAxis dataKey="p" tick={{ fontSize: 10, fill: AXIS }} stroke={AXIS} interval="preserveStartEnd" />
+                    <YAxis tick={{ fontSize: 10, fill: AXIS }} stroke={AXIS} width={30} />
+                    <Tooltip content={<ChartTooltip fmt={(v: number) => `${Number(v).toLocaleString()}개`} />} />
+                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                    <Line type="monotone" dataKey={`${tier}-매장`} name="매장" stroke={LINE} strokeWidth={1.5} dot={{ r: 1.5, fill: LINE }} connectNulls />
+                    <Line type="monotone" dataKey={`${tier}-포장`} name="포장" stroke={LINE2} strokeWidth={1.5} dot={{ r: 1.5, fill: LINE2 }} connectNulls />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ))}
+          </div>
+        </ChartCard>
+      )}
       </div>
 
       <p className="m-0 text-[11px] text-muted-foreground">

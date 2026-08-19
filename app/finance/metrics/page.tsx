@@ -128,8 +128,26 @@ export default async function MetricsPage() {
     return bankCash;
   };
 
-  // 4개 테이블이 서로 독립적이라 병렬로 조회 — 예전엔 순차 await라 지표 페이지 로딩이 밀렸다.
-  const [txns, cats, posSales, bankCash] = await Promise.all([loadTxns(), loadCats(), loadPosSales(), loadBankCash()]);
+  // 메뉴 판매량 추이(Newbie/Staff/Boss × 매장/포장) — 스탭밀 상품별 리포트(finance.pos_items) 기준.
+  // memo 없는 안전 뷰(dashboard_pos_items) 우선, 없으면 원본 폴백. fetchAll 은 브랜드 필터를 못 걸어
+  // 전체(가든 포함 1.5만 행 안팎)를 받은 뒤 여기서 스탭밀만 추린다 — 물량이 작아 부담 없다.
+  const loadMenuQty = async () => {
+    const cols = 'sale_date,category,product,qty,brand';
+    const order = ['sale_date', 'category', 'product'];
+    let rows = await fetchAll('dashboard_pos_items', cols, order);
+    if (rows.error) rows = await fetchAll('pos_items', cols, order);
+    const all = (rows.data as { sale_date: string; category: string; product: string; qty: number; brand: string }[] | null) ?? [];
+    return all.filter((r) => r.brand === 'staffmeal').map((r) => ({ saleDate: r.sale_date, category: r.category, product: r.product, qty: Number(r.qty) }));
+  };
+
+  // 5개 테이블이 서로 독립적이라 병렬로 조회 — 예전엔 순차 await라 지표 페이지 로딩이 밀렸다.
+  const [txns, cats, posSales, bankCash, menuItems] = await Promise.all([
+    loadTxns(),
+    loadCats(),
+    loadPosSales(),
+    loadBankCash(),
+    loadMenuQty(),
+  ]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -148,7 +166,7 @@ export default async function MetricsPage() {
         {/* 좌측 연·월 사이드바 — 회계 자료 화면과 동일한 셸. 지표는 모든 데이터가 이미 클라이언트에 있어
             서버 재조회가 필요 없다 → navigate=false(얕은 갱신). 배지 없음(initialTodos={{}}). */}
         <MonthShell navigate={false} initialTodos={{}}>
-          <Dashboard txns={(txns as AggTx[]) ?? []} cats={(cats as AggCat[]) ?? []} posSales={posSales} bankCash={bankCash} />
+          <Dashboard txns={(txns as AggTx[]) ?? []} cats={(cats as AggCat[]) ?? []} posSales={posSales} bankCash={bankCash} menuItems={menuItems} />
         </MonthShell>
       </div>
     </div>
