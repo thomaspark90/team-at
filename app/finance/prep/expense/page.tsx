@@ -175,6 +175,16 @@ export default async function PrepExpensePage({
                     const isTotal = r.kind === 'total';
                     const isNote = r.kind === 'note';
                     const isDeduction = r.kind === 'deduction';
+                    const amount = r.amounts[b] ?? 0;
+                    // 미분류·미상 금액은 분류 화면으로 가는 문 — 셀을 누르면 그 달의 해당 건들이
+                    // 필터된 상태로 열려 바로 분류할 수 있다(분류 화면은 월 단위라 일·주는 속한 달로).
+                    const classifyYm = isMonth ? b : b.slice(0, 7);
+                    const classifyHref =
+                      r.key === 'unclassified' && amount > 0
+                        ? `/finance/classify?unit=${unit.id}&ym=${classifyYm}&unclassified=1`
+                        : r.key === 'misang' && amount !== 0
+                          ? `/finance/classify?unit=${unit.id}&ym=${classifyYm}&type=excluded&cat=${encodeURIComponent('미상')}`
+                          : null;
                     return (
                       <td
                         key={r.key}
@@ -182,7 +192,19 @@ export default async function PrepExpensePage({
                           isTotal ? 'border-l-2 border-l-border font-medium' : ''
                         } ${isDeduction || isNote ? 'text-muted-foreground' : ''}`}
                       >
-                        {isDeduction && r.amounts[b] ? `−${won(r.amounts[b])}` : won(r.amounts[b] ?? 0)}
+                        {classifyHref ? (
+                          <Link
+                            href={classifyHref}
+                            className="underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground"
+                            title="누르면 이 달 해당 건들이 분류 화면에 필터된 상태로 열려요"
+                          >
+                            {won(amount)}
+                          </Link>
+                        ) : isDeduction && amount ? (
+                          `−${won(amount)}`
+                        ) : (
+                          won(amount)
+                        )}
                       </td>
                     );
                   })}
