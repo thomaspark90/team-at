@@ -65,24 +65,35 @@ const pointLabel = { fontSize: 11, fill: AXIS };
 const wonLabel = (v: any) => (v == null ? '' : manwon(Number(v)));
 const pctLabel = (v: any) => (v == null ? '' : `${v}%`);
 
-// 대여금 마커 — 통장 잔액 선 위의 빨간 원 + 위로 뺀 말풍선(문구·금액, 화살표로 지점 연결).
-// 클릭하면 문구를 수정할 수 있다(chart_annotations 오버라이드).
+// 대여금 마커 — 통장 잔액 지점의 빨간 원 + 말풍선(문구·금액, 화살표로 지점 연결).
+// 잔액 숫자 라벨이 선 '위'에 있어서 말풍선은 기본적으로 선 '아래'로 뺀다(2026-08-20 대표 요청).
+// 잔액이 바닥권이라 아래 공간이 없는 달만 위로 올린다. 클릭하면 문구 수정(chart_annotations).
 const LOAN_COLOR = 'hsl(var(--destructive))';
 function LoanDot(props: any) {
-  const { cx, cy, marker, onEdit } = props;
+  const { cx, cy, marker, onEdit, plotBottom } = props;
   if (cx == null || cy == null) return null;
-  const top = Math.max(cy - 72, 14);
+  const below = plotBottom == null || cy + 88 <= plotBottom;
+  const textY = below ? cy + 66 : Math.max(cy - 72, 14); // 첫 줄(문구) 기준선
   return (
     <g style={{ cursor: 'pointer' }} onClick={() => onEdit(marker)}>
       {/* 투명 히트 영역 — 링(fill:none)은 테두리만 클릭돼서 내부 클릭이 안 먹는다 */}
       <circle cx={cx} cy={cy} r={14} fill="transparent" stroke="none" />
       <circle cx={cx} cy={cy} r={9} fill="none" stroke={LOAN_COLOR} strokeWidth={2} />
-      <line x1={cx} y1={top + 20} x2={cx} y2={cy - 14} stroke={LOAN_COLOR} strokeWidth={1} />
-      <path d={`M ${cx - 3} ${cy - 19} L ${cx} ${cy - 13} L ${cx + 3} ${cy - 19}`} fill="none" stroke={LOAN_COLOR} strokeWidth={1} />
-      <text x={cx} y={top} textAnchor="middle" fontSize={11} fill={LOAN_COLOR}>
+      {below ? (
+        <>
+          <line x1={cx} y1={cy + 14} x2={cx} y2={textY - 14} stroke={LOAN_COLOR} strokeWidth={1} />
+          <path d={`M ${cx - 3} ${cy + 19} L ${cx} ${cy + 13} L ${cx + 3} ${cy + 19}`} fill="none" stroke={LOAN_COLOR} strokeWidth={1} />
+        </>
+      ) : (
+        <>
+          <line x1={cx} y1={textY + 20} x2={cx} y2={cy - 14} stroke={LOAN_COLOR} strokeWidth={1} />
+          <path d={`M ${cx - 3} ${cy - 19} L ${cx} ${cy - 13} L ${cx + 3} ${cy - 19}`} fill="none" stroke={LOAN_COLOR} strokeWidth={1} />
+        </>
+      )}
+      <text x={cx} y={textY} textAnchor="middle" fontSize={11} fill={LOAN_COLOR}>
         {marker.label}
       </text>
-      <text x={cx} y={top + 14} textAnchor="middle" fontSize={11} fill={LOAN_COLOR}>
+      <text x={cx} y={textY + 14} textAnchor="middle" fontSize={11} fill={LOAN_COLOR}>
         −{manwon(Math.abs(marker.amount))}
       </text>
     </g>
@@ -470,7 +481,7 @@ export default function Dashboard({
                 key={`loan-${m.brand}-${m.ym}`}
                 x={m.p}
                 y={m.balance}
-                shape={<LoanDot marker={m} onEdit={startMarkerEdit} />}
+                shape={<LoanDot marker={m} onEdit={startMarkerEdit} plotBottom={chartH('bank', 630) - 120} />}
               />
             ))}
           </ComposedChart>
