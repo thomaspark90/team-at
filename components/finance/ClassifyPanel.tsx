@@ -29,6 +29,13 @@ export interface TxRow {
   split_parent_id?: number | null; // 건별 분할로 생긴 행이면 원거래 id
 }
 
+// 되돌리기 세트 — 분류 적용 직전의 상태. prev null = 미분류였음 / 규칙이 없었음(삭제로 복원)
+interface UndoSet {
+  label: string;
+  changes: { id: number; prev: number | null }[];
+  rules: { key: string; brand: string; prev: number | null }[];
+}
+
 export interface SplitRule {
   normalized_key: string;
   brand: string;
@@ -144,6 +151,10 @@ export default function ClassifyPanel({
   }, [txns]);
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 되돌리기 — 마지막 분류 적용 한 세트의 '적용 전' 상태(계정·학습 규칙)를 기억해 원클릭 롤백.
+  // 일괄 적용이 수십~수백 건을 한 번에 확정하는데 복구 수단이 전체 초기화뿐이던 문제(2026-08-20 대표 요청).
+  const [lastApply, setLastApply] = useState<UndoSet | null>(null);
+  const [undoing, setUndoing] = useState(false);
   const [suggestions, setSuggestions] = useState<Record<string, Suggestion>>({});
   const [aiLoading, setAiLoading] = useState(false);
   const [aiApplying, setAiApplying] = useState(false);
@@ -424,6 +435,11 @@ export default function ClassifyPanel({
       return;
     }
     // 선택 일괄분류는 규칙 학습 안 함(여러 가맹점 섞일 수 있음). 규칙은 개별 드롭다운에서.
+    setLastApply({
+      label: `${targets.length}건 일괄 분류`,
+      changes: targets.map((r) => ({ id: r.id, prev: r.category_id })),
+      rules: [],
+    });
     targets.forEach((r) => keepVisible.current.add(r.id));
     setRows((list) => list.map((r) => (selected.has(r.id) && !isLocked(r) ? { ...r, category_id: catId } : r)));
     setSelected(new Set());
@@ -516,7 +532,9 @@ export default function ClassifyPanel({
 
   // opts.single = 이 거래 한 건만 분류(키 전파·규칙 학습 없음) — '미상' 파킹처럼
   // 가맹점 전체에 학습되면 안 되는 지정에 사용
-  async function classify(tx: TxRow, categoryId: number, opts?: { single?: boolean }) {
+  // opts.collect = 여러 classify를 한 되돌리기 세트로 묶을 때(학습 추천 적용 등) — 넘기면
+  // lastApply를 직접 갱신하지 않고 여기에 이전 상태를 누적한다
+  async function classify(tx: TxRow, categoryId: number, opts?: { single?: boolean; collect?: UndoSet }) {
     setBusy(tx.id);
     setError(null);
     const supabase = createClient();
@@ -577,6 +595,41 @@ export default function ClassifyPanel({
       }
     }
 
+    // 이 브랜드의 확정된 달은 건드리지 않음(키 기반 분류가 여러 달에 걸칠 수 있음)
+    const lockedYms = confirmedYmsFor(tx.brand);
+
+    // 되돌리기용 '적용 전' 캡처 — 업데이트와 같은 필터로 이전 계정값을 읽어둔다
+    let changes: UndoSet['changes'];
+    if (key) {
+      let sel = supabase
+        .schema('finance')
+        .from('transactions')
+        .select('id,category_id')
+        .eq('normalized_key', key)
+        .eq('brand', tx.brand)
+        .limit(10000);
+      if (lockedYms.length) sel = sel.not('ym', 'in', `(${lockedYms.join(',')})`);
+      const { data: prevRows } = await sel;
+      changes = ((prevRows ?? []) as { id: number; category_id: number | null }[]).map((r) => ({ id: r.id, prev: r.category_id }));
+    } else if (inflowKey) {
+      // 미분류만 건드리므로 이전 값은 전부 null — id만 필요
+      let sel = supabase
+        .schema('finance')
+        .from('transactions')
+        .select('id')
+        .eq('normalized_key', inflowKey)
+        .eq('brand', tx.brand)
+        .eq('ym', txYm)
+        .is('category_id', null)
+        .gt('amount_in', 0)
+        .limit(10000);
+      if (lockedYms.length) sel = sel.not('ym', 'in', `(${lockedYms.join(',')})`);
+      const { data: prevRows } = await sel;
+      changes = ((prevRows ?? []) as { id: number }[]).map((r) => ({ id: r.id, prev: null }));
+    } else {
+      changes = [{ id: tx.id, prev: tx.category_id }];
+    }
+
     let q = supabase
       .schema('finance')
       .from('transactions')
@@ -587,8 +640,6 @@ export default function ClassifyPanel({
       // 입금 확정은 같은 키의 '이 달 미분류 입금'만 — 이미 분류된 행을 덮지 않는다(오버라이드는 단건으로)
       q = q.eq('normalized_key', inflowKey).eq('brand', tx.brand).eq('ym', txYm).is('category_id', null).gt('amount_in', 0);
     else q = q.eq('id', tx.id);
-    // 이 브랜드의 확정된 달은 건드리지 않음(키 기반 분류가 여러 달에 걸칠 수 있음)
-    const lockedYms = confirmedYmsFor(tx.brand);
     if (lockedYms.length) q = q.not('ym', 'in', `(${lockedYms.join(',')})`);
     const { error: e1 } = await q;
     if (e1) {
@@ -596,11 +647,27 @@ export default function ClassifyPanel({
       setBusy(null);
       return false;
     }
+    const ruleChanges: UndoSet['rules'] = [];
     if (key) {
+      // 규칙도 '적용 전' 스냅샷 후 학습 — 되돌리기가 규칙까지 복원할 수 있게
+      const { data: prevRule } = await supabase
+        .schema('finance')
+        .from('rules')
+        .select('category_id')
+        .eq('normalized_key', key)
+        .eq('brand', tx.brand)
+        .maybeSingle();
+      ruleChanges.push({ key, brand: tx.brand, prev: (prevRule as { category_id: number } | null)?.category_id ?? null });
       await supabase
         .schema('finance')
         .from('rules')
         .upsert({ normalized_key: key, brand: tx.brand, category_id: categoryId, created_by: userId }, { onConflict: 'normalized_key,brand' });
+    }
+    if (opts?.collect) {
+      opts.collect.changes.push(...changes);
+      opts.collect.rules.push(...ruleChanges);
+    } else if (changes.length) {
+      setLastApply({ label: `'${tx.memo}' → ${catName(categoryId)}`, changes, rules: ruleChanges });
     }
     // 오클릭 보호는 사용자가 직접 만진 행만 — 같은 키로 전파된 행까지 남기면 목록이 분류된 행으로 넘친다.
     // (남은 이 행에서 계정을 고치면 키 전파로 나머지 행도 같이 고쳐진다)
@@ -680,6 +747,7 @@ export default function ClassifyPanel({
     }
     try {
       let applied = 0;
+      const collect: UndoSet = { label: '확신 항목 저장', changes: [], rules: [] };
       for (const [b, items] of Array.from(byBrand.entries())) {
         const res = await fetch('/api/finance/classify/bulk', {
           method: 'POST',
@@ -689,6 +757,10 @@ export default function ClassifyPanel({
         const j = await res.json();
         if (!res.ok) throw new Error(j.error || '일괄 적용에 실패했어요.');
         applied += Number(j.updated ?? 0);
+        // 되돌리기 세트 — 서버가 실제 적용한 거래 id(적용 전은 전부 미분류)와 덮기 전 규칙
+        for (const id of (j.ids ?? []) as number[]) collect.changes.push({ id, prev: null });
+        for (const pr of (j.prevRules ?? []) as { key: string; categoryId: number | null }[])
+          collect.rules.push({ key: pr.key, brand: b, prev: pr.categoryId });
         // 화면 반영 — 적용된 키의 미분류 행을 채운다(확정월 잠긴 행 제외, 서버도 동일 필터).
         // AI 일괄 적용은 keepVisible에 안 넣는다 — 수백 건이 미분류 보기에 남아 목록이 넘치는 부작용(2026-08-03).
         const catByKey = new Map<string, number>(items.map((i) => [i.key, i.categoryId] as [string, number]));
@@ -701,10 +773,59 @@ export default function ClassifyPanel({
         );
       }
       if (applied === 0 && byBrand.size === 0) setError('적용할 확신 항목이 없어요.');
+      if (collect.changes.length) setLastApply(collect);
     } catch (e) {
       setError((e as Error).message);
     }
     setAiApplying(false);
+    ctx?.refreshTodos(); // 사이드바 배지 갱신
+  }
+
+  // 마지막 적용 되돌리기 — 캡처해 둔 '적용 전' 계정값·학습 규칙을 그대로 복원한다.
+  // 한 세트만 기억(스택 아님) — 새 적용이 일어나면 이전 세트는 사라진다.
+  async function undoLast() {
+    if (!lastApply || undoing) return;
+    setUndoing(true);
+    setError(null);
+    const supabase = createClient();
+    try {
+      // 이전 값이 같은 것끼리 묶어 UPDATE 횟수 최소화. prev null = 미분류로 복원(분류자 기록도 제거)
+      const byPrev = new Map<number | null, number[]>();
+      for (const ch of lastApply.changes) {
+        const arr = byPrev.get(ch.prev) ?? [];
+        arr.push(ch.id);
+        byPrev.set(ch.prev, arr);
+      }
+      for (const [prev, ids] of Array.from(byPrev.entries())) {
+        for (let i = 0; i < ids.length; i += 500) {
+          const patch =
+            prev == null
+              ? { category_id: null, classified_by: null, classified_at: null }
+              : { category_id: prev, classified_by: userId, classified_at: new Date().toISOString() };
+          const { error: e } = await supabase
+            .schema('finance')
+            .from('transactions')
+            .update(patch)
+            .in('id', ids.slice(i, i + 500));
+          if (e) throw new Error(e.message);
+        }
+      }
+      for (const r of lastApply.rules) {
+        if (r.prev == null)
+          await supabase.schema('finance').from('rules').delete().eq('normalized_key', r.key).eq('brand', r.brand);
+        else
+          await supabase
+            .schema('finance')
+            .from('rules')
+            .upsert({ normalized_key: r.key, brand: r.brand, category_id: r.prev, created_by: userId }, { onConflict: 'normalized_key,brand' });
+      }
+      const prevById = new Map(lastApply.changes.map((c) => [c.id, c.prev] as [number, number | null]));
+      setRows((list) => list.map((r) => (prevById.has(r.id) ? { ...r, category_id: prevById.get(r.id) ?? null } : r)));
+      setLastApply(null);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setUndoing(false);
     ctx?.refreshTodos(); // 사이드바 배지 갱신
   }
 
@@ -752,6 +873,7 @@ export default function ClassifyPanel({
   async function applyRules() {
     setAiApplying(true);
     const seen = new Set<string>();
+    const collect: UndoSet = { label: '학습 추천 적용', changes: [], rules: [] };
     for (const tx of rows) {
       if (tx.category_id != null || !tx.normalized_key || isLocked(tx) || seen.has(`${tx.brand}|${tx.normalized_key}`)) continue;
       const cat = ruleFor(tx);
@@ -759,8 +881,9 @@ export default function ClassifyPanel({
       // 입금 행은 classify()가 미분류 입금끼리만 묶어 처리(출금 행 보호)하므로 seen에 넣지 않는다 —
       // 넣으면 같은 키의 출금 행들이 이번 적용에서 빠진다.
       if (!(tx.amount_in > 0)) seen.add(`${tx.brand}|${tx.normalized_key}`);
-      await classify(tx, cat);
+      await classify(tx, cat, { collect });
     }
+    if (collect.changes.length) setLastApply(collect);
     setAiApplying(false);
   }
 
@@ -967,6 +1090,16 @@ export default function ClassifyPanel({
         {ruleKeys.size > 0 && (
           <button onClick={applyRules} disabled={aiApplying} className="ta-btn-primary text-[13px]">
             {aiApplying ? '적용 중…' : `학습 추천 적용 (${ruleKeys.size}그룹)`}
+          </button>
+        )}
+        {lastApply && (
+          <button
+            onClick={undoLast}
+            disabled={undoing || aiApplying}
+            title={`마지막 적용(${lastApply.label})을 적용 전으로 되돌려요 — 계정과 학습 규칙 모두. 새로 적용하면 이전 기록은 사라져요.`}
+            className="ta-btn text-[13px]"
+          >
+            {undoing ? '되돌리는 중…' : `↩ 방금 적용 ${won(lastApply.changes.length)}건 되돌리기`}
           </button>
         )}
         <button

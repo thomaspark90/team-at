@@ -10,6 +10,11 @@ export const maxDuration = 60;
 // (이전 잔액 + 입금 − 출금 = 현재 잔액)을 검사한다. 업로드 시점의 파일 단위 검사가
 // 못 잡는 '파일 하나 통째 누락'(예: 3~4월 파일을 안 올림)을 잡는 마지막 관문.
 // 잔액 미기재(0) 행은 체인 리셋(파일 단위 검사와 동일 규칙).
+//
+// 체인은 행이 아니라 **동시각(분 단위) 묶음** 단위 — 은행 파일이 오름차순·내림차순으로 섞여
+// 들어와 같은 시각 거래들의 DB 저장 순서를 믿을 수 없다(2026-08-20, 스탭밀 신규 파일에서
+// 행 단위 검사가 가짜 끊김 100건+를 내던 문제). 묶음의 순유입을 더한 기대 잔액이 묶음 안
+// 어느 행의 잔액과도 안 맞으면 그때가 진짜 끊김이다. 검증 기점(앵커)은 시각이 유일한 행.
 
 interface Break {
   from: string; // 이전 거래일 (YYYY-MM-DD)
@@ -66,27 +71,65 @@ export async function GET(req: Request) {
       if (!data || data.length < PAGE) break;
     }
 
-    let prev: (typeof all)[number] | null = null;
+    // 동시각 묶음으로 접기 — tx_at 정렬은 신뢰하되 같은 시각 안의 순서는 쓰지 않는다
+    interface Group {
+      txAt: string;
+      net: number; // Σ(입금 − 출금)
+      balances: number[]; // 묶음 안 각 행의 잔액
+      hasZero: boolean; // 잔액 미기재(0) 행 포함 — 이 묶음을 가로지르는 검사는 불가
+    }
+    const groups: Group[] = [];
+    for (const cur of all) {
+      const txAt = String(cur.tx_at);
+      let g = groups[groups.length - 1];
+      if (!g || g.txAt !== txAt) {
+        g = { txAt, net: 0, balances: [], hasZero: false };
+        groups.push(g);
+      }
+      g.net += Number(cur.amount_in) - Number(cur.amount_out);
+      if (Number(cur.balance) === 0) g.hasZero = true;
+      else g.balances.push(Number(cur.balance));
+    }
+
     let checked = 0;
     const breaks: Break[] = [];
-    for (const cur of all) {
-      if (Number(cur.balance) === 0) {
-        prev = null; // 잔액 미기재 행 — 판정 불가, 체인 리셋
+    let end: number | null = null; // 직전 묶음까지 검증된 잔액
+    let endAt = ''; // 그 시각 — 끊김의 from 표기용
+    for (const g of groups) {
+      if (g.hasZero) {
+        end = null; // 미기재 행이 섞인 묶음 — 판정 불가, 체인 리셋
         continue;
       }
-      if (prev) {
-        checked++;
-        const expected = Number(prev.balance) + Number(cur.amount_in) - Number(cur.amount_out);
-        if (Math.abs(expected - Number(cur.balance)) > 0.5 && breaks.length < 100) {
-          breaks.push({
-            from: String(prev.tx_at).slice(0, 10),
-            to: String(cur.tx_at).slice(0, 10),
-            expected,
-            actual: Number(cur.balance),
-          });
+      if (end == null) {
+        // 앵커 재설정 — 시각이 유일한(1행) 묶음만 잔액이 확정적이다
+        if (g.balances.length === 1) {
+          end = g.balances[0];
+          endAt = g.txAt;
+        }
+        continue;
+      }
+      checked++;
+      const expected = end + g.net;
+      // 묶음의 시간순 마지막 행 잔액 = 기대값이어야 한다. 순서를 모르니 '어느 행이 마지막인지'
+      // 대신 '기대값이 묶음 안에 존재하는지'로 판정(1행 묶음이면 기존 행 단위 검사와 동일).
+      const match = g.balances.some((b) => Math.abs(b - expected) <= 0.5);
+      if (match) {
+        end = expected;
+        endAt = g.txAt;
+      } else {
+        if (breaks.length < 100) {
+          // actual = 기대값에 가장 가까운 잔액 — 차액이 곧 누락된 거래 규모의 힌트
+          const nearest = g.balances.reduce((a, b) => (Math.abs(b - expected) < Math.abs(a - expected) ? b : a));
+          breaks.push({ from: endAt.slice(0, 10), to: g.txAt.slice(0, 10), expected, actual: nearest });
+        }
+        // 재동기화 — 1행 묶음이면 그 잔액으로, 다행 묶음이면 다음 앵커까지 보류
+        if (g.balances.length === 1) {
+          end = g.balances[0];
+          endAt = g.txAt;
+        } else {
+          end = null;
         }
       }
-      prev = cur;
     }
     results.push({
       bank,
@@ -94,7 +137,7 @@ export async function GET(req: Request) {
       rows: all.length,
       checked,
       breaks,
-      // 끊긴 곳이 아주 많으면(같은 시각 다건 정렬 뒤섞임 등) 판정 불가로 표시
+      // 끊긴 곳이 아주 많으면(계좌 혼합 등 데이터 자체 문제) 판정 불가로 표시
       reliable: !(breaks.length >= 5 && checked > 0 && breaks.length / checked > 0.5),
     });
   }

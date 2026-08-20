@@ -57,6 +57,7 @@ export async function POST(req: Request) {
   }
 
   let updated = 0;
+  const ids: number[] = []; // 적용된 거래 id — 클라이언트 '되돌리기'용(적용 전은 전부 미분류)
   for (const [categoryId, keys] of Array.from(byCat.entries())) {
     for (let i = 0; i < keys.length; i += 100) {
       let q = supabase
@@ -70,7 +71,23 @@ export async function POST(req: Request) {
       const { data, error } = await q.select('id');
       if (error) return NextResponse.json({ error: `적용 실패: ${error.message}` }, { status: 500 });
       updated += data?.length ?? 0;
+      for (const r of (data ?? []) as { id: number }[]) ids.push(r.id);
     }
+  }
+
+  // 덮어쓰기 전 기존 규칙 스냅샷 — '되돌리기'가 규칙까지 적용 전으로 복원할 수 있게.
+  // 규칙이 없던 키는 categoryId null(삭제로 복원).
+  const prevRules: { key: string; categoryId: number | null }[] = [];
+  for (let i = 0; i < valid.length; i += 100) {
+    const chunk = valid.slice(i, i + 100).map((v) => v.key);
+    const { data } = await supabase
+      .schema('finance')
+      .from('rules')
+      .select('normalized_key,category_id')
+      .eq('brand', brand)
+      .in('normalized_key', chunk);
+    const m = new Map(((data ?? []) as { normalized_key: string; category_id: number }[]).map((r) => [r.normalized_key, r.category_id]));
+    for (const k of chunk) prevRules.push({ key: k, categoryId: m.get(k) ?? null });
   }
 
   // 규칙 학습 — 다음 업로드부터 자동 분류되게
@@ -89,5 +106,5 @@ export async function POST(req: Request) {
   }
 
   await logActivity(supabase, user, 'AI 분류 일괄 적용', `[${brand}] ${valid.length}그룹 · 거래 ${updated}건`);
-  return NextResponse.json({ updated, rulesSaved: valid.length });
+  return NextResponse.json({ updated, rulesSaved: valid.length, ids, prevRules });
 }
