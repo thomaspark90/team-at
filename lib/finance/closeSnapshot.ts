@@ -74,12 +74,16 @@ export async function computeMonthlyFigures(
     .limit(50000);
   if (unit.store) txQ = txQ.eq('store', unit.store);
 
+  // 말일 계산 — `${ym}-31` 하드코딩은 31일 없는 달(2·4·6·9·11월)에서 date 캐스팅 에러로
+  // 스냅샷 저장이 통째로 실패했다(2026-08-20 일괄 결산에서 8/18개월 누락으로 발각).
+  const [yy, mm] = ym.split('-').map(Number);
+  const lastDay = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
   let posQ = db
     .from('pos_sales')
     .select('sale_date,gross')
     .eq('brand', unit.brand)
     .gte('sale_date', `${ym}-01`)
-    .lte('sale_date', `${ym}-31`)
+    .lte('sale_date', `${ym}-${String(lastDay).padStart(2, '0')}`)
     .limit(10000);
   if (unit.store) posQ = posQ.eq('store', unit.store);
 
