@@ -6,6 +6,10 @@ import { COLLECTED_SOURCES, cardDupOffset } from './cardOffset';
 
 export const VAT_DIVISOR = 1.1;
 
+// 채널수수료 추정 기본율(정산서 실제 금액 미입력 시) — 관리손익(pnl)과 동일 상수를 공유해
+// 두 화면의 EBIT 기준을 통일한다(2026-08-20). 실제 금액을 입력하면 그 달은 추정을 무시한다.
+export const CHANNEL_FEE_RATE = 0.017;
+
 // 미분류 지출을 지출 구분/손익에 노출할 때 쓰는 라벨
 export const UNCLASSIFIED = '미분류';
 
@@ -42,6 +46,8 @@ export interface MonthAgg {
   expense: Record<string, number>;
   /** 카드대금↔수집분 겹침 차감액(월 단위만) — 0이면 차감 없음 */
   cardDupOffset: number;
+  /** 채널수수료(opts.channelFees 전달 시) — 실입력 우선, 없으면 매출×추정율. EBIT에서 차감 */
+  fee: number;
 }
 
 function periodKey(iso: string, unit: Unit): string {
@@ -59,6 +65,9 @@ export function aggregate(
   unit: Unit = 'month',
   netVat = true,
   posSales: { saleDate: string; supply: number }[] = [],
+  // 채널수수료 옵션 — 전달 시 EBIT에서 수수료를 뺀다(관리손익과 기준 통일).
+  // channelFees: ym→실입력 금액(월 단위에서만 적용). 없는 구간은 매출×rate 추정.
+  feeOpts?: { channelFees?: Record<string, number>; rate?: number } | null,
 ): { months: MonthAgg[]; expenseKeys: string[] } {
   const catMap = new Map(cats.map((c) => [c.id, c]));
   const nameOf = (c: AggCat): string => {
@@ -78,7 +87,7 @@ export function aggregate(
   const getMo = (key: string): MonthAgg => {
     let mo = m.get(key);
     if (!mo) {
-      mo = { ym: key, revenue: 0, unclassifiedIn: 0, cogs: 0, sga: 0, ebit: 0, nonOp: 0, net: 0, costRatio: null, profitRatio: null, expense: {}, cardDupOffset: 0 };
+      mo = { ym: key, revenue: 0, unclassifiedIn: 0, cogs: 0, sga: 0, ebit: 0, nonOp: 0, net: 0, costRatio: null, profitRatio: null, expense: {}, cardDupOffset: 0, fee: 0 };
       m.set(key, mo);
     }
     return mo;
@@ -174,8 +183,15 @@ export function aggregate(
   }
 
   const months = Array.from(m.values()).sort((a, b) => a.ym.localeCompare(b.ym));
+  const feeRate = feeOpts ? (feeOpts.rate ?? CHANNEL_FEE_RATE) : 0;
   for (const mo of months) {
-    mo.ebit = mo.revenue - mo.cogs - mo.sga;
+    // 채널수수료 — 실입력(월 키)이 있으면 그 값, 없으면 매출×추정율. 주 단위는 실입력이 월 단위라 항상 추정.
+    mo.fee = feeOpts
+      ? (unit === 'month' && feeOpts.channelFees?.[mo.ym] != null
+          ? feeOpts.channelFees[mo.ym]
+          : Math.round(mo.revenue * feeRate))
+      : 0;
+    mo.ebit = mo.revenue - mo.fee - mo.cogs - mo.sga;
     mo.net = mo.ebit + mo.nonOp;
     mo.costRatio = mo.revenue > 0 ? mo.cogs / mo.revenue : null;
     mo.profitRatio = mo.revenue > 0 ? mo.ebit / mo.revenue : null;

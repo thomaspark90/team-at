@@ -17,7 +17,7 @@ import {
   ReferenceDot,
   LabelList,
 } from 'recharts';
-import { aggregate, capexDepreciation, UNCLASSIFIED, type AggTx, type AggCat, type Unit } from '@/lib/finance/aggregate';
+import { aggregate, capexDepreciation, UNCLASSIFIED, type AggTx, type AggCat, type Unit, type MonthAgg } from '@/lib/finance/aggregate';
 import { wonNum as won } from '@/lib/finance/format';
 import { useMonthCtx } from './MonthShell';
 
@@ -55,7 +55,7 @@ const CAT_SURFACE = 'var(--chart-surface)';
 const CAT_MAX = 8; // 8색까지, 초과 카테고리는 '기타'로 접음
 
 // 지표 페이지 차트 순서 — 헤더 그립을 드래그해서 바꾸면 이 브라우저에 저장(계정과 무관)
-const DEFAULT_CHART_ORDER = ['bank', 'revenue', 'ebit', 'capex', 'ratio', 'expense', 'cost', 'menu'] as const;
+const DEFAULT_CHART_ORDER = ['bank', 'revenue', 'ebit', 'capex', 'ratio', 'expense', 'cost', 'avg', 'yoy', 'gift', 'menu'] as const;
 type ChartId = (typeof DEFAULT_CHART_ORDER)[number];
 const CHART_ORDER_KEY = 'finance-metrics-chart-order-v1';
 
@@ -155,17 +155,20 @@ export default function Dashboard({
   bankCash = [],
   menuItems = [],
   loanMarkers = [],
+  channelFees = [],
   reportUnit,
 }: {
   txns: AggTx[];
   cats: AggCat[];
-  posSales?: { saleDate: string; supply: number; brand?: string | null; store?: string | null }[];
+  posSales?: { saleDate: string; supply: number; brand?: string | null; store?: string | null; category?: string | null }[];
   // 통장 입출금·월말 잔액 월별 집계(서버 프리페치) — 첫 차트용. viewer는 빈 배열 → 차트 생략
   bankCash?: { ym: string; brand: string; bank: string; inflow: number; outflow: number; balance: number }[];
   // 스탭밀 상품별 판매량(finance.pos_items) — 메뉴 판매량 추이 차트 전용
   menuItems?: { saleDate: string; category: string; product: string; qty: number }[];
   // '대여금' 분류 거래의 (브랜드, 월)별 합계 — 통장 차트 빨간 원 마커. 서버(metrics/page)에서 프리페치.
   loanMarkers?: { brand: string; ym: string; amount: number; label: string }[];
+  // 채널수수료 실입력(finance.channel_fees) — EBIT 차감(관리손익과 기준 통일). 없는 달은 1.7% 추정.
+  channelFees?: { ym: string; amount: number; brand?: string | null }[];
   // 상단 매장 필(FinanceNav ?unit=)이 정하는 브랜드+지점 — 이 화면 자체 토글은 없앴다(2026-08-19).
   reportUnit: { brand: 'staffmeal' | 'garden'; store: 'pangyo' | 'yangjae' | null };
 }) {
@@ -298,8 +301,26 @@ export default function Dashboard({
       tx = tx.filter((t) => t.store === store);
       pos = pos.filter((p) => (p.store ?? '') === store);
     }
-    return aggregate(tx, cats, unit, netVat, pos);
-  }, [txns, cats, unit, netVat, posSales, brand, store]);
+    // 채널수수료 — 관리손익과 같은 기준으로 EBIT에서 차감(실입력 우선, 없으면 1.7% 추정)
+    const feeMap: Record<string, number> = {};
+    for (const f of channelFees) {
+      if (brand !== 'all' && (f.brand ?? 'garden') !== brand) continue;
+      feeMap[f.ym] = (feeMap[f.ym] ?? 0) + Number(f.amount || 0);
+    }
+    return aggregate(tx, cats, unit, netVat, pos, { channelFees: feeMap });
+  }, [txns, cats, unit, netVat, posSales, channelFees, brand, store]);
+
+  // 진행월(이번 달, KST) — POS·은행이 아직 덜 올라와 추이 끝점이 왜곡되므로 기본은 숨긴다(토글로 표시)
+  const nowYm = useMemo(() => {
+    const kst = new Date(Date.now() + 9 * 3600_000);
+    return `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, '0')}`;
+  }, []);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const visMonths = useMemo(() => {
+    if (unit !== 'month' || showCurrent) return months;
+    const filtered = months.filter((m) => m.ym !== nowYm);
+    return filtered.length > 0 ? filtered : months;
+  }, [months, unit, showCurrent, nowYm]);
 
   // 메뉴 판매량 추이(Newbie/Staff/Boss × 매장/포장) — 스탭밀 세그먼트에서만, 월 단위로만 그린다
   // (상품별 리포트가 일자별이라 주 단위 집계까지는 필요 없다고 판단).
@@ -316,9 +337,10 @@ export default function Dashboard({
       byMonth.set(ym, row);
     }
     return Array.from(byMonth.keys())
+      .filter((ym) => showCurrent || ym !== nowYm) // 진행월 숨김(다른 추이 차트와 동일)
       .sort()
       .map((ym) => ({ p: ym.slice(2).replace('-', '.'), ...byMonth.get(ym) }));
-  }, [menuItems, brand]);
+  }, [menuItems, brand, showCurrent, nowYm]);
 
   const fmtP = (key: string) => (unit === 'month' ? key.slice(2).replace('-', '.') : key.slice(5).replace('-', '/'));
 
@@ -357,6 +379,23 @@ export default function Dashboard({
           );
         })}
       </div>
+      {/* 진행월 — 자료가 덜 올라온 이번 달은 기본 숨김(끝점 왜곡 방지), 필요할 때만 켠다 */}
+      {unit === 'month' && (
+        <button
+          onClick={() => setShowCurrent((v) => !v)}
+          className={`rounded-md border px-3 py-1.5 text-[13px] transition-colors ${
+            showCurrent ? 'border-foreground/40 text-foreground' : 'border-border text-muted-foreground hover:text-foreground'
+          }`}
+          title="이번 달은 자료가 덜 올라와 추이 끝점이 왜곡될 수 있어 기본은 숨겨요"
+        >
+          진행월 {showCurrent ? '표시 중' : '숨김'}
+        </button>
+      )}
+      {unit === 'week' && (
+        <span className="text-[11px] text-muted-foreground">
+          주 단위는 현금흐름 관점 — 카드대금이 결제 주에 몰려 보여요. 손익 판단은 월 단위로.
+        </span>
+      )}
     </div>
   );
 
@@ -376,34 +415,95 @@ export default function Dashboard({
   // 요약 타일·구성비의 기준 달 = 사이드바에서 고른 달(월 단위). 그 달 데이터가 없거나 주 단위면 가장 최근.
   const focusIdx = (() => {
     if (unit === 'month' && ctx?.ym) {
-      const i = months.findIndex((m) => m.ym === ctx.ym);
+      const i = visMonths.findIndex((m) => m.ym === ctx.ym);
       if (i >= 0) return i;
     }
-    return months.length - 1;
+    return visMonths.length - 1;
   })();
-  const last = months[focusIdx];
-  const prev = focusIdx > 0 ? months[focusIdx - 1] : null;
-  const avgRev = months.reduce((a, m) => a + m.revenue, 0) / months.length;
-  const isPast = focusIdx < months.length - 1; // 최근이 아닌 과거 달을 보는 중
+  const last = visMonths[focusIdx];
+  const prev = focusIdx > 0 ? visMonths[focusIdx - 1] : null;
+  const avgRev = visMonths.reduce((a, m) => a + m.revenue, 0) / visMonths.length;
+  const isPast = focusIdx < visMonths.length - 1; // 최근이 아닌 과거 달을 보는 중
   const focusP = fmtP(last.ym); // 차트에서 선택 달 위치(강조선)
 
-  const lineData = months.map((m) => ({ p: fmtP(m.ym), 매출: m.revenue, EBIT: m.ebit, 순이익: m.net }));
+  // 손익분기 매출(BEP) — 변동비 = 재료비+채널수수료(매출 비례), 고정비 = 판관비 전체(인건비 포함).
+  // BEP = 고정비 ÷ (1 − 변동비율). 변동비율 ≥ 1이면(비정상 달) 표시 생략.
+  const bepOf = (m: MonthAgg): number | null => {
+    if (m.revenue <= 0) return null;
+    const varRate = (m.cogs + m.fee) / m.revenue;
+    return varRate < 1 ? Math.round(m.sga / (1 - varRate)) : null;
+  };
+  const lineData = visMonths.map((m) => ({ p: fmtP(m.ym), 매출: m.revenue, EBIT: m.ebit, 순이익: m.net, 손익분기: bepOf(m) }));
   // 감가상각(자본적지출 5년 정액) 반영 영업이익 — 비교용
   const dep = capexDepreciation(txns, cats);
   const hasCapex = Object.keys(dep).length > 0;
-  const depData = months.map((m) => ({ p: fmtP(m.ym), 영업이익: m.ebit, '감가상각 반영': m.ebit - (dep[m.ym] ?? 0) }));
-  const ratioData = months.map((m) => ({ p: fmtP(m.ym), 손익률: m.profitRatio != null ? +(m.profitRatio * 100).toFixed(1) : null }));
-  const costData = months.map((m) => ({ p: fmtP(m.ym), 재료비율: m.costRatio != null ? +(m.costRatio * 100).toFixed(1) : null }));
+  const depData = visMonths.map((m) => ({ p: fmtP(m.ym), 영업이익: m.ebit, '감가상각 반영': m.ebit - (dep[m.ym] ?? 0) }));
+  const ratioData = visMonths.map((m) => ({ p: fmtP(m.ym), 손익률: m.profitRatio != null ? +(m.profitRatio * 100).toFixed(1) : null }));
+  // 원가 구조 — 재료비율·인건비율·Prime Cost(재료+인건비). 인건비는 지출 구성의 '인건비' 최상위 합.
+  const costData = visMonths.map((m) => {
+    const labor = m.expense['인건비'] || 0;
+    const pct = (v: number) => (m.revenue > 0 ? +((v / m.revenue) * 100).toFixed(1) : null);
+    return { p: fmtP(m.ym), 재료비율: pct(m.cogs), 인건비율: pct(labor), 'Prime Cost': pct(m.cogs + labor) };
+  });
+  // 객단가 × 식수 — 스탭밀 전용. 식수 = 메뉴 티어(Staff·Newbie·Boss) 판매 수량 합(스프·음료 제외),
+  // 객단가 = (매출 − 식권판매) ÷ 식수. 식권은 식사 제공이 아니라 판매 시점 선매출이라 뺀다.
+  const giftByYm = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of posSales) {
+      if (brand !== 'all' && (p.brand ?? 'garden') !== brand) continue;
+      if ((p.category ?? '') !== '식권판매') continue;
+      const ym = p.saleDate.slice(0, 7);
+      map.set(ym, (map.get(ym) ?? 0) + p.supply);
+    }
+    return map;
+  }, [posSales, brand]);
+  const avgTicketData = useMemo(() => {
+    if (brand !== 'staffmeal' || unit !== 'month') return [];
+    const meals = new Map<string, number>();
+    for (const it of menuItems) {
+      if (!tierOf(it.product)) continue;
+      const ym = it.saleDate.slice(0, 7);
+      meals.set(ym, (meals.get(ym) ?? 0) + it.qty);
+    }
+    return visMonths
+      .map((m) => {
+        const n = meals.get(m.ym) ?? 0;
+        const menuRev = m.revenue - (giftByYm.get(m.ym) ?? 0);
+        return { p: fmtP(m.ym), 식수: n, 객단가: n > 0 ? Math.round(menuRev / n) : null };
+      })
+      .filter((r) => r.식수 > 0);
+  }, [brand, unit, menuItems, visMonths, giftByYm]);
+  // 전년 동월(YoY) — 최근 12개 표시 달 vs 1년 전 같은 달
+  const yoyData = useMemo(() => {
+    if (unit !== 'month') return [];
+    const revByYm = new Map(months.map((m) => [m.ym, m.revenue]));
+    return visMonths.slice(-12).map((m) => {
+      const [y, mm] = m.ym.split('-').map(Number);
+      const prevYm = `${y - 1}-${String(mm).padStart(2, '0')}`;
+      return { p: fmtP(m.ym), 올해: m.revenue, 전년: revByYm.get(prevYm) ?? null };
+    });
+  }, [unit, months, visMonths]);
+  // 식권 판매 비중 — 선매출(식권) 의존도. 식권판매 ÷ 총매출
+  const giftShareData = useMemo(() => {
+    if (unit !== 'month') return [];
+    return visMonths
+      .map((m) => {
+        const g = giftByYm.get(m.ym) ?? 0;
+        return { p: fmtP(m.ym), '식권 비중': m.revenue > 0 ? +((g / m.revenue) * 100).toFixed(1) : null, 식권판매: g };
+      })
+      .filter((r) => r['식권 비중'] != null);
+  }, [unit, visMonths, giftByYm]);
+  const hasGift = giftShareData.some((r) => (r.식권판매 ?? 0) > 0);
   // 지출 카테고리를 총액 큰 순으로 세우고, 8색을 넘기면 나머지는 '기타'로 접음(색 순환·중복 방지)
   const totalByKey: Record<string, number> = {};
-  for (const m of months) for (const k of expenseKeys) totalByKey[k] = (totalByKey[k] || 0) + (m.expense[k] || 0);
+  for (const m of visMonths) for (const k of expenseKeys) totalByKey[k] = (totalByKey[k] || 0) + (m.expense[k] || 0);
   const ranked = [...expenseKeys].filter((k) => (totalByKey[k] || 0) > 0).sort((a, b) => (totalByKey[b] || 0) - (totalByKey[a] || 0));
   const hasOther = ranked.length > CAT_MAX;
   const topKeys = hasOther ? ranked.slice(0, CAT_MAX - 1) : ranked;
   const otherKeys = hasOther ? ranked.slice(CAT_MAX - 1) : [];
   const barKeys = hasOther ? [...topKeys, '기타'] : topKeys;
   const colorOf = (k: string, i: number) => (k === '기타' || k === UNCLASSIFIED ? CAT_OTHER : CAT[i]);
-  const barData = months.map((m) => {
+  const barData = visMonths.map((m) => {
     const row: Record<string, number | string> = { p: fmtP(m.ym), 총지출: m.cogs + m.sga };
     for (const k of topKeys) row[k] = m.expense[k] || 0;
     if (hasOther) row['기타'] = otherKeys.reduce((s, k) => s + (m.expense[k] || 0), 0);
@@ -491,7 +591,14 @@ export default function Dashboard({
   }
 
   chartNodes.revenue = (
-    <ChartCard key="revenue" id="revenue" {...fullProps('revenue')} onReorder={reorderChart} title="매출 추이" subtitle="점선=평균">
+    <ChartCard
+      key="revenue"
+      id="revenue"
+      {...fullProps('revenue')}
+      onReorder={reorderChart}
+      title="매출 추이"
+      subtitle="점선=평균 · 빨간 점선=손익분기 매출(고정비 ÷ (1−변동비율), 변동비=재료비+수수료)"
+    >
       <ResponsiveContainer width="100%" height={chartH('revenue', 585)}>
         <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
@@ -500,6 +607,15 @@ export default function Dashboard({
           <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
           <ReferenceLine y={avgRev} stroke={REF} strokeDasharray="4 4" />
           {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
+          <Line
+            type="monotone"
+            dataKey="손익분기"
+            stroke="hsl(var(--destructive))"
+            strokeWidth={1}
+            strokeDasharray="4 3"
+            dot={false}
+            connectNulls
+          />
           <Line type="monotone" dataKey="매출" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
             <LabelList dataKey="매출" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
           </Line>
@@ -509,7 +625,7 @@ export default function Dashboard({
   );
 
   chartNodes.ebit = (
-    <ChartCard key="ebit" id="ebit" {...fullProps('ebit')} onReorder={reorderChart} title="영업이익 추이" subtitle="EBIT · 당기순이익">
+    <ChartCard key="ebit" id="ebit" {...fullProps('ebit')} onReorder={reorderChart} title="영업이익 추이" subtitle="EBIT · 당기순이익 · 채널수수료 차감(실입력 없는 달은 1.7% 추정)">
       <ResponsiveContainer width="100%" height={chartH('ebit', 585)}>
         <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 40, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
@@ -618,21 +734,104 @@ export default function Dashboard({
   );
 
   chartNodes.cost = (
-    <ChartCard key="cost" id="cost" {...fullProps('cost')} onReorder={reorderChart} title="재료비 %" subtitle="원가율 = 재료비 ÷ 매출 · 카페 벤치마크 25~37%">
+    <ChartCard
+      key="cost"
+      id="cost"
+      {...fullProps('cost')}
+      onReorder={reorderChart}
+      title="원가 구조 %"
+      subtitle="Prime Cost = 재료비+인건비 (F&B 목표 ≤60%) · 재료비 25~37% · 인건비 25~30%"
+    >
       <ResponsiveContainer width="100%" height={chartH('cost', 540)}>
-        <LineChart data={costData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
+        <LineChart data={costData} margin={{ top: 40, right: 16, bottom: 40, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
           <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
           <YAxis tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={AXIS} width={44} />
           <Tooltip content={<ChartTooltip fmt={(v: number) => `${v}%`} />} />
-          <ReferenceLine y={37} stroke={REF} strokeDasharray="4 4" />
-          <Line type="monotone" dataKey="재료비율" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }} connectNulls>
-            <LabelList dataKey="재료비율" position="top" offset={30} formatter={pctLabel} style={pointLabel} />
+          <Legend wrapperStyle={{ fontSize: 11 }} />
+          <ReferenceLine y={60} stroke="hsl(var(--destructive))" strokeDasharray="4 4" />
+          <Line type="monotone" dataKey="Prime Cost" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }} connectNulls>
+            <LabelList dataKey="Prime Cost" position="top" offset={30} formatter={pctLabel} style={pointLabel} />
           </Line>
+          <Line type="monotone" dataKey="재료비율" stroke={LINE2} strokeWidth={1.5} dot={{ r: 1.5, fill: LINE2 }} connectNulls />
+          <Line type="monotone" dataKey="인건비율" stroke={CAT[2]} strokeWidth={1.5} dot={{ r: 1.5 }} connectNulls />
         </LineChart>
       </ResponsiveContainer>
     </ChartCard>
   );
+
+  if (unit === 'month' && avgTicketData.length > 0) {
+    chartNodes.avg = (
+      <ChartCard
+        key="avg"
+        id="avg"
+        {...fullProps('avg')}
+        onReorder={reorderChart}
+        title="식수·객단가"
+        subtitle="식수 = Staff·Newbie·Boss 판매 수량(막대) · 객단가 = (매출−식권판매) ÷ 식수(선)"
+      >
+        <ResponsiveContainer width="100%" height={chartH('avg', 585)}>
+          <ComposedChart data={avgTicketData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+            <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+            <YAxis yAxisId="n" tickFormatter={(v) => `${Number(v).toLocaleString()}`} tick={axisTick} stroke={AXIS} width={48} />
+            <YAxis yAxisId="w" orientation="right" tickFormatter={(v) => `${Number(v).toLocaleString()}원`} tick={axisTick} stroke={AXIS} width={62} />
+            <Tooltip content={<ChartTooltip fmt={(v: number) => Number(v).toLocaleString('ko-KR')} />} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Bar yAxisId="n" dataKey="식수" fill={CAT[1]} maxBarSize={18} />
+            <Line yAxisId="w" type="monotone" dataKey="객단가" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }} connectNulls>
+              <LabelList dataKey="객단가" position="top" offset={30} formatter={(v: any) => (v == null ? '' : `${Number(v).toLocaleString()}원`)} style={pointLabel} />
+            </Line>
+          </ComposedChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    );
+  }
+
+  if (unit === 'month' && yoyData.some((r) => r.전년 != null)) {
+    chartNodes.yoy = (
+      <ChartCard key="yoy" id="yoy" {...fullProps('yoy')} onReorder={reorderChart} title="전년 동월 비교" subtitle="최근 12개월 매출 vs 1년 전 같은 달">
+        <ResponsiveContainer width="100%" height={chartH('yoy', 540)}>
+          <BarChart data={yoyData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+            <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+            <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
+            <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} />} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Bar dataKey="전년" fill={CAT_OTHER} maxBarSize={16} />
+            <Bar dataKey="올해" fill={CAT[0]} maxBarSize={16}>
+              <LabelList dataKey="올해" position="top" offset={8} formatter={wonLabel} style={pointLabel} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    );
+  }
+
+  if (unit === 'month' && hasGift) {
+    chartNodes.gift = (
+      <ChartCard
+        key="gift"
+        id="gift"
+        {...fullProps('gift')}
+        onReorder={reorderChart}
+        title="식권 판매 비중"
+        subtitle="식권판매 ÷ 총매출 — 선매출(식권) 의존도. 높을수록 미래 식사 제공 의무가 쌓여요"
+      >
+        <ResponsiveContainer width="100%" height={chartH('gift', 540)}>
+          <LineChart data={giftShareData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+            <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+            <YAxis tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={AXIS} width={44} />
+            <Tooltip content={<ChartTooltip fmt={(v: number) => `${v}%`} />} />
+            <Line type="monotone" dataKey="식권 비중" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }} connectNulls>
+              <LabelList dataKey="식권 비중" position="top" offset={30} formatter={pctLabel} style={pointLabel} />
+            </Line>
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    );
+  }
 
   if (unit === 'month' && brand === 'staffmeal' && menuQtyData.length > 0) {
     chartNodes.menu = (
@@ -675,7 +874,7 @@ export default function Dashboard({
         </div>
         {toggle}
       </div>
-      {months.length > 0 && last.revenue === 0 && (
+      {visMonths.length > 0 && last.revenue === 0 && (
         <div className="-mt-2 text-[11px] text-muted-foreground">
           이 기간 <b>POS 매출이 없어요</b> — 매출은 <a href="/finance/pnl" className="underline">관리손익</a>에서 토스 매출리포트를 올려야 잡혀요.
         </div>

@@ -56,6 +56,19 @@ describe('aggregate 카드대금↔수집분 차감', () => {
     expect(months[0].cogs).toBe(15_000_000);
   });
 
+  it('채널수수료 — 옵션 전달 시 실입력 우선, 없으면 매출×1.7% 추정을 EBIT에서 뺀다', () => {
+    const base = aggregate([], CATS, 'month', true, POS);
+    expect(base.months[0].fee).toBe(0); // 옵션 미전달(구 호출) — 기존 동작 그대로
+
+    const est = aggregate([], CATS, 'month', true, POS, { channelFees: {} });
+    expect(est.months[0].fee).toBe(Math.round(10_000_000 * 0.017));
+    expect(est.months[0].ebit).toBe(10_000_000 - est.months[0].fee);
+
+    const actual = aggregate([], CATS, 'month', true, POS, { channelFees: { '2026-05': 120_000 } });
+    expect(actual.months[0].fee).toBe(120_000);
+    expect(actual.months[0].ebit).toBe(10_000_000 - 120_000);
+  });
+
   it("'미상'(용도 불명)은 총액 그대로 지출에 포함된다 — 관리손익과 동일 규칙", () => {
     const txns: AggTx[] = [
       tx({ category_id: 69, amount_out: 3_000_000 }),

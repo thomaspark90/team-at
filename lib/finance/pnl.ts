@@ -8,7 +8,7 @@
 // 영업외·손익제외(영수증분해 등) = 관리손익 제외. 단 카드대금정산·쿠팡대체·네이버페이대체는
 // 대응 세부 자료(명세 연결·자동수집)가 있을 때만 제외 — 없으면 '미분해 lump' 지출로 포함(아래 규칙).
 // VAT: 매출은 POS 공급가액(VAT 제외). 지출도 대칭 위해 과세 매입은 공급가액(÷1.1)으로 순액 처리.
-import { VAT_DIVISOR } from './aggregate';
+import { VAT_DIVISOR, CHANNEL_FEE_RATE } from './aggregate';
 import { COLLECTED_SOURCES, cardDupOffset } from './cardOffset';
 
 export interface PnlCat {
@@ -95,9 +95,8 @@ export function prevYm(ym: string): string {
 
 const kindOf = (cat: PnlCat): InvKind => (cat.name === '포장재' ? '포장소모품' : '식자재');
 
-// 채널수수료 추정 기본율(정산서 실제 금액 미입력 시) — 토스 POS(카드+간편결제) 블렌디드 근사.
-// 실제 금액을 입력하면 이 추정은 무시된다.
-export const CHANNEL_FEE_RATE = 0.017;
+// 채널수수료 추정 기본율 — 정의는 aggregate.ts로 이동(지표와 기준 통일, 2026-08-20). 기존 임포트 호환 재수출.
+export { CHANNEL_FEE_RATE };
 
 // 세부 자료가 빠진 달도 지출이 증발하지 않게 하는 '미분해 lump' 규칙(2026-08-17, 간이 모드 흡수·폐지):
 // - 카드대금: 명세 연결 시 제외(세부가 대체), 미연결이면 cardReconcile.unsettledLump → '카드 지출(미분해)'

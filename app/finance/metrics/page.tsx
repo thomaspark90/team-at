@@ -68,12 +68,19 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
     );
 
   // 매출 = POS 공급가액(발생주의). memo-free 뷰(dashboard_pos), 없으면 pos_sales로 폴백.
+  // category 포함 — 식권 판매 비중 차트('식권판매' 분리)용.
   const loadPosSales = async () => {
-    let posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand,store', ['sale_date', 'brand', 'store', 'supply']);
+    let posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand,store,category', ['sale_date', 'brand', 'store', 'category', 'supply']);
     if (posRows.error) posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
     if (posRows.error) posRows = await fetchAll('pos_sales', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
-    return ((posRows.data as { sale_date: string; supply: number; brand?: string | null; store?: string | null }[] | null) ?? [])
-      .map((p) => ({ saleDate: p.sale_date, supply: p.supply, brand: p.brand, store: p.store ?? null }));
+    return ((posRows.data as { sale_date: string; supply: number; brand?: string | null; store?: string | null; category?: string | null }[] | null) ?? [])
+      .map((p) => ({ saleDate: p.sale_date, supply: p.supply, brand: p.brand, store: p.store ?? null, category: p.category ?? null }));
+  };
+
+  // 채널수수료 실입력 — 지표 EBIT도 관리손익과 같은 기준(실입력 우선, 없으면 추정율)으로 차감(2026-08-20)
+  const loadChannelFees = async () => {
+    const { data } = await supabase.schema('finance').from('channel_fees').select('ym,amount,brand');
+    return ((data as { ym: string; amount: number; brand?: string | null }[] | null) ?? []);
   };
 
   // 통장 입출금·월말 잔액 월별 집계 — 지표 첫 차트용(2026-08-04 대표 지시).
@@ -182,13 +189,14 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
   };
 
   // 5개 테이블이 서로 독립적이라 병렬로 조회 — 예전엔 순차 await라 지표 페이지 로딩이 밀렸다.
-  const [txns, cats, posSales, bankCash, menuItems, loanMarkers] = await Promise.all([
+  const [txns, cats, posSales, bankCash, menuItems, loanMarkers, channelFees] = await Promise.all([
     loadTxns(),
     loadCats(),
     loadPosSales(),
     loadBankCash(),
     loadMenuQty(),
     loadLoanMarkers(),
+    loadChannelFees(),
   ]);
 
   return (
@@ -215,6 +223,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
             bankCash={bankCash}
             menuItems={menuItems}
             loanMarkers={loanMarkers}
+            channelFees={channelFees}
             reportUnit={{ brand: unit.brand as 'staffmeal' | 'garden', store: unit.store }}
           />
         </MonthShell>
