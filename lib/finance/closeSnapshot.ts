@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildExpensePrep, type ExpenseTx } from './prepExpense';
 import { buildExpenseDetail, type CategoryInfo } from './prepExpenseDetail';
 import { buildRevenuePrep, type PosSaleRow } from './prepRevenue';
+import { monthEndBalance } from './cashflow';
 import type { UnitDef } from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -24,10 +25,13 @@ export interface SnapshotFigures {
   revenue: Record<string, number>; // key: pos, in_total, meal_ticket, rate, rate_adj
   /** 그 달 거래 행 수 — 재업로드·삭제 감지용 */
   txCount: number;
+  /** 은행 월말 잔액(그 달 거래 있는 계좌 합, cashflow 앵커 방식) — 은행 자료 재업로드 감지용.
+      2026-08-20 추가라 옛 스냅샷엔 없다 — diff는 양쪽 다 있을 때만 비교한다. */
+  bankBalance?: number | null;
 }
 
 export interface FigureDiff {
-  section: 'expense' | 'groups' | 'revenue' | 'txCount';
+  section: 'expense' | 'groups' | 'revenue' | 'txCount' | 'bank';
   key: string;
   label: string;
   was: number;
@@ -58,6 +62,7 @@ const LABELS: Record<string, string> = {
   rate: '정산률',
   rate_adj: '보정 정산률',
   txCount: '거래 행 수',
+  bankBalance: '은행 월말 잔액',
 };
 
 /** 한 달·한 단위의 결산값을 화면과 같은 빌더로 계산한다 */
@@ -110,8 +115,19 @@ export async function computeMonthlyFigures(
     .lte('sale_date', `${ym}-${String(lastDay).padStart(2, '0')}`)
     .limit(10000);
   if (unit.store) giftQ = giftQ.eq('store', unit.store);
-  const [{ data: txData, error: txErr }, { data: posData, error: posErr }, { data: revData, error: revErr }, { data: catsData, error: catsErr }, { data: giftData }] =
-    await Promise.all([txQ, posQ, revQ, db.from('categories').select('id,name,type,parent_id'), giftQ]);
+
+  // 은행 월말 잔액 — 결산 후 은행 자료가 재업로드되면 다른 집계보다 먼저 여기가 어긋난다.
+  // 분할 자식 제외(실제 통장 이동은 부모 한 건), 계좌별 앵커 계산 후 합산(cashflow와 동일 규칙).
+  let bankQ = db
+    .from('transactions')
+    .select('tx_at,bank,balance,amount_in,amount_out,split_parent_id')
+    .eq('brand', unit.brand)
+    .eq('ym', ym)
+    .eq('source', 'bank')
+    .limit(50000);
+  if (unit.store) bankQ = bankQ.eq('store', unit.store);
+  const [{ data: txData, error: txErr }, { data: posData, error: posErr }, { data: revData, error: revErr }, { data: catsData, error: catsErr }, { data: giftData }, { data: bankData }] =
+    await Promise.all([txQ, posQ, revQ, db.from('categories').select('id,name,type,parent_id'), giftQ, bankQ]);
   if (txErr) throw new Error(`거래 조회 실패: ${txErr.message}`);
   if (posErr) throw new Error(`POS 조회 실패: ${posErr.message}`);
   if (revErr) throw new Error(`매출 입금 조회 실패: ${revErr.message}`);
@@ -153,12 +169,28 @@ export async function computeMonthlyFigures(
     (giftData as { sale_date: string; qty: number; gross: number }[] | null) ?? []
   );
 
+  const bankRows = (
+    (bankData as { tx_at: string; bank: string | null; balance: number | null; amount_in: number; amount_out: number; split_parent_id: number | null }[] | null) ?? []
+  ).filter((r) => r.bank != null && r.split_parent_id == null);
+  const byBank = new Map<string, typeof bankRows>();
+  for (const r of bankRows) {
+    const arr = byBank.get(r.bank!) ?? [];
+    arr.push(r);
+    byBank.set(r.bank!, arr);
+  }
+  let bankBalance: number | null = null;
+  for (const rows of Array.from(byBank.values())) {
+    const end = monthEndBalance(rows.map((r) => ({ tx_at: r.tx_at, amount_in: r.amount_in, amount_out: r.amount_out, balance: r.balance ?? 0 })));
+    if (end != null) bankBalance = (bankBalance ?? 0) + end;
+  }
+
   return {
     v: 1,
     expense: pick(p1.rows),
     groups: pick(p2.summary),
     revenue: pick(p3.columns),
     txCount: txns.length,
+    bankBalance,
   };
 }
 
@@ -176,6 +208,9 @@ export function diffFigures(was: SnapshotFigures, now: SnapshotFigures): FigureD
   }
   if (was.txCount !== now.txCount)
     out.push({ section: 'txCount', key: 'txCount', label: LABELS.txCount, was: was.txCount, now: now.txCount });
+  // 은행 잔액 — 옛 스냅샷(2026-08-20 이전)엔 필드가 없어 그때는 비교하지 않는다(가짜 변동 방지)
+  if (was.bankBalance !== undefined && now.bankBalance !== undefined && (was.bankBalance ?? 0) !== (now.bankBalance ?? 0))
+    out.push({ section: 'bank', key: 'bankBalance', label: LABELS.bankBalance, was: was.bankBalance ?? 0, now: now.bankBalance ?? 0 });
   // 합계·핵심부터 보이게
   const rank = (d: FigureDiff) => (d.key === 'total' ? 0 : d.section === 'txCount' ? 1 : 2);
   return out.sort((a, b) => rank(a) - rank(b) || Math.abs(b.now - b.was) - Math.abs(a.now - a.was));

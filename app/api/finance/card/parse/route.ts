@@ -32,7 +32,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `엑셀을 읽지 못했습니다: ${(e as Error).message}` }, { status: 400 });
   }
   if (result.totalRows === 0) {
-    return NextResponse.json({ error: '이용내역을 읽지 못했습니다. 신한카드 이용내역 엑셀인지 확인하세요.' }, { status: 422 });
+    return NextResponse.json(
+      { error: '이용내역을 읽지 못했습니다. 현재는 신한카드 이용내역 엑셀만 지원해요 — 비씨·현대카드 명세는 파일 포맷 확인 후 파서를 추가할 예정이에요.' },
+      { status: 422 }
+    );
   }
 
   // DB 지문 대조 → 신규만
@@ -44,8 +47,13 @@ export async function POST(req: Request) {
   const yms = Array.from(new Set(result.transactions.map((t) => t.ym))).sort();
   const usageYm = yms[yms.length - 1] ?? null;
 
-  // 매칭 후보: 은행 '신한카드' 결제 출금 (source=bank) — 같은 브랜드 통장의 결제 건만
+  // 매칭 후보: 은행 카드대금 결제 출금 (source=bank) — 같은 브랜드 통장의 결제 건만.
+  // '신한카드' 하드코딩이었으나 스탭밀은 비씨(선결제·BC바로)·현대카드라 후보가 0건이 됐다
+  // (2026-08-20) — cardOffset의 CARD_PAYMENT_RE와 같은 카드사 목록으로 확장.
   const brand = String(form.get('brand') ?? 'garden');
+  const CARD_MEMO_OR = ['비씨카드', 'BC바로카드', 'BC카드', '현대카드', '신한카드', '삼성카드', '국민카드', '롯데카드', '하나카드', '우리카드']
+    .map((k) => `memo.ilike.%${k}%`)
+    .join(',');
   const { data: cand } = await supabase
     .schema('finance')
     .from('transactions')
@@ -53,9 +61,9 @@ export async function POST(req: Request) {
     .eq('source', 'bank')
     .eq('brand', brand === 'staffmeal' ? 'staffmeal' : 'garden')
     .gt('amount_out', 0)
-    .ilike('memo', '%신한카드%')
+    .or(CARD_MEMO_OR)
     .order('tx_at', { ascending: false })
-    .limit(12);
+    .limit(24);
   const candidates = (cand ?? [])
     .map((c: { id: number; tx_at: string; memo: string; amount_out: number; ym: string }) => ({
       id: c.id,

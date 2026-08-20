@@ -62,6 +62,13 @@ const prevYm = (ym: string): string => {
   return d.toISOString().slice(0, 7);
 };
 
+/** 'YYYY-MM' 한 달 후 */
+const nextYm = (ym: string): string => {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m, 1));
+  return d.toISOString().slice(0, 7);
+};
+
 export function buildRevenuePrep(
   pos: PosSaleRow[],
   txns: ExpenseTx[], // revenue 계정으로 분류된 거래만 넘겨받는다
@@ -139,20 +146,43 @@ export function buildRevenuePrep(
     diff[b] = i - p;
     if (p > 0) {
       rate[b] = Math.round((i * 1000) / p) / 10;
-      if (isMonth) {
-        const a = adjusted[b] ?? 0;
-        rateAdj[b] = Math.round((a * 1000) / p) / 10;
-        // 최신 1~2개월은 식권 정산·은행 자료가 아직이라 판정 보류
-        const isRecent = b >= prevYm(latestYm);
-        if (!isRecent && (rateAdj[b] < RATE_OK_MIN || rateAdj[b] > RATE_OK_MAX)) {
-          warnings.push({
-            bucket: b,
-            message:
-              rateAdj[b] > 100
-                ? `보정 정산률 ${rateAdj[b]}% — 식권 시차를 감안해도 입금이 POS보다 많아요. POS 밖 매출이나 분류 오류 후보예요.`
-                : `보정 정산률 ${rateAdj[b]}% — 식권 시차를 감안해도 입금이 부족해요. 은행 자료 누락이나 미정산 후보예요.`,
-          });
-        }
+      if (isMonth) rateAdj[b] = Math.round(((adjusted[b] ?? 0) * 1000) / p) / 10;
+    }
+  }
+
+  // 경고 판정 — 전 달의 rateAdj가 나온 뒤에 돈다. 식권대장 정산이 가끔 한 달 건너뛰어
+  // 다음 달에 두 달치가 합산 입금되는데(2025-12→2026-01, 2026-06→2026-07 실측), 그러면
+  // 밀린 달은 낮게·받은 달은 높게 나와 단월 비율이 거짓 경고가 된다. 반대 방향으로 이탈한
+  // 인접 달과 2개월 합산해 정상 범위면 '정산 밀림'으로 판정해 문구를 바꾼다(2026-08-20 대표 승인).
+  if (isMonth) {
+    const pairRate = (a: string, b2: string): number | null => {
+      const pp = (posTotalAmt[a] ?? 0) + (posTotalAmt[b2] ?? 0);
+      if (pp <= 0) return null;
+      return Math.round((((adjusted[a] ?? 0) + (adjusted[b2] ?? 0)) * 1000) / pp) / 10;
+    };
+    for (const b of buckets) {
+      const r = rateAdj[b];
+      if (r == null) continue;
+      // 최신 1~2개월은 식권 정산·은행 자료가 아직이라 판정 보류
+      if (b >= prevYm(latestYm)) continue;
+      if (r >= RATE_OK_MIN && r <= RATE_OK_MAX) continue;
+      const partner = [nextYm(b), prevYm(b)]
+        .filter((n) => rateAdj[n] != null && (rateAdj[n]! - 100) * (r - 100) < 0)
+        .map((n) => ({ n, pr: pairRate(b, n) }))
+        .find((x) => x.pr != null && x.pr >= RATE_OK_MIN && x.pr <= RATE_OK_MAX);
+      if (partner) {
+        warnings.push({
+          bucket: b,
+          message: `보정 정산률 ${r}% — 식권 정산이 한 달 밀려 인접 달과 합산 입금된 패턴이에요(${partner.n}와 2개월 합산 ${partner.pr}%로 정상 범위). 회수 문제는 아니에요.`,
+        });
+      } else {
+        warnings.push({
+          bucket: b,
+          message:
+            r > 100
+              ? `보정 정산률 ${r}% — 식권 시차를 감안해도 입금이 POS보다 많아요. POS 밖 매출이나 분류 오류 후보예요.`
+              : `보정 정산률 ${r}% — 식권 시차를 감안해도 입금이 부족해요. 은행 자료 누락이나 미정산 후보예요.`,
+        });
       }
     }
   }

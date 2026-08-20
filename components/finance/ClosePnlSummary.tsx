@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import Link from 'next/link';
+import Popover from '@/components/finance/Popover';
 import type { ExpenseGrain } from '@/lib/finance/prepExpense';
 
 // 월 결산 페이지의 월별 손익 요약 — 전처리 빌더의 결과를 그대로 받아 표만 그린다(2026-08-20 대표 요청).
@@ -83,11 +84,12 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
               </th>
               <th className="whitespace-nowrap px-3 py-2 text-right font-normal">
                 {/* 잔고 ≠ 전월 잔고+손익 인 이유 — 34개월 전 구간 대사로 소명한 설명(2026-08-20 대표 요청) */}
-                <details className="relative inline-block text-left font-normal">
-                  <summary className="cursor-pointer list-none whitespace-nowrap hover:text-foreground [&::-webkit-details-marker]:hidden">
-                    은행 잔고 ⓘ
-                  </summary>
-                  <div className="absolute right-0 z-10 mt-1 w-[360px] whitespace-normal rounded-md border border-border bg-background p-3 text-[12px] font-normal leading-relaxed shadow-md">
+                <Popover
+                  className="relative inline-block text-left font-normal"
+                  summaryClassName="cursor-pointer list-none whitespace-nowrap hover:text-foreground [&::-webkit-details-marker]:hidden"
+                  summary="은행 잔고 ⓘ"
+                  panelClassName="absolute right-0 z-10 mt-1 w-[360px] whitespace-normal rounded-md border border-border bg-background p-3 text-[12px] font-normal leading-relaxed shadow-md"
+                >
                     <div className="mb-1.5 font-medium text-foreground">은행 잔고와 손익이 다른 이유</div>
                     <p className="m-0 mb-2 text-muted-foreground">
                       그 달 말일 통장 잔액(전 계좌 합)이에요. <b className="text-foreground">전월 잔액 + 손익과 다른 게
@@ -126,8 +128,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                       </Link>
                       의 매출 외 입금·비용 외 출금 열에서 봐요.
                     </div>
-                  </div>
-                </details>
+                </Popover>
               </th>
             </tr>
           </thead>
@@ -172,11 +173,11 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                     ) : (
                       // <details> 팝오버 — 클릭하면 "뭐가 분류 안 됐는지" 구성이 펼쳐지고,
                       // 미분류·미상·카드(분류전)는 분류 화면으로 바로 간다(전처리 드릴다운과 동일 규칙).
-                      <details className="relative inline-block">
-                        <summary className="cursor-pointer list-none underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
-                          {won(r.pendingExpense)}
-                        </summary>
-                        <div className="absolute right-0 z-10 mt-1 w-[300px] rounded-md border border-border bg-background p-3 text-left shadow-md">
+                      <Popover
+                        summaryClassName="cursor-pointer list-none underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden"
+                        summary={won(r.pendingExpense)}
+                        panelClassName="absolute right-0 z-10 mt-1 w-[300px] rounded-md border border-border bg-background p-3 text-left shadow-md"
+                      >
                           <div className="mb-2 text-[12px] font-medium text-foreground">{r.ym} 미분해·미분류 구성</div>
                           <dl className="m-0 space-y-1.5 text-[12px]">
                             {r.pending.cardOther !== 0 && (
@@ -240,8 +241,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                             </Link>
                             에서 이 달 행을 봐요.
                           </div>
-                        </div>
-                      </details>
+                      </Popover>
                     )}
                   </td>
                   <td
