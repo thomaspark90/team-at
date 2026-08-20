@@ -32,6 +32,8 @@ export interface MenuColumn {
   label: string;
   kind: 'menu' | 'total' | 'derived';
   amounts: Record<string, number>;
+  /** 매출 뷰에서 함께 보여줄 주문수 — 요약에 수량이 꼭 필요하다는 요구(2026-08-20) */
+  qtyAmounts?: Record<string, number>;
   hint?: string;
 }
 
@@ -91,6 +93,8 @@ export function buildMenuPrep(
 ): MenuPrep {
   const perMenu = new Map<string, Record<string, number>>();
   const perProduct = new Map<string, Record<string, number>>();
+  const perMenuQty = new Map<string, Record<string, number>>();
+  const perProductQty = new Map<string, Record<string, number>>();
   const itemsTotal: Record<string, number> = {}; // 정합 비교는 항상 금액(gross) 기준
   const itemsMetricTotal: Record<string, number> = {};
 
@@ -105,6 +109,12 @@ export function buildMenuPrep(
     const m2 = perProduct.get(pKey) ?? {};
     add(m2, b, v);
     perProduct.set(pKey, m2);
+    const q1 = perMenuQty.get(menu) ?? {};
+    add(q1, b, r.qty);
+    perMenuQty.set(menu, q1);
+    const q2 = perProductQty.get(pKey) ?? {};
+    add(q2, b, r.qty);
+    perProductQty.set(pKey, q2);
     add(itemsTotal, b, r.gross);
     add(itemsMetricTotal, b, v);
   }
@@ -116,13 +126,18 @@ export function buildMenuPrep(
     b.localeCompare(a)
   );
 
-  const toColumns = (map: Map<string, Record<string, number>>): MenuColumn[] =>
+  const toColumns = (
+    map: Map<string, Record<string, number>>,
+    qtyMap: Map<string, Record<string, number>>
+  ): MenuColumn[] =>
     Array.from(map.entries())
       .map(([label, amounts]) => ({
         key: `m:${label}`,
         label,
         kind: 'menu' as const,
         amounts,
+        // 매출 뷰에서 수량을 병기 — 수량 뷰에선 amounts 자체가 수량이라 생략
+        qtyAmounts: metric === 'gross' ? qtyMap.get(label) : undefined,
         _sum: Object.values(amounts).reduce((s, v) => s + v, 0),
       }))
       .sort((a, b) => b._sum - a._sum)
@@ -162,7 +177,7 @@ export function buildMenuPrep(
   return {
     grain,
     buckets,
-    summary: [...toColumns(perMenu), ...tail],
-    detail: [...toColumns(perProduct), totalCol],
+    summary: [...toColumns(perMenu, perMenuQty), ...tail],
+    detail: [...toColumns(perProduct, perProductQty), totalCol],
   };
 }

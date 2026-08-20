@@ -102,22 +102,29 @@ export default async function PrepMenuPage({
       const srcs = merges[c.label] ?? [];
       if (srcs.length === 0) { out.push(c); continue; }
       const amounts = { ...c.amounts };
+      const qtyAmounts = c.qtyAmounts ? { ...c.qtyAmounts } : undefined;
       for (const sl of srcs) {
         const sc = byLabel.get(sl);
-        if (sc) for (const [b, v] of Object.entries(sc.amounts)) amounts[b] = (amounts[b] ?? 0) + v;
+        if (!sc) continue;
+        for (const [b, v] of Object.entries(sc.amounts)) amounts[b] = (amounts[b] ?? 0) + v;
+        if (qtyAmounts && sc.qtyAmounts)
+          for (const [b, v] of Object.entries(sc.qtyAmounts)) qtyAmounts[b] = (qtyAmounts[b] ?? 0) + v;
       }
-      out.push({ ...c, amounts, hint: `병합된 표기 ${srcs.length}개 포함: ${srcs.join(', ')}` });
+      out.push({ ...c, amounts, qtyAmounts, hint: `병합된 표기 ${srcs.length}개 포함: ${srcs.join(', ')}` });
     }
     // 대표가 데이터에 없는 경우(현재 판매 0) — 소스만 있으면 대표 열을 만들어준다
     for (const [t, list] of Object.entries(merges)) {
       if (byLabel.has(t) || out.some((c) => c.label === t)) continue;
       const amounts: Record<string, number> = {};
+      const qtyAmounts: Record<string, number> = {};
       for (const sl of list) {
         const sc = byLabel.get(sl);
-        if (sc) for (const [b, v] of Object.entries(sc.amounts)) amounts[b] = (amounts[b] ?? 0) + v;
+        if (!sc) continue;
+        for (const [b, v] of Object.entries(sc.amounts)) amounts[b] = (amounts[b] ?? 0) + v;
+        if (sc.qtyAmounts) for (const [b, v] of Object.entries(sc.qtyAmounts)) qtyAmounts[b] = (qtyAmounts[b] ?? 0) + v;
       }
       if (Object.keys(amounts).length > 0)
-        out.push({ key: `m:${t}`, label: t, kind: 'menu', amounts, hint: `병합된 표기 ${list.length}개 포함: ${list.join(', ')}` });
+        out.push({ key: `m:${t}`, label: t, kind: 'menu', amounts, qtyAmounts, hint: `병합된 표기 ${list.length}개 포함: ${list.join(', ')}` });
     }
     return out;
   })();
@@ -139,22 +146,27 @@ export default async function PrepMenuPage({
   const summaryShown = (() => {
     const groups = new Map<string, Record<string, number>>();
     const orderKeys: string[] = [];
+    const groupQty = new Map<string, Record<string, number>>();
     for (const c of detailShown) {
       if (c.kind !== 'menu') continue;
       const k = menuKeyOf(c.label);
       if (!groups.has(k)) {
         groups.set(k, {});
+        groupQty.set(k, {});
         orderKeys.push(k);
       }
       const g = groups.get(k)!;
       for (const [b, v] of Object.entries(c.amounts)) g[b] = (g[b] ?? 0) + v;
+      const gq = groupQty.get(k)!;
+      if (c.qtyAmounts) for (const [b, v] of Object.entries(c.qtyAmounts)) gq[b] = (gq[b] ?? 0) + v;
     }
     const groupCols: MenuColumn[] = orderKeys.map((k) => ({
       key: `g:${k}`,
       label: k,
       kind: 'menu',
       amounts: groups.get(k)!,
-      hint: '상세 표에 노출된 상품들의 합 — 상세 표 설정(숨김·순서·병합)을 따라요.',
+      qtyAmounts: metric === 'gross' ? groupQty.get(k) : undefined,
+      hint: '상세 표에 노출된 상품들의 합 — 상세 표 설정(숨김·순서·병합)을 따라요. 작은 숫자는 주문수예요.',
     }));
     return [...groupCols, ...summary.filter((c) => c.kind !== 'menu')];
   })();
@@ -201,7 +213,18 @@ export default async function PrepMenuPage({
                       isDiff && v !== 0 ? 'font-medium text-foreground' : ''
                     }`}
                   >
-                    {isDiff && v !== 0 ? `⚠ ${v > 0 ? '+' : ''}${num(v)}` : num(v)}
+                    {isDiff && v !== 0 ? (
+                      `⚠ ${v > 0 ? '+' : ''}${num(v)}`
+                    ) : c.qtyAmounts ? (
+                      <span className="inline-flex flex-col items-end leading-tight">
+                        <span>{num(v)}</span>
+                        {(c.qtyAmounts[b] ?? 0) !== 0 && (
+                          <span className="text-[11px] text-muted-foreground">{num(c.qtyAmounts[b] ?? 0)}개</span>
+                        )}
+                      </span>
+                    ) : (
+                      num(v)
+                    )}
                   </td>
                 );
               })}
