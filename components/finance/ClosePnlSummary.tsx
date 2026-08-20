@@ -44,10 +44,12 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
         대비 비율로 본 거예요. 미분해 %가 크면(⚠ 5%+) 나머지 비율이 실제보다 낮게 보여요.
         실입금은 회수 참고용(카드 1~2일·식권 정산 한 달 시차). †는 POS 미업로드 달 —
         실입금 − 지출로 임시 계산한 값이라 POS 파일을 올리면 정식 손익으로 바뀌어요.
-        은행 잔고는 그 달 말일 통장 잔액 — 전월 잔고 + 손익과 다른 게 정상이에요(잔고 ⓘ 참고).
+        은행 잔고는 그 달 말일 통장 잔액(진행 중인 달은 최신 거래일 기준) — 전월 잔고 + 손익과 다른 게 정상이에요(잔고 ⓘ 참고).
         매출 외 입금·비용 외 출금 두 열이 그 차이 중 시차를 뺀 몫을 그 자리에서 설명해요.
       </p>
-      <div className="overflow-x-auto rounded-md border border-border">
+      {/* xl 이상(표가 다 들어가는 폭)에선 overflow를 풀어 ⓘ·미분해 팝오버가 잘리지 않게 —
+          overflow-x-auto 컨테이너는 overflow-y도 auto가 돼 하단 행 팝오버가 안에서 잘린다 */}
+      <div className="overflow-x-auto rounded-md border border-border xl:overflow-visible">
         <table className="w-full min-w-[1080px] border-collapse text-[13px]">
           <thead>
             <tr className="border-b border-border text-muted-foreground">

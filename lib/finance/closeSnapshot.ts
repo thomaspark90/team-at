@@ -51,6 +51,8 @@ const LABELS: Record<string, string> = {
   g_etc: '기타 운영비',
   g_pending: '미분해·미분류',
   pos: 'POS 매출',
+  pos_menu: '메뉴 매출',
+  gift: '식권 판매',
   in_total: '통장 입금 합계',
   meal_ticket: '식권 정산',
   rate: '정산률',
