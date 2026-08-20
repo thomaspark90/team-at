@@ -4,6 +4,7 @@ import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveRoleStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
 import type { AggTx, AggCat } from '@/lib/finance/aggregate';
+import { monthEndBalance } from '@/lib/finance/cashflow';
 import { UNITS, unitOf } from '@/lib/finance/types';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
@@ -97,21 +98,24 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
       raw.push(...((data ?? []) as typeof raw));
       if (!data || data.length < PAGE) break;
     }
-    // (브랜드,은행)별 월 집계 + 월말 잔액(그 달 마지막 거래), 거래 없는 달은 잔액 이월
-    const agg = new Map<string, Map<string, { inflow: number; outflow: number; lastAt: string; balance: number }>>();
+    // (브랜드,은행)별 월 집계 + 월말 잔액, 거래 없는 달은 잔액 이월.
+    // 월말 잔액은 '마지막 행'이 아니라 유일 시각 앵커 방식(monthEndBalance) — 은행 파일이
+    // 오름차순·내림차순으로 섞여 들어와 동시각 묶음의 순서를 믿을 수 없다(2026-08-20, cashflow.ts 참고).
+    const agg = new Map<string, Map<string, { inflow: number; outflow: number; rows: { tx_at: string; amount_in: number; amount_out: number; balance: number }[] }>>();
     for (const t of raw) {
       const k = `${t.brand ?? 'garden'}|${t.bank}`;
       if (!agg.has(k)) agg.set(k, new Map());
       const mm = agg.get(k)!;
       const ym = String(t.ym);
-      const a = mm.get(ym) ?? { inflow: 0, outflow: 0, lastAt: '', balance: 0 };
+      const a = mm.get(ym) ?? { inflow: 0, outflow: 0, rows: [] };
       a.inflow += Number(t.amount_in) || 0;
       a.outflow += Number(t.amount_out) || 0;
-      // 잔액 0 = 미기재(엑셀 일부) — 월말 잔액 후보에서 제외
-      if (Number(t.balance) !== 0 && String(t.tx_at) >= a.lastAt) {
-        a.lastAt = String(t.tx_at);
-        a.balance = Number(t.balance);
-      }
+      a.rows.push({
+        tx_at: String(t.tx_at),
+        amount_in: Number(t.amount_in) || 0,
+        amount_out: Number(t.amount_out) || 0,
+        balance: Number(t.balance) || 0,
+      });
       mm.set(ym, a);
     }
     const allYms = Array.from(new Set(raw.map((t) => String(t.ym)))).sort();
@@ -121,7 +125,8 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
       for (const ym of allYms) {
         const a = mm.get(ym);
         if (a) {
-          if (a.balance !== 0) carry = a.balance;
+          const end = monthEndBalance(a.rows);
+          if (end != null) carry = end;
           bankCash.push({ ym, brand: bBrand, bank, inflow: a.inflow, outflow: a.outflow, balance: carry });
         } else {
           bankCash.push({ ym, brand: bBrand, bank, inflow: 0, outflow: 0, balance: carry });
