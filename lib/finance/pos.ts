@@ -45,11 +45,22 @@ export interface PosItemRow {
   supply: number;
 }
 
+// (일 × 상품) 식권·상품권 판매 행 — finance.pos_gift_sales 용. 선수금이라 매출(rows)에서
+// 빠지는 금액을 버리지 않고 담는다(2026-08-20) — 보정 정산률 100% 초과의 주 원인 실측용.
+export interface PosGiftRow {
+  ym: string;
+  saleDate: string;
+  item: string;
+  qty: number;
+  gross: number;
+}
+
 export interface PosParseResult {
   ym: string; // 대표 월(가장 많은 행이 속한 월)
   yms: string[]; // 파일에 존재하는 모든 월(보통 1개)
   rows: PosDailyCat[]; // (일 × 카테고리) 집계 — pos_sales 삽입용
   items?: PosItemRow[]; // (일 × 카테고리 × 상품명 × 옵션) — pos_items 삽입용. 토스만 채운다.
+  giftRows?: PosGiftRow[]; // (일 × 상품) 식권 판매(선수금) — pos_gift_sales 삽입용
   byCategory: PosCategoryAgg[]; // 월 카테고리 요약
   totals: { qty: number; gross: number; vat: number; supply: number };
   excluded: { rows: number; gross: number; vat: number }; // 제외된 상품권
@@ -174,6 +185,7 @@ export function parsePosRows(rows: unknown[][]): PosParseResult {
   const { ci } = loc;
   const daily = new Map<string, PosDailyCat>(); // key = saleDate|category
   const itemAgg = new Map<string, PosItemRow>(); // key = saleDate|category|product|option
+  const giftAgg = new Map<string, PosGiftRow>(); // key = saleDate|item — 선수금 판매
   const excluded = { rows: 0, gross: 0, vat: 0 };
   const ymCount = new Map<string, number>();
   let completed = 0;
@@ -194,6 +206,13 @@ export function parsePosRows(rows: unknown[][]): PosParseResult {
       excluded.rows++;
       excluded.gross += gross;
       excluded.vat += vat;
+      // 선수금 판매는 매출에선 빼되 pos_gift_sales 용으로 따로 담는다
+      const gItem = String(r[ci.name] ?? '').replace(/\s+/g, ' ').trim() || category;
+      const gKey = `${saleDate}|${gItem}`;
+      const g = giftAgg.get(gKey) ?? { ym: saleDate.slice(0, 7), saleDate, item: gItem, qty: 0, gross: 0 };
+      g.qty += num(r[ci.qty]);
+      g.gross += gross;
+      giftAgg.set(gKey, g);
       continue; // 상품권=선수금, 매출 제외
     }
 
@@ -256,11 +275,16 @@ export function parsePosRows(rows: unknown[][]): PosParseResult {
   const yms = Array.from(ymCount.keys()).sort();
   const ym = Array.from(ymCount.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
 
+  const giftRows = Array.from(giftAgg.values()).sort(
+    (a, b) => a.saleDate.localeCompare(b.saleDate) || a.item.localeCompare(b.item),
+  );
+
   return {
     ym,
     yms,
     rows: out,
     items,
+    giftRows,
     byCategory,
     totals,
     excluded,

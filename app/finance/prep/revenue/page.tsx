@@ -6,7 +6,7 @@ import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import { unitOf, UNITS } from '@/lib/finance/types';
 import type { ExpenseGrain, ExpenseTx } from '@/lib/finance/prepExpense';
-import { buildRevenuePrep, type PosSaleRow } from '@/lib/finance/prepRevenue';
+import { buildRevenuePrep, type PosSaleRow, type GiftSaleRow } from '@/lib/finance/prepRevenue';
 
 // 전처리3 — 매출 총합. POS 매출(발생)과 통장 입금(정산)을 나란히 놓고 대사한다.
 // 차이를 숨기지 않고 '차이'와 '정산률' 열로 드러낸다 — 이상한 구간이 곧 조사할 지점.
@@ -54,7 +54,20 @@ export default async function PrepRevenuePage({
     .limit(50000);
   if (unit.store) txQ = txQ.eq('store', unit.store);
 
-  const [{ data: posData, error: posErr }, { data: txData, error: txErr }] = await Promise.all([posQ, txQ]);
+  // 자가 식권 판매(선수금) — 테이블 미생성 환경이면 열 생략(비치명)
+  let giftQ = supabase
+    .schema('finance')
+    .from('pos_gift_sales')
+    .select('sale_date,gross')
+    .eq('brand', unit.brand)
+    .limit(50000);
+  if (unit.store) giftQ = giftQ.eq('store', unit.store);
+
+  const [{ data: posData, error: posErr }, { data: txData, error: txErr }, { data: giftData }] = await Promise.all([
+    posQ,
+    txQ,
+    giftQ,
+  ]);
   if (posErr) throw new Error(`POS 매출 조회 실패: ${posErr.message}`);
   if (txErr) throw new Error(`통장 입금 조회 실패: ${txErr.message}`);
 
@@ -75,7 +88,8 @@ export default async function PrepRevenuePage({
   const { buckets: allBuckets, columns, warnings } = buildRevenuePrep(
     (posData as PosSaleRow[] | null) ?? [],
     txns,
-    grain
+    grain,
+    (giftData as GiftSaleRow[] | null) ?? []
   );
   const buckets = allBuckets.slice(0, LIMIT[grain]);
   const won = (n: number) => (n === 0 ? '' : n.toLocaleString());

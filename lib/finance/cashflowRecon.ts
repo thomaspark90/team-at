@@ -22,6 +22,7 @@ export interface ReconMonth {
   balance: number | null;
   /** 매출 대사 — 전처리3 월 뷰와 동일한 값 */
   posSales: number;
+  giftSale: number; // 자가 식권 판매(선수금) — POS 매출엔 없고 카드 입금엔 포함
   salesIn: number; // 매출 계정 입금 순액(통장 입금 합계 열)
   mealTicket: number; // 식권 정산(전월분)
   rateAdj: number | null; // 보정 정산률 %
@@ -54,6 +55,7 @@ export function buildCashflowRecon(
 ): CashflowRecon {
   const bankBy = new Map(bankMonths.map((m) => [m.ym, m]));
   const posAmt = colAmounts(revenue, 'pos');
+  const giftAmt = colAmounts(revenue, 'gift');
   const salesInAmt = colAmounts(revenue, 'in_total');
   const mealAmt = colAmounts(revenue, 'meal_ticket');
   const rateAdjAmt = colAmounts(revenue, 'rate_adj');
@@ -99,6 +101,7 @@ export function buildCashflowRecon(
       net: bank ? bank.totalIn - bank.totalOut : null,
       balance: bank ? bank.totalBalance : null,
       posSales: posAmt[ym] ?? 0,
+      giftSale: giftAmt[ym] ?? 0,
       salesIn: salesInAmt[ym] ?? 0,
       mealTicket: mealAmt[ym] ?? 0,
       // 은행 자료가 없는 달의 정산률은 입금이 0이라 무의미 — 비워서 오독을 막는다

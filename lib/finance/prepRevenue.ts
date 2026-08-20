@@ -20,6 +20,13 @@ export interface PosSaleRow {
   gross: number;
 }
 
+// 자가 식권 판매(선수금) — pos_gift_sales. POS 매출엔 없고 카드 입금엔 포함되는 돈이라
+// 정산률 100% 초과의 주 원인. 열로 나란히 놓아 초과분을 실측으로 설명한다(2026-08-20).
+export interface GiftSaleRow {
+  sale_date: string;
+  gross: number;
+}
+
 export interface RevenueColumn {
   key: string;
   label: string;
@@ -58,7 +65,8 @@ const prevYm = (ym: string): string => {
 export function buildRevenuePrep(
   pos: PosSaleRow[],
   txns: ExpenseTx[], // revenue 계정으로 분류된 거래만 넘겨받는다
-  grain: ExpenseGrain = 'month'
+  grain: ExpenseGrain = 'month',
+  gift: GiftSaleRow[] = [] // 자가 식권 판매(선수금) — 없으면 열 생략
 ): RevenuePrep {
   const isMonth = grain === 'month';
 
@@ -67,6 +75,13 @@ export function buildRevenuePrep(
     const b =
       grain === 'month' ? p.sale_date.slice(0, 7) : bucketOf({ tx_at: p.sale_date } as ExpenseTx, grain);
     add(posAmt, b, p.gross);
+  }
+
+  const giftAmt: Record<string, number> = {};
+  for (const g of gift) {
+    const b =
+      grain === 'month' ? g.sale_date.slice(0, 7) : bucketOf({ tx_at: g.sale_date } as ExpenseTx, grain);
+    add(giftAmt, b, g.gross);
   }
 
   // 통장 입금 — 식권 앱 정산은 별도 축으로 뗀다(전월분이라 당월 계정 열과 성격이 다르다).
@@ -124,11 +139,16 @@ export function buildRevenuePrep(
         // 최신 1~2개월은 식권 정산·은행 자료가 아직이라 판정 보류
         const isRecent = b >= prevYm(latestYm);
         if (!isRecent && (rateAdj[b] < RATE_OK_MIN || rateAdj[b] > RATE_OK_MAX)) {
+          const g = giftAmt[b] ?? 0;
           warnings.push({
             bucket: b,
             message:
               rateAdj[b] > 100
-                ? `보정 정산률 ${rateAdj[b]}% — 식권 시차를 감안해도 입금이 POS보다 많아요. 자가 식권 판매(선수금 — POS 매출엔 없고 카드 입금엔 포함, 월 900만원 규모)나 POS 밖 매출이 후보예요.`
+                ? `보정 정산률 ${rateAdj[b]}% — 식권 시차를 감안해도 입금이 POS보다 많아요. ${
+                    g > 0
+                      ? `이 달 자가 식권 판매 ${g.toLocaleString()}원(선수금 — POS 매출엔 없고 카드 입금엔 포함)이 주 원인이에요.`
+                      : '자가 식권 판매(선수금)나 POS 밖 매출이 후보예요.'
+                  }`
                 : `보정 정산률 ${rateAdj[b]}% — 식권 시차를 감안해도 입금이 부족해요. 은행 자료 누락이나 미정산 후보예요.`,
           });
         }
@@ -157,6 +177,17 @@ export function buildRevenuePrep(
       amounts: posAmt,
       hint: '판매일 기준 매출(발생주의) — 월 성과 평가는 이 열이 정본이에요. 관리손익도 이 기준이에요. 식권 판매는 선수금이라 제외돼 있어요.',
     },
+    ...(Object.keys(giftAmt).length > 0
+      ? [
+          {
+            key: 'gift',
+            label: '자가 식권 판매 (선수금)',
+            kind: 'derived' as const,
+            amounts: giftAmt,
+            hint: 'POS에서 판매된 자가 식권(식권 10장 등) — 선수금이라 POS 매출엔 없지만 돈은 카드로 바로 들어와요. 정산률이 100%를 넘는 주 원인이에요. 사용(차감)분은 결제수단 \'기타\'에 식권대장과 섞여 따로 측정할 수 없어, 이 열로 잔액을 계산하면 안 돼요.',
+          },
+        ]
+      : []),
     ...incomeColumns,
     {
       key: 'meal_ticket',

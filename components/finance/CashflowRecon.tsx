@@ -34,6 +34,12 @@ const GROUPS: { label: string; href?: (unit: string) => string; cols: ColDef[] }
         hint: '판매일 기준 매출(발생주의) — 월 성과 평가는 이 열이 정본이에요.',
       },
       {
+        key: 'giftSale',
+        label: '자가 식권 판매',
+        muted: true,
+        hint: '자가 식권(선불) 판매 — 선수금이라 POS 매출엔 없지만 돈은 카드로 바로 들어와요. 매출 입금이 POS보다 큰 주 원인이에요.',
+      },
+      {
         key: 'salesIn',
         label: '매출 입금',
         hint: '매출 계정으로 분류된 통장 입금 순액 — 전처리3의 통장 입금 합계와 같은 값이에요.',

@@ -15,7 +15,7 @@
 // 형식이 다른 페이히어 리포트(다른 내보내기 종류)는 헤더 자동탐지 폴백으로 시도한다.
 import * as officeCrypto from 'officecrypto-tool';
 import * as XLSX from 'xlsx';
-import type { PosParseResult, PosDailyCat, PosCategoryAgg, PosItemRow } from './pos';
+import type { PosParseResult, PosDailyCat, PosCategoryAgg, PosItemRow, PosGiftRow } from './pos';
 
 const isGiftItem = (item: string) => /식권|선불권|상품권|금액권/.test(item);
 
@@ -56,6 +56,7 @@ export interface PayhereParseResult extends PosParseResult {
 
 interface Agg {
   daily: Map<string, PosDailyCat>;
+  gift: Map<string, PosGiftRow>; // 식권 판매(선수금) — 매출에선 빼되 pos_gift_sales 용으로 담는다
   excluded: { rows: number; gross: number; vat: number };
   ymCount: Map<string, number>;
   completed: number;
@@ -65,12 +66,21 @@ interface Agg {
 
 const newAgg = (): Agg => ({
   daily: new Map(),
+  gift: new Map(),
   excluded: { rows: 0, gross: 0, vat: 0 },
   ymCount: new Map(),
   completed: 0,
   canceled: 0,
   dataRows: 0,
 });
+
+function addGift(agg: Agg, saleDate: string, item: string, qty: number, gross: number) {
+  const key = `${saleDate}|${item}`;
+  const cur = agg.gift.get(key) ?? { ym: saleDate.slice(0, 7), saleDate, item, qty: 0, gross: 0 };
+  cur.qty += qty;
+  cur.gross += gross;
+  agg.gift.set(key, cur);
+}
 
 function addRow(agg: Agg, saleDate: string, category: string, gross: number, vat: number, supply: number, qty: number) {
   const ym = saleDate.slice(0, 7);
@@ -104,10 +114,14 @@ function finish(agg: Agg, sheet: string, header: Record<string, string>): Payher
   );
   const yms = Array.from(agg.ymCount.keys()).sort();
   const ym = Array.from(agg.ymCount.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+  const giftRows = Array.from(agg.gift.values()).sort(
+    (a, b) => a.saleDate.localeCompare(b.saleDate) || a.item.localeCompare(b.item),
+  );
   return {
     ym,
     yms,
     rows: out,
+    giftRows,
     byCategory,
     totals,
     excluded: agg.excluded,
@@ -160,6 +174,7 @@ function parseSummaryRows(rows: unknown[][], sheetName: string): PayhereParseRes
       agg.excluded.rows++;
       agg.excluded.gross += gross;
       agg.excluded.vat += vat;
+      addGift(agg, saleDate, categoryOf(item), gross < 0 ? -1 : 1, gross);
       continue;
     }
     addRow(agg, saleDate, item ? categoryOf(item) : '기타', gross, vat, supply, gross < 0 ? -1 : 1);
@@ -234,6 +249,7 @@ function parseProductDetailRows(rows: unknown[][], sheetName: string): PayherePa
       agg.excluded.rows++;
       agg.excluded.gross += gross;
       agg.excluded.vat += vatExcl;
+      addGift(agg, saleDate, product, qty, gross);
       continue;
     }
 
@@ -329,6 +345,7 @@ function parseGenericRows(rows: unknown[][], sheetName: string): PayhereParseRes
     if (rawCat && isGiftItem(rawCat)) {
       agg.excluded.rows++;
       agg.excluded.gross += gross;
+      addGift(agg, saleDate, categoryOf(rawCat), isCancel ? -1 : 1, gross);
       continue;
     }
     let vat = loc.vat >= 0 ? Math.round(num(r[loc.vat])) : Math.round(gross - gross / 1.1);

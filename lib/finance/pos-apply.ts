@@ -312,6 +312,39 @@ export async function applyPosParseResult(
     }
   }
 
+  // 식권 판매(선수금) — pos_gift_sales. 매출에서 제외되는 금액을 버리지 않고 담는다(2026-08-20).
+  // pos_items 와 같은 (upsert 후 잔여 정리) 절차. 테이블 미생성이면 조용히 건너뛴다(비치명).
+  const giftRows = (r.giftRows ?? []).filter((d) => !dupYms.has(d.ym));
+  if (giftRows.length > 0) {
+    const giftInsert = giftRows.map((d) => ({
+      ym: d.ym,
+      sale_date: d.saleDate,
+      brand,
+      store,
+      item: d.item,
+      qty: d.qty,
+      gross: d.gross,
+      uploaded_by: user.id,
+      uploaded_at: now,
+    }));
+    const { error: giftErr } = await supabase
+      .schema('finance')
+      .from('pos_gift_sales')
+      .upsert(giftInsert, { onConflict: 'sale_date,brand,store,item' });
+    if (!giftErr) {
+      await supabase
+        .schema('finance')
+        .from('pos_gift_sales')
+        .delete()
+        .in('ym', changedYms)
+        .eq('brand', brand)
+        .eq('store', store)
+        .lt('uploaded_at', now);
+    } else if (!isMissingTable(giftErr)) {
+      return { ok: false, status: 500, error: `식권 판매 저장 실패: ${giftErr.message}` };
+    }
+  }
+
   // 가든 매출이 바뀌면 날씨×판매 분석 캐시(24h)를 무효화 — 다음 조회 때 새로 계산된다
   if (brand === 'garden') {
     try {

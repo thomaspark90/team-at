@@ -4,7 +4,7 @@ import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveRoleStamped } from '@/lib/access/stamp';
 import { cashflow } from '@/lib/finance/cashflow';
 import { buildExpensePrep, type ExpenseTx } from '@/lib/finance/prepExpense';
-import { buildRevenuePrep, type PosSaleRow } from '@/lib/finance/prepRevenue';
+import { buildRevenuePrep, type PosSaleRow, type GiftSaleRow } from '@/lib/finance/prepRevenue';
 import { buildCashflowRecon } from '@/lib/finance/cashflowRecon';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
@@ -53,6 +53,15 @@ export default async function CashflowPage({ searchParams }: { searchParams: { u
     .limit(50000);
   if (unit.store) posQ = posQ.eq('store', unit.store);
 
+  // 자가 식권 판매(선수금) — 매출 대사에서 입금>POS 초과를 실측으로 설명하는 열
+  let giftQ = supabase
+    .schema('finance')
+    .from('pos_gift_sales')
+    .select('sale_date,gross')
+    .eq('brand', unit.brand)
+    .limit(50000);
+  if (unit.store) giftQ = giftQ.eq('store', unit.store);
+
   // 지점 뷰에서 빠지는 '지점 미지정' 가든 거래 건수 — 경고 표기용
   const unassignedQ = unit.store
     ? supabase
@@ -64,11 +73,8 @@ export default async function CashflowPage({ searchParams }: { searchParams: { u
         .is('store', null)
     : null;
 
-  const [{ data: txData, error: txErr }, { data: posData, error: posErr }, unassignedRes] = await Promise.all([
-    txQ,
-    posQ,
-    unassignedQ ?? Promise.resolve({ count: null }),
-  ]);
+  const [{ data: txData, error: txErr }, { data: posData, error: posErr }, { data: giftData }, unassignedRes] =
+    await Promise.all([txQ, posQ, giftQ, unassignedQ ?? Promise.resolve({ count: null })]);
   if (txErr) throw new Error(`통장 거래 조회 실패: ${txErr.message}`);
   if (posErr) throw new Error(`POS 매출 조회 실패: ${posErr.message}`);
   const unassignedCount = unassignedRes?.count ?? 0;
@@ -111,7 +117,8 @@ export default async function CashflowPage({ searchParams }: { searchParams: { u
   const revenuePrep = buildRevenuePrep(
     (posData as PosSaleRow[] | null) ?? [],
     txns.filter((t) => t.cat_type === 'revenue'),
-    'month'
+    'month',
+    (giftData as GiftSaleRow[] | null) ?? []
   );
   const recon = buildCashflowRecon(months, expensePrep, revenuePrep, txns);
 
