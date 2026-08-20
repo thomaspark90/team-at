@@ -598,6 +598,16 @@ function ChartCard({
 }) {
   const [open, setOpen] = useState(true);
   const [dragOver, setDragOver] = useState(false);
+  // 전체 보기 — 카드 하나를 화면 풀사이즈 오버레이로. Esc 로 닫는다.
+  const [full, setFull] = useState(false);
+  useEffect(() => {
+    if (!full) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFull(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [full]);
   return (
     <div
       onDragOver={(e) => {
@@ -632,20 +642,53 @@ function ChartCard({
             {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}
           </div>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={open}
-          onClick={() => setOpen((v) => !v)}
-          title={open ? '차트 접기' : '차트 펼치기'}
-          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${open ? 'bg-primary' : 'bg-muted'}`}
-        >
-          <span
-            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-background transition-transform ${open ? 'translate-x-[18px]' : 'translate-x-1'}`}
-          />
-        </button>
+        <div className="flex shrink-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setFull(true)}
+            title="전체 보기 — 화면 풀사이즈"
+            className="select-none text-[15px] leading-none text-muted-foreground/60 transition-colors hover:text-foreground"
+          >
+            ⛶
+          </button>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={open}
+            onClick={() => setOpen((v) => !v)}
+            title={open ? '차트 접기' : '차트 펼치기'}
+            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${open ? 'bg-primary' : 'bg-muted'}`}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-background transition-transform ${open ? 'translate-x-[18px]' : 'translate-x-1'}`}
+            />
+          </button>
+        </div>
       </div>
-      {open && children}
+      {open && !full && children}
+      {full && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-background px-6 py-4">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <h3 className="m-0 text-[15px] text-foreground">{title}</h3>
+              {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={() => setFull(false)}
+              title="닫기 (Esc)"
+              className="shrink-0 rounded-md border border-border px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              닫기 ✕
+            </button>
+          </div>
+          {/* 카드의 고정 height 를 뷰포트 높이로 강제 덮어써 차트가 화면을 채우게 한다
+              (recharts 는 컨테이너 실측 크기를 따라가므로 CSS !important 로 충분) */}
+          <div className="min-h-0 flex-1 overflow-auto [&_.recharts-responsive-container]:!h-[calc(100vh-130px)]">
+            {children}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
