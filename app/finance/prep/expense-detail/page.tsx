@@ -65,7 +65,7 @@ export default async function PrepExpenseDetailPage({
     cat_name: t.categories?.name ?? null,
   }));
 
-  const { buckets: allBuckets, columns, warnings } = buildExpenseDetail(
+  const { buckets: allBuckets, columns, warnings, summary } = buildExpenseDetail(
     txns,
     (catsData as CategoryInfo[] | null) ?? [],
     grain
@@ -129,6 +129,51 @@ export default async function PrepExpenseDetailPage({
           </ul>
         )}
 
+        {/* 상단 요약 — 5+1 그룹. 그룹 합 = 아래 상세 열 합 = 지출 합계 */}
+        <h2 className="mb-2 mt-2 text-[15px] font-medium">월별 요약</h2>
+        <div className="mb-8 overflow-auto rounded-md border border-border">
+          <table className="w-max min-w-full border-collapse text-[13px]">
+            <thead className="sticky top-0 z-10 bg-card">
+              <tr className="border-b border-border text-muted-foreground">
+                <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">기간</th>
+                {summary.map((c) => (
+                  <th
+                    key={c.key}
+                    title={c.hint}
+                    className={`whitespace-nowrap px-3 py-2 text-right font-normal ${
+                      c.kind === 'total' ? 'border-l-2 border-l-border font-medium text-foreground' : ''
+                    } ${c.kind === 'note' ? 'text-muted-foreground/70' : ''}`}
+                  >
+                    {c.label}
+                    {c.hint && <span className="ml-1 text-muted-foreground/50">ⓘ</span>}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {buckets.map((b) => (
+                <tr key={b} className="border-b border-border/50 last:border-0">
+                  <td className="sticky left-0 z-10 whitespace-nowrap bg-background px-3 py-1.5 tabular-nums">
+                    {warnByBucket.has(b) && <span title={warnByBucket.get(b)}>⚠ </span>}
+                    {bucketLabel(b)}
+                  </td>
+                  {summary.map((c) => (
+                    <td
+                      key={c.key}
+                      className={`whitespace-nowrap px-3 py-1.5 text-right tabular-nums ${
+                        c.kind === 'total' ? 'border-l-2 border-l-border font-medium' : ''
+                      } ${c.kind === 'note' ? 'text-muted-foreground' : ''}`}
+                    >
+                      {won(c.amounts[b] ?? 0)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h2 className="mb-2 text-[15px] font-medium">계정별 상세</h2>
         <div className="overflow-auto rounded-md border border-border">
           <table className="w-max min-w-full border-collapse text-[13px]">
             <thead className="sticky top-0 z-10 bg-card">

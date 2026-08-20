@@ -39,7 +39,40 @@ export interface ExpenseDetail {
   buckets: string[];
   columns: DetailColumn[];
   warnings: { bucket: string; message: string }[];
+  /** 상단 요약 — 5+1 그룹(2026-08-20 대표 확정). 그룹 합 = 상세 열 합 = 지출 합계. */
+  summary: DetailColumn[];
 }
+
+// 요약 그룹 정의 — 18개월 실데이터 기준 재료비 36%·인건비 29%·임관리비 23%·세금보험 6%가
+// 지출의 94%를 덮는다. 나머지는 어느 것도 3%를 못 넘어 '기타 운영비' 하나로 묶는다.
+// 매핑은 최상위 계정 '이름' 기준 — 새 계정이 생기면 자동으로 기타 운영비에 흡수된다(누락 없음).
+const SUMMARY_GROUPS: { key: string; label: string; hint: string; match: (top: CategoryInfo) => boolean }[] = [
+  {
+    key: 'g_material',
+    label: '재료비',
+    hint: '식자재·유제품·포장재·원두 등 원가(cogs) 전체.',
+    match: (t) => t.type === 'cogs',
+  },
+  {
+    key: 'g_labor',
+    label: '인건비',
+    hint: '정규직·단기·일일용역·퇴직금 포함.',
+    match: (t) => t.name === '인건비',
+  },
+  {
+    key: 'g_rent',
+    label: '임관리비',
+    hint: '임대료 + 관리비(청소비 포함).',
+    match: (t) => t.name === '임대료' || t.name.startsWith('관리비'),
+  },
+  {
+    key: 'g_tax',
+    label: '세금·보험',
+    hint: '세금과공과 + 보험료(4대보험 포함).',
+    match: (t) => t.name === '세금과공과' || t.name === '보험료',
+  },
+  // 기타 운영비 = 위 어디에도 안 걸린 sga 전부 — 코드상 fallback 이라 새 계정이 새지 않는다
+];
 
 const EXPENSE_TYPES = new Set(['cogs', 'sga']);
 const add = (m: Record<string, number>, k: string, v: number) => {
@@ -226,5 +259,46 @@ export function buildExpenseDetail(
     },
   ];
 
-  return { grain, buckets, columns, warnings };
+  // ── 상단 요약(5+1) — 상세 열을 그룹으로 접는다. 그룹 합 = 상세 합 = 지출 합계(정합 불변식) ──
+  const groupAmounts = SUMMARY_GROUPS.map(() => ({}) as Record<string, number>);
+  const etcOps: Record<string, number> = {}; // 기타 운영비 — 어느 그룹에도 안 걸린 sga 전부
+  for (const [id, amounts] of Array.from(perCat.entries())) {
+    const top = byId.get(id)!;
+    const gi = SUMMARY_GROUPS.findIndex((g) => g.match(top));
+    const dest = gi >= 0 ? groupAmounts[gi] : etcOps;
+    for (const [b, v] of Object.entries(amounts)) add(dest, b, v);
+  }
+  // 미분해·미분류·미상·비용외 — 정합 유지용 마지막 그룹(분류가 진행될수록 줄어든다)
+  const pending: Record<string, number> = {};
+  for (const b of buckets) {
+    const v = (cardOther[b] ?? 0) + (collectedOther[b] ?? 0) + (unclassified[b] ?? 0) + (misang[b] ?? 0);
+    if (v !== 0) pending[b] = v;
+  }
+
+  const summary: DetailColumn[] = [
+    ...SUMMARY_GROUPS.map((g, i) => ({
+      key: g.key,
+      label: g.label,
+      kind: 'category' as const,
+      amounts: groupAmounts[i],
+      hint: g.hint,
+    })),
+    {
+      key: 'g_etc',
+      label: '기타 운영비',
+      kind: 'category',
+      amounts: etcOps,
+      hint: '잡비·지급수수료·광고비·통신비·수선비 등 위 그룹에 안 속한 판관비 전부.',
+    },
+    {
+      key: 'g_pending',
+      label: '미분해·미분류',
+      kind: 'note',
+      amounts: pending,
+      hint: '카드 기타(미분해) + 기타(비용 외) + 미분류 + 미상 — 분류가 진행될수록 줄어들어요.',
+    },
+    { key: 'total', label: isMonth ? '지출 합계 (비용)' : '현금 유출 합계', kind: 'total', amounts: total },
+  ];
+
+  return { grain, buckets, columns, warnings, summary };
 }
