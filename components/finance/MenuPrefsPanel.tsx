@@ -44,13 +44,25 @@ export default function MenuPrefsPanel({
     setDragIdx(to); // 드래그 중 실시간 미리보기 — 따라오는 행 기준으로 인덱스 갱신
   };
 
-  const toggle = (label: string) =>
-    setHidden((s) => {
-      const n = new Set(s);
-      if (n.has(label)) n.delete(label);
-      else n.add(label);
-      return n;
+  // 체크를 켜면 그 상품이 노출 그룹 '맨 아래'로 올라오고, 끄면 숨김 그룹 '맨 위'로 내려간다
+  // (2026-08-20 요청) — 노출/숨김이 항상 두 덩어리로 정리돼 목록이 흐트러지지 않는다.
+  // 두 경우 모두 삽입 위치는 같다: 마지막 노출 상품 바로 다음.
+  const toggle = (label: string) => {
+    const wasHidden = hidden.has(label);
+    const nextHidden = new Set(hidden);
+    if (wasHidden) nextHidden.delete(label);
+    else nextHidden.add(label);
+    setHidden(nextHidden);
+
+    const rest = ordered.filter((p) => p !== label);
+    let lastVisible = -1;
+    rest.forEach((p, i) => {
+      if (!nextHidden.has(p)) lastVisible = i;
     });
+    const next = [...rest];
+    next.splice(lastVisible + 1, 0, label);
+    setSort(next);
+  };
 
   async function save() {
     setBusy(true);
@@ -92,8 +104,8 @@ export default function MenuPrefsPanel({
       {open && (
         <div className="border-t border-border px-4 py-3">
           <p className="m-0 mb-3 text-[12px] text-muted-foreground">
-            체크를 끄면 표에서 숨겨져요(합계에는 그대로 들어가요). ⠿를 잡고 끌어 순서를 바꿔요 — 위가
-            표의 왼쪽이에요. 이 설정은 이 매장을 보는 모두에게 적용돼요.
+            체크를 켜면 노출 목록 맨 아래로 올라오고, 끄면 숨김 목록 맨 위로 내려가요(합계에는 그대로
+            들어가요). ⠿를 잡고 끌어 순서를 바꿔요 — 위가 표의 왼쪽이에요. 이 설정은 이 매장을 보는 모두에게 적용돼요.
           </p>
           <ul className="m-0 flex max-h-[320px] list-none flex-col gap-1 overflow-y-auto p-0">
             {ordered.map((p, i) => (
