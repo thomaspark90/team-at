@@ -683,9 +683,11 @@ function ChartCard({
             </button>
           </div>
           {/* 카드의 고정 height 를 뷰포트 높이로 강제 덮어써 차트가 화면을 채우게 한다
-              (recharts 는 컨테이너 실측 크기를 따라가므로 CSS !important 로 충분) */}
-          <div className="min-h-0 flex-1 overflow-auto [&_.recharts-responsive-container]:!h-[calc(100vh-130px)]">
-            {children}
+              (recharts 는 컨테이너 실측 크기를 따라가므로 CSS !important 로 충분).
+              calc 빼기는 공백 필수 — Tailwind 임의값에선 _ 로 표기(calc(100vh-130px)는 무효 CSS).
+              m-auto: 내용이 영역보다 작을 때 뷰포트 중앙 정렬(넘치면 0으로 접혀 스크롤 정상). */}
+          <div className="flex min-h-0 flex-1 overflow-auto [&_.recharts-responsive-container]:!h-[calc(100vh_-_130px)]">
+            <div className="m-auto w-full">{children}</div>
           </div>
         </div>
       )}
