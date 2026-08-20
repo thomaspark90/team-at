@@ -25,6 +25,12 @@ export interface PosDailyTotal {
   gross: number;
 }
 
+export interface GiftSale {
+  sale_date: string;
+  qty: number;
+  gross: number;
+}
+
 export type MenuMetric = 'gross' | 'qty';
 
 export interface MenuColumn {
@@ -89,7 +95,8 @@ export function buildMenuPrep(
   items: ItemSaleRow[],
   posTotals: PosDailyTotal[],
   grain: ExpenseGrain,
-  metric: MenuMetric
+  metric: MenuMetric,
+  gifts: GiftSale[] = [] // 식권 판매(선수금) — 매출·정합 밖 참고 열(2026-08-20 대표 요청)
 ): MenuPrep {
   const perMenu = new Map<string, Record<string, number>>();
   const perProduct = new Map<string, Record<string, number>>();
@@ -121,6 +128,13 @@ export function buildMenuPrep(
 
   const posAmt: Record<string, number> = {};
   for (const p of posTotals) add(posAmt, bucketOf(p.sale_date, grain), p.gross);
+  const giftAmt: Record<string, number> = {};
+  const giftQty: Record<string, number> = {};
+  for (const g of gifts) {
+    const b = bucketOf(g.sale_date, grain);
+    add(giftAmt, b, g.gross);
+    add(giftQty, b, g.qty);
+  }
 
   const buckets = Array.from(new Set([...Object.keys(itemsTotal), ...Object.keys(posAmt)])).sort((a, b) =>
     b.localeCompare(a)
@@ -172,12 +186,28 @@ export function buildMenuPrep(
     hint: '품목 합 − POS 매출. 0이 아니면 두 원천(상품별/요약 파일)이 어긋난 것 — 상품별 파일을 재업로드하면 그 달 기준으로 다시 맞춰져요.',
   };
 
-  const tail = metric === 'qty' ? [totalCol] : [totalCol, posCol, diffCol];
+  // 식권 판매(선수금) — 매출 합계·정합 차이에 안 들어가는 참고 열. 페이히어 대시보드의
+  // 실매출 = 메뉴 매출 합계 + 이 열 이라, 대시보드 숫자와의 대조가 화면에서 바로 된다.
+  const giftCol: MenuColumn | null =
+    Object.keys(giftAmt).length > 0
+      ? {
+          key: 'gift',
+          label: '식권 판매 (선수금)',
+          kind: 'derived',
+          amounts: metric === 'qty' ? giftQty : giftAmt,
+          qtyAmounts: metric === 'gross' ? giftQty : undefined,
+          hint: '식권을 판 돈 — 아직 식사를 제공하지 않아 매출이 아니에요(쓰는 날 일반 메뉴로 잡힘). 합계·정합 차이에 안 들어가요. 페이히어 실매출 = 메뉴 매출 합계 + 이 열.',
+        }
+      : null;
+  const tail = [
+    ...(metric === 'qty' ? [totalCol] : [totalCol, posCol, diffCol]),
+    ...(giftCol ? [giftCol] : []),
+  ];
 
   return {
     grain,
     buckets,
     summary: [...toColumns(perMenu, perMenuQty), ...tail],
-    detail: [...toColumns(perProduct, perProductQty), totalCol],
+    detail: [...toColumns(perProduct, perProductQty), totalCol, ...(giftCol ? [giftCol] : [])],
   };
 }

@@ -9,6 +9,7 @@ import type { ExpenseGrain } from '@/lib/finance/prepExpense';
 import {
   buildMenuPrep,
   menuKeyOf,
+  type GiftSale,
   type ItemSaleRow,
   type MenuColumn,
   type MenuMetric,
@@ -72,8 +73,15 @@ export default async function PrepMenuPage({
     .eq('brand', unit.brand)
     .eq('store', unit.store ?? '')
     .maybeSingle();
-  const [{ data: itemsData, error: itemsErr }, { data: posData, error: posErr }, { data: prefs }] =
-    await Promise.all([itemsQ, posQ, prefsQ]);
+  let giftQ = supabase
+    .schema('finance')
+    .from('pos_gift_sales')
+    .select('sale_date,qty,gross')
+    .eq('brand', unit.brand)
+    .limit(50000);
+  if (unit.store) giftQ = giftQ.eq('store', unit.store);
+  const [{ data: itemsData, error: itemsErr }, { data: posData, error: posErr }, { data: prefs }, { data: giftData }] =
+    await Promise.all([itemsQ, posQ, prefsQ, giftQ]);
   if (itemsErr) throw new Error(`품목 조회 실패: ${itemsErr.message}`);
   if (posErr) throw new Error(`POS 매출 조회 실패: ${posErr.message}`);
   const hidden = new Set(((prefs?.hidden as string[] | null) ?? []).filter((x) => typeof x === 'string'));
@@ -88,7 +96,8 @@ export default async function PrepMenuPage({
     (itemsData as ItemSaleRow[] | null) ?? [],
     (posData as PosDailyTotal[] | null) ?? [],
     grain,
-    metric
+    metric,
+    (giftData as GiftSale[] | null) ?? []
   );
   const buckets = allBuckets.slice(0, LIMIT[grain]);
 
