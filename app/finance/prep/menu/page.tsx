@@ -8,6 +8,7 @@ import { unitOf, UNITS } from '@/lib/finance/types';
 import type { ExpenseGrain } from '@/lib/finance/prepExpense';
 import {
   buildMenuPrep,
+  menuKeyOf,
   type ItemSaleRow,
   type MenuColumn,
   type MenuMetric,
@@ -132,6 +133,31 @@ export default async function PrepMenuPage({
     const rest = menuCols.filter((c) => !sortPref.includes(c.label));
     return [...inSort, ...rest, ...mergedDetail.filter((c) => c.kind !== 'menu')];
   })();
+  // 메뉴 요약은 상세 표의 '요약'이다(2026-08-20 대표 지시) — 상세 설정(숨김·순서·병합)을 그대로
+  // 따른다: 노출된 상품만 메뉴로 묶고, 그룹 순서는 상세에서 그 메뉴의 상품이 처음 나오는 자리.
+  // 합계·정합 열은 여전히 전체 상품 기준 — 숨김은 '안 보는 것'이지 '없는 셈 치는 것'이 아니다.
+  const summaryShown = (() => {
+    const groups = new Map<string, Record<string, number>>();
+    const orderKeys: string[] = [];
+    for (const c of detailShown) {
+      if (c.kind !== 'menu') continue;
+      const k = menuKeyOf(c.label);
+      if (!groups.has(k)) {
+        groups.set(k, {});
+        orderKeys.push(k);
+      }
+      const g = groups.get(k)!;
+      for (const [b, v] of Object.entries(c.amounts)) g[b] = (g[b] ?? 0) + v;
+    }
+    const groupCols: MenuColumn[] = orderKeys.map((k) => ({
+      key: `g:${k}`,
+      label: k,
+      kind: 'menu',
+      amounts: groups.get(k)!,
+      hint: '상세 표에 노출된 상품들의 합 — 상세 표 설정(숨김·순서·병합)을 따라요.',
+    }));
+    return [...groupCols, ...summary.filter((c) => c.kind !== 'menu')];
+  })();
   const num = (n: number) => (n === 0 ? '' : n.toLocaleString());
   const bucketLabel = (b: string) => (grain === 'week' ? `${b.slice(5).replace('-', '/')}~` : b);
   const href = (next: { grain?: string; metric?: string }) =>
@@ -242,7 +268,7 @@ export default async function PrepMenuPage({
         </div>
 
         <h2 className="mb-2 mt-2 text-[15px] font-medium">메뉴 요약</h2>
-        <div className="mb-8">{renderTable(summary)}</div>
+        <div className="mb-8">{renderTable(summaryShown)}</div>
 
         <h2 className="mb-2 text-[15px] font-medium">상품별 상세</h2>
         {renderTable(detailShown)}
