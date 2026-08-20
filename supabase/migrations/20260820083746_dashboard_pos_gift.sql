@@ -8,7 +8,7 @@ from finance.pos_sales p
 where finance.my_role() is not null
   and (finance.my_brand_scope() is null or brand = finance.my_brand_scope())
 union all
-select sale_date, ym, '식권판매' as category, round(gross / 1.1) as supply, brand, store
+select sale_date, ym, '식권판매' as category, round(gross / 1.1)::bigint as supply, brand, store
 from finance.pos_gift_sales g
 where finance.my_role() is not null
   and (finance.my_brand_scope() is null or brand = finance.my_brand_scope());
