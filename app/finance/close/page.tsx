@@ -15,6 +15,7 @@ import { buildExpensePrep, type ExpenseTx } from '@/lib/finance/prepExpense';
 import { buildExpenseDetail, type CategoryInfo } from '@/lib/finance/prepExpenseDetail';
 import { buildRevenuePrep, type PosSaleRow } from '@/lib/finance/prepRevenue';
 import { cashflow } from '@/lib/finance/cashflow';
+import { buildCashflowRecon } from '@/lib/finance/cashflowRecon';
 
 export default async function ClosePage({ searchParams }: { searchParams: { brand?: string; unit?: string } }) {
   const supabase = await createClient();
@@ -145,6 +146,10 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
       .map((t) => ({ ym: t.ym, bank: t.bank!, tx_at: t.tx_at, amount_in: t.amount_in, amount_out: t.amount_out, balance: t.balance ?? 0 }))
   );
   const balanceByYm = new Map(bankMonths.map((m) => [m.ym, m.totalBalance]));
+  // 매출 외 입금·비용 외 출금 — 잔고와 손익의 차이를 그 자리에서 설명하는 두 열.
+  // 월별 요약과 같은 계산(buildCashflowRecon)을 재사용해 두 화면 숫자가 항상 일치한다.
+  const recon = buildCashflowRecon(bankMonths, p1, p3, fullTxns);
+  const reconByYm = new Map(recon.months.map((m) => [m.ym, m]));
   // 미분해·미분류 구성 분해 — 셀 클릭 시 "뭐가 분류 안 됐는지"를 보여주기 위해(2026-08-20 대표 요청)
   const cardOtherA = amountsOf(p2.columns, 'card_other');
   const collectedOtherA = amountsOf(p2.columns, 'collected_other');
@@ -167,6 +172,8 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
         misang: misangA[ym] ?? 0,
       },
       bankBalance: balanceByYm.get(ym) ?? null,
+      nonSalesIn: reconByYm.get(ym)?.nonSalesIn ?? null,
+      nonExpenseOut: reconByYm.get(ym)?.nonExpenseOut ?? null,
     }));
 
   // 좌측 연·월 사이드바 배지 — 이 단위의 브랜드 몫만

@@ -15,6 +15,9 @@ export interface PnlSummaryRow {
   pending: { cardOther: number; collectedOther: number; unclassified: number; misang: number };
   /** 은행 월말 잔액(통장 표와 같은 앵커 계산) — 은행 자료 없는 달은 null */
   bankBalance: number | null;
+  /** 손익↔잔고 다리 — 월별 요약(buildCashflowRecon)과 같은 값. 은행 자료 없는 달은 null */
+  nonSalesIn: number | null; // 매출 외 입금(투자·환급·반환 등)
+  nonExpenseOut: number | null; // 비용 외 출금(인테리어·보증금·대여금·투자 등)
 }
 
 export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[]; unitId: string }) {
@@ -36,11 +39,11 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
         <Link href={`/finance/pnl?unit=${unitId}`} className="underline">관리손익</Link>에서 봐요.
         실입금은 회수 참고용(카드 1~2일·식권 정산 한 달 시차). †는 POS 미업로드 달 —
         실입금 − 지출로 임시 계산한 값이라 POS 파일을 올리면 정식 손익으로 바뀌어요.
-        은행 잔고는 그 달 말일 통장 잔액 — 손익과 달리 식권 선수금·대여금·투자 같은 비손익
-        흐름까지 섞인 현금 상태라 손익과 나란히 보되 같다고 기대하면 안 돼요.
+        은행 잔고는 그 달 말일 통장 잔액 — 전월 잔고 + 손익과 다른 게 정상이에요(잔고 ⓘ 참고).
+        매출 외 입금·비용 외 출금 두 열이 그 차이 중 시차를 뺀 몫을 그 자리에서 설명해요.
       </p>
       <div className="overflow-x-auto rounded-md border border-border">
-        <table className="w-full min-w-[840px] border-collapse text-[13px]">
+        <table className="w-full min-w-[1080px] border-collapse text-[13px]">
           <thead>
             <tr className="border-b border-border text-muted-foreground">
               <th className="whitespace-nowrap px-3 py-2 text-left font-normal">월</th>
@@ -61,9 +64,63 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
               </th>
               <th
                 className="whitespace-nowrap px-3 py-2 text-right font-normal"
-                title="그 달 말일 통장 잔액(전 계좌 합) — 손익과 달리 선수금·대여금·투자 등 비손익 흐름까지 섞인 현금 상태예요"
+                title="투자·환급·반환 등 손익 밖 통장 유입 — 월별 요약과 같은 값"
               >
-                <Link href={`/finance/cashflow?unit=${unitId}`} className="hover:text-foreground">은행 잔고 ⓘ</Link>
+                <Link href={`/finance/cashflow?unit=${unitId}`} className="hover:text-foreground">매출 외 입금</Link>
+              </th>
+              <th
+                className="whitespace-nowrap px-3 py-2 text-right font-normal"
+                title="인테리어·보증금·대여금·투자 등 손익에는 안 잡히지만 통장에서 빠진 돈 — 월별 요약과 같은 값"
+              >
+                <Link href={`/finance/cashflow?unit=${unitId}`} className="hover:text-foreground">비용 외 출금</Link>
+              </th>
+              <th className="whitespace-nowrap px-3 py-2 text-right font-normal">
+                {/* 잔고 ≠ 전월 잔고+손익 인 이유 — 34개월 전 구간 대사로 소명한 설명(2026-08-20 대표 요청) */}
+                <details className="relative inline-block text-left font-normal">
+                  <summary className="cursor-pointer list-none whitespace-nowrap hover:text-foreground [&::-webkit-details-marker]:hidden">
+                    은행 잔고 ⓘ
+                  </summary>
+                  <div className="absolute right-0 z-10 mt-1 w-[360px] whitespace-normal rounded-md border border-border bg-background p-3 text-[12px] font-normal leading-relaxed shadow-md">
+                    <div className="mb-1.5 font-medium text-foreground">은행 잔고와 손익이 다른 이유</div>
+                    <p className="m-0 mb-2 text-muted-foreground">
+                      그 달 말일 통장 잔액(전 계좌 합)이에요. <b className="text-foreground">전월 잔액 + 손익과 다른 게
+                      정상</b>이에요 — 손익은 발생주의(판매일), 잔고는 현금이라서요. 차이는 아래 셋으로 전액
+                      설명돼요(34개월 전 구간 대사 검증, 2026-08-20).
+                    </p>
+                    <ol className="m-0 mb-2 list-decimal space-y-1.5 pl-4 text-muted-foreground">
+                      <li>
+                        <b className="text-foreground">회수 시차</b> (매달 ±수백만~±1,900만) — 카드 입금 1~2일 밀림 +
+                        식권대장 정산이 가끔 한 달 건너뛰어 다음 달에 두 달치가 합산 입금.
+                        {unitId === 'staffmeal' && (
+                          <> 예: 2025-11 +1,876만(10월 말 식권 대량판매 현금이 11월 초 입금), 2025-12 −1,025만 →
+                          2026-01 +1,197만(정산 한 달 건너뜀), 2026-06 −1,556만 → 2026-07 +1,112만(같은 패턴).</>
+                        )}
+                      </li>
+                      <li>
+                        <b className="text-foreground">매출 외 입금</b> — 투자·환급·반환 등 손익 밖 유입.
+                        {unitId === 'staffmeal' && (
+                          <> 누적 약 +8천만: 2023-11 초기투자 3,000만, 2024-02 세무서 환급 2,365만, 2026-02
+                          제일풍경채 반환 1,000만 등.</>
+                        )}
+                      </li>
+                      <li>
+                        <b className="text-foreground">비용 외 출금</b> — 손익에는 안 잡히지만 통장에서는 빠진 돈
+                        (인테리어·보증금·대여금·투자).
+                        {unitId === 'staffmeal' && (
+                          <> 누적 약 −2.67억으로 차이의 대부분: 2023-11 인테리어+보증금 7,610만, 2025-08~09 가든
+                          대여 3,596만, 2026-03~04 양재 투자 5,000만 + 김진아 상환 1억.</>
+                        )}
+                      </li>
+                    </ol>
+                    <div className="border-t border-border/50 pt-2 text-muted-foreground">
+                      월별 상세 분해는{' '}
+                      <Link href={`/finance/cashflow?unit=${unitId}`} className="underline hover:text-foreground">
+                        월별 요약
+                      </Link>
+                      의 매출 외 입금·비용 외 출금 열에서 봐요.
+                    </div>
+                  </div>
+                </details>
               </th>
             </tr>
           </thead>
@@ -169,6 +226,12 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                   >
                     {profit < 0 ? `−${won(-profit)}` : won(profit)}
                     {noPos && <span className="ml-0.5 text-muted-foreground">†</span>}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                    {r.nonSalesIn == null ? '' : won(r.nonSalesIn)}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                    {r.nonExpenseOut == null || r.nonExpenseOut === 0 ? '' : `−${won(r.nonExpenseOut)}`}
                   </td>
                   <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
                     {r.bankBalance == null ? '' : won(r.bankBalance)}
