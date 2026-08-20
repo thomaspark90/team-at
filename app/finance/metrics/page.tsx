@@ -131,6 +131,39 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
     return bankCash;
   };
 
+  // 대여금 마커 — '대여금'(excluded) 분류 거래를 (브랜드, 월)로 합쳐 통장 차트에 빨간 원으로 표기.
+  // 문구는 chart_annotations 오버라이드가 있으면 그걸로, 없으면 기본 '가든서비스 대여금'.
+  // 분류가 정본 — 지출 자료 분류에서 '대여금'으로 바꾸면 마커가 자동으로 생기고 없어진다.
+  type LoanMarker = { brand: string; ym: string; amount: number; label: string };
+  const loadLoanMarkers = async (): Promise<LoanMarker[]> => {
+    if (!['admin', 'classifier'].includes(role)) return []; // viewer는 통장 차트 자체가 없음
+    const { data: cat } = await supabase
+      .schema('finance')
+      .from('categories')
+      .select('id')
+      .eq('type', 'excluded')
+      .eq('name', '대여금')
+      .maybeSingle();
+    if (!cat) return [];
+    const [{ data: txs }, { data: labels }] = await Promise.all([
+      supabase.schema('finance').from('transactions').select('ym,brand,amount_out,amount_in').eq('category_id', cat.id).limit(10000),
+      supabase.schema('finance').from('chart_annotations').select('brand,ym,label'),
+    ]);
+    const agg = new Map<string, LoanMarker>();
+    for (const t of (txs ?? []) as { ym: string; brand: string | null; amount_out: number; amount_in: number }[]) {
+      const b = t.brand ?? 'garden';
+      const key = `${b}|${t.ym}`;
+      const m = agg.get(key) ?? { brand: b, ym: t.ym, amount: 0, label: '가든서비스 대여금' };
+      m.amount += (Number(t.amount_out) || 0) - (Number(t.amount_in) || 0);
+      agg.set(key, m);
+    }
+    for (const l of (labels ?? []) as { brand: string; ym: string; label: string }[]) {
+      const m = agg.get(`${l.brand}|${l.ym}`);
+      if (m) m.label = l.label;
+    }
+    return Array.from(agg.values());
+  };
+
   // 메뉴 판매량 추이(Newbie/Staff/Boss × 매장/포장) — 스탭밀 상품별 리포트(finance.pos_items) 기준.
   // memo 없는 안전 뷰(dashboard_pos_items) 우선, 없으면 원본 폴백. fetchAll 은 브랜드 필터를 못 걸어
   // 전체(가든 포함 1.5만 행 안팎)를 받은 뒤 여기서 스탭밀만 추린다 — 물량이 작아 부담 없다.
@@ -144,12 +177,13 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
   };
 
   // 5개 테이블이 서로 독립적이라 병렬로 조회 — 예전엔 순차 await라 지표 페이지 로딩이 밀렸다.
-  const [txns, cats, posSales, bankCash, menuItems] = await Promise.all([
+  const [txns, cats, posSales, bankCash, menuItems, loanMarkers] = await Promise.all([
     loadTxns(),
     loadCats(),
     loadPosSales(),
     loadBankCash(),
     loadMenuQty(),
+    loadLoanMarkers(),
   ]);
 
   return (
@@ -175,6 +209,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
             posSales={posSales}
             bankCash={bankCash}
             menuItems={menuItems}
+            loanMarkers={loanMarkers}
             reportUnit={{ brand: unit.brand as 'staffmeal' | 'garden', store: unit.store }}
           />
         </MonthShell>

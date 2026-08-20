@@ -14,6 +14,7 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
+  ReferenceDot,
   LabelList,
 } from 'recharts';
 import { aggregate, capexDepreciation, UNCLASSIFIED, type AggTx, type AggCat, type Unit } from '@/lib/finance/aggregate';
@@ -63,6 +64,28 @@ const axisTick = { fontSize: 11, fill: AXIS };
 const pointLabel = { fontSize: 11, fill: AXIS };
 const wonLabel = (v: any) => (v == null ? '' : manwon(Number(v)));
 const pctLabel = (v: any) => (v == null ? '' : `${v}%`);
+
+// 대여금 마커 — 통장 잔액 선 위의 빨간 원 + 위로 뺀 말풍선(문구·금액, 화살표로 지점 연결).
+// 클릭하면 문구를 수정할 수 있다(chart_annotations 오버라이드).
+const LOAN_COLOR = 'hsl(var(--destructive))';
+function LoanDot(props: any) {
+  const { cx, cy, marker, onEdit } = props;
+  if (cx == null || cy == null) return null;
+  const top = Math.max(cy - 72, 14);
+  return (
+    <g style={{ cursor: 'pointer' }} onClick={() => onEdit(marker)}>
+      <circle cx={cx} cy={cy} r={9} fill="none" stroke={LOAN_COLOR} strokeWidth={2} />
+      <line x1={cx} y1={top + 20} x2={cx} y2={cy - 14} stroke={LOAN_COLOR} strokeWidth={1} />
+      <path d={`M ${cx - 3} ${cy - 19} L ${cx} ${cy - 13} L ${cx + 3} ${cy - 19}`} fill="none" stroke={LOAN_COLOR} strokeWidth={1} />
+      <text x={cx} y={top} textAnchor="middle" fontSize={11} fill={LOAN_COLOR}>
+        {marker.label}
+      </text>
+      <text x={cx} y={top + 14} textAnchor="middle" fontSize={11} fill={LOAN_COLOR}>
+        −{manwon(Math.abs(marker.amount))}
+      </text>
+    </g>
+  );
+}
 
 function ChartTooltip({ active, payload, label, fmt, share }: any) {
   if (!active || !payload?.length) return null;
@@ -118,6 +141,7 @@ export default function Dashboard({
   posSales = [],
   bankCash = [],
   menuItems = [],
+  loanMarkers = [],
   reportUnit,
 }: {
   txns: AggTx[];
@@ -127,6 +151,8 @@ export default function Dashboard({
   bankCash?: { ym: string; brand: string; bank: string; inflow: number; outflow: number; balance: number }[];
   // 스탭밀 상품별 판매량(finance.pos_items) — 메뉴 판매량 추이 차트 전용
   menuItems?: { saleDate: string; category: string; product: string; qty: number }[];
+  // '대여금' 분류 거래의 (브랜드, 월)별 합계 — 통장 차트 빨간 원 마커. 서버(metrics/page)에서 프리페치.
+  loanMarkers?: { brand: string; ym: string; amount: number; label: string }[];
   // 상단 매장 필(FinanceNav ?unit=)이 정하는 브랜드+지점 — 이 화면 자체 토글은 없앴다(2026-08-19).
   reportUnit: { brand: 'staffmeal' | 'garden'; store: 'pangyo' | 'yangjae' | null };
 }) {
@@ -213,6 +239,44 @@ export default function Dashboard({
     const first = all.findIndex((d) => d.입금 !== 0 || d.출금 !== 0 || d['월말 잔액'] !== 0);
     return first < 0 ? [] : all.slice(first);
   }, [bankCash, brand]);
+  // 대여금 마커 — 현재 브랜드 것만, 통장 차트의 그 달 잔액 지점에 붙인다.
+  // 문구 수정은 낙관적으로 로컬(markerLabels)에 먼저 반영하고 chart_annotations에 저장.
+  const [markerLabels, setMarkerLabels] = useState<Record<string, string>>({});
+  const [markerEdit, setMarkerEdit] = useState<{ brand: string; ym: string } | null>(null);
+  const [markerDraft, setMarkerDraft] = useState('');
+  const [markerErr, setMarkerErr] = useState<string | null>(null);
+  const bankMarkers = useMemo(() => {
+    return loanMarkers
+      .filter((m) => m.brand === brand)
+      .map((m) => {
+        const p = m.ym.slice(2).replace('-', '.');
+        const row = bankData.find((d) => d.p === p);
+        return row ? { ...m, p, balance: row['월말 잔액'], label: markerLabels[`${m.brand}|${m.ym}`] ?? m.label } : null;
+      })
+      .filter(Boolean) as { brand: string; ym: string; amount: number; label: string; p: string; balance: number }[];
+  }, [loanMarkers, brand, bankData, markerLabels]);
+  const startMarkerEdit = (m: { brand: string; ym: string; label: string }) => {
+    setMarkerEdit({ brand: m.brand, ym: m.ym });
+    setMarkerDraft(m.label);
+    setMarkerErr(null);
+  };
+  const saveMarker = async () => {
+    if (!markerEdit) return;
+    const res = await fetch('/api/finance/chart-annotations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brand: markerEdit.brand, ym: markerEdit.ym, label: markerDraft.trim() }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => null);
+      setMarkerErr(j?.error ?? '저장에 실패했어요.');
+      return;
+    }
+    // 빈 문구 = 오버라이드 삭제 → 기본 라벨로 복귀
+    setMarkerLabels((prev) => ({ ...prev, [`${markerEdit.brand}|${markerEdit.ym}`]: markerDraft.trim() || '가든서비스 대여금' }));
+    setMarkerEdit(null);
+  };
+
   const { months, expenseKeys } = useMemo(() => {
     // '전체'는 사업 브랜드만 — 개인(personal)은 손익 제외라 카테고리와 무관하게 뺀다.
     let tx = brand === 'all' ? txns.filter((t) => t.brand !== 'personal') : txns.filter((t) => (t.brand ?? 'garden') === brand);
@@ -363,6 +427,27 @@ export default function Dashboard({
           brand === 'garden' && store !== 'all' ? ' · 통장은 가든 공용(지점 구분 없음)' : ''
         }`}
       >
+        {/* 대여금 마커 문구 수정 — 차트의 빨간 원을 클릭하면 열린다 */}
+        {markerEdit && (
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px]">
+            <span className="text-muted-foreground">{markerEdit.ym} 대여금 표기:</span>
+            <input
+              value={markerDraft}
+              onChange={(e) => setMarkerDraft(e.target.value)}
+              maxLength={40}
+              className="w-[220px] rounded-md border border-border bg-background px-2 py-1 text-foreground"
+              placeholder="가든서비스 대여금"
+            />
+            <button onClick={saveMarker} className="rounded-md bg-primary px-2.5 py-1 text-primary-foreground">
+              저장
+            </button>
+            <button onClick={() => setMarkerEdit(null)} className="rounded-md border border-border px-2.5 py-1 text-muted-foreground">
+              취소
+            </button>
+            <span className="text-muted-foreground">비우고 저장하면 기본 문구로 돌아가요</span>
+            {markerErr && <span className="text-destructive">{markerErr}</span>}
+          </div>
+        )}
         <ResponsiveContainer width="100%" height={chartH('bank', 630)}>
           <ComposedChart data={bankData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
@@ -377,6 +462,15 @@ export default function Dashboard({
               {/* 라벨이 잔액 선과 겹치지 않게 선 위 30px — 경사 구간에서도 선이 라벨을 안 지나가게 */}
               <LabelList dataKey="월말 잔액" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
             </Line>
+            {/* 대여금 마커 — '대여금' 분류 거래가 있는 달의 잔액 지점. 클릭하면 문구 수정 */}
+            {bankMarkers.map((m) => (
+              <ReferenceDot
+                key={`loan-${m.brand}-${m.ym}`}
+                x={m.p}
+                y={m.balance}
+                shape={<LoanDot marker={m} onEdit={startMarkerEdit} />}
+              />
+            ))}
           </ComposedChart>
         </ResponsiveContainer>
       </ChartCard>
@@ -415,9 +509,7 @@ export default function Dashboard({
           <Line type="monotone" dataKey="EBIT" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }}>
             <LabelList dataKey="EBIT" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
           </Line>
-          <Line type="monotone" dataKey="순이익" stroke={LINE2} strokeWidth={1.5} dot={{ r: 2, fill: LINE2 }}>
-            <LabelList dataKey="순이익" position="bottom" offset={30} formatter={wonLabel} style={pointLabel} />
-          </Line>
+          <Line type="monotone" dataKey="순이익" stroke={LINE2} strokeWidth={1.5} dot={{ r: 2, fill: LINE2 }} />
         </LineChart>
       </ResponsiveContainer>
     </ChartCard>
