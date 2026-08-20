@@ -109,7 +109,15 @@ export function buildExpensePrep(txns: ExpenseTx[], grain: ExpenseGrain = 'month
 
     // 미분류 참고 줄은 은행분만 — 수집분(네이버페이·쿠팡)의 미분류는 소스 줄에 이미 전액
     // 포함돼 있어서, 여기 또 넣으면 같은 돈이 두 줄에 보이고 힌트("합계 밖")도 거짓이 된다.
-    if (t.category_id == null && (t.amount_out || 0) > 0 && t.source !== 'naverpay' && t.source !== 'coupang')
+    // 카드대금 인출도 제외 — 계정 미지정이어도 아래에서 카드대금으로 항상 세므로,
+    // 여기 또 넣으면 미분류·카드대금 두 줄에 잡혀 합계가 이중이 된다(2026-08-20 방어).
+    if (
+      t.category_id == null &&
+      (t.amount_out || 0) > 0 &&
+      t.source !== 'naverpay' &&
+      t.source !== 'coupang' &&
+      !CARD_PAYMENT_RE.test(t.memo ?? '')
+    )
       add(unclassified, b, t.amount_out);
 
     // 수집분 중 비용 아닌 계정(설비·미상·개인·잡손익 등) — 차감 줄엔 전액이 맞지만(카드 청구엔
