@@ -322,10 +322,10 @@ export default async function PrepMenuPage({
           {unit.brand === 'staffmeal' && (
             <p className="m-0 mt-1">
               <b className="text-foreground">배달 표기 규칙(2026-08-20)</b> — 배달앱 판매는 매장·포장과 가격
-              체계가 달라 <b>Staff (기본/배달)</b>·<b>Newbie (스몰/배달)</b>로 별도 표기해요(구 표기
-              &lsquo;STAFF (Medium)&rsquo;·&lsquo;뉴비 (NEWBIE) (Small)&rsquo; 등을 병합). Boss는 배달 판매
-              이력이 없어요. &lsquo;staff포장&rsquo;(2025-05-31 하루 임시 등록, 76개)은 Staff (기본/포장)에
-              병합돼 있어요.
+              체계가 다르고 세트 구분이 없어서 <b>Staff (배달)</b>·<b>Newbie (배달)</b>·<b>Boss (배달)</b>로
+              별도 표기해요(구 표기 &lsquo;STAFF (Medium)&rsquo;·&lsquo;뉴비 (NEWBIE) (Small)&rsquo;·
+              &lsquo;보스 (BOSS) (Large)&rsquo; 등을 병합). &lsquo;staff포장&rsquo;(2025-05-31 하루 임시 등록,
+              76개)은 Staff (기본 / 포장)에 병합돼 있어요.
             </p>
           )}
         </div>
