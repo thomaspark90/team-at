@@ -16,6 +16,29 @@ import { rawQueryToParams } from '@/lib/finance/rawParams';
 
 const PAGE = 200;
 
+// 금액 구간 입력 보조 — 콤마 없는 숫자만 보관, 표시할 때 콤마
+const digitsOnly = (v: string) => v.replace(/[^0-9]/g, '');
+const fmtDigits = (v: string) => (v ? Number(v).toLocaleString('ko-KR') : '');
+function normalizeRanges(
+  ranges?: Record<string, { min?: string | null; max?: string | null }> | null
+): Record<string, { min: string; max: string }> {
+  const out: Record<string, { min: string; max: string }> = {};
+  for (const [k, r] of Object.entries(ranges ?? {})) out[k] = { min: r?.min ?? '', max: r?.max ?? '' };
+  return out;
+}
+/** 드래프트 → 쿼리용 — 둘 다 빈 열은 뺀다 */
+function cleanRanges(draft: Record<string, { min: string; max: string }>) {
+  const out: Record<string, { min?: string; max?: string }> = {};
+  for (const [k, r] of Object.entries(draft)) {
+    if (!r.min && !r.max) continue;
+    out[k] = { ...(r.min ? { min: r.min } : {}), ...(r.max ? { max: r.max } : {}) };
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+// 출금/입금 열 이름 — '출금만·입금만' 토글이 어느 열에 구간을 걸지 찾는 데 쓴다
+const OUT_COL_RE = /찾으신|출금/;
+const IN_COL_RE = /맡기신|입금/;
+
 export default function RawTable({
   query: initialQuery,
   columns,
@@ -37,6 +60,10 @@ export default function RawTable({
   const sentinel = useRef<HTMLDivElement>(null);
   // 컬럼 필터 입력은 타이핑 중 매 글자마다 조회하지 않도록 따로 들고 있다가 디바운스로 반영
   const [filterDraft, setFilterDraft] = useState<Record<string, string>>(initialQuery.filters ?? {});
+  // 숫자 열 금액 구간(최소~최대) — 콤마 없는 숫자 문자열로 들고, 표시할 때만 콤마를 붙인다
+  const [rangeDraft, setRangeDraft] = useState<Record<string, { min: string; max: string }>>(
+    normalizeRanges(initialQuery.ranges)
+  );
   const [qDraft, setQDraft] = useState(initialQuery.q ?? '');
 
   // 서버가 새 조건으로 렌더하면(출처 탭·월 이동) 목록을 갈아끼운다
@@ -45,6 +72,7 @@ export default function RawTable({
     setRows(initialRows);
     setHasMore(initialHasMore);
     setFilterDraft(initialQuery.filters ?? {});
+    setRangeDraft(normalizeRanges(initialQuery.ranges));
     setQDraft(initialQuery.q ?? '');
     setError(null);
   }, [initialQuery, initialRows, initialHasMore]);
@@ -99,16 +127,39 @@ export default function RawTable({
     return () => io.disconnect();
   }, [loadMore, hasMore]);
 
-  // 필터·검색어 디바운스 — 입력이 멎고 400ms 뒤에 한 번만 조회
+  // 필터·구간·검색어 디바운스 — 입력이 멎고 400ms 뒤에 한 번만 조회
   useEffect(() => {
     const same =
-      JSON.stringify(filterDraft) === JSON.stringify(query.filters ?? {}) && qDraft === (query.q ?? '');
+      JSON.stringify(filterDraft) === JSON.stringify(query.filters ?? {}) &&
+      JSON.stringify(cleanRanges(rangeDraft) ?? {}) === JSON.stringify(query.ranges ?? {}) &&
+      qDraft === (query.q ?? '');
     if (same) return;
     const t = setTimeout(() => {
-      reload({ ...query, filters: filterDraft, q: qDraft || null });
+      reload({ ...query, filters: filterDraft, ranges: cleanRanges(rangeDraft), q: qDraft || null });
     }, 400);
     return () => clearTimeout(t);
-  }, [filterDraft, qDraft, query, reload]);
+  }, [filterDraft, rangeDraft, qDraft, query, reload]);
+
+  // '출금만·입금만' 토글 — 해당 금액 열에 '1원 이상' 구간을 걸어 값 있는 행만 남긴다.
+  // 열은 이름으로 찾는다(찾으신금액/출금 · 맡기신금액/입금) — 은행 외 소스엔 없으면 토글을 숨긴다.
+  const outCol = useMemo(() => columns.findIndex((c) => OUT_COL_RE.test(c)), [columns]);
+  const inCol = useMemo(() => columns.findIndex((c) => IN_COL_RE.test(c)), [columns]);
+  const flowMode: 'all' | 'out' | 'in' = (() => {
+    const has = (i: number) => i >= 0 && !!(rangeDraft[String(i)]?.min || rangeDraft[String(i)]?.max);
+    if (has(outCol) && !has(inCol)) return 'out';
+    if (has(inCol) && !has(outCol)) return 'in';
+    return 'all';
+  })();
+  const setFlowMode = (mode: 'all' | 'out' | 'in') => {
+    setRangeDraft((prev) => {
+      const next = { ...prev };
+      delete next[String(outCol)];
+      delete next[String(inCol)];
+      if (mode === 'out') next[String(outCol)] = { min: '1', max: '' };
+      if (mode === 'in') next[String(inCol)] = { min: '1', max: '' };
+      return next;
+    });
+  };
 
   const toggleSort = (col: number) => {
     const s = query.sort ?? { by: 'row' as const };
@@ -164,6 +215,28 @@ export default function RawTable({
           placeholder="전체 검색"
           className="ml-2 h-8 w-48 rounded-md border border-border bg-background px-2.5 text-[13px] outline-none focus:border-foreground/40"
         />
+        {/* 출금만·입금만 토글 — 값이 있는 행만 남긴다(해당 열 1원 이상 구간) */}
+        {outCol >= 0 && inCol >= 0 && (
+          <div className="inline-flex gap-1 rounded-md border border-border p-0.5">
+            {(
+              [
+                { key: 'all', label: '전체' },
+                { key: 'out', label: '출금만' },
+                { key: 'in', label: '입금만' },
+              ] as const
+            ).map((m) => (
+              <button
+                key={m.key}
+                onClick={() => setFlowMode(m.key)}
+                className={`rounded-sm px-2 py-0.5 text-[12px] transition-colors ${
+                  flowMode === m.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        )}
         <span className="text-muted-foreground">
           {loading ? '정렬·필터 적용 중…' : `${rows.length.toLocaleString()}행${hasMore ? '+' : ''}`}
         </span>
@@ -221,36 +294,73 @@ export default function RawTable({
                 ))}
                 <th className="whitespace-nowrap px-2 py-1.5 font-normal">가공 결과</th>
               </tr>
-              {/* 컬럼별 필터 — 각 열에 포함된 문자로 거른다 */}
+              {/* 컬럼별 필터 — 문자 열은 포함 검색, 숫자 열은 금액 구간(최소~최대) */}
               <tr className="border-b border-border bg-card">
                 <th />
                 <th />
                 {columns.map((_, i) => (
                   <th key={i} className="px-1 py-1">
-                    <input
-                      value={filterDraft[String(i)] ?? ''}
-                      onChange={(e) =>
-                        setFilterDraft((prev) => {
-                          const next = { ...prev };
-                          if (e.target.value) next[String(i)] = e.target.value;
-                          else delete next[String(i)];
-                          return next;
-                        })
-                      }
-                      placeholder="필터"
-                      className="h-6 w-full min-w-[70px] rounded border border-border bg-background px-1.5 text-[11px] font-normal outline-none focus:border-foreground/40"
-                    />
+                    {numericCols[i] ? (
+                      <span className="flex items-center gap-0.5 whitespace-nowrap font-normal">
+                        <input
+                          value={fmtDigits(rangeDraft[String(i)]?.min ?? '')}
+                          onChange={(e) =>
+                            setRangeDraft((prev) => {
+                              const next = { ...prev };
+                              const cur = { min: digitsOnly(e.target.value), max: next[String(i)]?.max ?? '' };
+                              if (!cur.min && !cur.max) delete next[String(i)];
+                              else next[String(i)] = cur;
+                              return next;
+                            })
+                          }
+                          placeholder="최소"
+                          inputMode="numeric"
+                          className="h-6 w-[76px] rounded border border-border bg-background px-1.5 text-right text-[11px] tabular-nums outline-none focus:border-foreground/40"
+                        />
+                        <span className="text-muted-foreground">~</span>
+                        <input
+                          value={fmtDigits(rangeDraft[String(i)]?.max ?? '')}
+                          onChange={(e) =>
+                            setRangeDraft((prev) => {
+                              const next = { ...prev };
+                              const cur = { min: next[String(i)]?.min ?? '', max: digitsOnly(e.target.value) };
+                              if (!cur.min && !cur.max) delete next[String(i)];
+                              else next[String(i)] = cur;
+                              return next;
+                            })
+                          }
+                          placeholder="최대"
+                          inputMode="numeric"
+                          className="h-6 w-[76px] rounded border border-border bg-background px-1.5 text-right text-[11px] tabular-nums outline-none focus:border-foreground/40"
+                        />
+                      </span>
+                    ) : (
+                      <input
+                        value={filterDraft[String(i)] ?? ''}
+                        onChange={(e) =>
+                          setFilterDraft((prev) => {
+                            const next = { ...prev };
+                            if (e.target.value) next[String(i)] = e.target.value;
+                            else delete next[String(i)];
+                            return next;
+                          })
+                        }
+                        placeholder="필터"
+                        className="h-6 w-full min-w-[70px] rounded border border-border bg-background px-1.5 text-[11px] font-normal outline-none focus:border-foreground/40"
+                      />
+                    )}
                   </th>
                 ))}
                 <th />
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
+              {rows.map((r, idx) => {
                 const cells = payloadCells(r.payload, columns);
                 return (
                   <tr key={r.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30">
-                    <td className="whitespace-nowrap px-2 py-1 tabular-nums text-muted-foreground">{r.row_index}</td>
+                    {/* 행 = 표시 순번(정렬 기준 1부터) — 원본 파일의 행 위치가 아니라 지금 보이는 순서다 */}
+                    <td className="whitespace-nowrap px-2 py-1 tabular-nums text-muted-foreground">{idx + 1}</td>
                     <td className="whitespace-nowrap px-2 py-1 tabular-nums text-muted-foreground">
                       {r.row_date ?? ''}
                     </td>

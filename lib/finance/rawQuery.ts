@@ -45,6 +45,12 @@ export interface RawSort {
   desc?: boolean;
 }
 
+/** 숫자 열 금액 구간 — 값은 콤마 없는 숫자 문자열('1000000'), 비면 그 경계 없음 */
+export interface RawRange {
+  min?: string | null;
+  max?: string | null;
+}
+
 export interface RawQuery {
   source: RawSource;
   brand?: string | null;
@@ -52,6 +58,7 @@ export interface RawQuery {
   to?: string | null;
   q?: string | null; // 전체 검색
   filters?: Record<string, string> | null; // { '3': '카드' } — 키는 payload 열 인덱스
+  ranges?: Record<string, RawRange> | null; // { '4': {min:'1000000', max:'5000000'} } — 숫자 열 구간
   sort?: RawSort;
 }
 
@@ -110,6 +117,14 @@ export async function fetchRawRows(
   page: { offset: number; limit: number }
 ): Promise<RawRowView[]> {
   const sort = query.sort ?? { by: 'row' };
+  // 금액 구간 — 빈 경계는 빼고, min/max 둘 다 비면 그 열 자체를 뺀다
+  const ranges: Record<string, { min?: number; max?: number }> = {};
+  for (const [k, r] of Object.entries(query.ranges ?? {})) {
+    const entry: { min?: number; max?: number } = {};
+    if (r?.min && /^\d+$/.test(r.min)) entry.min = Number(r.min);
+    if (r?.max && /^\d+$/.test(r.max)) entry.max = Number(r.max);
+    if (entry.min != null || entry.max != null) ranges[k] = entry;
+  }
   const { data, error } = await supabase.schema('finance').rpc('raw_rows_page', {
     p_source: query.source,
     p_brand: query.brand ?? null,
@@ -117,6 +132,7 @@ export async function fetchRawRows(
     p_to: query.to ?? null,
     p_q: query.q ?? null,
     p_filters: query.filters && Object.keys(query.filters).length > 0 ? query.filters : null,
+    p_ranges: Object.keys(ranges).length > 0 ? ranges : null,
     p_sort: sort.by,
     p_sort_col: sort.by === 'col' ? (sort.col ?? null) : null,
     p_numeric: !!sort.numeric,
