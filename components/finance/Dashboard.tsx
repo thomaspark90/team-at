@@ -140,6 +140,23 @@ export default function Dashboard({
   // 좌측 연·월 사이드바(MonthShell)와 동기 — 고른 달의 요약 타일·구성비를 비춘다. 셸 밖(구 화면)이면 null → 최근 달.
   const ctx = useMonthCtx();
 
+  // 전체 보기 차트 — recharts ResponsiveContainer 는 height 가 고정 숫자면 컨테이너 실측을
+  // 무시하므로, 풀스크린은 CSS 덮어쓰기가 아니라 height 값 자체를 뷰포트 높이로 바꿔야 한다.
+  const [fullId, setFullId] = useState<ChartId | null>(null);
+  const [viewH, setViewH] = useState(800);
+  useEffect(() => {
+    const update = () => setViewH(window.innerHeight);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+  // 130px = 오버레이 헤더(제목·닫기)+상하 패딩 몫
+  const chartH = (id: ChartId, base: number) => (fullId === id ? viewH - 130 : base);
+  const fullProps = (id: ChartId) => ({
+    full: fullId === id,
+    setFull: (v: boolean) => setFullId(v ? id : null),
+  });
+
   // 차트 순서 — 헤더 그립을 드래그해서 바꾸고 이 브라우저에 저장(계정과 무관, localStorage)
   const [order, setOrder] = useState<ChartId[]>([...DEFAULT_CHART_ORDER]);
   useEffect(() => {
@@ -332,13 +349,14 @@ export default function Dashboard({
       <ChartCard
         key="bank"
         id="bank"
+        {...fullProps('bank')}
         onReorder={reorderChart}
         title="통장 입출금·잔액"
         subtitle={`월별 입금·출금(막대)과 월말 잔액(선) · 분류 무관 통장 기준${
           brand === 'garden' && store !== 'all' ? ' · 통장은 가든 공용(지점 구분 없음)' : ''
         }`}
       >
-        <ResponsiveContainer width="100%" height={630}>
+        <ResponsiveContainer width="100%" height={chartH('bank', 630)}>
           <ComposedChart data={bankData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
             <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
@@ -359,8 +377,8 @@ export default function Dashboard({
   }
 
   chartNodes.revenue = (
-    <ChartCard key="revenue" id="revenue" onReorder={reorderChart} title="매출 추이" subtitle="점선=평균">
-      <ResponsiveContainer width="100%" height={585}>
+    <ChartCard key="revenue" id="revenue" {...fullProps('revenue')} onReorder={reorderChart} title="매출 추이" subtitle="점선=평균">
+      <ResponsiveContainer width="100%" height={chartH('revenue', 585)}>
         <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
           <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
@@ -377,8 +395,8 @@ export default function Dashboard({
   );
 
   chartNodes.ebit = (
-    <ChartCard key="ebit" id="ebit" onReorder={reorderChart} title="영업이익 추이" subtitle="EBIT · 당기순이익">
-      <ResponsiveContainer width="100%" height={585}>
+    <ChartCard key="ebit" id="ebit" {...fullProps('ebit')} onReorder={reorderChart} title="영업이익 추이" subtitle="EBIT · 당기순이익">
+      <ResponsiveContainer width="100%" height={chartH('ebit', 585)}>
         <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 40, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
           <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
@@ -403,11 +421,12 @@ export default function Dashboard({
       <ChartCard
         key="capex"
         id="capex"
+        {...fullProps('capex')}
         onReorder={reorderChart}
         title="감가상각 반영 영업이익"
         subtitle="자본적지출을 5년 정액 상각해 뺀 실질 영업이익 · 위 EBIT와 비교"
       >
-        <ResponsiveContainer width="100%" height={585}>
+        <ResponsiveContainer width="100%" height={chartH('capex', 585)}>
           <LineChart data={depData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
             <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
@@ -426,8 +445,8 @@ export default function Dashboard({
   }
 
   chartNodes.ratio = (
-    <ChartCard key="ratio" id="ratio" onReorder={reorderChart} title="손익 추이 %" subtitle="영업이익률 = EBIT ÷ 매출">
-      <ResponsiveContainer width="100%" height={540}>
+    <ChartCard key="ratio" id="ratio" {...fullProps('ratio')} onReorder={reorderChart} title="손익 추이 %" subtitle="영업이익률 = EBIT ÷ 매출">
+      <ResponsiveContainer width="100%" height={chartH('ratio', 540)}>
         <LineChart data={ratioData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
           <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
@@ -446,13 +465,14 @@ export default function Dashboard({
     <ChartCard
       key="expense"
       id="expense"
+      {...fullProps('expense')}
       onReorder={reorderChart}
       title="지출 구분"
       subtitle={`월별 카테고리 지출(누적) · 오른쪽은 ${breakdownLabel} 구성비`}
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-center">
         <div className="min-w-0 flex-1">
-          <ResponsiveContainer width="100%" height={675}>
+          <ResponsiveContainer width="100%" height={chartH('expense', 675)}>
             <BarChart data={barData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
               <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
@@ -486,8 +506,8 @@ export default function Dashboard({
   );
 
   chartNodes.cost = (
-    <ChartCard key="cost" id="cost" onReorder={reorderChart} title="재료비 %" subtitle="원가율 = 재료비 ÷ 매출 · 카페 벤치마크 25~37%">
-      <ResponsiveContainer width="100%" height={540}>
+    <ChartCard key="cost" id="cost" {...fullProps('cost')} onReorder={reorderChart} title="재료비 %" subtitle="원가율 = 재료비 ÷ 매출 · 카페 벤치마크 25~37%">
+      <ResponsiveContainer width="100%" height={chartH('cost', 540)}>
         <LineChart data={costData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
           <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
@@ -504,12 +524,12 @@ export default function Dashboard({
 
   if (unit === 'month' && brand === 'staffmeal' && menuQtyData.length > 0) {
     chartNodes.menu = (
-      <ChartCard key="menu" id="menu" onReorder={reorderChart} title="메뉴 판매량 추이" subtitle="Newbie · Staff · Boss — 매장/포장 판매 수량(개)">
+      <ChartCard key="menu" id="menu" {...fullProps('menu')} onReorder={reorderChart} title="메뉴 판매량 추이" subtitle="Newbie · Staff · Boss — 매장/포장 판매 수량(개)">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {MENU_TIERS.map((tier) => (
             <div key={tier}>
               <div className="mb-2 px-1 text-[12px] text-foreground">{tier}</div>
-              <ResponsiveContainer width="100%" height={495}>
+              <ResponsiveContainer width="100%" height={chartH('menu', 495)}>
                 <LineChart data={menuQtyData} margin={{ top: 30, right: 8, bottom: 4, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
                   <XAxis dataKey="p" tick={{ fontSize: 10, fill: AXIS }} stroke={AXIS} interval="preserveStartEnd" />
@@ -588,6 +608,8 @@ function ChartCard({
   subtitle,
   children,
   onReorder,
+  full,
+  setFull,
 }: {
   id: string;
   title: string;
@@ -595,11 +617,12 @@ function ChartCard({
   children: React.ReactNode;
   // 그립(⠿) 드래그 → 카드에 드롭 시 (드래그한 차트 id, 이 차트 id) 순서로 호출
   onReorder: (draggedId: string, targetId: string) => void;
+  // 전체 보기 — 상태는 Dashboard 가 들고 차트 height 에 반영한다(recharts 가 고정 height 를 쓰므로)
+  full: boolean;
+  setFull: (v: boolean) => void;
 }) {
   const [open, setOpen] = useState(true);
   const [dragOver, setDragOver] = useState(false);
-  // 전체 보기 — 카드 하나를 화면 풀사이즈 오버레이로. Esc 로 닫는다.
-  const [full, setFull] = useState(false);
   useEffect(() => {
     if (!full) return;
     const onKey = (e: KeyboardEvent) => {
@@ -607,7 +630,7 @@ function ChartCard({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [full]);
+  }, [full, setFull]);
   return (
     <div
       onDragOver={(e) => {
@@ -682,11 +705,9 @@ function ChartCard({
               닫기 ✕
             </button>
           </div>
-          {/* 카드의 고정 height 를 뷰포트 높이로 강제 덮어써 차트가 화면을 채우게 한다
-              (recharts 는 컨테이너 실측 크기를 따라가므로 CSS !important 로 충분).
-              calc 빼기는 공백 필수 — Tailwind 임의값에선 _ 로 표기(calc(100vh-130px)는 무효 CSS).
-              m-auto: 내용이 영역보다 작을 때 뷰포트 중앙 정렬(넘치면 0으로 접혀 스크롤 정상). */}
-          <div className="flex min-h-0 flex-1 overflow-auto [&_.recharts-responsive-container]:!h-[calc(100vh_-_130px)]">
+          {/* 차트 자체가 뷰포트 높이(chartH)로 그려지므로 여기선 담기만 한다.
+              m-auto: 내용이 영역보다 작을 때 중앙 정렬(넘치면 0으로 접혀 스크롤 정상). */}
+          <div className="flex min-h-0 flex-1 overflow-auto">
             <div className="m-auto w-full">{children}</div>
           </div>
         </div>
