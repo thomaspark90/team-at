@@ -93,13 +93,13 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
       <AccountingNav role={role} />
       <div className="mx-auto max-w-[1600px] px-6 py-8">
         <div className="mb-4 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">월 확정</h1>
+          <h1 className="m-0 text-[22px] tracking-[-0.5px]">월 결산</h1>
           <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
             ← 재무 홈
           </Link>
         </div>
         <p className="mb-5 mt-0 text-[13px] leading-[1.6] text-muted-foreground">
-          <b>{unit.label}</b>의 월 확정이에요 — 단위는 상단에서 선택해요. 미분류
+          <b>{unit.label}</b>의 월 결산이에요 — 확정하면 입력이 잠기고 그 시점 집계가 결산값으로 저장돼요. 결산 후 분류를 고치면 '결산 확인'에서 차이가 보여요. 미분류
           {unit.store ? '와 지점 미지정 가든 거래' : ''}가 0건인 달만 확정할 수 있고, 확정하면 그 달·그 단위의 지출 자료 분류가
           잠겨요. {allowConfirm ? '' : '(확정 권한은 관리자에게 요청하세요.)'}
         </p>
@@ -120,4 +120,4 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
 }
 
 // 브라우저 탭 제목 — 루트 템플릿(%s · team-at) 적용
-export const metadata = { title: '월 확정' };
+export const metadata = { title: '월 결산' };

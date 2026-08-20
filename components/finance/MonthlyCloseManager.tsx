@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { wonNum as won, fmtYm } from '@/lib/finance/format';
 import { slotsForBanks, type SlotStatus } from '@/lib/finance/uploadSlots';
@@ -37,6 +37,41 @@ export default function MonthlyCloseManager({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState<string | null>(null); // 진행 문구
   const [bulkGate, setBulkGate] = useState<{ ym: string; issues: string[] }[] | null>(null);
+  // 결산값 패널 — 확정 달의 '결산 확인'을 누르면 결산값과 현재 계산의 차이를 보여준다(유연 모드)
+  type SnapState = {
+    loading: boolean;
+    error?: string;
+    snapshot?: { version: number; createdAt: string } | null;
+    diffs?: { label: string; was: number; now: number }[];
+  };
+  const [snaps, setSnaps] = useState<Record<string, SnapState>>({});
+  async function loadSnap(ym: string) {
+    setSnaps((m) => ({ ...m, [ym]: { loading: true } }));
+    try {
+      const res = await fetch(`/api/finance/close/snapshot?ym=${ym}&unit=${unit}`);
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || '결산값 조회 실패');
+      setSnaps((m) => ({ ...m, [ym]: { loading: false, snapshot: j.snapshot, diffs: j.diffs ?? [] } }));
+    } catch (e) {
+      setSnaps((m) => ({ ...m, [ym]: { loading: false, error: (e as Error).message } }));
+    }
+  }
+  async function resnap(ym: string) {
+    setSnaps((m) => ({ ...m, [ym]: { ...(m[ym] ?? { loading: false }), loading: true } }));
+    try {
+      const res = await fetch('/api/finance/close', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ym, unit, action: 'resnap' }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || '재결산 실패');
+      await loadSnap(ym); // 새 버전 기준으로 차이 재계산(이제 0이어야 정상)
+    } catch (e) {
+      setSnaps((m) => ({ ...m, [ym]: { loading: false, error: (e as Error).message } }));
+    }
+  }
+
   // 좌측 연·월 사이드바(MonthShell) 선택 달 — 표에서 그 달 행을 하이라이트하고 화면에 보이게
   const ctx = useMonthCtx();
   const selYm = ctx?.ym ?? null;
@@ -196,8 +231,8 @@ export default function MonthlyCloseManager({
                 const unassigned = r.unassigned ?? 0;
                 const ready = r.unclassified === 0 && unassigned === 0;
                 return (
+                  <React.Fragment key={r.ym}>
                   <tr
-                    key={r.ym}
                     id={`close-${r.ym}`}
                     className={`border-t border-border hover:bg-accent ${
                       r.ym === selYm ? 'bg-primary/10' : confirmed ? 'bg-muted' : ''
@@ -250,13 +285,16 @@ export default function MonthlyCloseManager({
                       {busy === r.ym ? (
                         <span className="text-[11px] text-muted-foreground">처리 중…</span>
                       ) : confirmed ? (
-                        canConfirm ? (
-                          <button onClick={() => act(r.ym, 'reopen')} className="ta-btn text-[13px]">
-                            재오픈
+                        <span className="inline-flex items-center gap-1.5">
+                          <button onClick={() => (snaps[r.ym] ? setSnaps((m) => { const n = { ...m }; delete n[r.ym]; return n; }) : loadSnap(r.ym))} className="ta-btn text-[13px]">
+                            {snaps[r.ym] ? '결산 닫기' : '결산 확인'}
                           </button>
-                        ) : (
-                          <span className="text-[11px] text-muted-foreground">—</span>
-                        )
+                          {canConfirm && (
+                            <button onClick={() => act(r.ym, 'reopen')} className="ta-btn text-[13px]">
+                              재오픈
+                            </button>
+                          )}
+                        </span>
                       ) : !ready ? (
                         <Link
                           href={
@@ -277,6 +315,64 @@ export default function MonthlyCloseManager({
                       )}
                     </Td>
                   </tr>
+                  {snaps[r.ym] && (
+                    <tr className="border-t border-border/40 bg-muted/30">
+                      <td colSpan={canConfirm ? 6 : 5} className="px-4 py-3 text-[12px]">
+                        {(() => {
+                          const sn = snaps[r.ym]!;
+                          if (sn.loading) return <span className="text-muted-foreground">결산값 확인 중…</span>;
+                          if (sn.error) return <span className="text-destructive">{sn.error}</span>;
+                          if (!sn.snapshot)
+                            return (
+                              <span className="flex flex-wrap items-center gap-2 text-muted-foreground">
+                                이 달엔 저장된 결산값이 없어요(결산값 도입 전에 확정된 달이에요).
+                                {canConfirm && (
+                                  <button onClick={() => resnap(r.ym)} className="ta-btn text-[12px]">
+                                    지금 결산값 만들기
+                                  </button>
+                                )}
+                              </span>
+                            );
+                          if (!sn.diffs || sn.diffs.length === 0)
+                            return (
+                              <span className="text-muted-foreground">
+                                ✓ 현재 집계가 결산값(v{sn.snapshot.version} · {sn.snapshot.createdAt.slice(0, 10)})과
+                                정확히 일치해요.
+                              </span>
+                            );
+                          return (
+                            <div className="flex flex-col gap-1.5">
+                              <span className="font-medium text-foreground">
+                                ⚠ 결산(v{sn.snapshot.version} · {sn.snapshot.createdAt.slice(0, 10)}) 후 숫자가
+                                바뀌었어요 — 재분류·재업로드가 있었던 거예요.
+                              </span>
+                              <ul className="m-0 flex list-none flex-col gap-0.5 p-0 tabular-nums text-muted-foreground">
+                                {sn.diffs.slice(0, 8).map((d) => (
+                                  <li key={d.label}>
+                                    {d.label}: {won(d.was)} → <b className="text-foreground">{won(d.now)}</b> (
+                                    {d.now - d.was > 0 ? '+' : ''}
+                                    {won(d.now - d.was)})
+                                  </li>
+                                ))}
+                                {sn.diffs.length > 8 && <li>… 외 {sn.diffs.length - 8}건</li>}
+                              </ul>
+                              {canConfirm && (
+                                <span className="flex items-center gap-2">
+                                  <button onClick={() => resnap(r.ym)} className="ta-btn-primary text-[12px]">
+                                    이 숫자로 재결산
+                                  </button>
+                                  <span className="text-muted-foreground">
+                                    변경이 잘못된 거라면 분류 화면에서 되돌린 뒤 다시 확인하세요.
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
                 );
               })}
             </tbody>

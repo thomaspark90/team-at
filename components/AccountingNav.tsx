@@ -52,7 +52,7 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
     { href: '/finance/uploads', label: '자료 이력' },
     { href: '/finance/originals', label: '원본 자료함' },
   ];
-  const CLOSING = [{ href: '/finance/close', label: '월 확정' }];
+  const CLOSING = [{ href: '/finance/close', label: '월 결산' }];
   const ADMIN = [{ href: '/finance/categories', label: '설정' }];
 
   // 개인 단위 — 손익 제외 사적 지출 정리 전용. 자료입력·월확정·설정 없이 분류만.

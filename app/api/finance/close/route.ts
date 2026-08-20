@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { canConfirm } from '@/lib/finance/access';
 import { unitOf } from '@/lib/finance/types';
+import { computeMonthlyFigures, type SnapshotFigures } from '@/lib/finance/closeSnapshot';
 
 export const runtime = 'nodejs';
 
@@ -31,8 +32,26 @@ export async function POST(req: Request) {
   if (!unit) return NextResponse.json({ error: '확정 단위(unit)가 올바르지 않습니다.' }, { status: 400 });
   const brand = unit.brand;
   const store = unit.store ?? ''; // monthly_close.store — 스탭밀은 ''
-  if (!ym || !/^\d{4}-\d{2}$/.test(ym) || (action !== 'confirm' && action !== 'reopen')) {
-    return NextResponse.json({ error: '월(YYYY-MM)과 동작(confirm/reopen)이 필요합니다.' }, { status: 400 });
+  if (!ym || !/^\d{4}-\d{2}$/.test(ym) || (action !== 'confirm' && action !== 'reopen' && action !== 'resnap')) {
+    return NextResponse.json({ error: '월(YYYY-MM)과 동작(confirm/reopen/resnap)이 필요합니다.' }, { status: 400 });
+  }
+
+  // 재결산 — 잠금 상태는 그대로 두고 결산값만 새 버전으로 얼린다.
+  // 결산 후 데이터가 바뀌어(변동 감지) 그 변경이 맞다고 판단했을 때 누른다.
+  if (action === 'resnap') {
+    const { data: closed } = await supabase
+      .schema('finance')
+      .from('monthly_close')
+      .select('status')
+      .eq('ym', ym).eq('brand', brand).eq('store', store)
+      .maybeSingle();
+    if (closed?.status !== 'confirmed') {
+      return NextResponse.json({ error: '확정된 달만 재결산할 수 있어요. 먼저 월 결산을 해주세요.' }, { status: 409 });
+    }
+    const snap = await saveSnapshot(supabase, user.id, ym, brand, store, unit);
+    if ('error' in snap) return NextResponse.json({ error: snap.error }, { status: 500 });
+    await logActivity(supabase, user, '월 재결산', `${ym} [${unit.label}] v${snap.version}`);
+    return NextResponse.json({ ym, unit: unit.id, status: 'confirmed', snapshotVersion: snap.version });
   }
 
   const now = new Date().toISOString();
@@ -90,8 +109,14 @@ export async function POST(req: Request) {
         { onConflict: 'ym,brand,store' }
       );
     if (error) return NextResponse.json({ error: `확정 실패: ${error.message}` }, { status: 500 });
-    await logActivity(supabase, user, '월 확정', `${ym} [${unit.label}]`);
-    return NextResponse.json({ ym, unit: unit.id, status: 'confirmed', confirmed_at: now });
+    // 결산값을 얼린다 — 이 시점의 전처리1·2·3 집계가 이 달의 '답안지'가 된다.
+    // 실패해도 확정 자체는 유지(스냅샷은 검증 기록, 잠금이 본체) — 화면에 스냅샷 없음이 표시된다.
+    const snap = await saveSnapshot(supabase, user.id, ym, brand, store, unit);
+    await logActivity(supabase, user, '월 결산', `${ym} [${unit.label}]${'version' in snap ? ` v${snap.version}` : ' (결산값 저장 실패)'}`);
+    return NextResponse.json({
+      ym, unit: unit.id, status: 'confirmed', confirmed_at: now,
+      snapshotVersion: 'version' in snap ? snap.version : null,
+    });
   }
 
   // reopen
@@ -105,4 +130,36 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: `재오픈 실패: ${error.message}` }, { status: 500 });
   await logActivity(supabase, user, '월 확정 재오픈', `${ym} [${unit.label}]`);
   return NextResponse.json({ ym, unit: unit.id, status: 'open' });
+}
+
+
+// 결산값 저장 — (ym, brand, store) 의 다음 버전으로 insert (append-only)
+async function saveSnapshot(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  ym: string,
+  brand: string,
+  store: string,
+  unit: NonNullable<ReturnType<typeof unitOf>>
+): Promise<{ version: number; figures: SnapshotFigures } | { error: string }> {
+  try {
+    const figures = await computeMonthlyFigures(supabase, unit, ym);
+    const { data: last } = await supabase
+      .schema('finance')
+      .from('close_snapshots')
+      .select('version')
+      .eq('ym', ym).eq('brand', brand).eq('store', store)
+      .order('version', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const version = ((last?.version as number | undefined) ?? 0) + 1;
+    const { error } = await supabase
+      .schema('finance')
+      .from('close_snapshots')
+      .insert({ ym, brand, store, version, figures: figures as never, created_by: userId });
+    if (error) return { error: `결산값 저장 실패: ${error.message}` };
+    return { version, figures };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
 }
