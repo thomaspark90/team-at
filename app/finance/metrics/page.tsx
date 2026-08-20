@@ -49,7 +49,11 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
   // dashboard_tx = memo(이름) 없는 멤버 전용 뷰(viewer도 읽음). store 컬럼은 마이그레이션 전이면 없어 폴백.
   const loadTxns = async () => {
     const txOrder = ['tx_at', 'category_id', 'brand', 'store', 'amount_in', 'amount_out'];
-    let txRows = await fetchAll('dashboard_tx', 'tx_at,amount_in,amount_out,category_id,brand,store', txOrder);
+    // source·is_card_payment = 카드대금↔수집분 이중계상 차감용 신호(aggregate) — 뷰 미마이그레이션이면 구 컬럼 폴백
+    let txRows = await fetchAll('dashboard_tx', 'tx_at,amount_in,amount_out,category_id,brand,store,source,is_card_payment', txOrder);
+    if (txRows.error) {
+      txRows = await fetchAll('dashboard_tx', 'tx_at,amount_in,amount_out,category_id,brand,store', txOrder);
+    }
     if (txRows.error) {
       txRows = await fetchAll('dashboard_tx', 'tx_at,amount_in,amount_out,category_id,brand', ['tx_at', 'category_id', 'brand', 'amount_in', 'amount_out']);
     }

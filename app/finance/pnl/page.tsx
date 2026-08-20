@@ -4,6 +4,7 @@ import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveRoleStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
 import { buildPnl, benchmark, prevYm, CHANNEL_FEE_RATE, type PnlCat, type PnlTx, type PnlPosRow, type PnlInventory, type Signal } from '@/lib/finance/pnl';
+import { CARD_PAYMENT_RE } from '@/lib/finance/cardOffset';
 import { UNITS, unitOf, storeLabel, type Brand, type Store } from '@/lib/finance/types';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
@@ -133,7 +134,7 @@ async function PnlBody({
   const posView = store ? pos.filter((p) => (p.store ?? '') === store) : pos;
 
   // 지출·재고·수수료도 브랜드로 필터, 지점 뷰는 store 까지
-  let txnsQ = supabase.schema('finance').from('transactions').select('id,category_id,amount_in,amount_out').eq('ym', selectedYm).eq('brand', seg);
+  let txnsQ = supabase.schema('finance').from('transactions').select('id,category_id,amount_in,amount_out,source,memo').eq('ym', selectedYm).eq('brand', seg);
   if (store) txnsQ = txnsQ.eq('store', store);
   // 지점 뷰에서 빠지는 '지점 미지정' 가든 지출 — 경고 표기용
   const unassignedQ = store
@@ -152,7 +153,13 @@ async function PnlBody({
     supabase.schema('finance').from('channel_fees').select('amount,brand').eq('ym', selectedYm),
     unassignedQ ?? Promise.resolve(null),
   ]);
-  const txns = (unwrap(txnsRes, '거래') as (PnlTx & { id: number })[] | null) ?? [];
+  // 카드대금 인출 판정(memo 패턴)을 빌더에 넘긴다 — buildPnl 이 수집분(네이버페이·쿠팡)과의
+  // 이중계상을 차감한다(cardOffset.ts). memo 자체는 빌더로 안 넘어간다.
+  const txnsRaw = (unwrap(txnsRes, '거래') as (PnlTx & { id: number; memo?: string | null })[] | null) ?? [];
+  const txns = txnsRaw.map(({ memo, ...t }) => ({
+    ...t,
+    is_card_payment: (t.source ?? 'bank') === 'bank' && CARD_PAYMENT_RE.test(memo ?? ''),
+  }));
   const cats = (unwrap(catsRes, '계정과목') as PnlCat[] | null) ?? [];
   const invAll = (unwrap(invRes, '기말재고') as (PnlInventory & { brand?: string })[] | null) ?? [];
   // 재고: 브랜드 필터. 지점 뷰는 브랜드 재고를 이번 달 매출비율로 안분(근사치 — 지점별 실사는
@@ -367,7 +374,14 @@ async function PnlBody({
               <Row
                 label="(−) 재료비"
                 amount={-p.cogs.total}
-                sub={p.cogs.invMissing ? '기말재고 일부 미입력 → 매입액 기준' : undefined}
+                sub={
+                  [
+                    p.cogs.invMissing ? '기말재고 일부 미입력 → 매입액 기준' : null,
+                    p.cardDupOffset > 0 ? `카드대금 속 네이버페이·쿠팡 수집분 ${won(p.cardDupOffset)} 차감(이중계상 방지)` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || undefined
+                }
               />
               <SubRow label="식자재" k={p.cogs.식자재} />
               <SubRow label="포장소모품" k={p.cogs.포장소모품} />

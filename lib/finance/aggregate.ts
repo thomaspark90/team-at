@@ -1,6 +1,9 @@
-// 월/주 단위 손익 집계 (EBIT 기준). 미분류·손익제외는 제외.
+// 월/주 단위 손익 집계 (EBIT 기준). 손익제외는 제외하되 미분류·'미상'은 지출로 포함(이익 부풀림 방지).
 // 매출 = POS 공급가액(발생주의). 통장 매출 입금이 아니라 POS 판매 시점 기준.
 // 지출(재료비·판관비)은 거래분류(통장·카드)에서, 과세분은 공급가액(÷1.1)으로 순액화해 매출과 기준 통일.
+// 카드대금 인출과 네이버페이·쿠팡 수집분이 둘 다 손익에 실리면 월 단위에서 겹침을 차감한다(cardOffset.ts).
+import { COLLECTED_SOURCES, cardDupOffset } from './cardOffset';
+
 export const VAT_DIVISOR = 1.1;
 
 // 미분류 지출을 지출 구분/손익에 노출할 때 쓰는 라벨
@@ -20,6 +23,8 @@ export interface AggTx {
   category_id: number | null;
   brand?: string | null; // 'garden' | 'staffmeal' — 대시보드 브랜드 필터용(집계 자체는 사용 안 함)
   store?: string | null; // 'pangyo' | 'yangjae' — 가든 지점 필터용(집계 자체는 사용 안 함)
+  source?: string | null; // 'bank' | 'naverpay' | 'coupang' | 'card' — 카드대금 상쇄 판정용(없으면 상쇄 생략)
+  is_card_payment?: boolean; // 은행 카드대금 인출 — memo 없는 안전 뷰(dashboard_tx)가 패턴으로 계산해 준다
 }
 export type Unit = 'month' | 'week';
 
@@ -35,6 +40,8 @@ export interface MonthAgg {
   costRatio: number | null;
   profitRatio: number | null;
   expense: Record<string, number>;
+  /** 카드대금↔수집분 겹침 차감액(월 단위만) — 0이면 차감 없음 */
+  cardDupOffset: number;
 }
 
 function periodKey(iso: string, unit: Unit): string {
@@ -71,15 +78,29 @@ export function aggregate(
   const getMo = (key: string): MonthAgg => {
     let mo = m.get(key);
     if (!mo) {
-      mo = { ym: key, revenue: 0, unclassifiedIn: 0, cogs: 0, sga: 0, ebit: 0, nonOp: 0, net: 0, costRatio: null, profitRatio: null, expense: {} };
+      mo = { ym: key, revenue: 0, unclassifiedIn: 0, cogs: 0, sga: 0, ebit: 0, nonOp: 0, net: 0, costRatio: null, profitRatio: null, expense: {}, cardDupOffset: 0 };
       m.set(key, mo);
     }
     return mo;
   };
 
+  // 카드대금↔수집분 상쇄 재료 — 그 구간 손익에 실린 금액만 모아 뒤에서 겹침을 뺀다(cardOffset.ts 규칙).
+  // 카드대금은 실린 키별로 들어(대개 '재료비') 차감도 같은 키에서 비례로 한다.
+  const cardByPeriod = new Map<string, Map<string, { amt: number; bucket: 'cogs' | 'sga' }>>();
+  const collectedByPeriod = new Map<string, number>();
+  const addCard = (key: string, expKey: string, bucket: 'cogs' | 'sga', amt: number) => {
+    const m = cardByPeriod.get(key) ?? new Map<string, { amt: number; bucket: 'cogs' | 'sga' }>();
+    const cur = m.get(expKey) ?? { amt: 0, bucket };
+    cur.amt += amt;
+    m.set(expKey, cur);
+    cardByPeriod.set(key, m);
+  };
+
   for (const t of txns) {
-    const mo = getMo(periodKey(t.tx_at, unit));
+    const key = periodKey(t.tx_at, unit);
+    const mo = getMo(key);
     const c = t.category_id != null ? catMap.get(t.category_id) : undefined;
+    const isCollected = t.source != null && COLLECTED_SOURCES.has(t.source);
 
     if (!c) {
       // 미분류(또는 삭제된 계정): 지출은 '미분류' 비용으로 EBIT 차감(유지). 단 입금은 대출·자본유입 등
@@ -90,6 +111,8 @@ export function aggregate(
         mo.sga += t.amount_out;
         mo.expense[UNCLASSIFIED] = (mo.expense[UNCLASSIFIED] || 0) + t.amount_out;
         expenseKeys.add(UNCLASSIFIED);
+        if (t.is_card_payment) addCard(key, UNCLASSIFIED, 'sga', t.amount_out);
+        else if (isCollected) collectedByPeriod.set(key, (collectedByPeriod.get(key) ?? 0) + t.amount_out);
       }
       continue;
     }
@@ -103,14 +126,45 @@ export function aggregate(
       const k = nameOf(c);
       mo.expense[k] = (mo.expense[k] || 0) + amt;
       expenseKeys.add(k);
+      if (t.is_card_payment) addCard(key, k, 'cogs', amt);
+      else if (isCollected) collectedByPeriod.set(key, (collectedByPeriod.get(key) ?? 0) + amt);
     } else if (c.type === 'sga') {
       const amt = netAmt(t.amount_out, c) - netAmt(t.amount_in, c);
       mo.sga += amt;
       const k = nameOf(c);
       mo.expense[k] = (mo.expense[k] || 0) + amt;
       expenseKeys.add(k);
+      if (t.is_card_payment) addCard(key, k, 'sga', amt);
+      else if (isCollected) collectedByPeriod.set(key, (collectedByPeriod.get(key) ?? 0) + amt);
     } else if (c.type === 'non_operating') {
       mo.nonOp += netAmt(t.amount_in, c) - netAmt(t.amount_out, c);
+    } else if (c.type === 'excluded' && c.name.includes('미상')) {
+      // '미상'(용도 불명 보류) — 관리손익(pnl)·전처리1과 같은 규칙으로 지출에 포함해
+      // 이익이 부풀려 보이지 않게 한다. 과세여부를 몰라 총액 그대로(순액화 안 함).
+      const amt = t.amount_out - t.amount_in;
+      mo.sga += amt;
+      mo.expense['미상'] = (mo.expense['미상'] || 0) + amt;
+      expenseKeys.add('미상');
+    }
+  }
+
+  // 카드대금↔수집분 겹침 차감 — 월 단위만(일·주는 결제일/사용일이 어긋나 같은 칸에서 못 뺀다).
+  // 카드대금이 실린 키(대개 '재료비')에서 비례로 빼 지출 구성도 함께 정확해진다.
+  if (unit === 'month') {
+    for (const [key, cardKeys] of Array.from(cardByPeriod.entries())) {
+      const cardTotal = Array.from(cardKeys.values()).reduce((s, v) => s + v.amt, 0);
+      const off = cardDupOffset(cardTotal, collectedByPeriod.get(key) ?? 0);
+      if (off <= 0) continue;
+      const mo = getMo(key);
+      let applied = 0;
+      for (const [k, v] of Array.from(cardKeys.entries())) {
+        const cut = Math.round(off * (v.amt / cardTotal));
+        mo.expense[k] = (mo.expense[k] || 0) - cut;
+        if (v.bucket === 'cogs') mo.cogs -= cut;
+        else mo.sga -= cut;
+        applied += cut;
+      }
+      mo.cardDupOffset = applied;
     }
   }
 

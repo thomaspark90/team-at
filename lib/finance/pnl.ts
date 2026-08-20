@@ -9,6 +9,7 @@
 // 대응 세부 자료(명세 연결·자동수집)가 있을 때만 제외 — 없으면 '미분해 lump' 지출로 포함(아래 규칙).
 // VAT: 매출은 POS 공급가액(VAT 제외). 지출도 대칭 위해 과세 매입은 공급가액(÷1.1)으로 순액 처리.
 import { VAT_DIVISOR } from './aggregate';
+import { COLLECTED_SOURCES, cardDupOffset } from './cardOffset';
 
 export interface PnlCat {
   id: number;
@@ -21,6 +22,8 @@ export interface PnlTx {
   category_id: number | null;
   amount_in: number;
   amount_out: number;
+  source?: string | null; // 'bank' | 'naverpay' | 'coupang' | 'card' — 카드대금 상쇄 판정용(없으면 상쇄 생략)
+  is_card_payment?: boolean; // 은행 카드대금 인출(memo가 CARD_PAYMENT_RE에 걸림) — 호출 측이 판정해 넘긴다
 }
 export interface PnlPosRow {
   ym: string;
@@ -69,6 +72,7 @@ export interface PnlResult {
   fixed: number; // 고정비(나머지 판관비)
   unclassified: number; // 미분류 유출(경고)
   misang: number; // '미상' 계정(용도 불명 보류) — 지출로 포함하되 별도 줄로 경고 표시
+  cardDupOffset: number; // 카드대금(비용 계정으로 분류된 인출)↔네이버페이·쿠팡 수집분 겹침 차감액
   cardLump: number; // 명세 미연결 카드대금 인출 — '카드 지출(미분해)' 지출 줄
   cardReconcile: (PnlCardReconcile & { diff: number }) | null; // 인출↔명세 대사(diff=인출−사용액). 미전달 시 null
   payLump: { coupang: number; naverpay: number } | null; // 세부 미수집 달의 통장 대체 출금 — '쿠팡(미분류)'·'네이버페이(미분류)' 줄
@@ -147,11 +151,20 @@ export function buildPnl(
   let unclassified = 0;
   let misang = 0;
   let cardLump = 0;
+  // 카드대금↔수집분 상쇄 재료(cardOffset.ts) — 비용으로 실린 카드대금 인출을 자리별로,
+  // 네이버페이·쿠팡 수집분을 합계로 모아 아래에서 겹침을 뺀다.
+  const cardPay = { 식자재: 0, 포장: 0, labor: 0, fixed: 0, unclassified: 0 };
+  let collected = 0;
   for (const t of txns) {
     const gross = (t.amount_out || 0) - (t.amount_in || 0); // 환불 반영(순 지출)
+    const isCollected = t.source != null && COLLECTED_SOURCES.has(t.source);
     if (t.category_id == null) {
       // 미분류는 과세여부를 모르므로 총액 그대로(순액화 안 함)
-      if ((t.amount_out || 0) > 0) unclassified += t.amount_out;
+      if ((t.amount_out || 0) > 0) {
+        unclassified += t.amount_out;
+        if (t.is_card_payment) cardPay.unclassified += t.amount_out;
+        else if (isCollected) collected += t.amount_out;
+      }
       continue;
     }
     const c = byId.get(t.category_id);
@@ -165,11 +178,29 @@ export function buildPnl(
     if (c.type === 'cogs') {
       if (kindOf(c) === '포장소모품') 포장매입 += net;
       else 식자재매입 += net;
+      if (t.is_card_payment) cardPay[kindOf(c) === '포장소모품' ? '포장' : '식자재'] += net;
+      else if (isCollected) collected += net;
     } else if (c.type === 'sga') {
       if (laborIds.has(c.id)) labor += net;
       else fixed += net;
+      if (t.is_card_payment) cardPay[laborIds.has(c.id) ? 'labor' : 'fixed'] += net;
+      else if (isCollected) collected += net;
     }
     // non_operating / excluded 는 관리손익 제외
+  }
+
+  // 카드대금↔수집분 겹침 차감 — 카드대금 인출이 '재료비' 등 비용 계정으로 분류돼 있으면
+  // 그 안에 든 네이버페이·쿠팡 결제가 수집분으로 또 잡혀 이중계상된다(2026-08-20 진단).
+  // 카드대금이 실린 자리에서 비례로 뺀다. 인출이 '카드대금정산'으로 대사된 달은 cardPay=0이라 차감 0.
+  const cardPayTotal = cardPay.식자재 + cardPay.포장 + cardPay.labor + cardPay.fixed + cardPay.unclassified;
+  const dupOffset = cardDupOffset(cardPayTotal, collected);
+  if (dupOffset > 0) {
+    const scale = dupOffset / cardPayTotal;
+    식자재매입 -= Math.round(cardPay.식자재 * scale);
+    포장매입 -= Math.round(cardPay.포장 * scale);
+    labor -= Math.round(cardPay.labor * scale);
+    fixed -= Math.round(cardPay.fixed * scale);
+    unclassified -= Math.round(cardPay.unclassified * scale);
   }
 
   // ---- 재료비(발생주의: 기초 + 매입 − 기말) ----
@@ -221,6 +252,7 @@ export function buildPnl(
     fixed,
     unclassified,
     misang,
+    cardDupOffset: dupOffset,
     cardLump,
     cardReconcile: reconcile ? { ...reconcile, diff: reconcile.settledWithdrawn - reconcile.settledUsage } : null,
     payLump,

@@ -13,6 +13,8 @@
 // 이 구분은 한시적이다. 카드명세를 올려 분류하면 덩어리가 개별 건(사용일·계정 특정)으로 풀리고,
 // 그때 일·주 숫자가 저절로 정확해지면서 두 관점이 일치한다.
 
+import { CARD_PAYMENT_RE } from './cardOffset';
+
 export type ExpenseRowKind = 'source' | 'deduction' | 'derived' | 'total' | 'note';
 export type ExpenseGrain = 'day' | 'week' | 'month';
 
@@ -50,13 +52,8 @@ export interface ExpensePrep {
   warnings: { bucket: string; message: string }[];
 }
 
-/**
- * 통장에서 카드사로 나가는 결제 대금. 스탭밀 실제 기재내용은
- * '비씨카드선결제' · 'BC바로카드' · '현대카드' 세 가지다(2026-08-19 원본 확인).
- * 카드사가 늘면 여기에 추가한다 — 놓치면 카드대금이 은행 직접지출로 새어 들어간다.
- */
-export const CARD_PAYMENT_RE =
-  /(비씨카드|BC바로카드|BC카드|현대카드|신한카드|삼성카드|국민카드|롯데카드|하나카드|우리카드)/;
+// 카드대금 인출 패턴 — 정의는 cardOffset.ts(손익 쪽 상쇄와 공유)로 이동, 기존 임포트 호환용 재수출.
+export { CARD_PAYMENT_RE };
 
 /** 지출로 집계하는 계정 성격 — 매출·비영업·제외 계정은 뺀다 */
 const EXPENSE_TYPES = new Set(['cogs', 'sga']);
