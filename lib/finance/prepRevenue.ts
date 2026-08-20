@@ -122,13 +122,19 @@ export function buildRevenuePrep(
     for (const [b, v] of Object.entries(mealTicket)) add(adjusted, prevYm(b), v);
   }
 
+  // 매출 정본 = 메뉴 매출 + 자가 식권 판매(2026-08-20 대표·매니저 확인: 자가 식권 사용은
+  // POS에 안 찍히므로 판매 시점 인식이 이중계상 없이 성립 — 오히려 제외하면 매출 누락).
+  const posTotalAmt: Record<string, number> = {};
+  for (const [b, v] of Object.entries(posAmt)) add(posTotalAmt, b, v);
+  for (const [b, v] of Object.entries(giftAmt)) add(posTotalAmt, b, v);
+
   const diff: Record<string, number> = {};
   const rate: Record<string, number> = {};
   const rateAdj: Record<string, number> = {};
   const warnings: { bucket: string; message: string }[] = [];
   const latestYm = buckets[0]; // 최신 달 — 식권 정산이 아직 안 들어와 보정률이 낮게 나오는 게 정상
   for (const b of buckets) {
-    const p = posAmt[b] ?? 0;
+    const p = posTotalAmt[b] ?? 0;
     const i = inTotal[b] ?? 0;
     diff[b] = i - p;
     if (p > 0) {
@@ -139,16 +145,11 @@ export function buildRevenuePrep(
         // 최신 1~2개월은 식권 정산·은행 자료가 아직이라 판정 보류
         const isRecent = b >= prevYm(latestYm);
         if (!isRecent && (rateAdj[b] < RATE_OK_MIN || rateAdj[b] > RATE_OK_MAX)) {
-          const g = giftAmt[b] ?? 0;
           warnings.push({
             bucket: b,
             message:
               rateAdj[b] > 100
-                ? `보정 정산률 ${rateAdj[b]}% — 식권 시차를 감안해도 입금이 POS보다 많아요. ${
-                    g > 0
-                      ? `이 달 자가 식권 판매 ${g.toLocaleString()}원(선수금 — POS 매출엔 없고 카드 입금엔 포함)이 주 원인이에요.`
-                      : '자가 식권 판매(선수금)나 POS 밖 매출이 후보예요.'
-                  }`
+                ? `보정 정산률 ${rateAdj[b]}% — 식권 시차를 감안해도 입금이 POS보다 많아요. POS 밖 매출이나 분류 오류 후보예요.`
                 : `보정 정산률 ${rateAdj[b]}% — 식권 시차를 감안해도 입금이 부족해요. 은행 자료 누락이나 미정산 후보예요.`,
           });
         }
@@ -171,23 +172,30 @@ export function buildRevenuePrep(
 
   const columns: RevenueColumn[] = [
     {
-      key: 'pos',
-      label: 'POS 매출 (정본)',
+      key: 'pos_menu',
+      label: '메뉴 매출',
       kind: 'pos',
       amounts: posAmt,
-      hint: '판매일 기준 매출(발생주의) — 월 성과 평가는 이 열이 정본이에요. 관리손익도 이 기준이에요. 식권 판매는 선수금이라 제외돼 있어요.',
+      hint: '판매일 기준 일반 메뉴 매출(pos_sales). 자가 식권으로 먹은 식사는 POS에 안 찍혀 여기 없어요.',
     },
     ...(Object.keys(giftAmt).length > 0
       ? [
           {
             key: 'gift',
-            label: '자가 식권 판매 (선수금)',
-            kind: 'derived' as const,
+            label: '식권 판매',
+            kind: 'pos' as const,
             amounts: giftAmt,
-            hint: 'POS에서 판매된 자가 식권(식권 10장 등) — 선수금이라 POS 매출엔 없지만 돈은 카드로 바로 들어와요. 정산률이 100%를 넘는 주 원인이에요. 사용(차감)분은 결제수단 \'기타\'에 식권대장과 섞여 따로 측정할 수 없어, 이 열로 잔액을 계산하면 안 돼요.',
+            hint: '자가 식권(식권 10장 등) 판매 — 사용 시점엔 POS에 안 찍으므로(매니저 확인) 판매 시점을 매출로 인식해요. 언제 식권이 잘 팔렸는지 이 열로 봐요.',
           },
         ]
       : []),
+    {
+      key: 'pos',
+      label: 'POS 매출 합계 (정본)',
+      kind: 'total',
+      amounts: posTotalAmt,
+      hint: '메뉴 매출 + 식권 판매 = 페이히어 실매출과 일치. 월 성과 평가·관리손익·결산의 정본이에요.',
+    },
     ...incomeColumns,
     {
       key: 'meal_ticket',

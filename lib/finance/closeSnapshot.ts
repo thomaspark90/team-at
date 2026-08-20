@@ -100,8 +100,16 @@ export async function computeMonthlyFigures(
     .limit(50000);
   if (unit.store) revQ = revQ.eq('store', unit.store);
 
-  const [{ data: txData, error: txErr }, { data: posData, error: posErr }, { data: revData, error: revErr }, { data: catsData, error: catsErr }] =
-    await Promise.all([txQ, posQ, revQ, db.from('categories').select('id,name,type,parent_id')]);
+  let giftQ = db
+    .from('pos_gift_sales')
+    .select('sale_date,qty,gross')
+    .eq('brand', unit.brand)
+    .gte('sale_date', `${ym}-01`)
+    .lte('sale_date', `${ym}-${String(lastDay).padStart(2, '0')}`)
+    .limit(10000);
+  if (unit.store) giftQ = giftQ.eq('store', unit.store);
+  const [{ data: txData, error: txErr }, { data: posData, error: posErr }, { data: revData, error: revErr }, { data: catsData, error: catsErr }, { data: giftData }] =
+    await Promise.all([txQ, posQ, revQ, db.from('categories').select('id,name,type,parent_id'), giftQ]);
   if (txErr) throw new Error(`거래 조회 실패: ${txErr.message}`);
   if (posErr) throw new Error(`POS 조회 실패: ${posErr.message}`);
   if (revErr) throw new Error(`매출 입금 조회 실패: ${revErr.message}`);
@@ -136,7 +144,12 @@ export async function computeMonthlyFigures(
 
   const p1 = buildExpensePrep(txns, 'month');
   const p2 = buildExpenseDetail(txns, cats, 'month');
-  const p3 = buildRevenuePrep((posData as PosSaleRow[] | null) ?? [], mapTx(revData), 'month');
+  const p3 = buildRevenuePrep(
+    (posData as PosSaleRow[] | null) ?? [],
+    mapTx(revData),
+    'month',
+    (giftData as { sale_date: string; qty: number; gross: number }[] | null) ?? []
+  );
 
   return {
     v: 1,

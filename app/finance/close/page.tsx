@@ -113,10 +113,13 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
   if (unit.store) fullTxQ = fullTxQ.eq('store', unit.store);
   let posQ = supabase.schema('finance').from('pos_sales').select('sale_date,gross').eq('brand', unit.brand).limit(50000);
   if (unit.store) posQ = posQ.eq('store', unit.store);
-  const [{ data: fullTxData }, { data: posData }, { data: catsData }] = await Promise.all([
+  let giftQ = supabase.schema('finance').from('pos_gift_sales').select('sale_date,qty,gross').eq('brand', unit.brand).limit(50000);
+  if (unit.store) giftQ = giftQ.eq('store', unit.store);
+  const [{ data: fullTxData }, { data: posData }, { data: catsData }, { data: giftData }] = await Promise.all([
     fullTxQ,
     posQ,
     supabase.schema('finance').from('categories').select('id,name,type,parent_id'),
+    giftQ,
   ]);
   const fullTxns = mapTx(fullTxData);
   const p1 = buildExpensePrep(fullTxns, 'month');
@@ -124,7 +127,8 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
   const p3 = buildRevenuePrep(
     (posData as PosSaleRow[] | null) ?? [],
     fullTxns.filter((t) => t.cat_type === 'revenue'),
-    'month'
+    'month',
+    (giftData as { sale_date: string; qty: number; gross: number }[] | null) ?? []
   );
   const amountsOf = (cols: { key: string; amounts: Record<string, number> }[], key: string) =>
     cols.find((c) => c.key === key)?.amounts ?? {};

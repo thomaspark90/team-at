@@ -46,16 +46,30 @@ export default async function PnlPage({
   const store: Store | null = unit.store;
 
   // POS 매출과 사이드바 배지가 서로 독립적이라 병렬로
-  const [posRaw, initialTodos] = await Promise.all([
+  const [posRaw, giftRaw, initialTodos] = await Promise.all([
     supabase
       .schema('finance')
       .from('pos_sales')
       .select('ym,category,qty,gross,vat,supply,brand,store')
       .then((r) => unwrap(r, 'POS 매출')),
+    supabase
+      .schema('finance')
+      .from('pos_gift_sales')
+      .select('ym,qty,gross,brand,store')
+      .then((r) => (r.error ? [] : r.data)),
     // 좌측 연·월 사이드바 배지 — 선택 매장 몫
     computeBoardTodos(supabase, seg, store ?? undefined).catch(() => undefined),
   ]);
-  const posRows = (posRaw as (PnlPosRow & { brand?: string; store?: string })[] | null) ?? [];
+  // 자가 식권 판매 = 매출(2026-08-20 확정: 사용 시점엔 POS에 안 찍혀 판매 인식이 이중 없음).
+  // pos_sales 행 형태로 변환해 합류 — 과세 매출이라 부가세 1/11 산출.
+  const giftAsPos = ((giftRaw as { ym: string; qty: number; gross: number; brand?: string; store?: string }[] | null) ?? []).map(
+    (g) => {
+      const gross = Number(g.gross);
+      const vat = Math.round(gross - gross / 1.1);
+      return { ym: g.ym, category: '식권판매', qty: Number(g.qty), gross, vat, supply: gross - vat, brand: g.brand, store: g.store };
+    }
+  );
+  const posRows = ([...((posRaw as (PnlPosRow & { brand?: string; store?: string })[] | null) ?? []), ...giftAsPos]) as (PnlPosRow & { brand?: string; store?: string })[];
   // 구버전(마이그레이션 전) 행은 brand 컬럼이 없을 수 있음 → garden 취급
   const pos = posRows.filter((p) => (p.brand ?? 'garden') === seg);
   const yms = Array.from(new Set(pos.map((p) => p.ym))).sort((a, b) => b.localeCompare(a));
