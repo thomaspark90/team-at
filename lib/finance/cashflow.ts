@@ -24,6 +24,9 @@ interface CashTx {
   balance: number; // 거래 직후 잔액(PDF 잔액 컬럼)
 }
 
+// ⚠️ 동시각 거래가 있으면 tx_at만으로는 마지막 거래를 못 가른다 — 호출부에서
+// id(명세 순서) 오름차순으로 정렬해 넘겨야 월말 잔액이 안정적으로 잡힌다.
+
 interface Agg {
   inflow: number;
   outflow: number;
@@ -48,7 +51,8 @@ export function cashflow(txns: CashTx[]): MonthCash[] {
     }
     b.inflow += t.amount_in;
     b.outflow += t.amount_out;
-    if (t.tx_at >= b.lastAt) {
+    // 잔액 0 = 미기재(엑셀 일부) — 월말 잔액 후보에서 제외(지표 페이지와 동일 규칙)
+    if (t.balance !== 0 && t.tx_at >= b.lastAt) {
       b.lastAt = t.tx_at;
       b.balance = t.balance;
     }
@@ -61,7 +65,7 @@ export function cashflow(txns: CashTx[]): MonthCash[] {
     const bm = m.get(ym)!;
     const banks: BankCash[] = allBanks.map((bank) => {
       const v = bm.get(bank);
-      if (v) carried.set(bank, v.balance);
+      if (v && v.balance !== 0) carried.set(bank, v.balance); // 잔액 미기재만 있던 달은 직전 잔액 유지
       return {
         bank,
         inflow: v?.inflow ?? 0,

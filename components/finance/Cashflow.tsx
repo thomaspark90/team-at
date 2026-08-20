@@ -56,7 +56,7 @@ export default function Cashflow({ months }: { months: MonthCash[] }) {
                     );
                   })}
                   <tr className="border-t-2 border-border bg-accent">
-                    <Td bold>합계 (두 통장)</Td>
+                    <Td bold>{m.banks.length > 1 ? `합계 (통장 ${m.banks.length}개)` : '합계'}</Td>
                     <Td right mono bold pos>{won(m.totalIn)}</Td>
                     <Td right mono bold>{won(m.totalOut)}</Td>
                     <Td right mono bold><span className={net >= 0 ? 'text-positive' : ''}>{net >= 0 ? '+' : ''}{won(net)}</span></Td>
