@@ -37,6 +37,7 @@ export default function MonthShell({
   store,
   navigate = false,
   badgeKind = 'todos',
+  yearSelectable = false,
 }: {
   children: React.ReactNode;
   // 서버 컴포넌트가 미리 집계한 월 배지 — 있으면 첫 진입 시 클라이언트 재조회를 생략한다.
@@ -50,11 +51,14 @@ export default function MonthShell({
   navigate?: boolean;
   // 배지 의미 — 'todos'(기본): 남은 업무 수(자료 입력). 'uncl': 월별 미분류 건수(분류 화면).
   badgeKind?: 'todos' | 'uncl';
+  // 연도 헤더 선택('YYYY') 허용 — 연 단위 조회를 실제로 지원하는 화면(분류)만 켠다
+  yearSelectable?: boolean;
 }) {
   // 선택 월을 URL(?ym=)에 반영 — 분류 화면에 다녀오거나 새로고침해도 보던 달 유지.
   const router = useRouter();
   const urlYm = useSearchParams().get('ym');
-  const validYm = (v: string | null): v is string => !!v && (/^\d{4}-\d{2}$/.test(v) || v === 'all');
+  // 'YYYY-MM' | 'YYYY'(연도 전체 — 사이드바 연도 헤더 선택) | 'all'
+  const validYm = (v: string | null): v is string => !!v && (/^\d{4}(-\d{2})?$/.test(v) || v === 'all');
   const [ym, setYmState] = useState(() => (validYm(urlYm) ? urlYm : defaultYm()));
   const setYm = (m: string) => {
     setYmState(m);
@@ -116,7 +120,7 @@ export default function MonthShell({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
         {/* 데스크톱(lg+): 좌측 고정 연·월 패널 — 스크롤해도 따라오는 sticky */}
         <div className="hidden lg:sticky lg:top-4 lg:block lg:w-[176px] lg:shrink-0">
-          <MonthSidebar months={months} ym={ym} todos={todos} onSelect={setYm} />
+          <MonthSidebar months={months} ym={ym} todos={todos} onSelect={setYm} yearSelectable={yearSelectable} />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-4">

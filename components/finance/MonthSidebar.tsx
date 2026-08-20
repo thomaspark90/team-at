@@ -11,11 +11,14 @@ export default function MonthSidebar({
   ym,
   todos,
   onSelect,
+  yearSelectable = false,
 }: {
   months: string[]; // 'YYYY-MM' 목록(순서 무관)
   ym: string;
   todos: Record<string, number>;
   onSelect: (m: string) => void;
+  /** true면 연도 헤더 자체도 선택 가능('YYYY' 값으로 onSelect) — 연 단위 조회를 지원하는 화면(분류)만 켠다 */
+  yearSelectable?: boolean;
 }) {
   const years = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -44,19 +47,39 @@ export default function MonthSidebar({
       {years.map(([y, ms]) => {
         const opened = !!open[y];
         const yearBadge = ms.reduce((s, m) => s + (todos[m] ?? 0), 0);
+        const yearSelected = yearSelectable && ym === y;
         return (
           <div key={y}>
-            <button
-              onClick={() => setOpen((o) => ({ ...o, [y]: !opened }))}
-              aria-expanded={opened}
-              className="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-[11px] uppercase tracking-[0.06em] text-muted-foreground transition-colors hover:text-foreground"
+            {/* 연도 줄 — 라벨 클릭 = (지원 화면에서) 그 해 전체 선택, ›  클릭 = 접기/펼치기 */}
+            <div
+              className={`flex w-full items-center justify-between rounded-lg text-[11px] uppercase tracking-[0.06em] transition-colors ${
+                yearSelected ? 'bg-foreground text-background' : 'text-muted-foreground'
+              }`}
             >
-              <span>{y}년</span>
-              <span className="flex items-center gap-1.5">
+              <button
+                onClick={() => {
+                  if (yearSelectable) {
+                    onSelect(y);
+                    setOpen((o) => (o[y] ? o : { ...o, [y]: true }));
+                  } else setOpen((o) => ({ ...o, [y]: !opened }));
+                }}
+                title={yearSelectable ? `${y}년 전체 보기` : undefined}
+                className={`flex-1 rounded-lg px-2.5 py-1.5 text-left transition-colors ${
+                  yearSelected ? 'font-medium' : 'hover:text-foreground'
+                }`}
+              >
+                {y}년{yearSelectable ? ' 전체' : ''}
+              </button>
+              <button
+                onClick={() => setOpen((o) => ({ ...o, [y]: !opened }))}
+                aria-expanded={opened}
+                aria-label={`${y}년 ${opened ? '접기' : '펼치기'}`}
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors hover:text-foreground"
+              >
                 {!opened && yearBadge > 0 && <Badge n={yearBadge} />}
                 <span className={`text-[12px] transition-transform ${opened ? 'rotate-90' : ''}`}>›</span>
-              </span>
-            </button>
+              </button>
+            </div>
             {opened && (
               <div className="mb-1 flex flex-col gap-px">
                 {ms.map((m) => {

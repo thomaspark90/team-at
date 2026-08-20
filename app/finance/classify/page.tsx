@@ -27,10 +27,11 @@ export default async function ClassifyPage({
   const kstNow = new Date(Date.now() + 9 * 3600_000);
   const prevMonth = new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth() - 1, 1));
   const defYm = `${prevMonth.getUTCFullYear()}-${String(prevMonth.getUTCMonth() + 1).padStart(2, '0')}`;
+  // 'all' | 'YYYY'(연도 전체) | 'YYYY-MM' — 사이드바에서 연도 헤더를 누르면 그 해 전체를 분류(2026-08-20)
   const selYm =
     searchParams.ym === 'all'
       ? 'all'
-      : searchParams.ym && /^\d{4}-\d{2}$/.test(searchParams.ym)
+      : searchParams.ym && /^\d{4}(-\d{2})?$/.test(searchParams.ym)
       ? searchParams.ym
       : defYm;
 
@@ -41,7 +42,8 @@ export default async function ClassifyPage({
     .select('id,memo,channel,normalized_key,amount_in,amount_out,category_id,tx_at,bank,source,is_installment,branch,brand,store,split_parent_id')
     .order('tx_at', { ascending: false });
   if (brandScope) txQuery = txQuery.eq('brand', brandScope);
-  if (selYm !== 'all') txQuery = txQuery.eq('ym', selYm);
+  if (/^\d{4}-\d{2}$/.test(selYm)) txQuery = txQuery.eq('ym', selYm);
+  else if (/^\d{4}$/.test(selYm)) txQuery = txQuery.gte('ym', `${selYm}-01`).lte('ym', `${selYm}-12`).limit(20000); // 연도 전체
   else txQuery = txQuery.limit(20000); // '전체 월'은 캡을 넉넉히 올려 누락 없이(실질 전체)
   const txns = unwrap(await txQuery, '거래');
 
@@ -127,7 +129,7 @@ export default async function ClassifyPage({
         </div>
         {/* 좌측 연·월 사이드바 — 달을 고르면 URL(?ym=)로 이동해 그 달 거래만 서버에서 다시 조회.
             navigate 필수: 예전엔 클라 상태만 바꿔 서버가 그 달을 다시 안 불러 오래된 달이 비어 보였다(2026-08-03). */}
-        <MonthShell brand={shellBrand} store={unit?.store ?? undefined} initialTodos={initialTodos} badgeKind="uncl" navigate>
+        <MonthShell brand={shellBrand} store={unit?.store ?? undefined} initialTodos={initialTodos} badgeKind="uncl" navigate yearSelectable>
           <ClassifyPanel
             txns={(txns as TxRow[]) ?? []}
             cats={(cats as Cat[]) ?? []}

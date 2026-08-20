@@ -115,8 +115,9 @@ export async function POST(req: Request) {
   const reqBody = (await req.json().catch(() => ({}))) as { brand?: string; ym?: string };
   const brand =
     reqBody.brand && ['garden', 'staffmeal', 'personal'].includes(reqBody.brand) ? reqBody.brand : null;
-  // 현재 보는 달만 처리 — 전 기간 미분류를 한 번에 돌리면 그룹이 많아 60초 타임아웃(2026-08-03).
-  const ym = typeof reqBody.ym === 'string' && /^\d{4}-\d{2}$/.test(reqBody.ym) ? reqBody.ym : null;
+  // 현재 보는 스코프만 처리 — 전 기간 미분류를 한 번에 돌리면 그룹이 많아 60초 타임아웃(2026-08-03).
+  // 'YYYY-MM'(월) 또는 'YYYY'(연도 전체 — 사이드바 연도 선택, 2026-08-20)를 받는다.
+  const ym = typeof reqBody.ym === 'string' && /^\d{4}(-\d{2})?$/.test(reqBody.ym) ? reqBody.ym : null;
 
   let txQ = supabase
     .schema('finance')
@@ -124,7 +125,8 @@ export async function POST(req: Request) {
     .select('normalized_key,memo,amount_in,amount_out')
     .is('category_id', null);
   if (brand) txQ = txQ.eq('brand', brand);
-  if (ym) txQ = txQ.eq('ym', ym);
+  if (ym && /^\d{4}-\d{2}$/.test(ym)) txQ = txQ.eq('ym', ym);
+  else if (ym) txQ = txQ.gte('ym', `${ym}-01`).lte('ym', `${ym}-12`);
   const { data: txns } = await txQ;
 
   // 정규화 키 그룹 (빈 키 제외)
