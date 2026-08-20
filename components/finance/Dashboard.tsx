@@ -338,7 +338,7 @@ export default function Dashboard({
           brand === 'garden' && store !== 'all' ? ' · 통장은 가든 공용(지점 구분 없음)' : ''
         }`}
       >
-        <ResponsiveContainer width="100%" height={280}>
+        <ResponsiveContainer width="100%" height={420}>
           <ComposedChart data={bankData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
             <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
@@ -360,7 +360,7 @@ export default function Dashboard({
 
   chartNodes.revenue = (
     <ChartCard key="revenue" id="revenue" onReorder={reorderChart} title="매출 추이" subtitle="점선=평균">
-      <ResponsiveContainer width="100%" height={260}>
+      <ResponsiveContainer width="100%" height={390}>
         <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
           <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
@@ -378,7 +378,7 @@ export default function Dashboard({
 
   chartNodes.ebit = (
     <ChartCard key="ebit" id="ebit" onReorder={reorderChart} title="영업이익 추이" subtitle="EBIT · 당기순이익">
-      <ResponsiveContainer width="100%" height={260}>
+      <ResponsiveContainer width="100%" height={390}>
         <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 40, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
           <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
@@ -407,7 +407,7 @@ export default function Dashboard({
         title="감가상각 반영 영업이익"
         subtitle="자본적지출을 5년 정액 상각해 뺀 실질 영업이익 · 위 EBIT와 비교"
       >
-        <ResponsiveContainer width="100%" height={260}>
+        <ResponsiveContainer width="100%" height={390}>
           <LineChart data={depData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
             <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
@@ -427,7 +427,7 @@ export default function Dashboard({
 
   chartNodes.ratio = (
     <ChartCard key="ratio" id="ratio" onReorder={reorderChart} title="손익 추이 %" subtitle="영업이익률 = EBIT ÷ 매출">
-      <ResponsiveContainer width="100%" height={240}>
+      <ResponsiveContainer width="100%" height={360}>
         <LineChart data={ratioData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
           <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
@@ -452,7 +452,7 @@ export default function Dashboard({
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-center">
         <div className="min-w-0 flex-1">
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={450}>
             <BarChart data={barData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
               <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
@@ -487,7 +487,7 @@ export default function Dashboard({
 
   chartNodes.cost = (
     <ChartCard key="cost" id="cost" onReorder={reorderChart} title="재료비 %" subtitle="원가율 = 재료비 ÷ 매출 · 카페 벤치마크 25~37%">
-      <ResponsiveContainer width="100%" height={240}>
+      <ResponsiveContainer width="100%" height={360}>
         <LineChart data={costData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
           <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
@@ -509,7 +509,7 @@ export default function Dashboard({
           {MENU_TIERS.map((tier) => (
             <div key={tier}>
               <div className="mb-2 px-1 text-[12px] text-foreground">{tier}</div>
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={330}>
                 <LineChart data={menuQtyData} margin={{ top: 30, right: 8, bottom: 4, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
                   <XAxis dataKey="p" tick={{ fontSize: 10, fill: AXIS }} stroke={AXIS} interval="preserveStartEnd" />
