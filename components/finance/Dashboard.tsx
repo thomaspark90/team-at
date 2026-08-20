@@ -74,6 +74,8 @@ function LoanDot(props: any) {
   const top = Math.max(cy - 72, 14);
   return (
     <g style={{ cursor: 'pointer' }} onClick={() => onEdit(marker)}>
+      {/* 투명 히트 영역 — 링(fill:none)은 테두리만 클릭돼서 내부 클릭이 안 먹는다 */}
+      <circle cx={cx} cy={cy} r={14} fill="transparent" stroke="none" />
       <circle cx={cx} cy={cy} r={9} fill="none" stroke={LOAN_COLOR} strokeWidth={2} />
       <line x1={cx} y1={top + 20} x2={cx} y2={cy - 14} stroke={LOAN_COLOR} strokeWidth={1} />
       <path d={`M ${cx - 3} ${cy - 19} L ${cx} ${cy - 13} L ${cx + 3} ${cy - 19}`} fill="none" stroke={LOAN_COLOR} strokeWidth={1} />
