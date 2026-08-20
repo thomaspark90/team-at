@@ -523,11 +523,16 @@ export default function ClassifyPanel({
     // 플랫폼명 키('쿠팡'·'네이버페이')는 가맹점 구분력이 없어 전파하면 전 행이 덮인다
     // (2026-08-08 사고 — 기수집 레거시 행 보호. 새 수집분은 상품명 포함 키라 정상 전파).
     const generic = tx.normalized_key === '쿠팡' || tx.normalized_key === '네이버페이';
-    // 입금(+) 건은 항상 단건 분류 — 환불이 가맹점 키로 전파·학습되면 출금(비용) 건까지
-    // 통째로 뒤집힌다(2026-08-17 미트박스 환불 건). 환불은 원 비용 계정으로 분류하면
+    // 입금(+) 건은 출금 행으로 전파·학습하지 않는다 — 환불이 가맹점 키로 전파되면 출금(비용)
+    // 건까지 통째로 뒤집힌다(2026-08-17 미트박스 환불 건). 환불은 원 비용 계정으로 분류하면
     // 집계(aggregate.ts)에서 그 비용이 순액 차감된다.
+    // 다만 같은 가맹점의 '미분류 입금'끼리는 함께 확정한다(2026-08-20 대표 요청 — 배민 입금
+    // 수백 건을 행마다 누르던 문제). 출금 행·이미 분류된 행은 건드리지 않고, 규칙 학습도 없다.
     const inflow = tx.amount_in > 0;
     const key = opts?.single || generic || inflow ? null : tx.normalized_key;
+    // 재분류(이미 계정 있는 행 수정)는 기존대로 단건 — 함께 확정은 미분류 행을 처음 확정할 때만
+    const inflowKey =
+      !opts?.single && !generic && inflow && tx.category_id == null ? tx.normalized_key : null;
 
     // 대량 전파 가드 — 전파가 몇 건을 덮는지 보여주고 확인받는다(같은 사고의 근본 처방).
     // 임계 15건: 통상 가맹점 월 반복은 한 자릿수, 수십 건이면 키가 뭉쳤을 가능성이 크다.
@@ -547,6 +552,24 @@ export default function ClassifyPanel({
           return false;
         }
       }
+    } else if (inflowKey) {
+      const { count } = await supabase
+        .schema('finance')
+        .from('transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('normalized_key', inflowKey)
+        .eq('brand', tx.brand)
+        .is('category_id', null)
+        .gt('amount_in', 0);
+      if ((count ?? 0) >= 15) {
+        const ok = window.confirm(
+          `'${tx.memo}' — 같은 가맹점의 미분류 입금 ${count}건이 함께 확정됩니다.\n계속할까요? (출금 행은 건드리지 않아요)`,
+        );
+        if (!ok) {
+          setBusy(null);
+          return false;
+        }
+      }
     }
 
     let q = supabase
@@ -554,7 +577,11 @@ export default function ClassifyPanel({
       .from('transactions')
       .update({ category_id: categoryId, classified_by: userId, classified_at: now });
     // 키 기반 일괄 분류는 같은 브랜드 안에서만 — 브랜드가 다르면 계정도 다를 수 있다
-    q = key ? q.eq('normalized_key', key).eq('brand', tx.brand) : q.eq('id', tx.id);
+    if (key) q = q.eq('normalized_key', key).eq('brand', tx.brand);
+    else if (inflowKey)
+      // 입금 확정은 같은 키의 '미분류 입금'만 — 이미 분류된 행을 덮지 않는다(오버라이드는 단건으로)
+      q = q.eq('normalized_key', inflowKey).eq('brand', tx.brand).is('category_id', null).gt('amount_in', 0);
+    else q = q.eq('id', tx.id);
     // 이 브랜드의 확정된 달은 건드리지 않음(키 기반 분류가 여러 달에 걸칠 수 있음)
     const lockedYms = confirmedYmsFor(tx.brand);
     if (lockedYms.length) q = q.not('ym', 'in', `(${lockedYms.join(',')})`);
@@ -575,7 +602,14 @@ export default function ClassifyPanel({
     keepVisible.current.add(tx.id);
     setRows((list) =>
       list.map((r) =>
-        (key ? r.normalized_key === key && r.brand === tx.brand : r.id === tx.id) && !isLocked(r) ? { ...r, category_id: categoryId } : r
+        (key
+          ? r.normalized_key === key && r.brand === tx.brand
+          : inflowKey
+            ? r.normalized_key === inflowKey && r.brand === tx.brand && r.category_id == null && r.amount_in > 0
+            : r.id === tx.id) &&
+        !isLocked(r)
+          ? { ...r, category_id: categoryId }
+          : r
       )
     );
     setBusy(null);
@@ -717,7 +751,7 @@ export default function ClassifyPanel({
       if (tx.category_id != null || !tx.normalized_key || isLocked(tx) || seen.has(`${tx.brand}|${tx.normalized_key}`)) continue;
       const cat = ruleFor(tx);
       if (!cat) continue;
-      // 입금(환불) 행은 classify()가 단건 처리하므로 seen에 넣지 않는다 —
+      // 입금 행은 classify()가 미분류 입금끼리만 묶어 처리(출금 행 보호)하므로 seen에 넣지 않는다 —
       // 넣으면 같은 키의 출금 행들이 이번 적용에서 빠진다.
       if (!(tx.amount_in > 0)) seen.add(`${tx.brand}|${tx.normalized_key}`);
       await classify(tx, cat);
@@ -1172,7 +1206,7 @@ export default function ClassifyPanel({
                           // 바로 적용(같은 가맹점 전파 + 규칙 학습). 틀리면 드롭다운으로 다른 계정 선택.
                           <button
                             onClick={() => classify(tx, sug.categoryId)}
-                            title={`${sug.reason ? `${sug.reason} — ` : ''}눌러서 이 계정으로 확정해요 (같은 가맹점 전파·규칙 학습)`}
+                            title={`${sug.reason ? `${sug.reason} — ` : ''}눌러서 이 계정으로 확정해요 (${tx.amount_in > 0 ? '같은 가맹점의 미분류 입금도 함께 확정' : '같은 가맹점 전파·규칙 학습'})`}
                             className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium ${
                               sug.confidence >= CONF
                                 ? 'border-primary/40 bg-primary/10 text-primary'
