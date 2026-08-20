@@ -30,7 +30,8 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
         그래프(EBIT)는 부가세 제외 공급가액 기준이라 값은 다르지만 규칙(발생주의·카드대금 차감·미분류 포함)이
         같아 추세는 일치해요. 재고·채널수수료까지 반영한 정식 손익은{' '}
         <Link href={`/finance/pnl?unit=${unitId}`} className="underline">관리손익</Link>에서 봐요.
-        실입금은 회수 참고용(카드 1~2일·식권 정산 한 달 시차).
+        실입금은 회수 참고용(카드 1~2일·식권 정산 한 달 시차). †는 POS 미업로드 달 —
+        실입금 − 지출로 임시 계산한 값이라 POS 파일을 올리면 정식 손익으로 바뀌어요.
       </p>
       <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full min-w-[720px] border-collapse text-[13px]">
@@ -56,11 +57,16 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
           </thead>
           <tbody>
             {rows.map((r) => {
-              const profit = r.pos - r.expense;
+              // POS 파일이 아직 없는 달(진행월) — 매출 0으로 두면 손익이 '−지출 전액'이라는
+              // 거짓 적자가 된다(2026-08-20 보고). 실입금 − 지출로 대체하고 † 로 구분한다.
+              const noPos = r.pos === 0 && r.inTotal > 0;
+              const profit = noPos ? r.inTotal - r.expense : r.pos - r.expense;
               return (
                 <tr key={r.ym} className="border-b border-border/50 last:border-0">
                   <td className="whitespace-nowrap px-3 py-1.5 tabular-nums text-muted-foreground">{r.ym}</td>
-                  <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{won(r.pos)}</td>
+                  <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">
+                    {noPos ? <span className="text-muted-foreground/60">미업로드</span> : won(r.pos)}
+                  </td>
                   <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
                     {won(r.inTotal)}
                   </td>
@@ -72,8 +78,10 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                     className={`whitespace-nowrap border-l-2 border-l-border px-3 py-1.5 text-right font-medium tabular-nums ${
                       profit < 0 ? 'text-destructive' : ''
                     }`}
+                    title={noPos ? 'POS 매출 미업로드 — 통장 실입금 − 지출로 임시 계산한 값이에요' : undefined}
                   >
                     {profit < 0 ? `−${won(-profit)}` : won(profit)}
+                    {noPos && <span className="ml-0.5 text-muted-foreground">†</span>}
                   </td>
                 </tr>
               );
