@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '설정 권한이 없습니다.' }, { status: 403 });
   }
 
-  let body: { unit?: string; hidden?: unknown; sort?: unknown; merges?: unknown };
+  let body: { unit?: string; hidden?: unknown; sort?: unknown; merges?: unknown; visible?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -29,6 +29,8 @@ export async function POST(req: Request) {
     Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.length > 0).slice(0, 500) : [];
   const hidden = clean(body.hidden);
   const sort = clean(body.sort);
+  // 화이트리스트(2026-08-20) — 체크한 것만 보인다. 새 상품은 기본 미노출(hidden 은 레거시).
+  const visible = clean(body.visible);
   // 병합 매핑 검증 — { 대표: [소스...] }. 대표가 소스에 들어가거나 소스가 두 대표에 걸치면 무결성이 깨진다.
   const merges: Record<string, string[]> = {};
   if (body.merges && typeof body.merges === 'object' && !Array.isArray(body.merges)) {
@@ -53,11 +55,12 @@ export async function POST(req: Request) {
         hidden: hidden as never,
         sort: sort as never,
         merges: merges as never,
+        visible: visible as never,
         updated_by: user.id,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'brand,store' }
     );
   if (error) return NextResponse.json({ error: `저장 실패: ${error.message}` }, { status: 500 });
-  return NextResponse.json({ ok: true, hidden, sort, merges });
+  return NextResponse.json({ ok: true, hidden, sort, merges, visible });
 }

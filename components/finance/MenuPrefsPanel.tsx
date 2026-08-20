@@ -10,19 +10,20 @@ import { useRouter } from 'next/navigation';
 export default function MenuPrefsPanel({
   unit,
   products, // 전체 상품 라벨(병합 전 원문) — 기본 정렬(총액순) 그대로
-  hidden: initialHidden,
+  visible: initialVisible,
   sort: initialSort,
   merges: initialMerges,
 }: {
   unit: string;
   products: string[];
-  hidden: string[];
+  /** 노출 화이트리스트 — 체크한 것만 표에 나온다. 새 상품은 기본 미노출(2026-08-20 전환) */
+  visible: string[];
   sort: string[];
   merges: Record<string, string[]>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [hidden, setHidden] = useState<Set<string>>(new Set(initialHidden));
+  const [visible, setVisible] = useState<Set<string>>(new Set(initialVisible));
   const [sort, setSort] = useState<string[]>(initialSort.filter((s) => products.includes(s)));
   // 병합 매핑 { 대표: [소스...] } — 소스는 목록에서 사라지고 대표에 배지로 표시된다
   const [merges, setMerges] = useState<Record<string, string[]>>(initialMerges);
@@ -55,20 +56,19 @@ export default function MenuPrefsPanel({
     setDragIdx(to); // 드래그 중 실시간 미리보기 — 따라오는 행 기준으로 인덱스 갱신
   };
 
-  // 체크를 켜면 그 상품이 노출 그룹 '맨 아래'로 올라오고, 끄면 숨김 그룹 '맨 위'로 내려간다
-  // (2026-08-20 요청) — 노출/숨김이 항상 두 덩어리로 정리돼 목록이 흐트러지지 않는다.
+  // 체크를 켜면 그 상품이 노출 그룹 '맨 아래'로 올라오고, 끄면 미노출 그룹 '맨 위'로 내려간다
+  // — 노출/미노출이 항상 두 덩어리로 정리돼 목록이 흐트러지지 않는다.
   // 두 경우 모두 삽입 위치는 같다: 마지막 노출 상품 바로 다음.
   const toggle = (label: string) => {
-    const wasHidden = hidden.has(label);
-    const nextHidden = new Set(hidden);
-    if (wasHidden) nextHidden.delete(label);
-    else nextHidden.add(label);
-    setHidden(nextHidden);
+    const nextVisible = new Set(visible);
+    if (nextVisible.has(label)) nextVisible.delete(label);
+    else nextVisible.add(label);
+    setVisible(nextVisible);
 
     const rest = ordered.filter((p) => p !== label);
     let lastVisible = -1;
     rest.forEach((p, i) => {
-      if (!nextHidden.has(p)) lastVisible = i;
+      if (nextVisible.has(p)) lastVisible = i;
     });
     const next = [...rest];
     next.splice(lastVisible + 1, 0, label);
@@ -113,7 +113,7 @@ export default function MenuPrefsPanel({
       const res = await fetch('/api/finance/prep/menu-prefs', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ unit, hidden: Array.from(hidden), sort, merges }),
+        body: JSON.stringify({ unit, visible: Array.from(visible), hidden: products.filter((p) => !visible.has(p)), sort, merges }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '저장 실패');
@@ -127,7 +127,7 @@ export default function MenuPrefsPanel({
   }
 
   function reset() {
-    setHidden(new Set());
+    setVisible(new Set(products));
     setSort([]);
     setMerges({});
     setMergeTarget(null);
@@ -141,14 +141,14 @@ export default function MenuPrefsPanel({
         className="flex w-full items-center justify-between px-4 py-2.5 text-left text-[13px] text-muted-foreground transition-colors hover:text-foreground"
       >
         <span>
-          표 설정 — 노출 항목·순서 {hidden.size > 0 && `(숨김 ${hidden.size}개)`}
+          표 설정 — 노출 항목·순서 {`(노출 ${visible.size} / 전체 ${ordered.length})`}
         </span>
         <span>{open ? '▴' : '▾'}</span>
       </button>
       {open && (
         <div className="border-t border-border px-4 py-3">
           <p className="m-0 mb-3 text-[12px] text-muted-foreground">
-            체크를 켜면 노출 목록 맨 아래로 올라오고, 끄면 숨김 목록 맨 위로 내려가요(합계에는 그대로
+            체크한 상품만 표에 나와요 — 새로 생긴 상품은 여기서 체크해야 보여요. 켜면 노출 목록 맨 아래로 올라오고, 끄면 미노출 목록 맨 위로 내려가요(합계에는 그대로
             들어가요). ⠿를 잡고 끌어 순서를 바꿔요 — 위가 표의 왼쪽이에요. <b>병합</b>은 POS에서 표기가 갈라진
             같은 메뉴를 한 열로 합쳐 보여줘요 — 원본 데이터는 그대로고 언제든 해제돼요. 이 설정은 이 매장을 보는 모두에게 적용돼요.
           </p>
@@ -204,13 +204,13 @@ export default function MenuPrefsPanel({
                 </span>
                 <input
                   type="checkbox"
-                  checked={!hidden.has(p)}
+                  checked={visible.has(p)}
                   onChange={() => toggle(p)}
                   onClick={(e) => e.stopPropagation()}
                   disabled={!!mergeTarget}
                   aria-label={`${p} 노출`}
                 />
-                <span className={`min-w-0 flex-1 truncate ${hidden.has(p) ? 'text-muted-foreground/50 line-through' : ''}`}>
+                <span className={`min-w-0 flex-1 truncate ${!visible.has(p) ? 'text-muted-foreground/50 line-through' : ''}`}>
                   {p}
                   {merges[p] && merges[p].length > 0 && (
                     <span className="ml-1.5 text-[11px] text-muted-foreground" title={merges[p].join(', ')}>

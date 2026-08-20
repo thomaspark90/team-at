@@ -68,7 +68,7 @@ export default async function PrepMenuPage({
   const prefsQ = supabase
     .schema('finance')
     .from('prep_menu_prefs')
-    .select('hidden,sort,merges')
+    .select('hidden,sort,merges,visible')
     .eq('brand', unit.brand)
     .eq('store', unit.store ?? '')
     .maybeSingle();
@@ -79,6 +79,10 @@ export default async function PrepMenuPage({
   const hidden = new Set(((prefs?.hidden as string[] | null) ?? []).filter((x) => typeof x === 'string'));
   const sortPref = ((prefs?.sort as string[] | null) ?? []).filter((x) => typeof x === 'string');
   const merges = (prefs?.merges ?? {}) as Record<string, string[]>;
+  // 화이트리스트(2026-08-20) — visible 이 있으면 그 목록만 노출. 새 상품(재업로드로 유입된
+  // 2023~24 옛 메뉴 포함)은 체크 전까지 표에 안 나온다. hidden 은 레거시 폴백.
+  const visiblePref = (prefs?.visible as string[] | null) ?? null;
+  const isShown = (label: string) => (visiblePref ? visiblePref.includes(label) : !hidden.has(label));
 
   const { buckets: allBuckets, summary, detail } = buildMenuPrep(
     (itemsData as ItemSaleRow[] | null) ?? [],
@@ -133,7 +137,7 @@ export default async function PrepMenuPage({
   // 합계·정합 열은 전 상품 기준 그대로다: 숨김은 '안 보는 것'이지 '없는 셈 치는 것'이 아니다.
   const allProducts = detail.filter((c) => c.kind === 'menu').map((c) => c.label);
   const detailShown = (() => {
-    const menuCols = mergedDetail.filter((c) => c.kind === 'menu' && !hidden.has(c.label));
+    const menuCols = mergedDetail.filter((c) => c.kind === 'menu' && isShown(c.label));
     const inSort = sortPref
       .map((label) => menuCols.find((c) => c.label === label))
       .filter((c): c is MenuColumn => !!c);
@@ -298,7 +302,7 @@ export default async function PrepMenuPage({
         <MenuPrefsPanel
           unit={unit.id}
           products={allProducts}
-          hidden={Array.from(hidden)}
+          visible={visiblePref ?? allProducts.filter((p) => !hidden.has(p))}
           sort={sortPref}
           merges={merges}
         />
