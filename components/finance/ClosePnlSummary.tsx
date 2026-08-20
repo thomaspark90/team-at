@@ -26,8 +26,10 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
         </span>
       </div>
       <p className="mb-3 mt-0 text-[12px] text-muted-foreground">
-        손익 = POS 매출(발생주의) − 지출 합계. 부가세 포함 총액 기준의 간이 손익이라, 재고·채널수수료를
-        반영한 정식 손익은 <Link href={`/finance/pnl?unit=${unitId}`} className="underline">관리손익</Link>에서 봐요.
+        손익 = POS 매출(발생주의) − 지출 합계. <b>부가세 포함 총액</b> 기준의 간이 손익이에요 — 지표
+        그래프(EBIT)는 부가세 제외 공급가액 기준이라 값은 다르지만 규칙(발생주의·카드대금 차감·미분류 포함)이
+        같아 추세는 일치해요. 재고·채널수수료까지 반영한 정식 손익은{' '}
+        <Link href={`/finance/pnl?unit=${unitId}`} className="underline">관리손익</Link>에서 봐요.
         실입금은 회수 참고용(카드 1~2일·식권 정산 한 달 시차).
       </p>
       <div className="overflow-x-auto rounded-md border border-border">
