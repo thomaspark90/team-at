@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   LineChart,
   Line,
@@ -152,9 +152,16 @@ export default function Dashboard({
   }, []);
   // 130px = 오버레이 헤더(제목·닫기)+상하 패딩 몫
   const chartH = (id: ChartId, base: number) => (fullId === id ? viewH - 130 : base);
+  // 노출(접기) 상태 — ←/→ 이동에서 꺼진 차트를 건너뛰어야 해서 카드가 아니라 여기서 든다
+  const [openMap, setOpenMap] = useState<Partial<Record<ChartId, boolean>>>({});
+  // ←/→ 순환 이동 — 어떤 차트가 실제로 그려졌는지(chartNodes)는 렌더 후반에야 알 수 있어 ref 로 배선
+  const navFullRef = useRef<(dir: 1 | -1) => void>(() => {});
   const fullProps = (id: ChartId) => ({
     full: fullId === id,
     setFull: (v: boolean) => setFullId(v ? id : null),
+    open: openMap[id] ?? true,
+    setOpen: (v: boolean) => setOpenMap((m) => ({ ...m, [id]: v })),
+    onNav: (dir: 1 | -1) => navFullRef.current(dir),
   });
 
   // 차트 순서 — 헤더 그립을 드래그해서 바꾸고 이 브라우저에 저장(계정과 무관, localStorage)
@@ -572,6 +579,19 @@ export default function Dashboard({
       <div className="divide-y divide-border">
         {/* 1) 통장 입출금·잔액 — 분류와 무관한 통장 자체의 현금 흐름(대표 지시로 첫 차트, 2026-08-04).
             이제 차트 순서는 그립(⠿)을 드래그해 바꿀 수 있어 order 배열 순서대로 렌더링한다. */}
+        {(() => {
+          // 전체 보기 ←/→ 이동 — 표시 순서(order)대로 순환, 안 그려졌거나 노출이 꺼진 차트는 건너뛴다
+          navFullRef.current = (dir) => {
+            setFullId((cur) => {
+              if (!cur) return cur;
+              const pool = order.filter((cid) => chartNodes[cid] && ((openMap[cid] ?? true) || cid === cur));
+              if (pool.length === 0) return cur;
+              const i = pool.indexOf(cur);
+              return pool[(i + dir + pool.length) % pool.length] ?? cur;
+            });
+          };
+          return null;
+        })()}
         {order.map((id) => chartNodes[id] ?? null)}
       </div>
 
@@ -610,6 +630,9 @@ function ChartCard({
   onReorder,
   full,
   setFull,
+  open,
+  setOpen,
+  onNav,
 }: {
   id: string;
   title: string;
@@ -620,17 +643,23 @@ function ChartCard({
   // 전체 보기 — 상태는 Dashboard 가 들고 차트 height 에 반영한다(recharts 가 고정 height 를 쓰므로)
   full: boolean;
   setFull: (v: boolean) => void;
+  // 노출(접기) — ←/→ 이동이 꺼진 차트를 건너뛰도록 Dashboard 가 든다
+  open: boolean;
+  setOpen: (v: boolean) => void;
+  // 전체 보기에서 ←/→ — 이전(-1)/다음(+1) 차트로 순환 이동
+  onNav: (dir: 1 | -1) => void;
 }) {
-  const [open, setOpen] = useState(true);
   const [dragOver, setDragOver] = useState(false);
   useEffect(() => {
     if (!full) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setFull(false);
+      else if (e.key === 'ArrowRight') onNav(1);
+      else if (e.key === 'ArrowLeft') onNav(-1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [full, setFull]);
+  }, [full, setFull, onNav]);
   return (
     <div
       onDragOver={(e) => {
@@ -678,7 +707,7 @@ function ChartCard({
             type="button"
             role="switch"
             aria-checked={open}
-            onClick={() => setOpen((v) => !v)}
+            onClick={() => setOpen(!open)}
             title={open ? '차트 접기' : '차트 펼치기'}
             className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${open ? 'bg-primary' : 'bg-muted'}`}
           >
@@ -696,14 +725,17 @@ function ChartCard({
               <h3 className="m-0 text-[15px] text-foreground">{title}</h3>
               {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}
             </div>
-            <button
-              type="button"
-              onClick={() => setFull(false)}
-              title="닫기 (Esc)"
-              className="shrink-0 rounded-md border border-border px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
-            >
-              닫기 ✕
-            </button>
+            <div className="flex shrink-0 items-center gap-3">
+              <span className="text-[11px] text-muted-foreground/60">← → 다음 차트</span>
+              <button
+                type="button"
+                onClick={() => setFull(false)}
+                title="닫기 (Esc)"
+                className="rounded-md border border-border px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                닫기 ✕
+              </button>
+            </div>
           </div>
           {/* 차트 자체가 뷰포트 높이(chartH)로 그려지므로 여기선 담기만 한다.
               m-auto: 내용이 영역보다 작을 때 중앙 정렬(넘치면 0으로 접혀 스크롤 정상). */}
