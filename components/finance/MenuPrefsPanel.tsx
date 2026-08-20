@@ -32,13 +32,16 @@ export default function MenuPrefsPanel({
     return [...inSort, ...rest];
   }, [products, sort]);
 
-  const move = (label: string, dir: -1 | 1) => {
-    const i = ordered.indexOf(label);
-    const j = i + dir;
-    if (j < 0 || j >= ordered.length) return;
+  // 드래그 정렬 — 행을 끌어 놓는 위치로 이동. 끌기 시작하면 현재 화면 순서 전체가
+  // 명시 순서(sort)로 저장돼 예측 가능하게 유지된다. (▲▼ 버튼 → 드래그, 2026-08-20)
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const dragTo = (to: number) => {
+    if (dragIdx === null || dragIdx === to) return;
     const next = [...ordered];
-    [next[i], next[j]] = [next[j], next[i]];
-    setSort(next); // 현재 화면 순서 전체를 명시 순서로 저장 — 단순하고 예측 가능
+    const [moved] = next.splice(dragIdx, 1);
+    next.splice(to, 0, moved);
+    setSort(next);
+    setDragIdx(to); // 드래그 중 실시간 미리보기 — 따라오는 행 기준으로 인덱스 갱신
   };
 
   const toggle = (label: string) =>
@@ -89,12 +92,34 @@ export default function MenuPrefsPanel({
       {open && (
         <div className="border-t border-border px-4 py-3">
           <p className="m-0 mb-3 text-[12px] text-muted-foreground">
-            체크를 끄면 표에서 숨겨져요(합계에는 그대로 들어가요). ▲▼로 열 순서를 바꿔요 — 위가 표의
-            왼쪽이에요. 이 설정은 이 매장을 보는 모두에게 적용돼요.
+            체크를 끄면 표에서 숨겨져요(합계에는 그대로 들어가요). ⠿를 잡고 끌어 순서를 바꿔요 — 위가
+            표의 왼쪽이에요. 이 설정은 이 매장을 보는 모두에게 적용돼요.
           </p>
           <ul className="m-0 flex max-h-[320px] list-none flex-col gap-1 overflow-y-auto p-0">
             {ordered.map((p, i) => (
-              <li key={p} className="flex items-center gap-2 text-[13px]">
+              <li
+                key={p}
+                draggable
+                onDragStart={(e) => {
+                  setDragIdx(i);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  dragTo(i);
+                }}
+                onDragEnd={() => setDragIdx(null)}
+                className={`flex select-none items-center gap-2 rounded px-1 py-0.5 text-[13px] ${
+                  dragIdx === i ? 'bg-muted opacity-60' : ''
+                }`}
+              >
+                <span
+                  aria-hidden
+                  title="끌어서 순서 바꾸기"
+                  className="cursor-grab text-[13px] leading-none text-muted-foreground/50 active:cursor-grabbing"
+                >
+                  ⠿
+                </span>
                 <input
                   type="checkbox"
                   checked={!hidden.has(p)}
@@ -104,22 +129,6 @@ export default function MenuPrefsPanel({
                 <span className={`min-w-0 flex-1 truncate ${hidden.has(p) ? 'text-muted-foreground/50 line-through' : ''}`}>
                   {p}
                 </span>
-                <button
-                  onClick={() => move(p, -1)}
-                  disabled={i === 0}
-                  className="rounded border border-border px-1.5 text-[11px] text-muted-foreground disabled:opacity-30"
-                  aria-label={`${p} 위로`}
-                >
-                  ▲
-                </button>
-                <button
-                  onClick={() => move(p, 1)}
-                  disabled={i === ordered.length - 1}
-                  className="rounded border border-border px-1.5 text-[11px] text-muted-foreground disabled:opacity-30"
-                  aria-label={`${p} 아래로`}
-                >
-                  ▼
-                </button>
               </li>
             ))}
           </ul>
