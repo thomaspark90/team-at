@@ -6,7 +6,7 @@ import { UNITS, unitOf, type UnitId } from '@/lib/finance/types';
 
 // 회계 내비 — 2단 구조 (2026-07-31 대표 지시):
 //   1단: 회계 단위 선택 — 스탭밀 | 가든서비스(양재천점) | 가든서비스(판교점)
-//   2단: 선택된 단위 소속 메뉴 — 대시보드 | 송금 요청·송금 설정 | 자료 입력·지출 자료 분류·자료 이력 | 월 확정·설정
+//   2단: 선택된 단위 소속 메뉴, 두 줄 — ① 회계 홈 | 송금 요청·송금 설정 | 월 확정·설정 ② 자료 입력~원본 자료함(장부 공정)
 // 단위는 URL(?unit= 또는 /finance/upload/[unit])로 전달되고, 모든 메뉴 링크가 단위를 실어 나른다.
 
 const UNIT_TAB_LABEL: Record<UnitId, string> = {
@@ -59,15 +59,17 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
   const PERSONAL = [{ href: '/finance/classify', label: '개인 지출 분류' }];
 
   // 브랜드 스코프 멤버 — 단위 탭 없이(서버 리다이렉트로 강제) 분류+송금만
-  const groups = scoped
-    ? [[{ href: '/finance/classify', label: '지출 자료 분류' }], TRANSFER]
+  // 메뉴는 줄 단위로 구성한다(2026-08-20 대표 지시) — 1줄: 홈·송금·확정·설정, 2줄: 장부 공정(자료 입력~원본 자료함)
+  const menuRows: { href: string; label: string }[][][] = scoped
+    ? [[[{ href: '/finance/classify', label: '지출 자료 분류' }], TRANSFER]]
     : isPersonal
-    ? [PERSONAL]
-    : [
-        HOME,
-        TRANSFER,
-        ...(isStaff ? [BOOKKEEPING, [...CLOSING, ...(role === 'admin' ? ADMIN : [])]] : []),
-      ];
+    ? [[PERSONAL]]
+    : isStaff
+    ? [
+        [HOME, TRANSFER, [...CLOSING, ...(role === 'admin' ? ADMIN : [])]],
+        [BOOKKEEPING],
+      ]
+    : [[HOME, TRANSFER]];
 
   // 링크에 단위 실어 보내기 — 업로드 경로는 세그먼트에 이미 포함
   const withUnit = (href: string) => (href.startsWith('/finance/upload/') ? href : `${href}?unit=${u}`);
@@ -104,20 +106,24 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
           </div>
         </div>
       )}
-      {/* 2단: 선택된 단위의 메뉴 — 데스크톱은 가운데 정렬 줄바꿈, 모바일은 그룹을 2줄로 나눠
-          각 줄을 가로 스크롤(2026-08-09) — 항목이 많아 3줄까지 늘어나던 문제 해소. */}
-      <div className="mx-auto hidden max-w-[1680px] flex-wrap items-center justify-center gap-x-5 gap-y-2 px-6 py-3 sm:flex">
-        {groups.map((group, gi) => (
-          <span key={gi} className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            {gi > 0 && <span className="select-none text-[11px] text-border">|</span>}
-            {group.map(({ href, label }) => (
-              <NavLink key={href} href={withUnit(href)} active={isActive(href)} label={label} />
+      {/* 2단: 선택된 단위의 메뉴 — 데스크톱은 줄 단위 가운데 정렬, 모바일은 같은 줄 구성을
+          각각 가로 스크롤(2026-08-09) — 항목이 많아 3줄까지 늘어나던 문제 해소. */}
+      <div className="mx-auto hidden max-w-[1680px] flex-col gap-y-2 px-6 py-3 sm:flex">
+        {menuRows.map((row, ri) => (
+          <div key={ri} className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            {row.map((group, gi) => (
+              <span key={gi} className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                {gi > 0 && <span className="select-none text-[11px] text-border">|</span>}
+                {group.map(({ href, label }) => (
+                  <NavLink key={href} href={withUnit(href)} active={isActive(href)} label={label} />
+                ))}
+              </span>
             ))}
-          </span>
+          </div>
         ))}
       </div>
       <div className="flex flex-col gap-2 py-3 sm:hidden">
-        {(groups.length > 2 ? [groups.slice(0, 2), groups.slice(2)] : [groups]).map((row, ri) => (
+        {menuRows.map((row, ri) => (
           <div key={ri} className="scrollbar-hide overflow-x-auto px-6">
             <div className="flex w-max items-center gap-x-5">
               {row.map((group, gi) => (
