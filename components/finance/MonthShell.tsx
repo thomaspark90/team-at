@@ -24,7 +24,12 @@ export const useMonthCtx = () => useContext(MonthCtx);
 // 페이지 셸 — 좌측 고정 연·월 사이드바 + 우측 콘텐츠(children).
 // 선택 월(ym)·할 일 배지 상태를 소유하고 컨텍스트로 내려준다. 페이지의 월 스코프 섹션
 // (자료 현황·업로드 보드·POS 등)을 통째로 children 으로 받아 사이드바가 페이지 전체의 왼쪽에 선다.
-// 데스크톱(lg+)은 사이드바, 좁은 화면은 상단 가로 스트립(‹ › 버튼). 범위는 과거 24개월~다음 달.
+// 데스크톱(lg+)은 사이드바, 좁은 화면은 상단 가로 스트립(‹ › 버튼). 범위는 자료 시작 달~다음 달.
+
+// 자료가 있는 가장 이른 달 — '지난 24개월' 고정 창이었더니 2023-10부터 올라온 스탭밀 은행
+// 자료 구간이 사이드바에서 잘려 그 달들로 이동할 수 없었다(2026-08-20 대표 제보).
+// 더 이른 자료를 올리게 되면 이 값을 당길 것(자료 현황 그리드는 boardTodos가 동적으로 확장).
+const DATA_START_YM = '2023-10';
 export default function MonthShell({
   children,
   initialTodos,
@@ -73,8 +78,12 @@ export default function MonthShell({
 
   const months = useMemo(() => {
     const now = new Date();
+    const [sy, sm] = DATA_START_YM.split('-').map(Number);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1); // 다음 달까지
     const arr: string[] = [];
-    for (let i = -24; i <= 1; i++) arr.push(toYm(new Date(now.getFullYear(), now.getMonth() + i, 1)));
+    for (let d = new Date(sy, sm - 1, 1); d <= end; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+      arr.push(toYm(d));
+    }
     return arr; // 과거 → 미래 순, 오른쪽 끝이 다음 달
   }, []);
 
