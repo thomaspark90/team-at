@@ -78,6 +78,58 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
     setEditId(null);
   }
 
+  // 기존 항목을 그대로 베껴 바로 아래에 새 항목을 만든다. 이름만 '… 사본'으로 바꿔 넣고
+  // 곧바로 이름 변경 모드로 들어가 원하는 이름을 타이핑하면 되게 한다.
+  async function duplicate(c: ManagedCat) {
+    setBusy(c.id);
+    setError(null);
+    const supabase = createClient();
+
+    // (type,name)이 DB 유니크라 같은 타입 안에서 안 겹치는 이름을 먼저 만든다
+    const taken = new Set(cats.filter((x) => x.type === c.type).map((x) => x.name));
+    const base = `${c.name} 사본`;
+    let name = base;
+    for (let i = 2; taken.has(name); i++) name = `${base} ${i}`;
+
+    // 원본 바로 아래에 놓을 sort — 뒷항목과 사이에 여유가 있으면 중간값, 없으면 동값(배열 뒤에 붙어 원본 다음에 그려짐)
+    const next = cats
+      .filter((x) => x.type === c.type && x.sort > c.sort)
+      .reduce<number | null>((min, x) => (min == null || x.sort < min ? x.sort : min), null);
+    const sort = next == null ? c.sort + 10 : next - c.sort >= 2 ? Math.floor((c.sort + next) / 2) : c.sort;
+
+    // in_pnl(손익 포함 여부)은 이 화면 목록에 없어서 원본 값을 읽어 그대로 복사한다
+    const { data: src } = await supabase
+      .schema('finance')
+      .from('categories')
+      .select('in_pnl')
+      .eq('id', c.id)
+      .single();
+
+    const { data, error } = await supabase
+      .schema('finance')
+      .from('categories')
+      .insert({
+        type: c.type,
+        name,
+        parent_id: c.parent_id,
+        active: c.active,
+        pinned: false,
+        vat_taxable: c.vat_taxable,
+        in_pnl: (src as { in_pnl?: boolean } | null)?.in_pnl ?? true,
+        sort,
+      })
+      .select('id,type,name,parent_id,active,pinned,sort,vat_taxable')
+      .single();
+    if (error) setError(`복제 실패: ${error.message}`);
+    else if (data) {
+      const created = data as ManagedCat;
+      setCats((list) => [...list, created]);
+      setEditId(created.id);
+      setEditVal(created.name);
+    }
+    setBusy(null);
+  }
+
   async function remove(id: number) {
     if (!window.confirm('이 계정과목을 삭제할까요? (이 항목으로 분류된 거래가 있으면 삭제되지 않아요 — 그럴 땐 비활성만 하세요)')) return;
     setBusy(id);
@@ -142,7 +194,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
   return (
     <div className="flex flex-col gap-14">
       <p className="text-[13px] text-muted-foreground">
-        왼쪽 <b>손잡이(⠿)를 드래그</b>해 순서를 바꿔요. <b>이름을 클릭</b>하면 ⭐즐겨찾기로 지정돼 분류 드롭다운 맨 위 &ldquo;자주 쓰는&rdquo;에 떠요. <b>이름 변경</b>으로 계정 이름을 바꾸면 이전에 분류해둔 거래·손익에도 새 이름이 그대로 반영돼요. <b>활성</b>을 끄면 숨겨져요. <b>과세/면세</b>는 손익 계산 기준 — 과세 항목은 대시보드에서 공급가액(÷1.1)으로 순액 처리돼요(인건비·이자·수도·세금 등 면세는 그대로).
+        왼쪽 <b>손잡이(⠿)를 드래그</b>해 순서를 바꿔요. <b>이름을 클릭</b>하면 ⭐즐겨찾기로 지정돼 분류 드롭다운 맨 위 &ldquo;자주 쓰는&rdquo;에 떠요. <b>이름 변경</b>으로 계정 이름을 바꾸면 이전에 분류해둔 거래·손익에도 새 이름이 그대로 반영돼요. <b>복제</b>는 같은 설정(상위·과세·활성)으로 바로 아래에 새 항목을 만들어요 — 이름만 바꿔 쓰면 돼요. <b>활성</b>을 끄면 숨겨져요. <b>과세/면세</b>는 손익 계산 기준 — 과세 항목은 대시보드에서 공급가액(÷1.1)으로 순액 처리돼요(인건비·이자·수도·세금 등 면세는 그대로).
       </p>
       {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
 
@@ -167,7 +219,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                         if (overId !== c.id) setOverId(c.id);
                       }}
                       onDrop={() => reorder(type, c.id)}
-                      className={`flex flex-wrap items-center gap-[10px] px-[14px] py-[20px] ${overId === c.id ? 'border-t-2 border-foreground' : 'border-t border-border'} ${c.pinned ? 'bg-muted' : 'bg-background'} ${!c.active ? 'opacity-55' : dragId === c.id ? 'opacity-40' : ''}`}
+                      className={`flex flex-wrap items-center gap-[10px] px-[14px] py-[6px] ${overId === c.id ? 'border-t-2 border-foreground' : 'border-t border-border'} ${c.pinned ? 'bg-muted' : 'bg-background'} ${!c.active ? 'opacity-55' : dragId === c.id ? 'opacity-40' : ''}`}
                     >
                       <span
                         draggable
@@ -254,6 +306,16 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                       >
                         {c.active ? '활성' : '비활성'}
                       </button>
+                      {!isSystem(c.name) && editId !== c.id && (
+                        <button
+                          onClick={() => duplicate(c)}
+                          disabled={busy === c.id}
+                          title="같은 설정(상위·과세·활성)으로 바로 아래에 새 항목을 만들어요 — 이름만 바꿔 쓰면 돼요"
+                          className="whitespace-nowrap rounded-md border border-border px-3 py-1 text-[11px] text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          복제
+                        </button>
+                      )}
                       <button
                         onClick={() => remove(c.id)}
                         disabled={busy === c.id || isSystem(c.name)}
