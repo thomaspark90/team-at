@@ -1,0 +1,210 @@
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { createClient, getSessionUser } from '@/lib/supabase/server';
+import { resolveMemberStamped } from '@/lib/access/stamp';
+import TabNav from '@/components/TabNav';
+import AccountingNav from '@/components/AccountingNav';
+import { unitOf, UNITS } from '@/lib/finance/types';
+import type { ExpenseGrain } from '@/lib/finance/prepExpense';
+import {
+  buildMenuPrep,
+  type ItemSaleRow,
+  type MenuColumn,
+  type MenuMetric,
+  type PosDailyTotal,
+} from '@/lib/finance/prepMenu';
+
+// 전처리4 — POS 메뉴별 판매. 품목 리포트(pos_items)를 기간 축으로 펼치고,
+// 총액이 전처리3 POS 매출(pos_sales)과 맞는지 '정합 차이' 열로 상시 검증한다.
+
+const GRAINS: { key: ExpenseGrain; label: string }[] = [
+  { key: 'day', label: '일별' },
+  { key: 'week', label: '주별' },
+  { key: 'month', label: '월별' },
+];
+const METRICS: { key: MenuMetric; label: string }[] = [
+  { key: 'gross', label: '매출' },
+  { key: 'qty', label: '수량' },
+];
+const LIMIT: Record<ExpenseGrain, number> = { day: 45, week: 26, month: 24 };
+
+export default async function PrepMenuPage({
+  searchParams,
+}: {
+  searchParams: { unit?: string; grain?: string; metric?: string };
+}) {
+  const supabase = await createClient();
+  const user = await getSessionUser(supabase);
+  if (!user) redirect('/');
+
+  const { role, brandScope } = await resolveMemberStamped(supabase, user);
+  if (brandScope) redirect('/finance/classify');
+  if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
+
+  const unit = unitOf(searchParams.unit) ?? UNITS[0];
+  if (unit.brand === 'personal') redirect('/finance/classify?unit=personal');
+  const grain: ExpenseGrain = GRAINS.some((g) => g.key === searchParams.grain)
+    ? (searchParams.grain as ExpenseGrain)
+    : 'month';
+  const metric: MenuMetric = searchParams.metric === 'qty' ? 'qty' : 'gross';
+
+  let itemsQ = supabase
+    .schema('finance')
+    .from('pos_items')
+    .select('sale_date,category,product,option,qty,gross')
+    .eq('brand', unit.brand)
+    .limit(50000);
+  if (unit.store) itemsQ = itemsQ.eq('store', unit.store);
+  let posQ = supabase
+    .schema('finance')
+    .from('pos_sales')
+    .select('sale_date,gross')
+    .eq('brand', unit.brand)
+    .limit(50000);
+  if (unit.store) posQ = posQ.eq('store', unit.store);
+
+  const [{ data: itemsData, error: itemsErr }, { data: posData, error: posErr }] = await Promise.all([itemsQ, posQ]);
+  if (itemsErr) throw new Error(`품목 조회 실패: ${itemsErr.message}`);
+  if (posErr) throw new Error(`POS 매출 조회 실패: ${posErr.message}`);
+
+  const { buckets: allBuckets, summary, detail } = buildMenuPrep(
+    (itemsData as ItemSaleRow[] | null) ?? [],
+    (posData as PosDailyTotal[] | null) ?? [],
+    grain,
+    metric
+  );
+  const buckets = allBuckets.slice(0, LIMIT[grain]);
+  const num = (n: number) => (n === 0 ? '' : n.toLocaleString());
+  const bucketLabel = (b: string) => (grain === 'week' ? `${b.slice(5).replace('-', '/')}~` : b);
+  const href = (next: { grain?: string; metric?: string }) =>
+    `/finance/prep/menu?unit=${unit.id}&grain=${next.grain ?? grain}&metric=${next.metric ?? metric}`;
+
+  const renderTable = (columns: MenuColumn[]) => (
+    <div className="overflow-auto rounded-md border border-border">
+      <table className="w-max min-w-full border-collapse text-[13px]">
+        <thead className="sticky top-0 z-10 bg-card">
+          <tr className="border-b border-border text-muted-foreground">
+            <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">기간</th>
+            {columns.map((c) => (
+              <th
+                key={c.key}
+                title={c.hint}
+                className={`whitespace-nowrap px-3 py-2 text-right font-normal ${
+                  c.kind === 'total' ? 'border-l-2 border-l-border font-medium text-foreground' : ''
+                } ${c.kind === 'derived' ? 'text-muted-foreground/70' : ''}`}
+              >
+                {c.label}
+                {c.hint && <span className="ml-1 text-muted-foreground/50">ⓘ</span>}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {buckets.map((b) => (
+            <tr key={b} className="border-b border-border/50 last:border-0">
+              <td className="sticky left-0 z-10 whitespace-nowrap bg-background px-3 py-1.5 tabular-nums">
+                {bucketLabel(b)}
+              </td>
+              {columns.map((c) => {
+                const v = c.amounts[b] ?? 0;
+                const isDiff = c.key === 'diff';
+                return (
+                  <td
+                    key={c.key}
+                    className={`whitespace-nowrap px-3 py-1.5 text-right tabular-nums ${
+                      c.kind === 'total' ? 'border-l-2 border-l-border font-medium' : ''
+                    } ${c.kind === 'derived' ? 'text-muted-foreground' : ''} ${
+                      isDiff && v !== 0 ? 'font-medium text-foreground' : ''
+                    }`}
+                  >
+                    {isDiff && v !== 0 ? `⚠ ${v > 0 ? '+' : ''}${num(v)}` : num(v)}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <TabNav />
+      <AccountingNav role={role} />
+      <div className="mx-auto max-w-[1680px] px-6 py-8">
+        <div className="mb-1 flex items-baseline justify-between">
+          <h1 className="m-0 text-[22px] tracking-[-0.5px]">전처리4 — 메뉴별 판매</h1>
+          <Link
+            href={`/finance/prep/revenue?unit=${unit.id}&grain=${grain}`}
+            className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            ← 전처리3 매출 총합
+          </Link>
+        </div>
+        <p className="mb-5 max-w-[880px] text-[13px] text-muted-foreground">
+          <b>{unit.label}</b>의 품목 리포트(pos_items)를 메뉴 축으로 펼친 표예요. 요약은 매장/포장·사이즈·
+          한/영 표기를 <b>메뉴 하나로 묶고</b>(Staff·Newbie…), 상세는 상품 원문 그대로예요.
+          매출 뷰의 <b>정합 차이</b> 열이 0이 아니면 품목 리포트와 POS 총액(전처리3 정본)이 어긋난 거예요.
+        </p>
+
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="flex overflow-hidden rounded-md border border-border">
+            {GRAINS.map((g) => (
+              <Link
+                key={g.key}
+                href={href({ grain: g.key })}
+                aria-current={g.key === grain ? 'page' : undefined}
+                className={`px-3 py-1.5 text-[13px] transition-colors ${
+                  g.key === grain ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {g.label}
+              </Link>
+            ))}
+          </div>
+          <div className="flex overflow-hidden rounded-md border border-border">
+            {METRICS.map((m) => (
+              <Link
+                key={m.key}
+                href={href({ metric: m.key })}
+                aria-current={m.key === metric ? 'page' : undefined}
+                className={`px-3 py-1.5 text-[13px] transition-colors ${
+                  m.key === metric ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {m.label}
+              </Link>
+            ))}
+          </div>
+          <span className="text-[12px] text-muted-foreground">
+            {metric === 'gross' ? '부가세 포함 총액' : '판매 수량'}
+            {allBuckets.length > buckets.length && ` · 최근 ${buckets.length}개 구간`}
+          </span>
+        </div>
+
+        <h2 className="mb-2 mt-2 text-[15px] font-medium">메뉴 요약</h2>
+        <div className="mb-8">{renderTable(summary)}</div>
+
+        <h2 className="mb-2 text-[15px] font-medium">상품별 상세</h2>
+        {renderTable(detail)}
+
+        <div className="mt-4 flex flex-col gap-1 text-[12px] text-muted-foreground">
+          {summary
+            .filter((c) => c.hint)
+            .map((c) => (
+              <p key={c.key} className="m-0">
+                <b className="text-foreground">{c.label}</b> — {c.hint}
+              </p>
+            ))}
+          <p className="m-0 mt-2">
+            식권 판매(선수금)는 품목 리포트와 POS 매출 양쪽에서 제외돼 있어요 — 식권을 <b>쓴</b> 날의 일반
+            메뉴 행으로 잡혀요.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export const metadata = { title: '전처리4 — 메뉴별 판매' };
