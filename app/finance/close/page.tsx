@@ -10,6 +10,10 @@ import MonthlyCloseManager, { type MonthRow } from '@/components/finance/Monthly
 import MonthShell from '@/components/finance/MonthShell';
 import { computeBoardTodos } from '@/lib/finance/boardTodos';
 import { unitOf } from '@/lib/finance/types';
+import ClosePnlSummary, { type PnlSummaryRow } from '@/components/finance/ClosePnlSummary';
+import { buildExpensePrep, type ExpenseTx } from '@/lib/finance/prepExpense';
+import { buildExpenseDetail, type CategoryInfo } from '@/lib/finance/prepExpenseDetail';
+import { buildRevenuePrep, type PosSaleRow } from '@/lib/finance/prepRevenue';
 
 export default async function ClosePage({ searchParams }: { searchParams: { brand?: string; unit?: string } }) {
   const supabase = await createClient();
@@ -84,6 +88,62 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
     })
     .sort((a, b) => b.ym.localeCompare(a.ym));
 
+  // 월별 손익 요약 — 전처리1(지출)·전처리3(매출)·전처리2(미분해)의 빌더를 그대로 재사용.
+  // 같은 코드로 계산해야 결산 페이지와 전처리 화면의 숫자가 어긋나지 않는다(2026-08-20 대표 요청).
+  const mapTx = (rows: unknown[] | null): ExpenseTx[] =>
+    ((rows as (Omit<ExpenseTx, 'cat_type' | 'cat_name'> & { categories: { type: string; name: string } | null })[] | null) ?? []).map(
+      (t) => ({
+        tx_at: t.tx_at,
+        ym: t.ym,
+        source: t.source,
+        memo: t.memo,
+        amount_out: t.amount_out,
+        amount_in: t.amount_in,
+        category_id: t.category_id,
+        cat_type: t.categories?.type ?? null,
+        cat_name: t.categories?.name ?? null,
+      })
+    );
+  let fullTxQ = supabase
+    .schema('finance')
+    .from('transactions')
+    .select('tx_at,ym,source,memo,amount_out,amount_in,category_id,categories(type,name)')
+    .eq('brand', unit.brand)
+    .limit(50000);
+  if (unit.store) fullTxQ = fullTxQ.eq('store', unit.store);
+  let posQ = supabase.schema('finance').from('pos_sales').select('sale_date,gross').eq('brand', unit.brand).limit(50000);
+  if (unit.store) posQ = posQ.eq('store', unit.store);
+  const [{ data: fullTxData }, { data: posData }, { data: catsData }] = await Promise.all([
+    fullTxQ,
+    posQ,
+    supabase.schema('finance').from('categories').select('id,name,type,parent_id'),
+  ]);
+  const fullTxns = mapTx(fullTxData);
+  const p1 = buildExpensePrep(fullTxns, 'month');
+  const p2 = buildExpenseDetail(fullTxns, (catsData as CategoryInfo[] | null) ?? [], 'month');
+  const p3 = buildRevenuePrep(
+    (posData as PosSaleRow[] | null) ?? [],
+    fullTxns.filter((t) => t.cat_type === 'revenue'),
+    'month'
+  );
+  const amountsOf = (cols: { key: string; amounts: Record<string, number> }[], key: string) =>
+    cols.find((c) => c.key === key)?.amounts ?? {};
+  const expenseA = amountsOf(p1.rows, 'total');
+  const pendingA = amountsOf(p2.summary, 'g_pending');
+  const posA = amountsOf(p3.columns, 'pos');
+  const inA = amountsOf(p3.columns, 'in_total');
+  const pnlRows: PnlSummaryRow[] = Array.from(
+    new Set([...Object.keys(expenseA), ...Object.keys(posA)])
+  )
+    .sort((a, b) => b.localeCompare(a))
+    .map((ym) => ({
+      ym,
+      pos: posA[ym] ?? 0,
+      inTotal: inA[ym] ?? 0,
+      expense: expenseA[ym] ?? 0,
+      pendingExpense: pendingA[ym] ?? 0,
+    }));
+
   // 좌측 연·월 사이드바 배지 — 이 단위의 브랜드 몫만
   const initialTodos = await computeBoardTodos(supabase, unit.brand).catch(() => undefined);
 
@@ -106,6 +166,7 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
         {/* personal 은 위에서 리다이렉트되므로 여기 unit 은 항상 사업 단위.
             좌측 연·월 사이드바 — 달을 고르면 표에서 그 달 행을 하이라이트·스크롤(2026-08-03) */}
         <MonthShell brand={unit.brand} initialTodos={initialTodos}>
+          <ClosePnlSummary rows={pnlRows} unitId={unit.id} />
           <MonthlyCloseManager
             key={unit.id}
             months={months}
