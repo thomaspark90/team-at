@@ -34,6 +34,17 @@ export default function StatusMatrix({
   const [error, setError] = useState<string | null>(null);
   // 날짜 정렬 — 기본 최신이 위(내림차순), '월' 헤더 클릭으로 토글
   const [desc, setDesc] = useState(true);
+  // 연도별 접기 — 기간이 데이터 시작(2024년~)까지 늘어나 행이 30개를 넘으므로,
+  // 올해만 펼치고 과거 연도는 접어둔다. 연 헤더 행 클릭으로 토글(2026-08-20).
+  const currentYear = String(new Date().getFullYear());
+  const [openYears, setOpenYears] = useState<Set<string>>(new Set([currentYear]));
+  const toggleYear = (y: string) =>
+    setOpenYears((prev) => {
+      const n = new Set(prev);
+      if (n.has(y)) n.delete(y);
+      else n.add(y);
+      return n;
+    });
 
   const hasInitial = initialData !== undefined;
   const load = useCallback(async () => {
@@ -120,7 +131,60 @@ export default function StatusMatrix({
               </tr>
             </thead>
             <tbody>
-              {(desc ? [...data.rows].reverse() : data.rows).map((r) => (
+              {(() => {
+                const ordered = desc ? [...data.rows].reverse() : data.rows;
+                // 연도별 그룹 — 순서를 유지한 채 연이 바뀌는 지점마다 헤더 행을 끼운다
+                const groups: { year: string; rows: typeof ordered }[] = [];
+                for (const r of ordered) {
+                  const y = r.ym.slice(0, 4);
+                  const g = groups[groups.length - 1];
+                  if (g && g.year === y) g.rows.push(r);
+                  else groups.push({ year: y, rows: [r] });
+                }
+                const missingOf = (rows: typeof ordered) =>
+                  rows.reduce(
+                    (n, r) =>
+                      n +
+                      Object.values(r.slots).filter((st) => st !== 'full').length +
+                      data.posStores.filter((st) => !r.pos[st]).length +
+                      (r.uncl > 0 ? 1 : 0) +
+                      (r.confirmed ? 0 : 1),
+                    0
+                  );
+                const colCount = 1 + data.slots.length + data.posStores.length + 2;
+                return groups.flatMap((g) => {
+                  const open = openYears.has(g.year);
+                  const missing = missingOf(g.rows);
+                  const header = (
+                    <tr key={`y-${g.year}`} className="border-t border-border bg-muted/40">
+                      <td colSpan={colCount} className="p-0">
+                        <button
+                          onClick={() => toggleYear(g.year)}
+                          className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[12px] font-medium hover:bg-muted/60"
+                          aria-expanded={open}
+                        >
+                          <span aria-hidden>{open ? '▾' : '▸'}</span>
+                          {g.year}년
+                          <span className="font-normal text-muted-foreground">
+                            {g.rows.length}개월{missing > 0 ? ` · 미입력 ${missing}개` : ' · 전부 완료'}
+                          </span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                  return open ? [header, ...g.rows.map(renderRow)] : [header];
+                });
+              })()}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </details>
+  );
+
+  function renderRow(r: BoardMatrix['rows'][number]) {
+    if (!data) return null; // 호출 지점에서 data 확인 후 들어오지만 타입 좁힘용
+    return (
                 <tr key={r.ym} className="border-t border-border">
                   <td className="sticky left-0 whitespace-nowrap bg-card px-2 py-1.5 text-[13px] text-muted-foreground">
                     {fmtYm(r.ym)}
@@ -162,13 +226,8 @@ export default function StatusMatrix({
                     )}
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </details>
-  );
+    );
+  }
 }
 
 function Cell({ state, onClick }: { state: SlotState; onClick: () => void }) {

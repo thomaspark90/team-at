@@ -51,8 +51,6 @@ async function collectBoardData(supabase: SupabaseClient, brand?: string, store?
   const now = new Date();
   const currentYm = toYm(now);
   const prevYm = toYm(new Date(now.getFullYear(), now.getMonth() - 1, 1));
-  const months: string[] = [];
-  for (let i = -24; i <= 1; i++) months.push(toYm(new Date(now.getFullYear(), now.getMonth() + i, 1)));
 
   const fin = () => supabase.schema('finance');
   const closesSel = fetchAll((a, b) => {
@@ -86,6 +84,28 @@ async function collectBoardData(supabase: SupabaseClient, brand?: string, store?
   if (txQ.error) throw new Error(txQ.error.message);
   const brandBanks = (banksQ.data as { banks?: string[] } | null)?.banks;
   const slots = brand && !banksQ.error && brandBanks?.length ? slotsForBanks(brandBanks) : UPLOAD_SLOTS;
+
+  // 매트릭스 기간 — 과거 24개월 고정이었더니 그보다 이른 자료(2024년 POS 재업로드 등)가
+  // 표에서 잘려 '자료가 멈춘' 것처럼 보였다(2026-08-20). 관측된 가장 이른 달까지 동적으로 확장.
+  let earliest = currentYm;
+  const consider = (ym?: string | null) => {
+    if (ym && /^\d{4}-\d{2}$/.test(ym) && ym < earliest) earliest = ym;
+  };
+  for (const t of txQ.data ?? []) consider(String(t.ym));
+  for (const p of posQ.data ?? []) consider(String((p as { ym?: string }).ym));
+  for (const u of uploadsQ.data ?? []) {
+    consider(u.slot_ym ? String(u.slot_ym) : null);
+    consider(u.period_start ? String(u.period_start).slice(0, 7) : null);
+  }
+  const floor = toYm(new Date(now.getFullYear(), now.getMonth() - 24, 1));
+  let cursorYm = earliest < floor ? earliest : floor;
+  const months: string[] = [];
+  const nextOf = (ym: string) => {
+    const [y, m] = ym.split('-').map(Number);
+    return toYm(new Date(y, m, 1));
+  };
+  const endYm = nextOf(currentYm); // 다음 달까지(기존 +1 동작 유지)
+  for (; cursorYm <= endYm; cursorYm = nextOf(cursorYm)) months.push(cursorYm);
 
   const posByYm = new Map<string, Set<string>>();
   for (const p of posQ.data ?? []) {
