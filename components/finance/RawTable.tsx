@@ -161,6 +161,26 @@ export default function RawTable({
     });
   };
 
+  // 소계 — 지금 걸린 필터·기간의 '전체 행' 기준(서버 집계, 페이징과 무관). 출금·입금 열이 있을 때만.
+  const [totals, setTotals] = useState<{ count: number; sums: Record<string, number> } | null>(null);
+  useEffect(() => {
+    if (outCol < 0 && inCol < 0) {
+      setTotals(null);
+      return;
+    }
+    const cols = [outCol, inCol].filter((c) => c >= 0);
+    const ctrl = new AbortController();
+    fetch(`/api/finance/raw/totals?${rawQueryToParams(query, { cols: cols.join(',') })}`, { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j && typeof j.count === 'number') setTotals(j as { count: number; sums: Record<string, number> });
+      })
+      .catch(() => {
+        /* 소계는 부가 정보 — 실패해도 표는 그대로 */
+      });
+    return () => ctrl.abort();
+  }, [query, outCol, inCol]);
+
   const toggleSort = (col: number) => {
     const s = query.sort ?? { by: 'row' as const };
     const active = s.by === 'col' && s.col === col;
@@ -384,6 +404,22 @@ export default function RawTable({
                 );
               })}
             </tbody>
+            {/* 소계 — 필터·기간 적용된 전체 행 기준(서버 집계). 스크롤해도 바닥에 고정 */}
+            {totals && (
+              <tfoot className="sticky bottom-0 z-10 bg-card">
+                <tr className="border-t-2 border-border text-[12px] font-medium">
+                  <td colSpan={2} className="whitespace-nowrap px-2 py-2 text-muted-foreground">
+                    소계 · {totals.count.toLocaleString('ko-KR')}행
+                  </td>
+                  {columns.map((_, i) => (
+                    <td key={i} className="whitespace-nowrap px-2 py-2 tabular-nums text-foreground">
+                      {i === outCol || i === inCol ? (totals.sums[String(i)] ?? 0).toLocaleString('ko-KR') : ''}
+                    </td>
+                  ))}
+                  <td />
+                </tr>
+              </tfoot>
+            )}
           </table>
           <div ref={sentinel} />
           {loading && <p className="py-3 text-center text-[12px] text-muted-foreground">불러오는 중…</p>}

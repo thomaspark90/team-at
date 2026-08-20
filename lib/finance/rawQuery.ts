@@ -110,14 +110,8 @@ export async function fetchRawBatches(
   return (data as RawBatchRow[] | null) ?? [];
 }
 
-/** 원본 행 한 페이지 — 정렬·필터·기간은 DB 함수가 처리한다 */
-export async function fetchRawRows(
-  supabase: AnyClient,
-  query: RawQuery,
-  page: { offset: number; limit: number }
-): Promise<RawRowView[]> {
-  const sort = query.sort ?? { by: 'row' };
-  // 금액 구간 — 빈 경계는 빼고, min/max 둘 다 비면 그 열 자체를 뺀다
+/** 금액 구간을 rpc 인자 형태로 — 빈 경계는 빼고, min/max 둘 다 비면 그 열 자체를 뺀다 */
+function rpcRanges(query: RawQuery): Record<string, { min?: number; max?: number }> {
   const ranges: Record<string, { min?: number; max?: number }> = {};
   for (const [k, r] of Object.entries(query.ranges ?? {})) {
     const entry: { min?: number; max?: number } = {};
@@ -125,6 +119,39 @@ export async function fetchRawRows(
     if (r?.max && /^\d+$/.test(r.max)) entry.max = Number(r.max);
     if (entry.min != null || entry.max != null) ranges[k] = entry;
   }
+  return ranges;
+}
+
+/** 소계 — 지금 걸린 필터·기간의 '전체 행' 기준 행 수 + 지정 열 합계(서버 집계, raw_rows_totals) */
+export async function fetchRawTotals(
+  supabase: AnyClient,
+  query: RawQuery,
+  cols: number[]
+): Promise<{ count: number; sums: Record<string, number> }> {
+  const ranges = rpcRanges(query);
+  const { data, error } = await supabase.schema('finance').rpc('raw_rows_totals', {
+    p_source: query.source,
+    p_brand: query.brand ?? null,
+    p_from: query.from ?? null,
+    p_to: query.to ?? null,
+    p_q: query.q ?? null,
+    p_filters: query.filters && Object.keys(query.filters).length > 0 ? query.filters : null,
+    p_ranges: Object.keys(ranges).length > 0 ? ranges : null,
+    p_cols: cols,
+  });
+  if (error) throw new Error(`소계 조회 실패: ${error.message}`);
+  const j = (data ?? {}) as { count?: number; sums?: Record<string, number> };
+  return { count: Number(j.count ?? 0), sums: j.sums ?? {} };
+}
+
+/** 원본 행 한 페이지 — 정렬·필터·기간은 DB 함수가 처리한다 */
+export async function fetchRawRows(
+  supabase: AnyClient,
+  query: RawQuery,
+  page: { offset: number; limit: number }
+): Promise<RawRowView[]> {
+  const sort = query.sort ?? { by: 'row' };
+  const ranges = rpcRanges(query);
   const { data, error } = await supabase.schema('finance').rpc('raw_rows_page', {
     p_source: query.source,
     p_brand: query.brand ?? null,
