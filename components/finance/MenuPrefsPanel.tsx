@@ -9,28 +9,39 @@ import { useRouter } from 'next/navigation';
 
 export default function MenuPrefsPanel({
   unit,
-  products, // 전체 상품 라벨 — 기본 정렬(총액순) 그대로
+  products, // 전체 상품 라벨(병합 전 원문) — 기본 정렬(총액순) 그대로
   hidden: initialHidden,
   sort: initialSort,
+  merges: initialMerges,
 }: {
   unit: string;
   products: string[];
   hidden: string[];
   sort: string[];
+  merges: Record<string, string[]>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(new Set(initialHidden));
   const [sort, setSort] = useState<string[]>(initialSort.filter((s) => products.includes(s)));
+  // 병합 매핑 { 대표: [소스...] } — 소스는 목록에서 사라지고 대표에 배지로 표시된다
+  const [merges, setMerges] = useState<Record<string, string[]>>(initialMerges);
+  // 병합 모드 — 대표를 고른 뒤 합칠 메뉴들을 클릭해 모은다
+  const [mergeTarget, setMergeTarget] = useState<string | null>(null);
+  const [mergePick, setMergePick] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   // 화면 목록 = 명시 순서 먼저, 나머지는 기본(총액)순 — 저장 결과와 같은 순서로 보여줘야 헷갈리지 않는다
+  const allSources = useMemo(() => new Set(Object.values(merges).flat()), [merges]);
   const ordered = useMemo(() => {
-    const inSort = sort.filter((s) => products.includes(s));
-    const rest = products.filter((p) => !inSort.includes(p));
+    const pool = products.filter((p) => !allSources.has(p));
+    // 병합으로만 존재하는 대표(데이터에 원문이 없는 새 이름)도 목록에 나온다
+    for (const t of Object.keys(merges)) if (!pool.includes(t)) pool.push(t);
+    const inSort = sort.filter((s) => pool.includes(s));
+    const rest = pool.filter((p) => !inSort.includes(p));
     return [...inSort, ...rest];
-  }, [products, sort]);
+  }, [products, sort, merges, allSources]);
 
   // 드래그 정렬 — 행을 끌어 놓는 위치로 이동. 끌기 시작하면 현재 화면 순서 전체가
   // 명시 순서(sort)로 저장돼 예측 가능하게 유지된다. (▲▼ 버튼 → 드래그, 2026-08-20)
@@ -64,6 +75,37 @@ export default function MenuPrefsPanel({
     setSort(next);
   };
 
+  const startMerge = (target: string) => {
+    setMergeTarget(target);
+    setMergePick(new Set());
+  };
+  const commitMerge = () => {
+    if (!mergeTarget || mergePick.size === 0) {
+      setMergeTarget(null);
+      return;
+    }
+    setMerges((m) => {
+      const next = { ...m };
+      // 골라진 메뉴가 이미 대표였다면 그 소스들까지 함께 흡수(병합의 병합)
+      const absorbed: string[] = [];
+      for (const p of Array.from(mergePick)) {
+        absorbed.push(p, ...(next[p] ?? []));
+        delete next[p];
+      }
+      next[mergeTarget] = Array.from(new Set([...(next[mergeTarget] ?? []), ...absorbed]));
+      return next;
+    });
+    setMergeTarget(null);
+    setMergePick(new Set());
+  };
+  const unmerge = (target: string) => {
+    setMerges((m) => {
+      const next = { ...m };
+      delete next[target];
+      return next;
+    });
+  };
+
   async function save() {
     setBusy(true);
     setMsg(null);
@@ -71,7 +113,7 @@ export default function MenuPrefsPanel({
       const res = await fetch('/api/finance/prep/menu-prefs', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ unit, hidden: Array.from(hidden), sort }),
+        body: JSON.stringify({ unit, hidden: Array.from(hidden), sort, merges }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '저장 실패');
@@ -87,6 +129,8 @@ export default function MenuPrefsPanel({
   function reset() {
     setHidden(new Set());
     setSort([]);
+    setMerges({});
+    setMergeTarget(null);
     setMsg(null);
   }
 
@@ -105,13 +149,28 @@ export default function MenuPrefsPanel({
         <div className="border-t border-border px-4 py-3">
           <p className="m-0 mb-3 text-[12px] text-muted-foreground">
             체크를 켜면 노출 목록 맨 아래로 올라오고, 끄면 숨김 목록 맨 위로 내려가요(합계에는 그대로
-            들어가요). ⠿를 잡고 끌어 순서를 바꿔요 — 위가 표의 왼쪽이에요. 이 설정은 이 매장을 보는 모두에게 적용돼요.
+            들어가요). ⠿를 잡고 끌어 순서를 바꿔요 — 위가 표의 왼쪽이에요. <b>병합</b>은 POS에서 표기가 갈라진
+            같은 메뉴를 한 열로 합쳐 보여줘요 — 원본 데이터는 그대로고 언제든 해제돼요. 이 설정은 이 매장을 보는 모두에게 적용돼요.
           </p>
+          {mergeTarget && (
+            <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px]">
+              <span>
+                <b className="text-foreground">‘{mergeTarget}’</b>에 합칠 메뉴를 목록에서 클릭하세요
+                {mergePick.size > 0 && ` — ${mergePick.size}개 선택됨`}
+              </span>
+              <button onClick={commitMerge} disabled={mergePick.size === 0} className="ta-btn-primary text-[12px] disabled:opacity-40">
+                합치기
+              </button>
+              <button onClick={() => setMergeTarget(null)} className="ta-btn text-[12px]">
+                취소
+              </button>
+            </div>
+          )}
           <ul className="m-0 flex max-h-[320px] list-none flex-col gap-1 overflow-y-auto p-0">
             {ordered.map((p, i) => (
               <li
                 key={p}
-                draggable
+                draggable={!mergeTarget}
                 onDragStart={(e) => {
                   setDragIdx(i);
                   e.dataTransfer.effectAllowed = 'move';
@@ -121,9 +180,20 @@ export default function MenuPrefsPanel({
                   dragTo(i);
                 }}
                 onDragEnd={() => setDragIdx(null)}
+                onClick={() => {
+                  if (!mergeTarget || p === mergeTarget) return;
+                  setMergePick((s) => {
+                    const n = new Set(s);
+                    if (n.has(p)) n.delete(p);
+                    else n.add(p);
+                    return n;
+                  });
+                }}
                 className={`flex select-none items-center gap-2 rounded px-1 py-0.5 text-[13px] ${
                   dragIdx === i ? 'bg-muted opacity-60' : ''
-                }`}
+                } ${mergeTarget && p !== mergeTarget ? 'cursor-pointer hover:bg-muted/50' : ''} ${
+                  mergePick.has(p) ? 'bg-primary/10' : ''
+                } ${mergeTarget === p ? 'bg-muted/60 font-medium' : ''}`}
               >
                 <span
                   aria-hidden
@@ -136,11 +206,42 @@ export default function MenuPrefsPanel({
                   type="checkbox"
                   checked={!hidden.has(p)}
                   onChange={() => toggle(p)}
+                  onClick={(e) => e.stopPropagation()}
+                  disabled={!!mergeTarget}
                   aria-label={`${p} 노출`}
                 />
                 <span className={`min-w-0 flex-1 truncate ${hidden.has(p) ? 'text-muted-foreground/50 line-through' : ''}`}>
                   {p}
+                  {merges[p] && merges[p].length > 0 && (
+                    <span className="ml-1.5 text-[11px] text-muted-foreground" title={merges[p].join(', ')}>
+                      +{merges[p].length}개 병합
+                    </span>
+                  )}
+                  {mergePick.has(p) && <span className="ml-1.5 text-[11px] text-foreground">← 합칠 메뉴</span>}
                 </span>
+                {!mergeTarget &&
+                  (merges[p] && merges[p].length > 0 ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        unmerge(p);
+                      }}
+                      className="shrink-0 rounded border border-border px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      병합 해제
+                    </button>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startMerge(p);
+                      }}
+                      className="shrink-0 rounded border border-border px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+                      title="다른 표기의 같은 메뉴를 이 이름으로 합치기"
+                    >
+                      병합
+                    </button>
+                  ))}
               </li>
             ))}
           </ul>

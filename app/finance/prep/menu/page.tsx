@@ -67,7 +67,7 @@ export default async function PrepMenuPage({
   const prefsQ = supabase
     .schema('finance')
     .from('prep_menu_prefs')
-    .select('hidden,sort')
+    .select('hidden,sort,merges')
     .eq('brand', unit.brand)
     .eq('store', unit.store ?? '')
     .maybeSingle();
@@ -77,6 +77,7 @@ export default async function PrepMenuPage({
   if (posErr) throw new Error(`POS 매출 조회 실패: ${posErr.message}`);
   const hidden = new Set(((prefs?.hidden as string[] | null) ?? []).filter((x) => typeof x === 'string'));
   const sortPref = ((prefs?.sort as string[] | null) ?? []).filter((x) => typeof x === 'string');
+  const merges = (prefs?.merges ?? {}) as Record<string, string[]>;
 
   const { buckets: allBuckets, summary, detail } = buildMenuPrep(
     (itemsData as ItemSaleRow[] | null) ?? [],
@@ -86,16 +87,50 @@ export default async function PrepMenuPage({
   );
   const buckets = allBuckets.slice(0, LIMIT[grain]);
 
+  // 병합 적용 — 소스 열의 금액을 대표 열로 합산하고 소스 열은 제거. 표시 차원의 병합이라
+  // pos_items 원본·합계·정합 차이에는 아무 영향이 없다(대표가 데이터에 없으면 새 열로 생성).
+  const mergedDetail = (() => {
+    const srcToTarget = new Map<string, string>();
+    for (const [t, list] of Object.entries(merges)) for (const src of list) srcToTarget.set(src, t);
+    if (srcToTarget.size === 0) return detail;
+    const byLabel = new Map(detail.filter((c) => c.kind === 'menu').map((c) => [c.label, c]));
+    const out: MenuColumn[] = [];
+    for (const c of detail) {
+      if (c.kind !== 'menu') { out.push(c); continue; }
+      if (srcToTarget.has(c.label)) continue; // 소스 — 대표에 흡수
+      const srcs = merges[c.label] ?? [];
+      if (srcs.length === 0) { out.push(c); continue; }
+      const amounts = { ...c.amounts };
+      for (const sl of srcs) {
+        const sc = byLabel.get(sl);
+        if (sc) for (const [b, v] of Object.entries(sc.amounts)) amounts[b] = (amounts[b] ?? 0) + v;
+      }
+      out.push({ ...c, amounts, hint: `병합된 표기 ${srcs.length}개 포함: ${srcs.join(', ')}` });
+    }
+    // 대표가 데이터에 없는 경우(현재 판매 0) — 소스만 있으면 대표 열을 만들어준다
+    for (const [t, list] of Object.entries(merges)) {
+      if (byLabel.has(t) || out.some((c) => c.label === t)) continue;
+      const amounts: Record<string, number> = {};
+      for (const sl of list) {
+        const sc = byLabel.get(sl);
+        if (sc) for (const [b, v] of Object.entries(sc.amounts)) amounts[b] = (amounts[b] ?? 0) + v;
+      }
+      if (Object.keys(amounts).length > 0)
+        out.push({ key: `m:${t}`, label: t, kind: 'menu', amounts, hint: `병합된 표기 ${list.length}개 포함: ${list.join(', ')}` });
+    }
+    return out;
+  })();
+
   // 상세 열에 설정 적용 — 숨김 제외(합계 열은 항상), 명시 순서 먼저 + 나머지는 기본(총액)순.
   // 합계·정합 열은 전 상품 기준 그대로다: 숨김은 '안 보는 것'이지 '없는 셈 치는 것'이 아니다.
   const allProducts = detail.filter((c) => c.kind === 'menu').map((c) => c.label);
   const detailShown = (() => {
-    const menuCols = detail.filter((c) => c.kind === 'menu' && !hidden.has(c.label));
+    const menuCols = mergedDetail.filter((c) => c.kind === 'menu' && !hidden.has(c.label));
     const inSort = sortPref
       .map((label) => menuCols.find((c) => c.label === label))
       .filter((c): c is MenuColumn => !!c);
     const rest = menuCols.filter((c) => !sortPref.includes(c.label));
-    return [...inSort, ...rest, ...detail.filter((c) => c.kind !== 'menu')];
+    return [...inSort, ...rest, ...mergedDetail.filter((c) => c.kind !== 'menu')];
   })();
   const num = (n: number) => (n === 0 ? '' : n.toLocaleString());
   const bucketLabel = (b: string) => (grain === 'week' ? `${b.slice(5).replace('-', '/')}~` : b);
@@ -216,6 +251,7 @@ export default async function PrepMenuPage({
           products={allProducts}
           hidden={Array.from(hidden)}
           sort={sortPref}
+          merges={merges}
         />
 
         <div className="mt-4 flex flex-col gap-1 text-[12px] text-muted-foreground">

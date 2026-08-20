@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '설정 권한이 없습니다.' }, { status: 403 });
   }
 
-  let body: { unit?: string; hidden?: unknown; sort?: unknown };
+  let body: { unit?: string; hidden?: unknown; sort?: unknown; merges?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -29,6 +29,19 @@ export async function POST(req: Request) {
     Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.length > 0).slice(0, 500) : [];
   const hidden = clean(body.hidden);
   const sort = clean(body.sort);
+  // 병합 매핑 검증 — { 대표: [소스...] }. 대표가 소스에 들어가거나 소스가 두 대표에 걸치면 무결성이 깨진다.
+  const merges: Record<string, string[]> = {};
+  if (body.merges && typeof body.merges === 'object' && !Array.isArray(body.merges)) {
+    const seen = new Set<string>();
+    for (const [target, srcs] of Object.entries(body.merges as Record<string, unknown>).slice(0, 200)) {
+      if (typeof target !== 'string' || !target) continue;
+      const list = clean(srcs).filter((x) => x !== target && !seen.has(x));
+      if (list.length === 0) continue;
+      list.forEach((x) => seen.add(x));
+      if (seen.has(target)) return NextResponse.json({ error: `'${target}' 은 이미 다른 메뉴에 병합돼 있어 대표가 될 수 없어요.` }, { status: 400 });
+      merges[target] = list;
+    }
+  }
 
   const { error } = await supabase
     .schema('finance')
@@ -39,11 +52,12 @@ export async function POST(req: Request) {
         store: unit.store ?? '',
         hidden: hidden as never,
         sort: sort as never,
+        merges: merges as never,
         updated_by: user.id,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'brand,store' }
     );
   if (error) return NextResponse.json({ error: `저장 실패: ${error.message}` }, { status: 500 });
-  return NextResponse.json({ ok: true, hidden, sort });
+  return NextResponse.json({ ok: true, hidden, sort, merges });
 }
