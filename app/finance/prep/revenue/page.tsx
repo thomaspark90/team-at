@@ -98,9 +98,10 @@ export default async function PrepRevenuePage({
           </Link>
         </div>
         <p className="mb-5 max-w-[880px] text-[13px] text-muted-foreground">
-          <b>{unit.label}</b> 매출의 두 원천 — <b>POS 매출(발생)</b>과 <b>통장 입금(정산)</b> — 을 나란히
-          놓고 대사해요. 정산 시차(카드는 1~2영업일 뒤 입금)·식권 선수금(POS 제외, 입금 포함)·POS 밖
-          매출(케이터링 등) 때문에 차이가 나는 게 정상이고, <b>정산률이 이상한 구간이 곧 조사할 지점</b>이에요.
+          매출 평가의 정본은 <b>POS 매출(발생주의 — 판매한 날 기준)</b>이에요. 관리손익도 이 기준이고요.
+          이 표의 통장 입금 축은 매출 인식이 아니라 <b>회수 검증</b>이에요 — 카드는 1~2영업일,
+          식권대장·올리브식권 정산은 <b>한 달</b> 늦게 들어오니, 식권 시차를 되돌린 <b>보정 정산률</b>이
+          정상 범위(90~105%)인지로 &ldquo;{unit.label} 장사값이 제대로 들어오고 있나&rdquo;를 봐요.
         </p>
 
         <div className="mb-4 flex items-center gap-3">
@@ -120,7 +121,7 @@ export default async function PrepRevenuePage({
           </div>
           <span className="text-[12px] text-muted-foreground">
             {isMonth
-              ? '월 기준 — 정산률 95~115% 밖이면 ⚠'
+              ? '월 기준 — 보정 정산률 90~105% 밖이면 ⚠ (최신 1~2개월은 정산 대기라 판정 보류)'
               : '일·주는 정산 시차로 어긋나는 게 정상이라 경고를 걸지 않아요'}
             {allBuckets.length > buckets.length && ` · 최근 ${buckets.length}개 구간`}
           </span>
@@ -175,7 +176,7 @@ export default async function PrepRevenuePage({
                         ? `/finance/classify?unit=${unit.id}&ym=${classifyYm}&type=revenue&cat=${encodeURIComponent(c.cat)}`
                         : null;
                     const display =
-                      c.key === 'rate' ? (amount ? `${amount.toLocaleString()}%` : '') : won(amount);
+                      c.key === 'rate' || c.key === 'rate_adj' ? (amount ? `${amount.toLocaleString()}%` : '') : won(amount);
                     return (
                       <td
                         key={c.key}

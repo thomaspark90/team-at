@@ -1,15 +1,17 @@
-// 전처리3 — 매출 총합 (2026-08-20).
+// 전처리3 — 매출 총합 (2026-08-20, 발생주의 정본화 같은 날).
 //
-// 매출의 두 원천을 나란히 놓고 대사한다:
-//   ① POS 매출(pos_sales) — 손님이 결제한 시점의 '발생' 매출
-//   ② 통장 입금(transactions revenue 계정) — 카드사·PG가 실제로 넣어준 '정산' 입금
+// 회계 기준(대표 확정, 2026-08-20): **매출 평가는 POS 매출(발생주의·판매일)이 정본**이다.
+// 관리손익(pnl)도 POS 기준이라 일관된다. 이 화면의 통장 입금 축은 매출 인식이 아니라
+// **회수 검증**이다 — "장사값이 제대로 들어오고 있나"를 본다.
 //
-// 둘은 같아야 할 것 같지만 구조적으로 어긋난다:
-//   - 정산 시차: 카드매출은 1~2영업일 뒤 입금(월말 매출은 다음 달 입금)
-//   - 식권 선수금: 식권 판매는 POS 매출에서 제외(선수금)되지만 카드 입금에는 포함
-//   - POS 밖 매출: 케이터링·B2B 같은 계좌 직접 입금은 POS에 없다
-// 그래서 이 화면은 '차이를 없애는' 게 아니라 **차이를 보이게** 한다 — 정산률이 이상한
-// 구간이 곧 조사할 지점이다(실측: 스탭밀 월 정산률 88~160% 널뜀, 2026-08-20).
+// 스탭밀 매출의 20~35%는 식권대장(운영 (주)현대벤디스)·올리브식권 같은 B2B 식권 앱 결제다.
+// 손님이 앱으로 결제하면 POS엔 그날 매출로 찍히지만, 돈은 **다음 달 중순에 한 번에 정산**된다.
+// 카드도 1~2영업일 늦는다. 그래서 '당월 입금 ÷ 당월 POS'는 매출 증감기에 69~160%로 널뛴다
+// (2026-08-20 실측) — 입금 기준으로 월 성과를 읽으면 안 되는 이유가 이 표에 그대로 있다.
+//
+// 그래서 정산률은 두 개다:
+//   - 정산률(원식): 당월 입금 ÷ 당월 POS — 현금흐름 그대로
+//   - 정산률(보정): 식권류 입금을 전월로 귀속한 뒤의 비율 — 회수 정상 여부는 이걸 본다
 
 import { bucketOf, type ExpenseGrain, type ExpenseTx } from './prepExpense';
 
@@ -19,7 +21,7 @@ export interface PosSaleRow {
 }
 
 export interface RevenueColumn {
-  key: string; // 'pos' | 'in:카드매출' | 'in_total' | 'diff' | 'rate'
+  key: string;
   label: string;
   kind: 'pos' | 'income' | 'total' | 'derived';
   /** 분류 화면 드릴다운용 — income 열이면 계정 이름 */
@@ -39,9 +41,19 @@ const add = (m: Record<string, number>, k: string, v: number) => {
   m[k] = (m[k] ?? 0) + v;
 };
 
-/** 월 뷰에서만 정산률을 따진다 — 일·주는 정산 시차 때문에 어긋나는 게 정상이라 경고가 소음이 된다 */
-const RATE_OK_MIN = 95;
-const RATE_OK_MAX = 115;
+/** 식권 앱 정산 입금 — 전월 장사값이 다음 달 중순에 들어온다. 사업자가 늘면 여기에 추가. */
+export const MEAL_TICKET_RE = /식권대장|현대벤디스|올리브식권/;
+
+/** 보정 정산률의 정상 범위 — 밖이면 회수에 문제가 있다는 신호 */
+const RATE_OK_MIN = 90;
+const RATE_OK_MAX = 105;
+
+/** 'YYYY-MM' 한 달 전 */
+const prevYm = (ym: string): string => {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 2, 1));
+  return d.toISOString().slice(0, 7);
+};
 
 export function buildRevenuePrep(
   pos: PosSaleRow[],
@@ -57,11 +69,17 @@ export function buildRevenuePrep(
     add(posAmt, b, p.gross);
   }
 
-  // 통장 입금 — revenue 계정별. 환불(출금)은 순액으로 자연 차감.
+  // 통장 입금 — 식권 앱 정산은 별도 축으로 뗀다(전월분이라 당월 계정 열과 성격이 다르다).
+  // 나머지는 revenue 계정별. 환불(출금)은 순액으로 자연 차감.
   const perCat = new Map<string, Record<string, number>>();
+  const mealTicket: Record<string, number> = {};
   for (const t of txns) {
     const b = bucketOf(t, grain);
     const net = (t.amount_in || 0) - (t.amount_out || 0);
+    if (MEAL_TICKET_RE.test(t.memo ?? '')) {
+      add(mealTicket, b, net);
+      continue;
+    }
     const name = t.cat_name ?? '기타매출';
     const m = perCat.get(name) ?? {};
     add(m, b, net);
@@ -69,30 +87,51 @@ export function buildRevenuePrep(
   }
 
   const buckets = Array.from(
-    new Set([...Object.keys(posAmt), ...Array.from(perCat.values()).flatMap((m) => Object.keys(m))])
+    new Set([
+      ...Object.keys(posAmt),
+      ...Array.from(perCat.values()).flatMap((m) => Object.keys(m)),
+      ...Object.keys(mealTicket),
+    ])
   ).sort((a, b) => b.localeCompare(a));
 
   const inTotal: Record<string, number> = {};
   for (const m of Array.from(perCat.values()))
     for (const [b, v] of Object.entries(m)) add(inTotal, b, v);
+  for (const [b, v] of Object.entries(mealTicket)) add(inTotal, b, v);
+
+  // 보정 입금 — 식권류를 전월(장사한 달)로 귀속. 월 뷰에서만 의미가 있다.
+  const adjusted: Record<string, number> = {};
+  if (isMonth) {
+    for (const m of Array.from(perCat.values()))
+      for (const [b, v] of Object.entries(m)) add(adjusted, b, v);
+    for (const [b, v] of Object.entries(mealTicket)) add(adjusted, prevYm(b), v);
+  }
 
   const diff: Record<string, number> = {};
   const rate: Record<string, number> = {};
+  const rateAdj: Record<string, number> = {};
   const warnings: { bucket: string; message: string }[] = [];
+  const latestYm = buckets[0]; // 최신 달 — 식권 정산이 아직 안 들어와 보정률이 낮게 나오는 게 정상
   for (const b of buckets) {
     const p = posAmt[b] ?? 0;
     const i = inTotal[b] ?? 0;
     diff[b] = i - p;
     if (p > 0) {
       rate[b] = Math.round((i * 1000) / p) / 10;
-      if (isMonth && (rate[b] < RATE_OK_MIN || rate[b] > RATE_OK_MAX)) {
-        warnings.push({
-          bucket: b,
-          message:
-            rate[b] > 100
-              ? `입금이 POS 매출보다 ${Math.abs(diff[b]).toLocaleString()}원 많아요(정산률 ${rate[b]}%) — 식권 선수금·POS 밖 입금(케이터링 등)·전월 정산 이월이 후보예요.`
-              : `입금이 POS 매출보다 ${Math.abs(diff[b]).toLocaleString()}원 적어요(정산률 ${rate[b]}%) — 은행 자료 누락이나 월말 매출의 다음 달 정산 이월이 후보예요.`,
-        });
+      if (isMonth) {
+        const a = adjusted[b] ?? 0;
+        rateAdj[b] = Math.round((a * 1000) / p) / 10;
+        // 최신 1~2개월은 식권 정산·은행 자료가 아직이라 판정 보류
+        const isRecent = b >= prevYm(latestYm);
+        if (!isRecent && (rateAdj[b] < RATE_OK_MIN || rateAdj[b] > RATE_OK_MAX)) {
+          warnings.push({
+            bucket: b,
+            message:
+              rateAdj[b] > 100
+                ? `보정 정산률 ${rateAdj[b]}% — 식권 시차를 감안해도 입금이 POS보다 많아요. 자가 식권 판매(선수금 — POS 매출엔 없고 카드 입금엔 포함, 월 900만원 규모)나 POS 밖 매출이 후보예요.`
+                : `보정 정산률 ${rateAdj[b]}% — 식권 시차를 감안해도 입금이 부족해요. 은행 자료 누락이나 미정산 후보예요.`,
+          });
+        }
       }
     }
   }
@@ -113,33 +152,45 @@ export function buildRevenuePrep(
   const columns: RevenueColumn[] = [
     {
       key: 'pos',
-      label: 'POS 매출',
+      label: 'POS 매출 (정본)',
       kind: 'pos',
       amounts: posAmt,
-      hint: '손님이 결제한 시점의 매출(부가세 포함 총액). 식권 판매는 선수금이라 제외돼 있어요.',
+      hint: '판매일 기준 매출(발생주의) — 월 성과 평가는 이 열이 정본이에요. 관리손익도 이 기준이에요. 식권 판매는 선수금이라 제외돼 있어요.',
     },
     ...incomeColumns,
+    {
+      key: 'meal_ticket',
+      label: '식권 정산 (전월분)',
+      kind: 'income',
+      cat: '기타매출',
+      amounts: mealTicket,
+      hint: '식권대장(현대벤디스)·올리브식권 정산 — 손님은 지난달에 결제했고 돈이 이번 달 중순에 들어온 거예요. 이번 달 장사값이 아니에요.',
+    },
     {
       key: 'in_total',
       label: '통장 입금 합계',
       kind: 'total',
       amounts: inTotal,
-      hint: '매출 계정으로 분류된 통장 입금의 순액(환불 차감).',
-    },
-    {
-      key: 'diff',
-      label: '차이 (입금−POS)',
-      kind: 'derived',
-      amounts: diff,
-      hint: '정산 시차·식권 선수금·POS 밖 매출이 여기에 나타나요. 0에 가까울수록 두 원천이 맞는 거예요.',
+      hint: '매출 계정으로 분류된 통장 입금의 순액(환불 차감) — 현금흐름 그대로.',
     },
     {
       key: 'rate',
       label: '정산률 %',
       kind: 'derived',
       amounts: rate,
-      hint: `통장 입금 ÷ POS 매출. 월 기준 ${RATE_OK_MIN}~${RATE_OK_MAX}% 밖이면 ⚠ 로 표시해요.`,
+      hint: '당월 입금 ÷ 당월 POS — 식권·카드 시차 때문에 매출 증감기에 크게 널뛰어요. 참고용.',
     },
+    ...(isMonth
+      ? [
+          {
+            key: 'rate_adj',
+            label: '보정 정산률 %',
+            kind: 'derived' as const,
+            amounts: rateAdj,
+            hint: `식권 정산을 장사한 달(전월)로 되돌린 비율 — 회수가 정상인지는 이걸 봐요. ${RATE_OK_MIN}~${RATE_OK_MAX}% 밖이면 ⚠. 최신 1~2개월은 정산이 아직이라 낮게 나오는 게 정상이에요.`,
+          },
+        ]
+      : []),
   ];
 
   return { grain, buckets, columns, warnings };
