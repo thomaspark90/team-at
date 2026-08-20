@@ -14,6 +14,7 @@ import ClosePnlSummary, { type PnlSummaryRow } from '@/components/finance/CloseP
 import { buildExpensePrep, type ExpenseTx } from '@/lib/finance/prepExpense';
 import { buildExpenseDetail, type CategoryInfo } from '@/lib/finance/prepExpenseDetail';
 import { buildRevenuePrep, type PosSaleRow } from '@/lib/finance/prepRevenue';
+import { cashflow } from '@/lib/finance/cashflow';
 
 export default async function ClosePage({ searchParams }: { searchParams: { brand?: string; unit?: string } }) {
   const supabase = await createClient();
@@ -107,7 +108,7 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
   let fullTxQ = supabase
     .schema('finance')
     .from('transactions')
-    .select('tx_at,ym,source,memo,amount_out,amount_in,category_id,categories(type,name)')
+    .select('tx_at,ym,source,memo,bank,balance,split_parent_id,amount_out,amount_in,category_id,categories(type,name)')
     .eq('brand', unit.brand)
     .limit(50000);
   if (unit.store) fullTxQ = fullTxQ.eq('store', unit.store);
@@ -136,6 +137,19 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
   const pendingA = amountsOf(p2.summary, 'g_pending');
   const posA = amountsOf(p3.columns, 'pos');
   const inA = amountsOf(p3.columns, 'in_total');
+  // 은행 월말 잔액 — 통장 표(cashflow)와 같은 계산(앵커 방식·분할 자식 제외). 은행 자료 없는 달은 null.
+  const bankRaw = (fullTxData ?? []) as { tx_at: string; ym: string; source: string; bank: string | null; balance: number | null; split_parent_id: number | null; amount_in: number; amount_out: number }[];
+  const bankMonths = cashflow(
+    bankRaw
+      .filter((t) => t.source === 'bank' && t.bank != null && t.split_parent_id == null)
+      .map((t) => ({ ym: t.ym, bank: t.bank!, tx_at: t.tx_at, amount_in: t.amount_in, amount_out: t.amount_out, balance: t.balance ?? 0 }))
+  );
+  const balanceByYm = new Map(bankMonths.map((m) => [m.ym, m.totalBalance]));
+  // 미분해·미분류 구성 분해 — 셀 클릭 시 "뭐가 분류 안 됐는지"를 보여주기 위해(2026-08-20 대표 요청)
+  const cardOtherA = amountsOf(p2.columns, 'card_other');
+  const collectedOtherA = amountsOf(p2.columns, 'collected_other');
+  const unclassifiedA = amountsOf(p2.columns, 'unclassified');
+  const misangA = amountsOf(p2.columns, 'misang');
   const pnlRows: PnlSummaryRow[] = Array.from(
     new Set([...Object.keys(expenseA), ...Object.keys(posA)])
   )
@@ -146,6 +160,13 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
       inTotal: inA[ym] ?? 0,
       expense: expenseA[ym] ?? 0,
       pendingExpense: pendingA[ym] ?? 0,
+      pending: {
+        cardOther: cardOtherA[ym] ?? 0,
+        collectedOther: collectedOtherA[ym] ?? 0,
+        unclassified: unclassifiedA[ym] ?? 0,
+        misang: misangA[ym] ?? 0,
+      },
+      bankBalance: balanceByYm.get(ym) ?? null,
     }));
 
   // 좌측 연·월 사이드바 배지 — 이 단위의 브랜드 몫만
