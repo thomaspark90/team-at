@@ -88,6 +88,8 @@ export async function POST(req: Request) {
 
   // 로우데이터 적재 — dedup 앞에서 한다. 이미 올린 파일을 다시 올리는 경우(raw 도입 전 자료의
   // 소급 보관)에도 원본이 남아야 하기 때문. 실패해도 본 저장은 계속한다.
+  const dateByRow = new Map<number, string>();
+  for (const t of result.transactions) if (t.rawRowIndex != null) dateByRow.set(t.rawRowIndex, t.txAt.slice(0, 10));
   const rawSaved = await saveRawBatchSafe(
     supabase,
     {
@@ -100,7 +102,7 @@ export async function POST(req: Request) {
       periodEnd,
       userId: user.id,
     },
-    buildRawRows(sheetRows)
+    buildRawRows(sheetRows).map((r) => ({ ...r, rowDate: dateByRow.get(r.rowIndex) ?? null }))
   );
 
   const { fresh: freshAll, duplicates } = dedupe(result.transactions, existing);

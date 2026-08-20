@@ -46,6 +46,9 @@ export interface RawBatchInput {
 export interface RawRowInput {
   rowIndex: number; // 원본 파일에서의 절대 행 번호(0-base). 수집형은 배열 순서
   payload: unknown;
+  /** 행의 거래일 'YYYY-MM-DD' — 기간 조회·날짜 정렬용. 메타/헤더 행은 null.
+   *  ⚠️ 적재 시 반드시 채울 것 — 백필만 믿었다가 새 적재분이 기간 필터에서 통째로 빠졌다(2026-08-20). */
+  rowDate?: string | null;
 }
 
 export interface RawBatchSaved {
@@ -99,6 +102,7 @@ export async function saveRawBatch(
           batch_id: batchId,
           row_index: r.rowIndex,
           payload: r.payload as never,
+          row_date: r.rowDate ?? null,
         }))
       )
       .select('id,row_index');

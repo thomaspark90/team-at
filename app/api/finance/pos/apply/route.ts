@@ -88,7 +88,7 @@ export async function POST(req: Request) {
         periodEnd: dates[dates.length - 1] ?? null,
         userId: user.id,
       },
-      r.raw.rows.map((row, i) => ({ rowIndex: i, payload: row }))
+      r.raw.rows.map((row, i) => ({ rowIndex: i, payload: row, rowDate: r.raw!.dates[i] ?? null }))
     );
   }
 
