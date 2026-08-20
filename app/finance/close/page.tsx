@@ -136,6 +136,12 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
     cols.find((c) => c.key === key)?.amounts ?? {};
   const expenseA = amountsOf(p1.rows, 'total');
   const pendingA = amountsOf(p2.summary, 'g_pending');
+  // 비용 구성 % — 전처리2 요약 5그룹을 매출 대비 비율로(2026-08-20 대표 요청). 같은 빌더 재사용.
+  const gMaterialA = amountsOf(p2.summary, 'g_material');
+  const gLaborA = amountsOf(p2.summary, 'g_labor');
+  const gRentA = amountsOf(p2.summary, 'g_rent');
+  const gTaxA = amountsOf(p2.summary, 'g_tax');
+  const gEtcA = amountsOf(p2.summary, 'g_etc');
   const posA = amountsOf(p3.columns, 'pos');
   const inA = amountsOf(p3.columns, 'in_total');
   // 은행 월말 잔액 — 통장 표(cashflow)와 같은 계산(앵커 방식·분할 자식 제외). 은행 자료 없는 달은 null.
@@ -174,6 +180,13 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
       bankBalance: balanceByYm.get(ym) ?? null,
       nonSalesIn: reconByYm.get(ym)?.nonSalesIn ?? null,
       nonExpenseOut: reconByYm.get(ym)?.nonExpenseOut ?? null,
+      groups: {
+        material: gMaterialA[ym] ?? 0,
+        labor: gLaborA[ym] ?? 0,
+        rent: gRentA[ym] ?? 0,
+        tax: gTaxA[ym] ?? 0,
+        etc: gEtcA[ym] ?? 0,
+      },
     }));
 
   // 좌측 연·월 사이드바 배지 — 이 단위의 브랜드 몫만

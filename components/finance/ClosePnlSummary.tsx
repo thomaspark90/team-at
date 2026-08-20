@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import Link from 'next/link';
 import type { ExpenseGrain } from '@/lib/finance/prepExpense';
 
@@ -18,6 +19,8 @@ export interface PnlSummaryRow {
   /** 손익↔잔고 다리 — 월별 요약(buildCashflowRecon)과 같은 값. 은행 자료 없는 달은 null */
   nonSalesIn: number | null; // 매출 외 입금(투자·환급·반환 등)
   nonExpenseOut: number | null; // 비용 외 출금(인테리어·보증금·대여금·투자 등)
+  /** 전처리2 요약 5그룹 — 매출 대비 비용 구성 %의 분자(2026-08-20 대표 요청) */
+  groups: { material: number; labor: number; rent: number; tax: number; etc: number };
 }
 
 export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[]; unitId: string }) {
@@ -37,6 +40,8 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
         그래프(EBIT)는 부가세 제외 공급가액 기준이라 값은 다르지만 규칙(발생주의·카드대금 차감·미분류 포함)이
         같아 추세는 일치해요. 재고·채널수수료까지 반영한 정식 손익은{' '}
         <Link href={`/finance/pnl?unit=${unitId}`} className="underline">관리손익</Link>에서 봐요.
+        각 월 아래 작은 줄은 <b>비용 구성 %</b> — 전처리2 요약 그룹(재료비·인건비·임관리비 등)을 POS 매출
+        대비 비율로 본 거예요. 미분해 %가 크면(⚠ 5%+) 나머지 비율이 실제보다 낮게 보여요.
         실입금은 회수 참고용(카드 1~2일·식권 정산 한 달 시차). †는 POS 미업로드 달 —
         실입금 − 지출로 임시 계산한 값이라 POS 파일을 올리면 정식 손익으로 바뀌어요.
         은행 잔고는 그 달 말일 통장 잔액 — 전월 잔고 + 손익과 다른 게 정상이에요(잔고 ⓘ 참고).
@@ -130,8 +135,27 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
               // 거짓 적자가 된다(2026-08-20 보고). 실입금 − 지출로 대체하고 † 로 구분한다.
               const noPos = r.pos === 0 && r.inTotal > 0;
               const profit = noPos ? r.inTotal - r.expense : r.pos - r.expense;
+              // 비용 구성 % — 분모는 POS 매출(정본). POS 없는 달은 비율이 무의미해 줄 생략.
+              const pctBase = noPos ? 0 : r.pos;
+              const pct = (v: number) => {
+                const p = (v * 100) / pctBase;
+                const s = p.toFixed(1);
+                return s.endsWith('.0') ? s.slice(0, -2) : s;
+              };
+              const pendingPct = pctBase > 0 ? (r.pendingExpense * 100) / pctBase : 0;
+              const ratioItems =
+                pctBase > 0
+                  ? [
+                      { label: '재료비', v: r.groups.material },
+                      { label: '인건비', v: r.groups.labor },
+                      { label: '임관리', v: r.groups.rent },
+                      { label: '세금보험', v: r.groups.tax },
+                      { label: '기타', v: r.groups.etc },
+                    ]
+                  : [];
               return (
-                <tr key={r.ym} className="border-b border-border/50 last:border-0">
+                <Fragment key={r.ym}>
+                <tr className={ratioItems.length > 0 ? 'border-b-0' : 'border-b border-border/50'}>
                   <td className="whitespace-nowrap px-3 py-1.5 tabular-nums text-muted-foreground">{r.ym}</td>
                   <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">
                     {noPos ? <span className="text-muted-foreground/60">미업로드</span> : won(r.pos)}
@@ -237,6 +261,33 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                     {r.bankBalance == null ? '' : won(r.bankBalance)}
                   </td>
                 </tr>
+                {/* 비용 구성 % — 전처리2 요약 5그룹 ÷ POS 매출(부가세 포함 정본). 미분해가 크면
+                    각 비율이 실제보다 낮게 보이므로 5% 이상이면 경고 톤으로 함께 표기한다.
+                    POS 미업로드 달은 분모가 없어 줄 자체를 생략. */}
+                {ratioItems.length > 0 && (
+                <tr className="border-b border-border/50 last:border-0">
+                  <td />
+                  <td colSpan={8} className="px-3 pb-2 pt-0 text-left text-[12px] text-muted-foreground">
+                    {(
+                      <span className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                        {ratioItems.map((it) => (
+                          <span key={it.label} title={`${it.label} ${it.v.toLocaleString()}원 ÷ POS 매출 ${r.pos.toLocaleString()}원`}>
+                            {it.label} <b className="tabular-nums font-medium text-foreground/80">{pct(it.v)}%</b>
+                          </span>
+                        ))}
+                        <span
+                          title={`미분해·미분류 ${r.pendingExpense.toLocaleString()}원 — 이 몫이 클수록 왼쪽 비율들이 실제보다 낮게 보여요`}
+                          className={pendingPct >= 5 ? 'text-amber-600' : ''}
+                        >
+                          미분해 <b className="tabular-nums font-medium">{pct(r.pendingExpense)}%</b>
+                          {pendingPct >= 5 && ' ⚠'}
+                        </span>
+                      </span>
+                    )}
+                  </td>
+                </tr>
+                )}
+                </Fragment>
               );
             })}
           </tbody>
