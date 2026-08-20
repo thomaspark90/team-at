@@ -42,24 +42,35 @@ export default async function RawPage({ searchParams }: { searchParams: Record<s
   (cats ?? []).forEach((c: { id: number; name: string }) => (categoryNames[c.id] = c.name));
 
   // 월 단축 후보 — 적재된 배치들이 걸쳐 있는 달
-  const months = Array.from(
-    new Set(
-      batches.flatMap((b) => {
-        const out: string[] = [];
-        if (b.period_start) out.push(b.period_start.slice(0, 7));
-        if (b.period_end) out.push(b.period_end.slice(0, 7));
-        return out;
-      })
-    )
-  ).sort((a, b) => b.localeCompare(a));
+  // 기간 단축 — 배치 경계 월을 나열하면 무슨 기준인지 안 읽힌다(2026-08-20 보고).
+  // 데이터가 걸친 범위를 반기(1~6월/7~12월)로 잘라 '2025 상반기' 같은 칩으로 제공한다.
+  const halves = (() => {
+    const yms = batches.flatMap((b) => [b.period_start?.slice(0, 7), b.period_end?.slice(0, 7)]).filter(Boolean) as string[];
+    if (yms.length === 0) return [] as { label: string; from: string; to: string }[];
+    const min = yms.reduce((a, b) => (a < b ? a : b));
+    const max = yms.reduce((a, b) => (a > b ? a : b));
+    const out: { label: string; from: string; to: string }[] = [];
+    for (let y = Number(min.slice(0, 4)); y <= Number(max.slice(0, 4)); y++) {
+      for (const h of [0, 1] as const) {
+        const from = `${y}-${h === 0 ? '01' : '07'}-01`;
+        const to = `${y}-${h === 0 ? '06-30' : '12-31'}`;
+        // 데이터 범위와 겹치는 반기만
+        if (to.slice(0, 7) < min || from.slice(0, 7) > max) continue;
+        out.push({ label: `${y} ${h === 0 ? '상반기' : '하반기'}`, from, to });
+      }
+    }
+    return out.reverse(); // 최신이 앞
+  })();
 
-  const href = (next: { source?: string; ym?: string | null }) => {
+  const href = (next: { source?: string; from?: string | null; to?: string | null }) => {
     const p = new URLSearchParams({ unit: unit.id, source: next.source ?? query.source });
-    if (next.ym) p.set('ym', next.ym);
+    if (next.from && next.to) {
+      p.set('from', next.from);
+      p.set('to', next.to);
+    }
     return `/finance/raw?${p}`;
   };
-  const activeYm =
-    query.from && query.to && query.from.slice(0, 7) === query.to.slice(0, 7) ? query.from.slice(0, 7) : null;
+  const activeHalf = halves.find((h) => h.from === query.from && h.to === query.to)?.label ?? null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -99,31 +110,31 @@ export default async function RawPage({ searchParams }: { searchParams: Record<s
               </Link>
             ))}
           </div>
-          {months.length > 0 && (
+          {halves.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
               <Link
-                href={href({ ym: null })}
-                aria-current={!activeYm ? 'page' : undefined}
+                href={href({})}
+                aria-current={!activeHalf && !query.from ? 'page' : undefined}
                 className={`rounded-md border px-2.5 py-1 text-[12px] transition-colors ${
-                  !activeYm
+                  !activeHalf && !query.from
                     ? 'border-foreground bg-foreground text-background'
                     : 'border-border text-muted-foreground hover:text-foreground'
                 }`}
               >
                 전체
               </Link>
-              {months.map((m) => (
+              {halves.map((h) => (
                 <Link
-                  key={m}
-                  href={href({ ym: m })}
-                  aria-current={m === activeYm ? 'page' : undefined}
+                  key={h.label}
+                  href={href({ from: h.from, to: h.to })}
+                  aria-current={h.label === activeHalf ? 'page' : undefined}
                   className={`rounded-md border px-2.5 py-1 text-[12px] tabular-nums transition-colors ${
-                    m === activeYm
+                    h.label === activeHalf
                       ? 'border-foreground bg-foreground text-background'
                       : 'border-border text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {m}
+                  {h.label}
                 </Link>
               ))}
             </div>
