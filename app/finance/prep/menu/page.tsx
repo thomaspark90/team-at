@@ -13,6 +13,7 @@ import {
   type MenuMetric,
   type PosDailyTotal,
 } from '@/lib/finance/prepMenu';
+import MenuPrefsPanel from '@/components/finance/MenuPrefsPanel';
 
 // 전처리4 — POS 메뉴별 판매. 품목 리포트(pos_items)를 기간 축으로 펼치고,
 // 총액이 전처리3 POS 매출(pos_sales)과 맞는지 '정합 차이' 열로 상시 검증한다.
@@ -63,9 +64,19 @@ export default async function PrepMenuPage({
     .limit(50000);
   if (unit.store) posQ = posQ.eq('store', unit.store);
 
-  const [{ data: itemsData, error: itemsErr }, { data: posData, error: posErr }] = await Promise.all([itemsQ, posQ]);
+  const prefsQ = supabase
+    .schema('finance')
+    .from('prep_menu_prefs')
+    .select('hidden,sort')
+    .eq('brand', unit.brand)
+    .eq('store', unit.store ?? '')
+    .maybeSingle();
+  const [{ data: itemsData, error: itemsErr }, { data: posData, error: posErr }, { data: prefs }] =
+    await Promise.all([itemsQ, posQ, prefsQ]);
   if (itemsErr) throw new Error(`품목 조회 실패: ${itemsErr.message}`);
   if (posErr) throw new Error(`POS 매출 조회 실패: ${posErr.message}`);
+  const hidden = new Set(((prefs?.hidden as string[] | null) ?? []).filter((x) => typeof x === 'string'));
+  const sortPref = ((prefs?.sort as string[] | null) ?? []).filter((x) => typeof x === 'string');
 
   const { buckets: allBuckets, summary, detail } = buildMenuPrep(
     (itemsData as ItemSaleRow[] | null) ?? [],
@@ -74,6 +85,18 @@ export default async function PrepMenuPage({
     metric
   );
   const buckets = allBuckets.slice(0, LIMIT[grain]);
+
+  // 상세 열에 설정 적용 — 숨김 제외(합계 열은 항상), 명시 순서 먼저 + 나머지는 기본(총액)순.
+  // 합계·정합 열은 전 상품 기준 그대로다: 숨김은 '안 보는 것'이지 '없는 셈 치는 것'이 아니다.
+  const allProducts = detail.filter((c) => c.kind === 'menu').map((c) => c.label);
+  const detailShown = (() => {
+    const menuCols = detail.filter((c) => c.kind === 'menu' && !hidden.has(c.label));
+    const inSort = sortPref
+      .map((label) => menuCols.find((c) => c.label === label))
+      .filter((c): c is MenuColumn => !!c);
+    const rest = menuCols.filter((c) => !sortPref.includes(c.label));
+    return [...inSort, ...rest, ...detail.filter((c) => c.kind !== 'menu')];
+  })();
   const num = (n: number) => (n === 0 ? '' : n.toLocaleString());
   const bucketLabel = (b: string) => (grain === 'week' ? `${b.slice(5).replace('-', '/')}~` : b);
   const href = (next: { grain?: string; metric?: string }) =>
@@ -187,7 +210,13 @@ export default async function PrepMenuPage({
         <div className="mb-8">{renderTable(summary)}</div>
 
         <h2 className="mb-2 text-[15px] font-medium">상품별 상세</h2>
-        {renderTable(detail)}
+        {renderTable(detailShown)}
+        <MenuPrefsPanel
+          unit={unit.id}
+          products={allProducts}
+          hidden={Array.from(hidden)}
+          sort={sortPref}
+        />
 
         <div className="mt-4 flex flex-col gap-1 text-[12px] text-muted-foreground">
           {summary
