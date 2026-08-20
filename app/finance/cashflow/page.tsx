@@ -20,6 +20,7 @@ interface TxRow extends ExpenseTx {
   bank: string | null;
   balance: number | null;
   id: number;
+  split_parent_id: number | null;
 }
 
 export default async function CashflowPage({ searchParams }: { searchParams: { unit?: string } }) {
@@ -38,7 +39,7 @@ export default async function CashflowPage({ searchParams }: { searchParams: { u
   let txQ = supabase
     .schema('finance')
     .from('transactions')
-    .select('id,tx_at,ym,source,memo,bank,balance,amount_out,amount_in,category_id,categories(type,name)')
+    .select('id,tx_at,ym,source,memo,bank,balance,amount_out,amount_in,category_id,split_parent_id,categories(type,name)')
     .eq('brand', unit.brand)
     .order('tx_at')
     .order('id')
@@ -94,14 +95,16 @@ export default async function CashflowPage({ searchParams }: { searchParams: { u
     amount_out: t.amount_out,
     amount_in: t.amount_in,
     category_id: t.category_id,
+    split_parent_id: t.split_parent_id,
     cat_type: t.categories?.type ?? null,
     cat_name: t.categories?.name ?? null,
   }));
 
-  // 통장 표 — 은행 거래만(카드 이용내역 등 제외해 현금 중복 방지). 쿼리가 tx_at,id 순이라
-  // cashflow()의 월말 잔액 선택이 동시각에서도 안정적이다.
+  // 통장 표 — 은행 거래만(카드 이용내역 등 제외해 현금 중복 방지). 건별분할 자식은 제외 —
+  // 실제 통장 이동은 부모 한 건이고 자식은 손익용 파생 행이라, 안 거르면 그 금액이 이중이
+  // 된다(지표 loadBankCash와 동일 규칙). 쿼리가 tx_at,id 순이라 월말 잔액 선택도 안정적.
   const bankTxns = txns
-    .filter((t) => t.source === 'bank' && t.bank != null)
+    .filter((t) => t.source === 'bank' && t.bank != null && t.split_parent_id == null)
     .map((t) => ({
       ym: t.ym,
       bank: t.bank!,

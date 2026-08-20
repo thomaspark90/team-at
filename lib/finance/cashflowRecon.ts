@@ -69,12 +69,15 @@ export function buildCashflowRecon(
     if (t.cat_type === 'revenue') revenueInGross[t.ym] = (revenueInGross[t.ym] ?? 0) + (t.amount_in || 0);
     // 전처리1이 지출로 세지 않는 은행 출금: 분류돼 있고(미분류는 지출에 포함),
     // 비용 계정도 '미상'도 아니고, 카드대금 인출(카드 기타지출로 환산됨)도 아닌 것 —
-    // 대여금·투자·개인·카드대금정산 같은 계정이 여기 모인다.
+    // 대여금·투자·보증금·개인·카드대금정산 같은 계정이 여기 모인다.
+    // '건별분할' 부모는 제외 — 그 성격은 자식 행들(같은 source='bank')이 대신 드러내므로,
+    // 부모까지 세면 분할된 금액이 이중이 된다(2023-11 보증금 분할에서 확인).
     const isNonExpense =
       t.category_id != null &&
       t.cat_type != null &&
       !EXPENSE_TYPES.has(t.cat_type) &&
       t.cat_name !== '미상' &&
+      t.cat_name !== '건별분할' &&
       t.cat_type !== 'revenue' && // 매출 환불은 매출 축(순액)에서 이미 차감
       !CARD_PAYMENT_RE.test(t.memo ?? '');
     if (isNonExpense && (t.amount_out || 0) > 0)
