@@ -41,6 +41,8 @@ export interface ExpenseDetail {
   warnings: { bucket: string; message: string }[];
   /** 상단 요약 — 5+1 그룹(2026-08-20 대표 확정). 그룹 합 = 상세 열 합 = 지출 합계. */
   summary: DetailColumn[];
+  /** '기타 운영비' 그룹의 구성 계정(최상위) — 결산 손익 요약 기타% 호버용(2026-08-21) */
+  etcMembers: { label: string; amounts: Record<string, number> }[];
 }
 
 // 요약 그룹 정의 — 18개월 실데이터 기준 재료비 36%·인건비 29%·임관리비 23%·세금보험 6%가
@@ -262,10 +264,13 @@ export function buildExpenseDetail(
   // ── 상단 요약(5+1) — 상세 열을 그룹으로 접는다. 그룹 합 = 상세 합 = 지출 합계(정합 불변식) ──
   const groupAmounts = SUMMARY_GROUPS.map(() => ({}) as Record<string, number>);
   const etcOps: Record<string, number> = {}; // 기타 운영비 — 어느 그룹에도 안 걸린 sga 전부
+  // 기타 운영비의 구성 계정 — 결산 손익 요약의 기타% 호버에서 "뭐가 들어있는지"를 보여주기 위함(2026-08-21)
+  const etcMembers: { label: string; amounts: Record<string, number> }[] = [];
   for (const [id, amounts] of Array.from(perCat.entries())) {
     const top = byId.get(id)!;
     const gi = SUMMARY_GROUPS.findIndex((g) => g.match(top));
     const dest = gi >= 0 ? groupAmounts[gi] : etcOps;
+    if (gi < 0) etcMembers.push({ label: top.name, amounts });
     for (const [b, v] of Object.entries(amounts)) add(dest, b, v);
   }
   // 미분해·미분류·미상·비용외 — 정합 유지용 마지막 그룹(분류가 진행될수록 줄어든다)
@@ -300,5 +305,5 @@ export function buildExpenseDetail(
     { key: 'total', label: isMonth ? '지출 합계 (비용)' : '현금 유출 합계', kind: 'total', amounts: total },
   ];
 
-  return { grain, buckets, columns, warnings, summary };
+  return { grain, buckets, columns, warnings, summary, etcMembers };
 }

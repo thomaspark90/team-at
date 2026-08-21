@@ -27,6 +27,8 @@ export interface PnlSummaryRow {
   nonExpenseOut: number | null; // 비용 외 출금(인테리어·보증금·대여금·투자 등)
   /** 전처리2 요약 5그룹 — 매출 대비 비용 구성 %의 분자(2026-08-20 대표 요청) */
   groups: { material: number; labor: number; rent: number; tax: number; etc: number };
+  /** 기타 운영비의 구성 계정(금액 큰 순) — 기타% 호버로 "뭐가 들어있는지"(2026-08-21 대표 요청) */
+  etcDetail: { name: string; amount: number }[];
 }
 
 export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[]; unitId: string }) {
@@ -56,8 +58,9 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
         같아 추세는 일치해요. 재고·채널수수료까지 반영한 정식 손익은{' '}
         <Link href={`/finance/pnl?unit=${unitId}`} className="underline">관리손익</Link>에서 봐요 —
         <b> 손익 값을 누르면</b> 그 달 관리손익 요약(부가세·수수료 제외)이 행 아래에 바로 펼쳐져요.
-        지출 합계 오른쪽 열들은 <b>비용 구성 %</b> — 전처리2 요약 그룹을 POS 매출 대비 비율로 본 거예요
-        (호버하면 금액). 미분해 %가 크면(⚠ 5%+) 나머지 비율이 실제보다 낮게 보여요.
+        지출 합계 오른쪽 열들은 <b>비용 구성 %</b> — 전처리2 요약 그룹을 매출 대비 비율로 본 거예요
+        (호버하면 금액, 기타%는 구성 계정까지). <b>지출 구성 % + 손익 옆 이익률 % = 100%</b>로 닫혀요.
+        미분해 %가 크면(⚠ 5%+) 나머지 비율이 실제보다 낮게 보여요.
         실입금은 회수 참고용(카드 1~2일·식권 정산 한 달 시차). †는 POS 미업로드 달 —
         실입금 − 지출로 임시 계산한 값이라 POS 파일을 올리면 정식 손익으로 바뀌어요.
         은행 잔고는 그 달 말일 통장 잔액(진행 중인 달은 최신 거래일 기준) — 전월 잔고 + 손익과 다른 게 정상이에요(잔고 ⓘ 참고).
@@ -76,7 +79,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                 매출
               </th>
               <th colSpan={7} className="border-l-2 border-l-border px-3 py-1.5 text-left font-normal">
-                지출 — 구성 %는 POS 매출 대비 (전처리2 그룹)
+                지출 — 구성 %는 매출 대비 (전처리2 그룹, 이익률과 합해 100%)
               </th>
               <th className="border-l-2 border-l-border px-3 py-1.5 text-left font-normal">손익</th>
               <th colSpan={3} className="border-l-2 border-l-border px-3 py-1.5 text-left font-normal">
@@ -94,19 +97,19 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
               <th className="whitespace-nowrap border-l-2 border-l-border px-3 py-2 text-right font-normal">
                 <Link href={grainLink('expense')} className="hover:text-foreground">지출 합계</Link>
               </th>
-              <th className="whitespace-nowrap px-3 py-2 text-right font-normal" title="원가(cogs) 전체 ÷ POS 매출 — 호버하면 금액이 보여요">
+              <th className="whitespace-nowrap px-3 py-2 text-right font-normal" title="원가(cogs) 전체 ÷ 매출 — 호버하면 금액이 보여요">
                 <Link href={grainLink('expense-detail')} className="hover:text-foreground">재료비%</Link>
               </th>
-              <th className="whitespace-nowrap px-3 py-2 text-right font-normal" title="정규직·단기·일일용역·퇴직금 ÷ POS 매출">
+              <th className="whitespace-nowrap px-3 py-2 text-right font-normal" title="정규직·단기·일일용역·퇴직금 ÷ 매출">
                 <Link href={grainLink('expense-detail')} className="hover:text-foreground">인건비%</Link>
               </th>
-              <th className="whitespace-nowrap px-3 py-2 text-right font-normal" title="임대료+관리비 ÷ POS 매출">
+              <th className="whitespace-nowrap px-3 py-2 text-right font-normal" title="임대료+관리비 ÷ 매출">
                 <Link href={grainLink('expense-detail')} className="hover:text-foreground">임관리%</Link>
               </th>
-              <th className="whitespace-nowrap px-3 py-2 text-right font-normal" title="세금과공과+보험료 ÷ POS 매출">
+              <th className="whitespace-nowrap px-3 py-2 text-right font-normal" title="세금과공과+보험료 ÷ 매출">
                 <Link href={grainLink('expense-detail')} className="hover:text-foreground">세금보험%</Link>
               </th>
-              <th className="whitespace-nowrap px-3 py-2 text-right font-normal" title="그 외 판관비 전부 ÷ POS 매출">
+              <th className="whitespace-nowrap px-3 py-2 text-right font-normal" title="그 외 판관비 전부 ÷ 매출">
                 <Link href={grainLink('expense-detail')} className="hover:text-foreground">기타%</Link>
               </th>
               <th className="whitespace-nowrap px-3 py-2 text-right font-normal" title="지출 중 카드 미분해·미분류·미상 — 분류가 진행되면 줄어요. %가 크면(⚠ 5%+) 왼쪽 비율들이 실제보다 낮게 보여요">
@@ -191,12 +194,18 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                 return s.endsWith('.0') ? s.slice(0, -2) : s;
               };
               const pendingPct = pctBase > 0 ? (r.pendingExpense * 100) / pctBase : 0;
+              // 기타 운영비 호버 — 구성 계정을 금액 큰 순으로(잡비·수수료·광고비 등이 뭉쳐 있어
+              // "기타가 뭔데?"가 안 보이던 문제, 2026-08-21 대표 요청)
+              const etcTitle = [
+                `기타 운영비 ${r.groups.etc.toLocaleString()}원 ÷ 매출 ${r.pos.toLocaleString()}원`,
+                ...r.etcDetail.map((d) => `· ${d.name} ${d.amount.toLocaleString()}원`),
+              ].join('\n');
               const ratioItems = [
                 { label: '재료비', v: r.groups.material },
                 { label: '인건비', v: r.groups.labor },
                 { label: '임관리', v: r.groups.rent },
                 { label: '세금·보험', v: r.groups.tax },
-                { label: '기타 운영비', v: r.groups.etc },
+                { label: '기타 운영비', v: r.groups.etc, title: etcTitle },
               ];
               return (
                 <Fragment key={r.ym}>
@@ -213,7 +222,11 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                     <td
                       key={it.label}
                       className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground"
-                      title={pctBase > 0 ? `${it.label} ${it.v.toLocaleString()}원 ÷ POS 매출 ${r.pos.toLocaleString()}원` : undefined}
+                      title={
+                        pctBase > 0
+                          ? (it as { title?: string }).title ?? `${it.label} ${it.v.toLocaleString()}원 ÷ 매출 ${r.pos.toLocaleString()}원`
+                          : undefined
+                      }
                     >
                       {pctBase > 0 && it.v !== 0 ? `${pct(it.v)}%` : ''}
                     </td>
@@ -297,7 +310,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                     {r.pendingExpense !== 0 && pctBase > 0 && (
                       <span
                         className={`ml-1 text-[12px] ${pendingPct >= 5 ? 'text-amber-600' : 'text-muted-foreground/70'}`}
-                        title="미분해·미분류 ÷ POS 매출 — 이 몫이 클수록 왼쪽 구성 %가 실제보다 낮게 보여요"
+                        title="미분해·미분류 ÷ 매출 — 이 몫이 클수록 왼쪽 구성 %가 실제보다 낮게 보여요"
                       >
                         ({pct(r.pendingExpense)}%{pendingPct >= 5 && ' ⚠'})
                       </span>
@@ -321,6 +334,16 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                       {profit < 0 ? `−${won(-profit)}` : won(profit)}
                       {noPos && <span className="ml-0.5 text-muted-foreground">†</span>}
                     </button>
+                    {/* 이익률 병기 — 지출 구성 %들과 합이 100%로 닫힌다(2026-08-21 대표 요청).
+                        지출% 합 = 지출÷매출, 이익률 = 손익÷매출 이라 둘을 더하면 항상 100%. */}
+                    {pctBase > 0 && (
+                      <span
+                        className="ml-1 text-[12px] font-normal text-muted-foreground"
+                        title={`이익률 = 손익 ÷ 매출 — 왼쪽 지출 구성 %들과 더하면 100%가 돼요`}
+                      >
+                        ({profit < 0 ? '−' : ''}{pct(Math.abs(profit))}%)
+                      </span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap border-l-2 border-l-border px-3 py-1.5 text-right tabular-nums text-muted-foreground">
                     {r.nonSalesIn == null ? '' : won(r.nonSalesIn)}

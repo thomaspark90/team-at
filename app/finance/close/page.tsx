@@ -187,6 +187,11 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
         tax: gTaxA[ym] ?? 0,
         etc: gEtcA[ym] ?? 0,
       },
+      // 기타 운영비 구성(그 달 금액 있는 계정만, 큰 순) — 기타% 호버용
+      etcDetail: p2.etcMembers
+        .map((m) => ({ name: m.label, amount: m.amounts[ym] ?? 0 }))
+        .filter((x) => x.amount !== 0)
+        .sort((a, b) => b.amount - a.amount),
     }));
 
   // 좌측 연·월 사이드바 배지 — 이 단위의 브랜드 몫만
