@@ -196,7 +196,8 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <AccountingNav role={role} />
-      <div className="mx-auto max-w-[1600px] px-6 py-8">
+      {/* 폭 제한 없음 — 손익 요약 열이 많아 화면을 100% 쓴다(2026-08-21 대표 요청) */}
+      <div className="w-full px-6 py-8">
         <div className="mb-4 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">월 결산</h1>
           <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
