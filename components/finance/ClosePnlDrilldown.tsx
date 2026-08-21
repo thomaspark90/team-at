@@ -85,6 +85,11 @@ export default function ClosePnlDrilldown({ ym, unitId, colSpan }: { ym: string;
 
   const s = data?.sales.supply ?? 0;
   const payLumpTotal = (data?.payLump?.coupang ?? 0) + (data?.payLump?.naverpay ?? 0);
+  // 지출 합계(수수료 포함) — 공급가액 = 지출 합계 + 영업이익이라 두 %를 더하면 정확히 100%.
+  // "%가 100%로 안 닫힌다"(2026-08-21 대표) 해결 — 수수료에도 %를 달고 이 줄로 전체를 닫는다.
+  const expenseTotal = data
+    ? data.channelFee.amount + data.cogs.total + data.labor + data.fixed + data.cardLump + payLumpTotal + data.misang + data.unclassified
+    : 0;
   return (
     <tr className="border-b border-border/50 bg-muted/30">
       <td />
@@ -114,6 +119,7 @@ export default function ClosePnlDrilldown({ ym, unitId, colSpan }: { ym: string;
                 <Line
                   label="(−) 채널수수료"
                   amount={-data.channelFee.amount}
+                  supply={s}
                   sub={data.channelFee.estimated ? '추정' : undefined}
                 />
                 <Line label="순매출" amount={data.netSales} bold />
@@ -134,6 +140,7 @@ export default function ClosePnlDrilldown({ ym, unitId, colSpan }: { ym: string;
                 )}
                 {data.misang > 0 && <Line label="(−) 미상" amount={-data.misang} supply={s} warn />}
                 {data.unclassified > 0 && <Line label="(−) 미분류" amount={-data.unclassified} supply={s} warn />}
+                <Line label="지출 합계" amount={-expenseTotal} supply={s} muted sub="수수료 포함 — 영업이익 %와 더하면 100%" />
                 <Line label="영업이익 (EBIT 근사)" amount={data.operatingProfit} supply={s} bold />
               </tbody>
             </table>
