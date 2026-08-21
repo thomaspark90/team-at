@@ -24,7 +24,11 @@ export interface PnlTx {
   amount_out: number;
   source?: string | null; // 'bank' | 'naverpay' | 'coupang' | 'card' — 카드대금 상쇄 판정용(없으면 상쇄 생략)
   is_card_payment?: boolean; // 은행 카드대금 인출(memo가 CARD_PAYMENT_RE에 걸림) — 호출 측이 판정해 넘긴다
+  is_vat_payment?: boolean; // 부가세 납부/환급(memo가 VAT_PAYMENT_RE에 걸림) — 호출 측이 판정해 넘긴다
 }
+
+// 부가세 납부 인출 판정(예: '국세_부가가치세') — 공급가액 기준 손익에선 예수금 정산이라 제외 대상
+export const VAT_PAYMENT_RE = /부가가치세/;
 export interface PnlPosRow {
   ym: string;
   category: string;
@@ -70,6 +74,7 @@ export interface PnlResult {
   grossProfit: number; // 매출총이익 = 순매출 − 재료비
   labor: number; // 인건비
   fixed: number; // 고정비(나머지 판관비)
+  vatPayment: number; // 부가세 납부(예수금 정산) — 손익 제외, 안내 줄 표시용(환급이면 음수)
   unclassified: number; // 미분류 유출(경고)
   misang: number; // '미상' 계정(용도 불명 보류) — 지출로 포함하되 별도 줄로 경고 표시
   cardDupOffset: number; // 카드대금(비용 계정으로 분류된 인출)↔네이버페이·쿠팡 수집분 겹침 차감액
@@ -147,6 +152,7 @@ export function buildPnl(
   let 포장매입 = 0;
   let labor = 0;
   let fixed = 0;
+  let vatPayment = 0;
   let unclassified = 0;
   let misang = 0;
   let cardLump = 0;
@@ -180,10 +186,17 @@ export function buildPnl(
       if (t.is_card_payment) cardPay[kindOf(c) === '포장소모품' ? '포장' : '식자재'] += net;
       else if (isCollected) collected += net;
     } else if (c.type === 'sga') {
-      if (laborIds.has(c.id)) labor += net;
-      else fixed += net;
-      if (t.is_card_payment) cardPay[laborIds.has(c.id) ? 'labor' : 'fixed'] += net;
-      else if (isCollected) collected += net;
+      // 부가세 납부(예수금 정산) — 매출은 VAT 제외·과세 매입은 ÷1.1 순액이라 납부액까지
+      // 지출로 잡으면 부가세가 두 번 빠진다(이중 차감). 손익에서 제외하고 안내 줄로만 노출
+      // (2026-08-21 대표 확인 — 신고월마다 고정비가 500~700만 부풀던 원인).
+      if (t.is_vat_payment) {
+        vatPayment += net;
+      } else {
+        if (laborIds.has(c.id)) labor += net;
+        else fixed += net;
+        if (t.is_card_payment) cardPay[laborIds.has(c.id) ? 'labor' : 'fixed'] += net;
+        else if (isCollected) collected += net;
+      }
     }
     // non_operating / excluded 는 관리손익 제외
   }
@@ -249,6 +262,7 @@ export function buildPnl(
     grossProfit,
     labor,
     fixed,
+    vatPayment,
     unclassified,
     misang,
     cardDupOffset: dupOffset,

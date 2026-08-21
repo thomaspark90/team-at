@@ -17,6 +17,7 @@ export interface PnlMonthSummary {
   grossProfit: number;
   labor: number;
   fixed: number;
+  vatPayment: number;
   cardLump: number;
   payLump: { coupang: number; naverpay: number } | null;
   misang: number;
@@ -132,6 +133,9 @@ export default function ClosePnlDrilldown({ ym, unitId, colSpan }: { ym: string;
                 <Line label="매출총이익" amount={data.grossProfit} supply={s} bold />
                 <Line label="(−) 인건비" amount={-data.labor} supply={s} />
                 <Line label="(−) 고정비 (판관비)" amount={-data.fixed} supply={s} />
+                {data.vatPayment !== 0 && (
+                  <Line label="부가세 납부 (손익 제외)" amount={data.vatPayment} muted sub="예수금 정산 — 매출에서 이미 뺀 부가세라 지출 아님" />
+                )}
                 {data.cardLump > 0 && (
                   <Line label="(−) 카드 지출 (미분해)" amount={-data.cardLump} supply={s} warn sub="명세 연결 시 분해" />
                 )}

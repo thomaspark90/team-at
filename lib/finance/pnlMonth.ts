@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { unwrap } from './db';
 import { CARD_PAYMENT_RE } from './cardOffset';
-import { buildPnl, type PnlCat, type PnlTx, type PnlPosRow, type PnlInventory, type PnlResult } from './pnl';
+import { buildPnl, VAT_PAYMENT_RE, type PnlCat, type PnlTx, type PnlPosRow, type PnlInventory, type PnlResult } from './pnl';
 import type { Brand, Store } from './types';
 
 // 관리손익 '한 달' 데이터 로딩+계산 — /finance/pnl 페이지 본문(PnlBody)에서 추출(2026-08-21).
@@ -100,6 +100,8 @@ export async function computePnlMonth(
   const txns = txnsRaw.map(({ memo, ...t }) => ({
     ...t,
     is_card_payment: (t.source ?? 'bank') === 'bank' && CARD_PAYMENT_RE.test(memo ?? ''),
+    // 부가세 납부/환급 — buildPnl 이 손익에서 제외(예수금 정산 이중 차감 방지, 2026-08-21)
+    is_vat_payment: (t.source ?? 'bank') === 'bank' && VAT_PAYMENT_RE.test(memo ?? ''),
   }));
   const cats = (unwrap(catsRes, '계정과목') as PnlCat[] | null) ?? [];
   const invAll = (unwrap(invRes, '기말재고') as (PnlInventory & { brand?: string })[] | null) ?? [];

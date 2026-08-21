@@ -41,6 +41,7 @@ export async function GET(req: Request) {
       grossProfit: p.grossProfit,
       labor: p.labor,
       fixed: p.fixed,
+      vatPayment: p.vatPayment,
       cardLump: p.cardLump,
       payLump: p.payLump,
       misang: p.misang,

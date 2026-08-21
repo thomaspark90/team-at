@@ -253,6 +253,14 @@ async function PnlBody({
               <Row label="매출총이익" amount={p.grossProfit} bold rate={p.metrics.grossMargin} />
               <Row label="(−) 인건비" amount={-p.labor} rate={p.metrics.laborRate} />
               <Row label="(−) 고정비 (판관비)" amount={-p.fixed} />
+              {p.vatPayment !== 0 && (
+                <Row
+                  label="부가세 납부 (손익 제외)"
+                  amount={p.vatPayment}
+                  muted
+                  sub="예수금 정산이라 지출로 안 잡아요 — 매출을 공급가액(VAT 제외)으로 이미 뺐어요. 통장에선 나간 돈"
+                />
+              )}
               {p.cardLump > 0 && (
                 <Row label="(−) 카드 지출 (세부 미분해)" amount={-p.cardLump} warn sub="카드대금 결제 총액 · 세부내역 연결 시 재료비·판관비로 분해" />
               )}
