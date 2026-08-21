@@ -2,10 +2,9 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveRoleStamped } from '@/lib/access/stamp';
-import { unwrap } from '@/lib/finance/db';
-import { buildPnl, benchmark, prevYm, CHANNEL_FEE_RATE, type PnlCat, type PnlTx, type PnlPosRow, type PnlInventory, type Signal } from '@/lib/finance/pnl';
-import { CARD_PAYMENT_RE } from '@/lib/finance/cardOffset';
-import { UNITS, unitOf, storeLabel, type Brand, type Store } from '@/lib/finance/types';
+import { benchmark, prevYm, CHANNEL_FEE_RATE, type Signal } from '@/lib/finance/pnl';
+import { loadPnlPos, computePnlMonth, type BrandSeg, type PnlPosRowS } from '@/lib/finance/pnlMonth';
+import { UNITS, unitOf, storeLabel, type Store } from '@/lib/finance/types';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import MonthShell from '@/components/finance/MonthShell';
@@ -24,8 +23,7 @@ const SIG: Record<Signal, { cls: string; label: string }> = {
   bad: { cls: 'text-destructive', label: '높음' },
 };
 
-// 브랜드 세그먼트 — 상단 매장 필(FinanceNav)이 정하는 단위. 개인(personal)은 손익 제외라 없다.
-type BrandSeg = Exclude<Brand, 'personal'>;
+// 브랜드 세그먼트(BrandSeg) — 상단 매장 필(FinanceNav)이 정하는 단위. 개인(personal)은 손익 제외라 없다.
 const unitLabelFor = (seg: BrandSeg, store: Store | null) =>
   UNITS.find((u) => u.brand === seg && u.store === store)?.label ?? seg;
 
@@ -45,33 +43,12 @@ export default async function PnlPage({
   // 지점 필터 — 가든에서만 의미(판교=페이히어, 양재천=토스). 지점 손익은 재고·수수료 안분 근사치.
   const store: Store | null = unit.store;
 
-  // POS 매출과 사이드바 배지가 서로 독립적이라 병렬로
-  const [posRaw, giftRaw, initialTodos] = await Promise.all([
-    supabase
-      .schema('finance')
-      .from('pos_sales')
-      .select('ym,category,qty,gross,vat,supply,brand,store')
-      .then((r) => unwrap(r, 'POS 매출')),
-    supabase
-      .schema('finance')
-      .from('pos_gift_sales')
-      .select('ym,qty,gross,brand,store')
-      .then((r) => (r.error ? [] : r.data)),
+  // POS 매출(자가 식권 합류·브랜드 필터는 lib/finance/pnlMonth)과 사이드바 배지가 서로 독립적이라 병렬로
+  const [pos, initialTodos] = await Promise.all([
+    loadPnlPos(supabase, seg),
     // 좌측 연·월 사이드바 배지 — 선택 매장 몫
     computeBoardTodos(supabase, seg, store ?? undefined).catch(() => undefined),
   ]);
-  // 자가 식권 판매 = 매출(2026-08-20 확정: 사용 시점엔 POS에 안 찍혀 판매 인식이 이중 없음).
-  // pos_sales 행 형태로 변환해 합류 — 과세 매출이라 부가세 1/11 산출.
-  const giftAsPos = ((giftRaw as { ym: string; qty: number; gross: number; brand?: string; store?: string }[] | null) ?? []).map(
-    (g) => {
-      const gross = Number(g.gross);
-      const vat = Math.round(gross - gross / 1.1);
-      return { ym: g.ym, category: '식권판매', qty: Number(g.qty), gross, vat, supply: gross - vat, brand: g.brand, store: g.store };
-    }
-  );
-  const posRows = ([...((posRaw as (PnlPosRow & { brand?: string; store?: string })[] | null) ?? []), ...giftAsPos]) as (PnlPosRow & { brand?: string; store?: string })[];
-  // 구버전(마이그레이션 전) 행은 brand 컬럼이 없을 수 있음 → garden 취급
-  const pos = posRows.filter((p) => (p.brand ?? 'garden') === seg);
   const yms = Array.from(new Set(pos.map((p) => p.ym))).sort((a, b) => b.localeCompare(a));
 
   return (
@@ -133,148 +110,22 @@ async function PnlBody({
   store,
   supabase,
 }: {
-  pos: (PnlPosRow & { store?: string })[];
+  pos: PnlPosRowS[];
   yms: string[];
   selectedYm: string;
   seg: BrandSeg;
   store: Store | null;
   supabase: Awaited<ReturnType<typeof createClient>>;
 }) {
-  // 지점 매출비율 — 재고·수수료 안분과 지점 뷰의 POS 필터에 사용
-  const monthPos = pos.filter((p) => p.ym === selectedYm);
-  const brandSupply = monthPos.reduce((s, p) => s + p.supply, 0);
-  const storeSupply = store ? monthPos.filter((p) => (p.store ?? '') === store).reduce((s, p) => s + p.supply, 0) : 0;
-  const storeRatio = store && brandSupply > 0 ? storeSupply / brandSupply : store ? 0 : 1;
-  const posView = store ? pos.filter((p) => (p.store ?? '') === store) : pos;
-
-  // 지출·재고·수수료도 브랜드로 필터, 지점 뷰는 store 까지
-  let txnsQ = supabase.schema('finance').from('transactions').select('id,category_id,amount_in,amount_out,source,memo').eq('ym', selectedYm).eq('brand', seg);
-  if (store) txnsQ = txnsQ.eq('store', store);
-  // 지점 뷰에서 빠지는 '지점 미지정' 가든 지출 — 경고 표기용
-  const unassignedQ = store
-    ? supabase
-        .schema('finance')
-        .from('transactions')
-        .select('id,category_id,amount_out')
-        .eq('ym', selectedYm)
-        .eq('brand', 'garden')
-        .is('store', null)
-    : null;
-  const [txnsRes, catsRes, invRes, feeRes, unassignedRes] = await Promise.all([
-    txnsQ,
-    supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable'),
-    supabase.schema('finance').from('inventory').select('ym,kind,amount,brand'),
-    supabase.schema('finance').from('channel_fees').select('amount,brand').eq('ym', selectedYm),
-    unassignedQ ?? Promise.resolve(null),
-  ]);
-  // 카드대금 인출 판정(memo 패턴)을 빌더에 넘긴다 — buildPnl 이 수집분(네이버페이·쿠팡)과의
-  // 이중계상을 차감한다(cardOffset.ts). memo 자체는 빌더로 안 넘어간다.
-  const txnsRaw = (unwrap(txnsRes, '거래') as (PnlTx & { id: number; memo?: string | null })[] | null) ?? [];
-  const txns = txnsRaw.map(({ memo, ...t }) => ({
-    ...t,
-    is_card_payment: (t.source ?? 'bank') === 'bank' && CARD_PAYMENT_RE.test(memo ?? ''),
-  }));
-  const cats = (unwrap(catsRes, '계정과목') as PnlCat[] | null) ?? [];
-  const invAll = (unwrap(invRes, '기말재고') as (PnlInventory & { brand?: string })[] | null) ?? [];
-  // 재고: 브랜드 필터. 지점 뷰는 브랜드 재고를 이번 달 매출비율로 안분(근사치 — 지점별 실사는
-  // 안 함, 2026-07-28 확정). 입력은 항상 브랜드 단위(가든 전체) — 지점 뷰에서도 아래 입력란에 그대로 넣는다.
-  const invBrand: PnlInventory[] = invAll.filter((i) => (i.brand ?? 'garden') === seg);
-  const inventory: PnlInventory[] = store
-    ? invBrand.map((i) => ({ ...i, amount: Math.round(i.amount * storeRatio) }))
-    : invBrand;
-  // 채널수수료 실제 입력값, 지점 뷰는 매출비율 안분
-  const feeRows = feeRes.error ? [] : ((feeRes.data as { amount: number; brand?: string }[] | null) ?? []);
-  const myFees = feeRows.filter((f) => (f.brand ?? 'garden') === seg);
-  const feeSum = myFees.length > 0 ? myFees.reduce((s, f) => s + f.amount, 0) : null;
-  const channelFee = feeSum != null ? (store ? Math.round(feeSum * storeRatio) : feeSum) : null;
-
-  // 지점 미지정 지출(손익 계정만) — 지점 뷰 합계에서 빠져 있음을 경고
-  const catTypeById = new Map(cats.map((c) => [c.id, c.type]));
-  const unassignedRows = (unassignedRes && !unassignedRes.error ? (unassignedRes.data as { id: number; category_id: number | null; amount_out: number }[] | null) : null) ?? [];
-
-  // 카드대금 대사 — 이 달 '카드대금정산' 인출이 카드 명세(uploads.settled_tx_id)와 연결됐는지 판정.
-  // 미연결 인출은 손익 제외가 아니라 '카드 지출(미분해)'로 포함(이익 과대 방지, 2026-08-17 대표 지시).
-  // txnLumps 는 이미 txns(브랜드 또는 지점 필터)에서 걸러진 값이라 지점 뷰에서도 그대로 유효 —
-  // store 지정 은행 거래(2026-08-17 양재천 일괄 지정 이후)는 txns 쪽에 잡히고, 아직 지점 미지정인
-  // 신규 업로드분만 unassignedRows(경고용)에 남는다.
-  const cardSettleCatId = cats.find((c) => c.type === 'excluded' && c.name === '카드대금정산')?.id ?? null;
-  const txnLumps = cardSettleCatId != null ? txns.filter((t) => t.category_id === cardSettleCatId) : [];
-  const unassignedLumps = cardSettleCatId != null ? unassignedRows.filter((r) => r.category_id === cardSettleCatId) : [];
-  const lumpIds = [...txnLumps.map((t) => t.id), ...unassignedLumps.map((r) => r.id)];
-  const settledUsageById = new Map<number, number | null>();
-  if (lumpIds.length > 0) {
-    const { data: settledUps } = await supabase
-      .schema('finance')
-      .from('uploads')
-      .select('settled_tx_id,statement_total')
-      .in('settled_tx_id', lumpIds);
-    for (const u of (settledUps ?? []) as { settled_tx_id: number; statement_total: number | null }[]) {
-      if (u.settled_tx_id == null) continue;
-      // 한 인출에 여러 명세가 연결될 수 있다(예: 4·5월 명세 → 6/9 결제) — 사용액은 합산.
-      // null(구버전 합계 미기록)은 합산에서 제외하되 연결 자체는 유효.
-      const prev = settledUsageById.get(u.settled_tx_id);
-      settledUsageById.set(
-        u.settled_tx_id,
-        u.statement_total == null ? (prev ?? null) : (prev ?? 0) + u.statement_total,
-      );
-    }
-  }
-  const cardReconcile = { unsettledLump: 0, settledWithdrawn: 0, settledUsage: 0 };
-  for (const t of txnLumps) {
-    const amt = (t.amount_out || 0) - (t.amount_in || 0);
-    if (settledUsageById.has(t.id)) {
-      cardReconcile.settledWithdrawn += amt;
-      // 구버전 연결(합계 미기록)은 사용액=인출액으로 간주(차액 0) — 대사 불능을 차액으로 오표시하지 않게
-      cardReconcile.settledUsage += settledUsageById.get(t.id) ?? amt;
-    } else cardReconcile.unsettledLump += amt;
-  }
-
-  // 쿠팡·네이버페이 통장 대체 출금 — 같은 원리(2026-08-17): 그 달 세부 수집(자동수집 행)이 있으면
-  // 세부가 대체하므로 제외 유지, 없으면 '쿠팡(미분류)'·'네이버페이(미분류)' 지출로 포함.
-  // (카드대금과 동일하게 지점 뷰도 txns 기준으로 계산 — store 지정 은행 거래에 적용된다)
-  const coupangSubstId = cats.find((c) => c.type === 'excluded' && c.name === '쿠팡대체')?.id ?? null;
-  const naverSubstId = cats.find((c) => c.type === 'excluded' && c.name === '네이버페이대체')?.id ?? null;
-  const substSum = (rows: { category_id: number | null; amount_out: number }[], catId: number | null) =>
-    catId == null ? 0 : rows.filter((r) => r.category_id === catId).reduce((s, r) => s + r.amount_out, 0);
-  const txnCoupangSubst = substSum(txns, coupangSubstId);
-  const txnNaverSubst = substSum(txns, naverSubstId);
-  const unassignedCoupangSubst = substSum(unassignedRows, coupangSubstId);
-  const unassignedNaverSubst = substSum(unassignedRows, naverSubstId);
-  // 세부 수집 존재 판정 — 지점 뷰는 txns가 지점 필터라 판단 불가 → 브랜드 단위 head-count로 통일
-  const lumpBrand = seg === 'staffmeal' ? 'staffmeal' : 'garden';
-  const hasDetail = async (src: string) => {
-    const { count } = await supabase
-      .schema('finance')
-      .from('transactions')
-      .select('id', { count: 'exact', head: true })
-      .eq('brand', lumpBrand)
-      .eq('ym', selectedYm)
-      .eq('source', src);
-    return (count ?? 0) > 0;
-  };
-  const needSubstCheck = txnCoupangSubst + txnNaverSubst + unassignedCoupangSubst + unassignedNaverSubst > 0;
-  const [coupangHasDetail, naverHasDetail] = needSubstCheck
-    ? await Promise.all([hasDetail('coupang'), hasDetail('naverpay')])
-    : [true, true];
-  const payLump = {
-    coupang: coupangHasDetail ? 0 : txnCoupangSubst,
-    naverpay: naverHasDetail ? 0 : txnNaverSubst,
-  };
-
-  const unassignedOut = unassignedRows
-    .filter(
-      (r) =>
-        r.category_id == null ||
-        catTypeById.get(r.category_id) !== 'excluded' ||
-        // 미연결 카드대금·세부 미수집 대체 출금은 손익에 포함돼야 할 지출 — 지점 뷰에서도 '빠진 지출'로 경고
-        (r.category_id === cardSettleCatId && !settledUsageById.has(r.id)) ||
-        (r.category_id === coupangSubstId && !coupangHasDetail) ||
-        (r.category_id === naverSubstId && !naverHasDetail),
-    )
-    .reduce((s, r) => s + r.amount_out, 0);
-
+  // 이 달 손익 계산 — lib/finance/pnlMonth 로 추출(2026-08-21). 월 결산 페이지의
+  // 손익 드릴다운(/api/finance/pnl-month)과 같은 코드라 두 화면 숫자가 항상 일치한다.
   const unitId = seg === 'staffmeal' ? 'staffmeal' : (store ?? 'yangjae');
-  const p = buildPnl(selectedYm, { pos: posView, txns, cats, inventory, channelFee, cardReconcile, payLump });
+  const { p, channelFee, invBrand, myFees, unassignedOut, storeRatio, brandSupply } = await computePnlMonth(supabase, {
+    seg,
+    store,
+    ym: selectedYm,
+    pos,
+  });
   const foodSig = SIG[benchmark('food', p.metrics.foodCostRate)];
   const laborSig = SIG[benchmark('labor', p.metrics.laborRate)];
   const primeSig = SIG[benchmark('prime', p.metrics.primeCost)];

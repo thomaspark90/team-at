@@ -1,10 +1,16 @@
+'use client';
+
+import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import Popover from '@/components/finance/Popover';
+import ClosePnlDrilldown from '@/components/finance/ClosePnlDrilldown';
 import type { ExpenseGrain } from '@/lib/finance/prepExpense';
 
 // 월 결산 페이지의 월별 손익 요약 — 전처리 빌더의 결과를 그대로 받아 표만 그린다(2026-08-20 대표 요청).
 // 매출(POS·발생주의 정본)·실입금(통장)·지출(전처리1 합계)·손익(매출−지출)을 월별로.
 // 계산은 전처리 화면과 같은 코드(builders)라 세 화면의 숫자가 항상 일치한다.
+// 손익 셀 클릭 → 그 달 관리손익 요약(부가세·수수료 제외) 드릴다운(2026-08-21 대표 요청).
+// 여러 달을 동시에 펼쳐 비교할 수 있게 펼침 상태를 Set 으로 들며, 그래서 클라이언트 컴포넌트다.
 
 export interface PnlSummaryRow {
   ym: string;
@@ -25,6 +31,15 @@ export interface PnlSummaryRow {
 
 export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[]; unitId: string }) {
   const won = (n: number) => (n === 0 ? '' : n.toLocaleString());
+  // 드릴다운 펼침 상태 — 달별 독립 토글(여러 달 동시 비교)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (ym: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(ym)) next.delete(ym);
+      else next.add(ym);
+      return next;
+    });
   const grainLink = (page: string, grain: ExpenseGrain = 'month') =>
     `/finance/prep/${page}?unit=${unitId}&grain=${grain}`;
   return (
@@ -39,7 +54,8 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
         손익 = POS 매출(발생주의) − 지출 합계. <b>부가세 포함 총액</b> 기준의 간이 손익이에요 — 지표
         그래프(EBIT)는 부가세 제외 공급가액 기준이라 값은 다르지만 규칙(발생주의·카드대금 차감·미분류 포함)이
         같아 추세는 일치해요. 재고·채널수수료까지 반영한 정식 손익은{' '}
-        <Link href={`/finance/pnl?unit=${unitId}`} className="underline">관리손익</Link>에서 봐요.
+        <Link href={`/finance/pnl?unit=${unitId}`} className="underline">관리손익</Link>에서 봐요 —
+        <b> 손익 값을 누르면</b> 그 달 관리손익 요약(부가세·수수료 제외)이 행 아래에 바로 펼쳐져요.
         지출 합계 오른쪽 열들은 <b>비용 구성 %</b> — 전처리2 요약 그룹을 POS 매출 대비 비율로 본 거예요
         (호버하면 금액). 미분해 %가 크면(⚠ 5%+) 나머지 비율이 실제보다 낮게 보여요.
         실입금은 회수 참고용(카드 1~2일·식권 정산 한 달 시차). †는 POS 미업로드 달 —
@@ -183,7 +199,8 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                 { label: '기타 운영비', v: r.groups.etc },
               ];
               return (
-                <tr key={r.ym} className="border-b border-border/50 last:border-0">
+                <Fragment key={r.ym}>
+                <tr className="border-b border-border/50 last:border-0">
                   <td className="whitespace-nowrap px-3 py-1.5 tabular-nums text-muted-foreground">{r.ym}</td>
                   <td className="whitespace-nowrap border-l-2 border-l-border px-3 py-1.5 text-right tabular-nums">
                     {noPos ? <span className="text-muted-foreground/60">미업로드</span> : won(r.pos)}
@@ -292,8 +309,18 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                     }`}
                     title={noPos ? 'POS 매출 미업로드 — 통장 실입금 − 지출로 임시 계산한 값이에요' : undefined}
                   >
-                    {profit < 0 ? `−${won(-profit)}` : won(profit)}
-                    {noPos && <span className="ml-0.5 text-muted-foreground">†</span>}
+                    {/* 누르면 아래에 그 달 관리손익 요약(부가세·수수료 제외) 드릴다운 */}
+                    <button
+                      type="button"
+                      onClick={() => toggle(r.ym)}
+                      className="cursor-pointer tabular-nums underline decoration-dotted underline-offset-2 transition-colors hover:opacity-70"
+                      title="누르면 이 달 관리손익 요약(부가세·수수료 제외)이 펼쳐져요"
+                      aria-expanded={expanded.has(r.ym)}
+                    >
+                      <span className="mr-1 text-[11px] text-muted-foreground">{expanded.has(r.ym) ? '▾' : '▸'}</span>
+                      {profit < 0 ? `−${won(-profit)}` : won(profit)}
+                      {noPos && <span className="ml-0.5 text-muted-foreground">†</span>}
+                    </button>
                   </td>
                   <td className="whitespace-nowrap border-l-2 border-l-border px-3 py-1.5 text-right tabular-nums text-muted-foreground">
                     {r.nonSalesIn == null ? '' : won(r.nonSalesIn)}
@@ -305,6 +332,8 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                     {r.bankBalance == null ? '' : won(r.bankBalance)}
                   </td>
                 </tr>
+                {expanded.has(r.ym) && <ClosePnlDrilldown ym={r.ym} unitId={unitId} colSpan={14} />}
+                </Fragment>
               );
             })}
           </tbody>
