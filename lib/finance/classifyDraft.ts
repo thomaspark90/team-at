@@ -12,6 +12,7 @@ export interface ClassifyDraft {
   storeFilter?: string;
   unclOnly?: boolean;
   misangOnly?: boolean;
+  dateSort?: 'desc' | 'asc'; // 거래일자 정렬 방향
   search?: string;
   catFilter?: { type?: string; cat?: string };
   page?: number;

@@ -129,13 +129,8 @@ export default function ClassifyPanel({
   };
   // 건별분할 잠금 계정(원거래 표식)
   const splitCatId = cats.find((c) => c.type === 'excluded' && c.name === '건별분할')?.id;
-  const sortTxns = (arr: TxRow[]) =>
-    [...arr].sort((a, b) => {
-      const au = a.category_id == null ? 0 : 1;
-      const bu = b.category_id == null ? 0 : 1;
-      if (au !== bu) return au - bu;
-      return b.tx_at.localeCompare(a.tx_at);
-    });
+  // 기준 순서 — 최신 거래부터(표시 정렬은 아래 sorted에서 방향만 뒤집는다)
+  const sortTxns = (arr: TxRow[]) => [...arr].sort((a, b) => b.tx_at.localeCompare(a.tx_at) || a.id - b.id);
   const [rows, setRows] = useState<TxRow[]>(() => sortTxns(txns));
   // 방금 분류한 행 id — '미분류만 보기'에서도 그 자리에 남겨 오클릭을 바로 수정할 수 있게(2026-08-03 대표 요청).
   // 서버 재조회(txns 교체) 때 비운다 — 그때는 분류가 저장 반영된 뒤라 목록에서 빠져도 자연스럽다.
@@ -226,6 +221,7 @@ export default function ClassifyPanel({
       restore(() => setStoreFilter(d.storeFilter!));
     if (d.unclOnly != null && d.unclOnly !== unclOnly && !initialFilter?.unclassified) restore(() => setUnclOnly(d.unclOnly!));
     if (d.misangOnly != null && d.misangOnly !== misangOnly) restore(() => setMisangOnly(d.misangOnly!));
+    if (d.dateSort === 'asc' || d.dateSort === 'desc') setDateSort(d.dateSort);
     if (d.search != null && d.search !== search && !sp.get('q')) restore(() => setSearch(d.search!));
     if (d.catFilter && (d.catFilter.type ?? '') !== (catFilter.type ?? '') && !initialFilter?.type) restore(() => setCatFilter(d.catFilter!));
     if (d.suggestions) setSuggestions(d.suggestions);
@@ -264,6 +260,11 @@ export default function ClassifyPanel({
   // 계정을 이름으로 감지(유형 무관), 기존에 미상으로 분류한 건들도 자동 포함된다.
   const misangCat = cats.find((c) => c.name.includes('미상'));
   const [misangOnly, setMisangOnly] = useState(false);
+  // 거래일자 정렬 방향 — 헤더의 '거래일자'를 눌러 최신순(↓)↔과거순(↑) 전환(2026-08-21 대표 요청).
+  // 예전에는 '미분류 먼저'가 1차 정렬키라, 분류·미분류가 섞인 달에서 날짜가 두 덩어리로
+  // 갈려 뒤죽박죽으로 보였다. 이제 표시 순서는 날짜 하나로만 정하고, 미분류를 몰아보려면
+  // '미분류만' 필터를 쓴다.
+  const [dateSort, setDateSort] = useState<'desc' | 'asc'>('desc');
 
   const matchesCat = (r: TxRow): boolean => {
     if (catFilter.type) {
@@ -311,11 +312,17 @@ export default function ClassifyPanel({
   const classifiedCount = filtered.filter((r) => r.category_id != null).length;
   const progress = filtered.length ? Math.round((classifiedCount / filtered.length) * 100) : 0;
 
+  // 표시 정렬 — 거래일자(tx_at) 한 키로만, 같은 시각은 id로 고정해 순서가 흔들리지 않게
+  const sorted = [...filtered].sort((a, b) => {
+    const d = a.tx_at.localeCompare(b.tx_at);
+    return (dateSort === 'asc' ? d : -d) || a.id - b.id;
+  });
+
   // 페이지네이션 — 100건 단위, 필터가 바뀌면 1페이지로
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const curPage = Math.min(page, totalPages);
   const pageStart = (curPage - 1) * PAGE_SIZE;
-  const pageRows = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const pageRows = sorted.slice(pageStart, pageStart + PAGE_SIZE);
   const filtersMounted = useRef(false);
   useEffect(() => {
     // 첫 렌더는 건너뛴다 — URL(?page=)에서 복원한 페이지가 리셋되지 않게
@@ -379,6 +386,7 @@ export default function ClassifyPanel({
       storeFilter,
       unclOnly,
       misangOnly,
+      dateSort,
       search,
       catFilter,
       page: curPage,
@@ -386,7 +394,7 @@ export default function ClassifyPanel({
       suggestions,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterYm, filterBank, srcFilter, brandFilter, storeFilter, unclOnly, misangOnly, search, catFilter, curPage, selected, suggestions]);
+  }, [filterYm, filterBank, srcFilter, brandFilter, storeFilter, unclOnly, misangOnly, dateSort, search, catFilter, curPage, selected, suggestions]);
 
   // 다중 선택(현재 필터·미확정 대상) — 헤더 체크박스는 현재 페이지만 선택
   const selectableIds = filtered.filter((r) => !isLocked(r)).map((r) => r.id);
@@ -1195,7 +1203,20 @@ export default function ClassifyPanel({
                 </th>
                 <Th right>#</Th>
                 <Th>출처</Th>
-                <Th>거래일자</Th>
+                <Th>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDateSort((d) => (d === 'desc' ? 'asc' : 'desc'));
+                      setPage(1);
+                    }}
+                    className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+                    title={dateSort === 'desc' ? '최신순 — 누르면 과거순' : '과거순 — 누르면 최신순'}
+                  >
+                    거래일자
+                    <span aria-hidden>{dateSort === 'desc' ? '↓' : '↑'}</span>
+                  </button>
+                </Th>
                 <Th>거래시간</Th>
                 <Th right>금액</Th>
                 <Th>내용</Th>
