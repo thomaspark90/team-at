@@ -14,11 +14,16 @@ export const SECTIONS: AppSection[] = [
 export const SECTION_KEYS = SECTIONS.map((s) => s.key);
 
 // 회계 탭에 속하는 /finance 하위 경로(기장·결산) — 나머지 /finance 는 리포트(분석) 섹션.
+// ⚠️ 회계 하위 내비(AccountingNav)에 화면을 추가하면 여기에도 등록할 것 — 빠지면
+// 상단 탭이 '리포트'로 잘못 활성된다(로우데이터·전처리가 그랬음, 2026-08-21 대표 제보).
 export const ACCOUNTING_FINANCE = [
   '/finance',
   '/finance/classify',
   '/finance/upload', // 자료 입력 — 회계의 주 진입 화면
   '/finance/uploads', // 업로드 이력
+  '/finance/raw', // 로우데이터
+  '/finance/prep', // 전처리1~4
+  '/finance/originals', // 원본 자료함
   '/finance/close',
   '/finance/categories',
   '/finance/card',
