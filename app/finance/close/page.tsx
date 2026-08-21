@@ -117,12 +117,21 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
   if (unit.store) posQ = posQ.eq('store', unit.store);
   let giftQ = supabase.schema('finance').from('pos_gift_sales').select('sale_date,qty,gross').eq('brand', unit.brand).limit(50000);
   if (unit.store) giftQ = giftQ.eq('store', unit.store);
-  const [{ data: fullTxData }, { data: posData }, { data: catsData }, { data: giftData }] = await Promise.all([
+  const [fullTxRes, posRes, catsRes, giftRes] = await Promise.all([
     fullTxQ,
     posQ,
     supabase.schema('finance').from('categories').select('id,name,type,parent_id'),
     giftQ,
   ]);
+  // 손익 요약의 원천 쿼리 — 에러를 삼키면 요약 전체가 0으로 조용히 렌더링된다(2026-08-21 감사 P0).
+  // 식권 테이블만 '테이블 없음'(마이그레이션 전 환경)을 허용하고, 그 외 에러는 전부 드러낸다.
+  const fullTxData = unwrap(fullTxRes, '거래');
+  const posData = unwrap(posRes, 'POS 매출');
+  const catsData = unwrap(catsRes, '계정과목');
+  const isMissingTable = (e: { code?: string; message?: string } | null) =>
+    e?.code === 'PGRST205' || e?.code === '42P01' || /schema cache|does not exist/i.test(e?.message ?? '');
+  if (giftRes.error && !isMissingTable(giftRes.error)) throw new Error(`식권 판매를 불러오지 못했어요: ${giftRes.error.message}`);
+  const giftData = giftRes.error ? [] : giftRes.data;
   const fullTxns = mapTx(fullTxData);
   const p1 = buildExpensePrep(fullTxns, 'month');
   const p2 = buildExpenseDetail(fullTxns, (catsData as CategoryInfo[] | null) ?? [], 'month');

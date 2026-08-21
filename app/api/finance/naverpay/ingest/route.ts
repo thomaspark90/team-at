@@ -8,6 +8,7 @@ import { resolveMisangCatId } from '@/lib/finance/misang';
 import { recordIngestSuccess } from '@/lib/ingest-health';
 import { fetchStoreRuleMap } from '@/lib/finance/storeRules';
 import { buildRawRowsFromObjects, saveRawBatchSafe } from '@/lib/finance/raw';
+import { lockedYmsByBrand, isLockedYm } from '@/lib/finance/ingestLock';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -101,13 +102,27 @@ export async function POST(req: Request) {
   // 재적재 중복 차단 (dedup_hash 기존 여부 청크 조회)
   const hashes = Array.from(new Set(mapped.map((m) => m.dedup_hash)));
   const existing = new Set<string>();
+  const existingRow = new Map<string, { ym: string; brand: string | null }>();
   for (let i = 0; i < hashes.length; i += 100) {
-    const { data } = await supabase.from('transactions').select('dedup_hash').in('dedup_hash', hashes.slice(i, i + 100));
-    (data ?? []).forEach((e: { dedup_hash: string }) => existing.add(e.dedup_hash));
+    const { data } = await supabase.from('transactions').select('dedup_hash,ym,brand').in('dedup_hash', hashes.slice(i, i + 100));
+    (data ?? []).forEach((e: { dedup_hash: string; ym: string; brand: string | null }) => {
+      existing.add(e.dedup_hash);
+      existingRow.set(e.dedup_hash, { ym: e.ym, brand: e.brand });
+    });
   }
+
+  // 확정월 가드(2026-08-21 감사 P0) — 결산으로 잠근 달의 원장은 무인 수집기가 바꾸지 않는다.
+  // 신규 적재·브랜드 백필 모두 확정월 건은 건너뛰고 건수만 응답에 남긴다(쿠팡 ingest 와 동일 규칙).
+  const brandsInvolved = new Set<string>(mapped.map((m) => m.brand));
+  existingRow.forEach((e) => { if (e.brand) brandsInvolved.add(e.brand); });
+  const lockedByBrand = await lockedYmsByBrand(supabase, brandsInvolved);
+  let lockedNewSkipped = 0;
+  let lockedUpdateSkipped = 0;
+
   const seen = new Set<string>();
   const fresh = mapped.filter((m) => {
     if (existing.has(m.dedup_hash) || seen.has(m.dedup_hash)) return false;
+    if (isLockedYm(lockedByBrand, m.brand, m.ym)) { lockedNewSkipped++; return false; }
     seen.add(m.dedup_hash);
     return true;
   });
@@ -133,7 +148,16 @@ export async function POST(req: Request) {
     dupGroups.set(key, g);
   });
   for (const g of Array.from(dupGroups.values())) {
-    const hs = Array.from(new Set(g.hashes));
+    // 확정월 보호 — 옮기기 전(현재 brand·ym)과 옮긴 후(대상 brand·같은 ym) 어느 쪽이든
+    // 확정돼 있으면 그 행의 백필을 보류한다(양쪽 장부의 결산값이 바뀌므로).
+    const hs = Array.from(new Set(g.hashes)).filter((h) => {
+      const cur = existingRow.get(h);
+      if (cur && (isLockedYm(lockedByBrand, cur.brand, cur.ym) || isLockedYm(lockedByBrand, g.brand, cur.ym))) {
+        lockedUpdateSkipped++;
+        return false;
+      }
+      return true;
+    });
     for (let i = 0; i < hs.length; i += 100) {
       const store = g.branch === '판교' ? 'pangyo' : g.branch === '양재천' ? 'yangjae' : null;
       let q = supabase
@@ -157,9 +181,10 @@ export async function POST(req: Request) {
     personalCategorized = await applyPersonalCategory(supabase, personalHashes, personalCat);
   }
 
+  const lockedNote = lockedNewSkipped + lockedUpdateSkipped > 0 ? ` · 확정월 보류 ${lockedNewSkipped + lockedUpdateSkipped}` : '';
   if (fresh.length === 0) {
-    await recordIngestSuccess('naverpay', `저장 0 · 중복 ${mapped.length}`);
-    return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0, brandUpdated, personalCategorized });
+    await recordIngestSuccess('naverpay', `저장 0 · 중복 ${mapped.length}${lockedNote}`);
+    return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0, brandUpdated, personalCategorized, lockedNewSkipped, lockedUpdateSkipped });
   }
 
   // 학습 규칙(normalized_key → category_id)으로 자동 분류
@@ -244,6 +269,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
   }
 
-  await recordIngestSuccess('naverpay', `저장 ${fresh.length} · 중복 ${mapped.length - fresh.length}`);
-  return NextResponse.json({ saved: fresh.length, duplicates: mapped.length - fresh.length, autoClassified, brandUpdated, personalCategorized });
+  await recordIngestSuccess('naverpay', `저장 ${fresh.length} · 중복 ${mapped.length - fresh.length}${lockedNote}`);
+  return NextResponse.json({ saved: fresh.length, duplicates: mapped.length - fresh.length, autoClassified, brandUpdated, personalCategorized, lockedNewSkipped, lockedUpdateSkipped });
 }

@@ -8,6 +8,7 @@ import { resolveMisangCatId } from '@/lib/finance/misang';
 import { recordIngestSuccess } from '@/lib/ingest-health';
 import { fetchStoreRuleMap } from '@/lib/finance/storeRules';
 import { buildRawRowsFromObjects, saveRawBatchSafe } from '@/lib/finance/raw';
+import { lockedYmsByBrand, isLockedYm } from '@/lib/finance/ingestLock';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -103,18 +104,29 @@ export async function POST(req: Request) {
   // 재적재 중복 차단 (dedup_hash 기존 여부 + 현재 금액 청크 조회)
   const hashes = Array.from(new Set(mapped.map((m) => m.dedup_hash)));
   const existing = new Set<string>();
-  const existingRow = new Map<string, { out: number; in: number; channel: string | null }>();
+  const existingRow = new Map<string, { out: number; in: number; channel: string | null; ym: string; brand: string | null }>();
   for (let i = 0; i < hashes.length; i += 100) {
-    const { data } = await supabase.from('transactions').select('dedup_hash,amount_out,amount_in,channel').in('dedup_hash', hashes.slice(i, i + 100));
-    (data ?? []).forEach((e: { dedup_hash: string; amount_out: number; amount_in: number; channel: string | null }) => {
+    const { data } = await supabase.from('transactions').select('dedup_hash,amount_out,amount_in,channel,ym,brand').in('dedup_hash', hashes.slice(i, i + 100));
+    (data ?? []).forEach((e: { dedup_hash: string; amount_out: number; amount_in: number; channel: string | null; ym: string; brand: string | null }) => {
       existing.add(e.dedup_hash);
-      existingRow.set(e.dedup_hash, { out: e.amount_out ?? 0, in: e.amount_in ?? 0, channel: e.channel ?? null });
+      existingRow.set(e.dedup_hash, { out: e.amount_out ?? 0, in: e.amount_in ?? 0, channel: e.channel ?? null, ym: e.ym, brand: e.brand });
     });
   }
+
+  // 확정월 가드(2026-08-21 감사 P0) — 결산으로 잠근 달의 원장은 무인 수집기가 바꾸지 않는다.
+  // 신규 적재·금액 소급 정정·브랜드 백필 모두 확정월 건은 건너뛰고 건수만 응답에 남긴다.
+  // 반영이 필요하면 월 결산에서 재오픈 → 다음 수집이 자연 반영. (raw 원본 보관은 잠금과 무관.)
+  const brandsInvolved = new Set<string>(mapped.map((m) => m.brand));
+  existingRow.forEach((e) => { if (e.brand) brandsInvolved.add(e.brand); });
+  const lockedByBrand = await lockedYmsByBrand(supabase, brandsInvolved);
+  let lockedNewSkipped = 0;
+  let lockedUpdateSkipped = 0;
+
   const seen = new Set<string>();
   const fresh = mapped.filter((m) => {
     if (existing.has(m.dedup_hash) || seen.has(m.dedup_hash)) return false;
     if (m.amount_out <= 0 && m.amount_in <= 0) return false; // 신규 0원(전량취소) 행은 삽입하지 않음
+    if (isLockedYm(lockedByBrand, m.brand, m.ym)) { lockedNewSkipped++; return false; }
     seen.add(m.dedup_hash);
     return true;
   });
@@ -128,6 +140,8 @@ export async function POST(req: Request) {
     seenAmt.add(m.dedup_hash);
     const cur = existingRow.get(m.dedup_hash);
     if (!cur) continue;
+    // 확정월 원장은 소급 정정하지 않는다 — 기존 행의 실제 (brand, ym) 기준으로 판정
+    if (isLockedYm(lockedByBrand, cur.brand, cur.ym)) { lockedUpdateSkipped++; continue; }
     const patch: { amount_out?: number; amount_in?: number; channel?: string | null } = {};
     if (cur.out !== m.amount_out || cur.in !== m.amount_in) { patch.amount_out = m.amount_out; patch.amount_in = m.amount_in; }
     // 채널(상품명+배송지) 갱신 — 값이 다르면 갱신하되, 이미 주소(@)가 있는 행을 '🔍미해석'으로 되돌리지는 않음.
@@ -160,7 +174,16 @@ export async function POST(req: Request) {
     dupGroups.set(key, g);
   });
   for (const g of Array.from(dupGroups.values())) {
-    const hs = Array.from(new Set(g.hashes));
+    // 확정월 보호 — 옮기기 전(현재 brand·ym)과 옮긴 후(대상 brand·같은 ym) 어느 쪽이든
+    // 확정돼 있으면 그 행의 백필을 보류한다(양쪽 장부의 결산값이 바뀌므로).
+    const hs = Array.from(new Set(g.hashes)).filter((h) => {
+      const cur = existingRow.get(h);
+      if (cur && (isLockedYm(lockedByBrand, cur.brand, cur.ym) || isLockedYm(lockedByBrand, g.brand, cur.ym))) {
+        lockedUpdateSkipped++;
+        return false;
+      }
+      return true;
+    });
     for (let i = 0; i < hs.length; i += 100) {
       const store = g.branch === '판교' ? 'pangyo' : g.branch === '양재천' ? 'yangjae' : null;
       let q = supabase
@@ -184,9 +207,10 @@ export async function POST(req: Request) {
     personalCategorized = await applyPersonalCategory(supabase, personalHashes, personalCat);
   }
 
+  const lockedNote = lockedNewSkipped + lockedUpdateSkipped > 0 ? ` · 확정월 보류 ${lockedNewSkipped + lockedUpdateSkipped}` : '';
   if (fresh.length === 0) {
-    await recordIngestSuccess('coupang', `저장 0 · 중복 ${mapped.length}`);
-    return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0, brandUpdated, personalCategorized, amountUpdated });
+    await recordIngestSuccess('coupang', `저장 0 · 중복 ${mapped.length}${lockedNote}`);
+    return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0, brandUpdated, personalCategorized, amountUpdated, lockedNewSkipped, lockedUpdateSkipped });
   }
 
   // 학습 규칙(normalized_key → category_id)으로 자동 분류 — 규칙은 브랜드별
@@ -270,6 +294,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
   }
 
-  await recordIngestSuccess('coupang', `저장 ${fresh.length} · 중복 ${mapped.length - fresh.length}`);
-  return NextResponse.json({ saved: fresh.length, duplicates: mapped.length - fresh.length, autoClassified, brandUpdated, personalCategorized, amountUpdated });
+  await recordIngestSuccess('coupang', `저장 ${fresh.length} · 중복 ${mapped.length - fresh.length}${lockedNote}`);
+  return NextResponse.json({ saved: fresh.length, duplicates: mapped.length - fresh.length, autoClassified, brandUpdated, personalCategorized, amountUpdated, lockedNewSkipped, lockedUpdateSkipped });
 }

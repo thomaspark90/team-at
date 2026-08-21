@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { unwrap } from './db';
+import { fetchAllRows } from './fetchAll';
 import { CARD_PAYMENT_RE } from './cardOffset';
 import { buildPnl, VAT_PAYMENT_RE, type PnlCat, type PnlTx, type PnlPosRow, type PnlInventory, type PnlResult } from './pnl';
 import type { Brand, Store } from './types';
@@ -14,30 +15,42 @@ export type PnlPosRowS = PnlPosRow & { store?: string };
 
 // POS 매출 로딩 — pos_sales + 자가 식권 판매(pos_gift_sales)를 pos_sales 행 형태로 합류.
 // 자가 식권 판매 = 매출(2026-08-20 확정: 사용 시점엔 POS에 안 찍혀 판매 인식이 이중 없음). 과세 매출이라 부가세 1/11.
+// 브랜드 필터는 DB에서, 전량은 페이지 로더로 — 무필터 전량 조회는 서버 Max Rows 에서 조용히
+// 잘려 매출이 비결정적으로 줄어드는 경로였다(2026-08-21 감사 P0; 지표에서 2026-08-04 실사고).
 export async function loadPnlPos(supabase: SupabaseClient, seg: BrandSeg): Promise<PnlPosRowS[]> {
   const [posRaw, giftRaw] = await Promise.all([
-    supabase
-      .schema('finance')
-      .from('pos_sales')
-      .select('ym,category,qty,gross,vat,supply,brand,store')
-      .then((r) => unwrap(r, 'POS 매출')),
-    supabase
-      .schema('finance')
-      .from('pos_gift_sales')
-      .select('ym,qty,gross,brand,store')
-      .then((r) => (r.error ? [] : r.data)),
+    fetchAllRows<PnlPosRowS & { brand?: string }>(
+      (from, to) =>
+        supabase
+          .schema('finance')
+          .from('pos_sales')
+          .select('ym,category,qty,gross,vat,supply,brand,store')
+          .eq('brand', seg)
+          .order('id')
+          .range(from, to),
+      { label: 'POS 매출' }
+    ),
+    fetchAllRows<{ ym: string; qty: number; gross: number; brand?: string; store?: string }>(
+      (from, to) =>
+        supabase
+          .schema('finance')
+          .from('pos_gift_sales')
+          .select('ym,qty,gross,brand,store')
+          .eq('brand', seg)
+          .order('id')
+          .range(from, to),
+      { label: '식권 판매', missingTableOk: true }
+    ),
   ]);
-  const giftAsPos = ((giftRaw as { ym: string; qty: number; gross: number; brand?: string; store?: string }[] | null) ?? []).map(
+  const giftAsPos = giftRaw.map(
     (g) => {
       const gross = Number(g.gross);
       const vat = Math.round(gross - gross / 1.1);
       return { ym: g.ym, category: '식권판매', qty: Number(g.qty), gross, vat, supply: gross - vat, brand: g.brand, store: g.store };
     }
   );
-  const posRows = [...(((posRaw as (PnlPosRowS & { brand?: string })[] | null) ?? [])), ...giftAsPos] as (PnlPosRowS & {
-    brand?: string;
-  })[];
-  // 구버전(마이그레이션 전) 행은 brand 컬럼이 없을 수 있음 → garden 취급
+  const posRows = [...posRaw, ...giftAsPos] as (PnlPosRowS & { brand?: string })[];
+  // 쿼리에서 이미 브랜드 필터 완료 — 방어적으로 한 번 더 거른다(전 행 brand 채워짐 확인, 2026-08-21)
   return posRows.filter((p) => (p.brand ?? 'garden') === seg);
 }
 
