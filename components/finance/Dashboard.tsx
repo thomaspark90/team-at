@@ -749,7 +749,18 @@ export default function Dashboard({
           <YAxis tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={AXIS} width={44} />
           <Tooltip content={<ChartTooltip fmt={(v: number) => `${v}%`} />} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
-          <ReferenceLine y={60} stroke="hsl(var(--destructive))" strokeDasharray="4 4" />
+          <ReferenceLine
+            y={60}
+            stroke="hsl(var(--destructive))"
+            strokeDasharray="4 4"
+            label={{
+              value: 'Prime Cost 목표 ≤60%',
+              position: 'insideRight',
+              fill: 'hsl(var(--destructive))',
+              fontSize: 11,
+              dy: -9,
+            }}
+          />
           <Line type="monotone" dataKey="Prime Cost" stroke={LINE} strokeWidth={1.5} dot={{ r: 2, fill: LINE }} connectNulls>
             <LabelList dataKey="Prime Cost" position="top" offset={30} formatter={pctLabel} style={pointLabel} />
           </Line>
