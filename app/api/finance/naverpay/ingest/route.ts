@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { normalizeKey } from '@/lib/finance/normalize';
+import { toKstWallClock } from '@/lib/finance/txTime';
 import { hash } from '@/lib/finance/dedup';
 import { resolvePersonalCat, applyPersonalCategory } from '@/lib/finance/personal';
 import { resolveMisangCatId } from '@/lib/finance/misang';
@@ -28,12 +29,6 @@ type IngestRow = {
 };
 
 const BRANCHES = ['판교', '양재천', '스탭밀', '개인'];
-
-const toKstIso = (s: string) => {
-  const t = s.trim().replace(' ', 'T');
-  if (/[+Z]/i.test(t)) return t;                       // 이미 타임존 있음
-  return (t.length === 10 ? `${t}T00:00:00` : t) + '+09:00'; // KST 명시
-};
 
 export async function POST(req: Request) {
   const token = process.env.NAVERPAY_INGEST_TOKEN;
@@ -67,7 +62,7 @@ export async function POST(req: Request) {
     // 전액 '취소/환불'만 입금 처리. (2026-08-17: 미트박스 21개월치가 전액 입금으로 오적재됐던 사고의 처방)
     const status = r.pay_status || '';
     const isRefund = /취소|환불/.test(status) && !/부분\s*취소/.test(status);
-    const txAt = toKstIso(r.paid_at);
+    const txAt = toKstWallClock(r.paid_at);
     // 수집기가 배송지로 판정한 브랜드·지점 — 값이 유효할 때만 신뢰, 아니면 DB 기본(garden)/null
     // personal = 개인(자택 배송 등 사적 지출, 2026-07-31) — migration_personal_brand.sql 선행 필요
     const brand = r.brand === 'staffmeal' || r.brand === 'garden' || r.brand === 'personal' ? r.brand : null;
