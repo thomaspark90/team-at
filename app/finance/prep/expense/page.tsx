@@ -6,6 +6,7 @@ import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import { unitOf, UNITS } from '@/lib/finance/types';
 import { buildExpensePrep, type ExpenseGrain, type ExpenseTx } from '@/lib/finance/prepExpense';
+import { fetchAllRows } from '@/lib/finance/fetchAll';
 
 // 전처리1 — 지출 총합. 로우데이터 다음 단계로, 소스별 지출을 기간 단위로 모으되
 // 중복 제거(카드대금 − 수집분)를 계산식 그대로 화면에 드러낸다.
@@ -40,21 +41,25 @@ export default async function PrepExpensePage({
     ? (searchParams.grain as ExpenseGrain)
     : 'month';
 
-  // 거래를 한 번에 읽어 메모리에서 집계한다 — 규칙(카드대금 판별·차감)이 코드 한곳에 모여 있어야
-  // 화면에 계산식 그대로 보여줄 수 있다. 스탭밀 기준 5천 행 수준이라 부담 없음.
-  let q = supabase
-    .schema('finance')
-    .from('transactions')
-    .select('tx_at,ym,source,memo,amount_out,amount_in,category_id,categories(type,name)')
-    .eq('brand', unit.brand)
-    .limit(50000);
-  if (unit.store) q = q.eq('store', unit.store);
-  const { data, error } = await q;
-  if (error) throw new Error(`거래 조회 실패: ${error.message}`);
+  // 거래를 전량 읽어 메모리에서 집계한다 — 규칙(카드대금 판별·차감)이 코드 한곳에 모여 있어야
+  // 화면에 계산식 그대로 보여줄 수 있다. `.limit(50000)`은 잘림 방어가 아니라 서버 Max Rows
+  // (20000)에서 조용히 깎이는 거짓 신호라 페이지 로더로 교체(2026-08-21 감사 P1-3).
+  const data = await fetchAllRows<Omit<ExpenseTx, 'cat_type' | 'cat_name'> & { categories: { type: string; name: string } | null }>(
+    (from, to) => {
+      let q = supabase
+        .schema('finance')
+        .from('transactions')
+        .select('tx_at,ym,source,memo,amount_out,amount_in,category_id,categories(type,name)')
+        .eq('brand', unit.brand)
+        .order('id')
+        .range(from, to);
+      if (unit.store) q = q.eq('store', unit.store);
+      return q;
+    },
+    { page: 20000, label: '거래' }
+  );
 
-  const txns: ExpenseTx[] = (
-    (data as unknown as (Omit<ExpenseTx, 'cat_type' | 'cat_name'> & { categories: { type: string; name: string } | null })[] | null) ?? []
-  ).map((t) => ({
+  const txns: ExpenseTx[] = data.map((t) => ({
     tx_at: t.tx_at,
     ym: t.ym,
     source: t.source,

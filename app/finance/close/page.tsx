@@ -16,6 +16,7 @@ import { buildExpenseDetail, type CategoryInfo } from '@/lib/finance/prepExpense
 import { buildRevenuePrep, type PosSaleRow } from '@/lib/finance/prepRevenue';
 import { cashflow } from '@/lib/finance/cashflow';
 import { buildCashflowRecon } from '@/lib/finance/cashflowRecon';
+import { fetchAllRows } from '@/lib/finance/fetchAll';
 
 export default async function ClosePage({ searchParams }: { searchParams: { brand?: string; unit?: string } }) {
   const supabase = await createClient();
@@ -37,9 +38,12 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
 
   // 월별 거래수·미분류수 집계 (데이터량이 작아 JS 집계) — 선택된 단위만.
   // 가든 지점 단위는 '지점 미지정' 가든 거래도 함께 집계 — 미지정이 남으면 확정 불가.
-  const txns = unwrap(
-    await supabase.schema('finance').from('transactions').select('ym,category_id,store').eq('brand', unit.brand),
-    '거래',
+  // 확정 게이트 재료 — 전량 페이지 조회(무제한 select 는 서버 Max Rows 에서 잘려 미분류가
+  // 0으로 보였다 — 2026-08-21 감사 P3-3; 확정 자체는 서버(count) 재검증이 막지만 화면이 어긋난다)
+  const txns = await fetchAllRows<{ ym: string; category_id: number | null; store: string | null }>(
+    (from, to) =>
+      supabase.schema('finance').from('transactions').select('ym,category_id,store').eq('brand', unit.brand).order('id').range(from, to),
+    { page: 20000, label: '거래' }
   );
 
   const closes = unwrap(
@@ -106,32 +110,42 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
         cat_name: t.categories?.name ?? null,
       })
     );
-  let fullTxQ = supabase
-    .schema('finance')
-    .from('transactions')
-    .select('tx_at,ym,source,memo,bank,balance,split_parent_id,amount_out,amount_in,category_id,categories(type,name)')
-    .eq('brand', unit.brand)
-    .limit(50000);
-  if (unit.store) fullTxQ = fullTxQ.eq('store', unit.store);
-  let posQ = supabase.schema('finance').from('pos_sales').select('sale_date,gross').eq('brand', unit.brand).limit(50000);
-  if (unit.store) posQ = posQ.eq('store', unit.store);
-  let giftQ = supabase.schema('finance').from('pos_gift_sales').select('sale_date,qty,gross').eq('brand', unit.brand).limit(50000);
-  if (unit.store) giftQ = giftQ.eq('store', unit.store);
-  const [fullTxRes, posRes, catsRes, giftRes] = await Promise.all([
-    fullTxQ,
-    posQ,
+  // 전량 페이지 조회 — `.limit(50000)`은 서버 Max Rows(20000)에서 조용히 깎인다(2026-08-21 감사 P1-3).
+  // 에러는 fetchAllRows 가 던진다(P0에서 심은 규칙 유지) — 식권 테이블만 '테이블 없음' 허용.
+  const [fullTxData, posData, catsRes, giftData] = await Promise.all([
+    fetchAllRows<Record<string, unknown>>(
+      (from, to) => {
+        let q = supabase
+          .schema('finance')
+          .from('transactions')
+          .select('tx_at,ym,source,memo,bank,balance,split_parent_id,amount_out,amount_in,category_id,categories(type,name)')
+          .eq('brand', unit.brand)
+          .order('id')
+          .range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: '거래' }
+    ),
+    fetchAllRows<{ sale_date: string; gross: number }>(
+      (from, to) => {
+        let q = supabase.schema('finance').from('pos_sales').select('sale_date,gross').eq('brand', unit.brand).order('id').range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: 'POS 매출' }
+    ),
     supabase.schema('finance').from('categories').select('id,name,type,parent_id'),
-    giftQ,
+    fetchAllRows<{ sale_date: string; qty: number; gross: number }>(
+      (from, to) => {
+        let q = supabase.schema('finance').from('pos_gift_sales').select('sale_date,qty,gross').eq('brand', unit.brand).order('id').range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: '식권 판매', missingTableOk: true }
+    ),
   ]);
-  // 손익 요약의 원천 쿼리 — 에러를 삼키면 요약 전체가 0으로 조용히 렌더링된다(2026-08-21 감사 P0).
-  // 식권 테이블만 '테이블 없음'(마이그레이션 전 환경)을 허용하고, 그 외 에러는 전부 드러낸다.
-  const fullTxData = unwrap(fullTxRes, '거래');
-  const posData = unwrap(posRes, 'POS 매출');
   const catsData = unwrap(catsRes, '계정과목');
-  const isMissingTable = (e: { code?: string; message?: string } | null) =>
-    e?.code === 'PGRST205' || e?.code === '42P01' || /schema cache|does not exist/i.test(e?.message ?? '');
-  if (giftRes.error && !isMissingTable(giftRes.error)) throw new Error(`식권 판매를 불러오지 못했어요: ${giftRes.error.message}`);
-  const giftData = giftRes.error ? [] : giftRes.data;
   const fullTxns = mapTx(fullTxData);
   const p1 = buildExpensePrep(fullTxns, 'month');
   const p2 = buildExpenseDetail(fullTxns, (catsData as CategoryInfo[] | null) ?? [], 'month');

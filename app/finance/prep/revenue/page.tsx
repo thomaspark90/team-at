@@ -7,6 +7,7 @@ import AccountingNav from '@/components/AccountingNav';
 import { unitOf, UNITS } from '@/lib/finance/types';
 import type { ExpenseGrain, ExpenseTx } from '@/lib/finance/prepExpense';
 import { buildRevenuePrep, type PosSaleRow, type GiftSaleRow } from '@/lib/finance/prepRevenue';
+import { fetchAllRows } from '@/lib/finance/fetchAll';
 
 // 전처리3 — 매출 총합. POS 매출(발생)과 통장 입금(정산)을 나란히 놓고 대사한다.
 // 차이를 숨기지 않고 '차이'와 '정산률' 열로 드러낸다 — 이상한 구간이 곧 조사할 지점.
@@ -37,43 +38,45 @@ export default async function PrepRevenuePage({
     ? (searchParams.grain as ExpenseGrain)
     : 'month';
 
-  let posQ = supabase
-    .schema('finance')
-    .from('pos_sales')
-    .select('sale_date,gross')
-    .eq('brand', unit.brand)
-    .limit(50000);
-  if (unit.store) posQ = posQ.eq('store', unit.store);
-  // 통장 입금 — 매출 계정으로 분류된 거래만(조인 필터). 나머지 열 계산은 빌더가 한다.
-  let txQ = supabase
-    .schema('finance')
-    .from('transactions')
-    .select('tx_at,ym,source,memo,amount_out,amount_in,category_id,categories!inner(type,name)')
-    .eq('brand', unit.brand)
-    .eq('categories.type', 'revenue')
-    .limit(50000);
-  if (unit.store) txQ = txQ.eq('store', unit.store);
-
-  // 자가 식권 판매(선수금) — 테이블 미생성 환경이면 열 생략(비치명)
-  let giftQ = supabase
-    .schema('finance')
-    .from('pos_gift_sales')
-    .select('sale_date,gross')
-    .eq('brand', unit.brand)
-    .limit(50000);
-  if (unit.store) giftQ = giftQ.eq('store', unit.store);
-
-  const [{ data: posData, error: posErr }, { data: txData, error: txErr }, { data: giftData }] = await Promise.all([
-    posQ,
-    txQ,
-    giftQ,
+  // 전량 페이지 조회 — `.limit(50000)`은 서버 Max Rows(20000)에서 조용히 깎인다(2026-08-21 감사 P1-3).
+  // 거래는 조인 필터(categories!inner) 대신 전 거래를 받아 JS로 거른다 — 월별 요약·결산과 같은
+  // 선별 방식으로 통일(구현 4벌 드리프트 해소)하면서, 조인 필터가 통째로 버리던 '미분류 입금'을
+  // 참고 열로 드러낸다(감사 P2-1 — 분류 전 입금이 숨어 정산률 오진 경고가 뜨던 문제).
+  const [posData, txData, giftData] = await Promise.all([
+    fetchAllRows<PosSaleRow>(
+      (from, to) => {
+        let q = supabase.schema('finance').from('pos_sales').select('sale_date,gross').eq('brand', unit.brand).order('id').range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: 'POS 매출' }
+    ),
+    fetchAllRows<Omit<ExpenseTx, 'cat_type' | 'cat_name'> & { categories: { type: string; name: string } | null }>(
+      (from, to) => {
+        let q = supabase
+          .schema('finance')
+          .from('transactions')
+          .select('tx_at,ym,source,memo,amount_out,amount_in,category_id,categories(type,name)')
+          .eq('brand', unit.brand)
+          .order('id')
+          .range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: '통장 거래' }
+    ),
+    // 자가 식권 판매(선수금) — 테이블 미생성 환경이면 열 생략(비치명)
+    fetchAllRows<GiftSaleRow>(
+      (from, to) => {
+        let q = supabase.schema('finance').from('pos_gift_sales').select('sale_date,gross').eq('brand', unit.brand).order('id').range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: '식권 판매', missingTableOk: true }
+    ),
   ]);
-  if (posErr) throw new Error(`POS 매출 조회 실패: ${posErr.message}`);
-  if (txErr) throw new Error(`통장 입금 조회 실패: ${txErr.message}`);
 
-  const txns: ExpenseTx[] = (
-    (txData as unknown as (Omit<ExpenseTx, 'cat_type' | 'cat_name'> & { categories: { type: string; name: string } })[] | null) ?? []
-  ).map((t) => ({
+  const allTxns: ExpenseTx[] = txData.map((t) => ({
     tx_at: t.tx_at,
     ym: t.ym,
     source: t.source,
@@ -81,16 +84,13 @@ export default async function PrepRevenuePage({
     amount_out: t.amount_out,
     amount_in: t.amount_in,
     category_id: t.category_id,
-    cat_type: t.categories.type,
-    cat_name: t.categories.name,
+    cat_type: t.categories?.type ?? null,
+    cat_name: t.categories?.name ?? null,
   }));
+  const txns = allTxns.filter((t) => t.cat_type === 'revenue');
+  const unclassifiedIn = allTxns.filter((t) => t.category_id == null && (t.amount_in || 0) > 0);
 
-  const { buckets: allBuckets, columns, warnings } = buildRevenuePrep(
-    (posData as PosSaleRow[] | null) ?? [],
-    txns,
-    grain,
-    (giftData as GiftSaleRow[] | null) ?? []
-  );
+  const { buckets: allBuckets, columns, warnings } = buildRevenuePrep(posData, txns, grain, giftData, unclassifiedIn);
   const buckets = allBuckets.slice(0, LIMIT[grain]);
   const won = (n: number) => (n === 0 ? '' : n.toLocaleString());
   const warnByBucket = new Map(warnings.map((w) => [w.bucket, w.message]));
@@ -164,7 +164,7 @@ export default async function PrepRevenuePage({
                     title={c.hint}
                     className={`whitespace-nowrap px-3 py-2 text-right font-normal ${
                       c.kind === 'total' ? 'border-l-2 border-l-border font-medium text-foreground' : ''
-                    } ${c.kind === 'derived' ? 'text-muted-foreground/70' : ''}`}
+                    } ${c.kind === 'derived' || c.kind === 'note' ? 'text-muted-foreground/70' : ''}`}
                   >
                     {c.label}
                     {c.hint && <span className="ml-1 text-muted-foreground/50">ⓘ</span>}
@@ -196,7 +196,7 @@ export default async function PrepRevenuePage({
                         key={c.key}
                         className={`whitespace-nowrap px-3 py-1.5 text-right tabular-nums ${
                           c.kind === 'total' ? 'border-l-2 border-l-border font-medium' : ''
-                        } ${c.kind === 'derived' ? 'text-muted-foreground' : ''}`}
+                        } ${c.kind === 'derived' || c.kind === 'note' ? 'text-muted-foreground' : ''}`}
                       >
                         {href ? (
                           <Link

@@ -48,6 +48,38 @@ export async function POST(req: Request) {
     if (closed?.status !== 'confirmed') {
       return NextResponse.json({ error: '확정된 달만 재결산할 수 있어요. 먼저 월 결산을 해주세요.' }, { status: 409 });
     }
+    // 재결산도 확정과 같은 게이트 — 확정 후 유입된 미분류·지점 미지정 거래가 있는 채로
+    // 새 버전을 얼리면 불완전한 숫자가 '답안지'가 된다(2026-08-21 감사 P3-5)
+    let reUnclQ = supabase
+      .schema('finance')
+      .from('transactions')
+      .select('id', { count: 'exact', head: true })
+      .eq('ym', ym)
+      .eq('brand', brand)
+      .is('category_id', null);
+    if (unit.store) reUnclQ = reUnclQ.eq('store', unit.store);
+    const { count: reUncl } = await reUnclQ;
+    if (reUncl && reUncl > 0) {
+      return NextResponse.json(
+        { error: `미분류 ${reUncl}건이 남아 재결산할 수 없어요 — 먼저 분류를 마쳐주세요.`, unclassified: reUncl },
+        { status: 409 }
+      );
+    }
+    if (unit.store) {
+      const { count: reUnassigned } = await supabase
+        .schema('finance')
+        .from('transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('ym', ym)
+        .eq('brand', 'garden')
+        .is('store', null);
+      if (reUnassigned && reUnassigned > 0) {
+        return NextResponse.json(
+          { error: `지점 미지정 가든 거래 ${reUnassigned}건이 남아 재결산할 수 없어요 — 분류 화면에서 지점을 지정해주세요.`, unassigned: reUnassigned },
+          { status: 409 }
+        );
+      }
+    }
     const snap = await saveSnapshot(supabase, user.id, ym, brand, store, unit);
     if ('error' in snap) return NextResponse.json({ error: snap.error }, { status: 500 });
     await logActivity(supabase, user, '월 재결산', `${ym} [${unit.label}] v${snap.version}`);

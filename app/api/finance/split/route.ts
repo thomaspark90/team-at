@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { resolveRole } from '@/lib/finance/access';
 import { hash } from '@/lib/finance/dedup';
+import { anyInvolvedUnitConfirmed } from '@/lib/finance/monthLock';
 
 export const runtime = 'nodejs';
 
@@ -92,25 +93,12 @@ export async function POST(req: Request) {
   }
 
   // 확정된 달 보호 — 확정은 3단위(ym, brand, store). 원거래·배분 대상이 걸친 단위 중
-  // 하나라도 확정이면 불가. 지점 미지정(store null) 가든은 가든의 어느 지점 확정에도 걸린다.
-  const { data: closed } = await supabase
-    .schema('finance')
-    .from('monthly_close')
-    .select('ym,brand,store,status')
-    .eq('ym', parent.ym)
-    .eq('status', 'confirmed');
-  const closedRows = (closed ?? []) as { brand?: string; store?: string | null }[];
-  const unitClosed = (brand: string, store: string | null) =>
-    closedRows.some(
-      (c) =>
-        (c.brand ?? 'garden') === brand &&
-        (brand !== 'garden' || store == null || (c.store || '') === store),
-    );
+  // 하나라도 확정이면 불가(판정은 monthLock.anyInvolvedUnitConfirmed 단일 소스, 2026-08-21 C4).
   const involved: { brand: string; store: string | null }[] = [
     { brand: parent.brand, store: parent.store ?? null },
     ...allocations.map((a) => ({ brand: a.brand as string, store: (a.store ?? null) as string | null })),
   ];
-  if (involved.some((u) => unitClosed(u.brand, u.store))) {
+  if (await anyInvolvedUnitConfirmed(supabase, parent.ym, involved)) {
     return NextResponse.json({ error: `확정된 달(${parent.ym})의 거래는 분할할 수 없습니다.` }, { status: 409 });
   }
 
@@ -207,26 +195,18 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: '분할된 거래가 아닙니다.' }, { status: 400 });
   }
 
-  // 자식이 걸친 단위 포함 확정 보호 — 확정은 3단위(ym, brand, store)
+  // 자식이 걸친 단위 포함 확정 보호 — 확정은 3단위(ym, brand, store).
+  // 판정은 monthLock.anyInvolvedUnitConfirmed 단일 소스(2026-08-21 C4).
   const { data: kids } = await supabase
     .schema('finance')
     .from('transactions')
     .select('id,brand,store')
     .eq('split_parent_id', txId);
-  const { data: closed } = await supabase
-    .schema('finance')
-    .from('monthly_close')
-    .select('brand,store,status')
-    .eq('ym', parent.ym)
-    .eq('status', 'confirmed');
-  const closedRows = (closed ?? []) as { brand?: string; store?: string | null }[];
-  const kidClosed = (k: { brand: string; store?: string | null }) =>
-    closedRows.some(
-      (c) =>
-        (c.brand ?? 'garden') === k.brand &&
-        (k.brand !== 'garden' || k.store == null || (c.store || '') === k.store),
-    );
-  if ((kids ?? []).some((k: { brand: string; store?: string | null }) => kidClosed(k))) {
+  const kidUnits = ((kids ?? []) as { brand: string; store?: string | null }[]).map((k) => ({
+    brand: k.brand,
+    store: k.store ?? null,
+  }));
+  if (await anyInvolvedUnitConfirmed(supabase, parent.ym, kidUnits)) {
     return NextResponse.json({ error: `확정된 달(${parent.ym})이 걸려 있어 해제할 수 없습니다.` }, { status: 409 });
   }
 

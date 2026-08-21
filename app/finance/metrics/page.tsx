@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveRoleStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
+import { fetchAllRows } from '@/lib/finance/fetchAll';
 import type { AggTx, AggCat } from '@/lib/finance/aggregate';
 import { monthEndBalance } from '@/lib/finance/cashflow';
 import { UNITS, unitOf } from '@/lib/finance/types';
@@ -28,40 +29,34 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
 
   // ⚠️ 전량 조회(페이지네이션) — limit 없이 한 번만 select 하면 PostgREST 응답이 프로젝트
   // Max Rows(Settings→API, 2026-08-09 기준 20000)에서 잘린다. POS 일별 행이 그 이상이면
-  // 가장 최근 달이 통째로 잘려 매출 0으로 보였다(2026-08-04 버그). PAGE는 항상 그 설정값
-  // 이하로 유지할 것 — 실측 결과 페이지당 요청이 1~2초라 PAGE를 낮게 잡을수록(예전 1000)
-  // 왕복이 늘어 느려진다(2026-08-09, 지표 페이지 26초 로딩 원인).
-  // 뷰엔 고유 id가 없어 선택 컬럼 전부로 정렬 → 페이지 경계의 동일 튜플은 서로 교환 가능(누락·중복 없음).
-  const fetchAll = async (table: string, cols: string, order: string[]) => {
-    const PAGE = 20000;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const out: any[] = [];
-    for (let from = 0; ; from += PAGE) {
-      let q = supabase.schema('finance').from(table).select(cols);
-      for (const c of order) q = q.order(c, { ascending: true, nullsFirst: true });
-      const { data, error } = await q.range(from, from + PAGE - 1);
-      if (error) return { data: out, error };
-      out.push(...(data ?? []));
-      if (!data || data.length < PAGE) break;
-    }
-    return { data: out, error: null as null };
-  };
+  // 가장 최근 달이 통째로 잘려 매출 0으로 보였다(2026-08-04 버그). fetchAllRows 는 실제 반환
+  // 길이만큼만 전진하고 0행에서만 멈추므로 서버 상한이 PAGE 보다 작아져도 잘리지 않는다
+  // (구 구현은 `length < PAGE`에서 멈춰 상한 축소 시 첫 페이지 잘림 — 2026-08-21 감사 B2 수정).
+  // PAGE 를 낮게 잡으면 왕복이 늘어 느려진다(2026-08-09, 지표 26초 로딩 원인) — 20000 유지.
+  // ⚠️ 정렬은 반드시 **선택 컬럼 전부** — 뷰엔 고유 id가 없어, 정렬 키에서 빠진 컬럼이 다른
+  // 행이 페이지 경계에서 중복·누락될 수 있다(2026-08-21 감사 B3 — source 등 3개 컬럼 보강).
+  const PAGE = 20000;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fetchAll = (table: string, cols: string, order: string[]): Promise<any[]> =>
+    fetchAllRows(
+      (from, to) => {
+        let q = supabase.schema('finance').from(table).select(cols);
+        for (const c of order) q = q.order(c, { ascending: true, nullsFirst: true });
+        return q.range(from, to);
+      },
+      { page: PAGE, label: table }
+    );
 
   // dashboard_tx = memo(이름) 없는 멤버 전용 뷰(viewer도 읽음). store 컬럼은 마이그레이션 전이면 없어 폴백.
   const loadTxns = async () => {
-    const txOrder = ['tx_at', 'category_id', 'brand', 'store', 'amount_in', 'amount_out'];
+    const full = 'tx_at,amount_in,amount_out,category_id,brand,store,source,is_card_payment,is_vat_payment';
     // source·is_card_payment·is_vat_payment = 카드대금 차감·부가세 제외용 신호(aggregate) — 뷰 미마이그레이션이면 구 컬럼 폴백
-    let txRows = await fetchAll('dashboard_tx', 'tx_at,amount_in,amount_out,category_id,brand,store,source,is_card_payment,is_vat_payment', txOrder);
-    if (txRows.error) {
-      txRows = await fetchAll('dashboard_tx', 'tx_at,amount_in,amount_out,category_id,brand,store,source,is_card_payment', txOrder);
+    try {
+      return await fetchAll('dashboard_tx', full, full.split(','));
+    } catch {
+      const cols = 'tx_at,amount_in,amount_out,category_id,brand,store';
+      return await fetchAll('dashboard_tx', cols, cols.split(',')); // 실패는 여기서 그대로 던진다(조용한 빈 화면 방지)
     }
-    if (txRows.error) {
-      txRows = await fetchAll('dashboard_tx', 'tx_at,amount_in,amount_out,category_id,brand,store', txOrder);
-    }
-    if (txRows.error) {
-      txRows = await fetchAll('dashboard_tx', 'tx_at,amount_in,amount_out,category_id,brand', ['tx_at', 'category_id', 'brand', 'amount_in', 'amount_out']);
-    }
-    return unwrap(txRows, '지표 거래');
   };
 
   const loadCats = async () =>
@@ -71,13 +66,17 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
     );
 
   // 매출 = POS 공급가액(발생주의). memo-free 뷰(dashboard_pos), 없으면 pos_sales로 폴백.
-  // category 포함 — 식권 판매 비중 차트('식권판매' 분리)용.
+  // category 포함 — 식권 판매 비중 차트('식권판매' 분리)용. 최종 폴백까지 실패하면 던진다 —
+  // 예전엔 조용히 매출 0으로 진행돼 지출만 남은 적자 그래프가 무경고로 그려졌다(2026-08-21 감사 B4).
   const loadPosSales = async () => {
-    let posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand,store,category', ['sale_date', 'brand', 'store', 'category', 'supply']);
-    if (posRows.error) posRows = await fetchAll('dashboard_pos', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
-    if (posRows.error) posRows = await fetchAll('pos_sales', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
-    return ((posRows.data as { sale_date: string; supply: number; brand?: string | null; store?: string | null; category?: string | null }[] | null) ?? [])
-      .map((p) => ({ saleDate: p.sale_date, supply: p.supply, brand: p.brand, store: p.store ?? null, category: p.category ?? null }));
+    let rows: { sale_date: string; supply: number; brand?: string | null; store?: string | null; category?: string | null }[];
+    try {
+      rows = await fetchAll('dashboard_pos', 'sale_date,supply,brand,store,category', ['sale_date', 'brand', 'store', 'category', 'supply']);
+    } catch {
+      // 뷰 미마이그레이션 환경 폴백 — pos_sales 원본(식권 union 없음·category 없음)
+      rows = await fetchAll('pos_sales', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
+    }
+    return rows.map((p) => ({ saleDate: p.sale_date, supply: p.supply, brand: p.brand, store: p.store ?? null, category: p.category ?? null }));
   };
 
   // 채널수수료 실입력 — 지표 EBIT도 관리손익과 같은 기준(실입력 우선, 없으면 추정율)으로 차감(2026-08-20)
@@ -93,21 +92,19 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
   const loadBankCash = async (): Promise<BankCashRow[]> => {
     const bankCash: BankCashRow[] = [];
     if (!['admin', 'classifier'].includes(role)) return bankCash;
-    const PAGE = 20000; // ⚠️ 프로젝트 Max Rows(Settings→API) 이하로 유지 — 위 fetchAll 주석 참고
-    const raw: { ym: string; bank: string; brand: string | null; tx_at: string; amount_in: number; amount_out: number; balance: number }[] = [];
-    for (let from = 0; ; from += PAGE) {
-      const { data, error } = await supabase
-        .schema('finance')
-        .from('transactions')
-        .select('ym,bank,brand,tx_at,amount_in,amount_out,balance')
-        .eq('source', 'bank')
-        .is('split_parent_id', null)
-        .order('id')
-        .range(from, from + PAGE - 1);
-      if (error) break;
-      raw.push(...((data ?? []) as typeof raw));
-      if (!data || data.length < PAGE) break;
-    }
+    // 조회 실패는 던진다 — 부분 데이터로 월말 잔액을 그리던 침묵 폴백 제거(2026-08-21 감사 B4)
+    const raw = await fetchAllRows<{ ym: string; bank: string; brand: string | null; tx_at: string; amount_in: number; amount_out: number; balance: number }>(
+      (from, to) =>
+        supabase
+          .schema('finance')
+          .from('transactions')
+          .select('ym,bank,brand,tx_at,amount_in,amount_out,balance')
+          .eq('source', 'bank')
+          .is('split_parent_id', null)
+          .order('id')
+          .range(from, to),
+      { page: PAGE, label: '통장 거래' }
+    );
     // (브랜드,은행)별 월 집계 + 월말 잔액, 거래 없는 달은 잔액 이월.
     // 월말 잔액은 '마지막 행'이 아니라 유일 시각 앵커 방식(monthEndBalance) — 은행 파일이
     // 오름차순·내림차순으로 섞여 들어와 동시각 묶음의 순서를 믿을 수 없다(2026-08-20, cashflow.ts 참고).
@@ -160,10 +157,12 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
       .eq('name', '대여금')
       .maybeSingle();
     if (!cat) return [];
-    const [{ data: txs }, { data: labels }] = await Promise.all([
+    const [txsRes, labelsRes] = await Promise.all([
       supabase.schema('finance').from('transactions').select('ym,brand,amount_out,amount_in').eq('category_id', cat.id).limit(10000),
       supabase.schema('finance').from('chart_annotations').select('brand,ym,label'),
     ]);
+    const txs = unwrap(txsRes, '대여금 거래');
+    const labels = unwrap(labelsRes, '차트 주석');
     const agg = new Map<string, LoanMarker>();
     for (const t of (txs ?? []) as { ym: string; brand: string | null; amount_out: number; amount_in: number }[]) {
       const b = t.brand ?? 'garden';
@@ -184,15 +183,27 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
   // 전체(가든 포함 1.5만 행 안팎)를 받은 뒤 여기서 스탭밀만 추린다 — 물량이 작아 부담 없다.
   const loadMenuQty = async () => {
     const cols = 'sale_date,category,product,qty,brand';
-    const order = ['sale_date', 'category', 'product'];
-    let rows = await fetchAll('dashboard_pos_items', cols, order);
-    if (rows.error) rows = await fetchAll('pos_items', cols, order);
-    const all = (rows.data as { sale_date: string; category: string; product: string; qty: number; brand: string }[] | null) ?? [];
+    const order = cols.split(','); // 선택 컬럼 전부로 정렬 — 페이지 경계 안전(위 주석 참고)
+    let all: { sale_date: string; category: string; product: string; qty: number; brand: string }[];
+    try {
+      all = await fetchAll('dashboard_pos_items', cols, order);
+    } catch {
+      all = await fetchAll('pos_items', cols, order);
+    }
     return all.filter((r) => r.brand === 'staffmeal').map((r) => ({ saleDate: r.sale_date, category: r.category, product: r.product, qty: Number(r.qty) }));
   };
 
+  // 미분해 지출 lump — 명세 미연결 카드대금·세부 미수집 대체 출금(dashboard_lumps 안전 뷰).
+  // 관리손익의 cardLump·payLump 와 같은 규칙으로 지표 EBIT에서도 차감(2026-08-21 감사 P4-7).
+  // 뷰 미마이그레이션 환경이면 빈 배열(그때만 구 동작 = lump 미반영).
+  const loadLumps = async () => {
+    const { data, error } = await supabase.schema('finance').from('dashboard_lumps').select('brand,ym,kind,amount');
+    if (error) return [];
+    return ((data as { brand: string; ym: string; kind: string; amount: number }[] | null) ?? []);
+  };
+
   // 5개 테이블이 서로 독립적이라 병렬로 조회 — 예전엔 순차 await라 지표 페이지 로딩이 밀렸다.
-  const [txns, cats, posSales, bankCash, menuItems, loanMarkers, channelFees] = await Promise.all([
+  const [txns, cats, posSales, bankCash, menuItems, loanMarkers, channelFees, lumps] = await Promise.all([
     loadTxns(),
     loadCats(),
     loadPosSales(),
@@ -200,6 +211,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
     loadMenuQty(),
     loadLoanMarkers(),
     loadChannelFees(),
+    loadLumps(),
   ]);
 
   return (
@@ -227,6 +239,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
             menuItems={menuItems}
             loanMarkers={loanMarkers}
             channelFees={channelFees}
+            lumps={lumps}
             reportUnit={{ brand: unit.brand as 'staffmeal' | 'garden', store: unit.store }}
           />
         </MonthShell>

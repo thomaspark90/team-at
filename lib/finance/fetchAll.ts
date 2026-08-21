@@ -9,13 +9,15 @@
 // ⚠ 호출부는 반드시 유일 키 정렬(.order('id') 등)을 걸어야 한다 — 정렬 없는 range 는
 // 페이지 경계에서 행이 중복·누락될 수 있다.
 
-interface PageResult<T> {
-  data: T[] | null;
+// data 는 unknown[] 로 받아 T[] 로 캐스팅한다 — supabase 의 조인 타입 추론(categories 를 배열로
+// 추론하는 버릇)과 싸우지 않기 위함. select 문자열과 T 의 일치는 호출부 책임(기존 캐스팅과 동일).
+interface PageResult {
+  data: unknown[] | null;
   error: { message: string; code?: string } | null;
 }
 
 export async function fetchAllRows<T>(
-  build: (from: number, to: number) => PromiseLike<PageResult<T>>,
+  build: (from: number, to: number) => PromiseLike<PageResult>,
   opts?: {
     /** 한 번에 요청할 행 수 — 서버 상한보다 커도 안전하지만, 상한 이하로 두면 요청 수가 예측된다 */
     page?: number;
@@ -34,7 +36,7 @@ export async function fetchAllRows<T>(
       if (opts?.missingTableOk && (error.code === 'PGRST205' || error.code === '42P01')) return out;
       throw new Error(`${opts?.label ?? '데이터'} 조회 실패: ${error.message}`);
     }
-    const rows = data ?? [];
+    const rows = (data ?? []) as T[];
     if (rows.length === 0) break;
     out.push(...rows);
     from += rows.length;

@@ -281,7 +281,8 @@ export async function POST(req: Request) {
       periodEnd: dates[dates.length - 1]?.slice(0, 10),
       preScoped: true,
     },
-    buildRawRowsFromObjects(valid)
+    // row_date 를 함께 심는다 — 없으면 로우데이터 기간 조회에서 통째로 빠진다(2026-08-21 감사 B2)
+    buildRawRowsFromObjects(valid, (r) => String((r as IngestRow).paid_at ?? '').slice(0, 10) || null)
   );
 
   const insertRows = fresh.map(({ _explicit_brand, _raw_idx, ...rest }) => ({

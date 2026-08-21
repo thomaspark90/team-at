@@ -30,7 +30,7 @@ export interface GiftSaleRow {
 export interface RevenueColumn {
   key: string;
   label: string;
-  kind: 'pos' | 'income' | 'total' | 'derived';
+  kind: 'pos' | 'income' | 'total' | 'derived' | 'note';
   /** 분류 화면 드릴다운용 — income 열이면 계정 이름 */
   cat?: string;
   amounts: Record<string, number>;
@@ -73,7 +73,12 @@ export function buildRevenuePrep(
   pos: PosSaleRow[],
   txns: ExpenseTx[], // revenue 계정으로 분류된 거래만 넘겨받는다
   grain: ExpenseGrain = 'month',
-  gift: GiftSaleRow[] = [] // 자가 식권 판매(선수금) — 없으면 열 생략
+  gift: GiftSaleRow[] = [], // 자가 식권 판매(선수금) — 없으면 열 생략
+  // 미분류 '입금' 거래(계정 없음 + amount_in>0) — 참고 열 전용(2026-08-21 감사 P2-1).
+  // 분류 전 매출 입금이 여기 숨으면 정산률이 낮게 나와 '미정산' 오진 경고가 뜬다.
+  // 정산률·입금 합계에는 넣지 않는다(계정 미확정 돈을 매출로 단정하지 않는 보수 원칙) —
+  // 열로 드러내 "분류하면 정산률이 오를 수 있는 몫"임을 보여주기만 한다.
+  unclassifiedIn: ExpenseTx[] = []
 ): RevenuePrep {
   const isMonth = grain === 'month';
 
@@ -108,11 +113,17 @@ export function buildRevenuePrep(
     perCat.set(name, m);
   }
 
+  const unclassifiedAmt: Record<string, number> = {};
+  for (const t of unclassifiedIn) {
+    if ((t.amount_in || 0) > 0) add(unclassifiedAmt, bucketOf(t, grain), t.amount_in);
+  }
+
   const buckets = Array.from(
     new Set([
       ...Object.keys(posAmt),
       ...Array.from(perCat.values()).flatMap((m) => Object.keys(m)),
       ...Object.keys(mealTicket),
+      ...Object.keys(unclassifiedAmt),
     ])
   ).sort((a, b) => b.localeCompare(a));
 
@@ -242,6 +253,17 @@ export function buildRevenuePrep(
       amounts: inTotal,
       hint: '매출 계정으로 분류된 통장 입금의 순액(환불 차감) — 현금흐름 그대로.',
     },
+    ...(Object.keys(unclassifiedAmt).length > 0
+      ? [
+          {
+            key: 'in_unclassified',
+            label: '미분류 입금 (참고)',
+            kind: 'note' as const,
+            amounts: unclassifiedAmt,
+            hint: '아직 계정이 없는 입금 — 입금 합계·정산률에 안 들어가요. 매출 입금이 섞여 있으면 분류한 만큼 정산률이 올라가요.',
+          },
+        ]
+      : []),
     {
       key: 'rate',
       label: '정산률 %',

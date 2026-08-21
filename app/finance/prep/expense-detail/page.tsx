@@ -7,6 +7,7 @@ import AccountingNav from '@/components/AccountingNav';
 import { unitOf, UNITS } from '@/lib/finance/types';
 import type { ExpenseGrain, ExpenseTx } from '@/lib/finance/prepExpense';
 import { buildExpenseDetail, type CategoryInfo } from '@/lib/finance/prepExpenseDetail';
+import { fetchAllRows } from '@/lib/finance/fetchAll';
 
 // 전처리2 — 지출 세분화. 전처리1(소스별)과 같은 돈을 계정과목 축으로 다시 자른 표.
 // 합계는 전처리1과 정확히 일치한다 — 다르면 어느 한쪽이 거짓말을 하는 것.
@@ -37,23 +38,27 @@ export default async function PrepExpenseDetailPage({
     ? (searchParams.grain as ExpenseGrain)
     : 'month';
 
-  let q = supabase
-    .schema('finance')
-    .from('transactions')
-    .select('tx_at,ym,source,memo,amount_out,amount_in,category_id,categories(type,name)')
-    .eq('brand', unit.brand)
-    .limit(50000);
-  if (unit.store) q = q.eq('store', unit.store);
-  const [{ data, error }, { data: catsData, error: catsErr }] = await Promise.all([
-    q,
+  // 전량 페이지 조회 — `.limit(50000)`은 서버 Max Rows(20000)에서 조용히 깎인다(2026-08-21 감사 P1-3)
+  const [data, { data: catsData, error: catsErr }] = await Promise.all([
+    fetchAllRows<Omit<ExpenseTx, 'cat_type' | 'cat_name'> & { categories: { type: string; name: string } | null }>(
+      (from, to) => {
+        let q = supabase
+          .schema('finance')
+          .from('transactions')
+          .select('tx_at,ym,source,memo,amount_out,amount_in,category_id,categories(type,name)')
+          .eq('brand', unit.brand)
+          .order('id')
+          .range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: '거래' }
+    ),
     supabase.schema('finance').from('categories').select('id,name,type,parent_id'),
   ]);
-  if (error) throw new Error(`거래 조회 실패: ${error.message}`);
   if (catsErr) throw new Error(`계정과목 조회 실패: ${catsErr.message}`);
 
-  const txns: ExpenseTx[] = (
-    (data as unknown as (Omit<ExpenseTx, 'cat_type' | 'cat_name'> & { categories: { type: string; name: string } | null })[] | null) ?? []
-  ).map((t) => ({
+  const txns: ExpenseTx[] = data.map((t) => ({
     tx_at: t.tx_at,
     ym: t.ym,
     source: t.source,

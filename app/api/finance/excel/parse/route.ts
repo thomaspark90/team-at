@@ -43,14 +43,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: '시트에서 데이터를 찾지 못했어요.' }, { status: 422 });
     }
     const mapping = await inferMapping(rows, key);
-    const result = rowsToTransactions(rows, mapping);
+    // 지문 v2 — 저장 라우트와 같은 identity 로 만들어야 미리보기의 신규/중복 수가 저장과 일치한다(D9)
+    const bankLabel = slot === 'bank_shinhan' ? 'shinhan' : slot === 'bank_woori' ? 'woori' : 'excel';
+    const result = rowsToTransactions(rows, mapping, brand ? { brand, bank: bankLabel } : undefined);
     if (result.totalRows === 0) {
       return NextResponse.json({ error: '거래를 읽지 못했어요. 거래내역 형태의 엑셀인지 확인해주세요.' }, { status: 422 });
     }
 
+    // 새 지문·구지문 모두 대조(저장 라우트와 동일 규칙)
     const existing = await fetchExistingHashes(
       supabase,
-      result.transactions.map((t) => t.dedupHash)
+      result.transactions.flatMap((t) => (t.legacyDedupHash ? [t.dedupHash, t.legacyDedupHash] : [t.dedupHash]))
     );
     const { fresh, duplicates } = dedupe(result.transactions, existing);
 

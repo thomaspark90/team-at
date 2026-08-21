@@ -92,7 +92,9 @@ export function dedupe(
   const fresh: ParsedTransaction[] = [];
   let duplicates = 0;
   for (const tx of incoming) {
-    if (seen.has(tx.dedupHash)) {
+    // 구지문(legacyDedupHash)도 본다 — 지문 v2 도입(2026-08-21 D9) 전에 적재된 거래는 DB에
+    // 옛 지문으로 남아 있어, 새 지문만 보면 같은 파일 재업로드가 전부 신규로 오인된다.
+    if (seen.has(tx.dedupHash) || (tx.legacyDedupHash != null && seen.has(tx.legacyDedupHash))) {
       duplicates++;
       continue;
     }

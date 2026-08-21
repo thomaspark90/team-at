@@ -11,6 +11,7 @@ import FinanceNav from '@/components/finance/FinanceNav';
 import Cashflow from '@/components/finance/Cashflow';
 import CashflowReconTable from '@/components/finance/CashflowRecon';
 import { UNITS, unitOf } from '@/lib/finance/types';
+import { fetchAllRows } from '@/lib/finance/fetchAll';
 
 // 월별 요약 — 통장 현금흐름을 전처리1(지출)·전처리3(매출)과 나란히 대사한다(2026-08-20 개편).
 // 통장 숫자만 보여주던 이전 화면은 전처리와 "왜 다른지"가 숨었다 — 식권 시차·선수금·대여금이
@@ -34,35 +35,10 @@ export default async function CashflowPage({ searchParams }: { searchParams: { u
   // 계좌가 브랜드별로 분리 — 통장 현황도 상단 매장 필로 필터
   const unit = unitOf(searchParams.unit) ?? UNITS[0];
 
-  // 거래를 한 번에 읽어 메모리에서 집계한다(전처리1과 같은 방식) — 통장 표와 대사 열이
-  // 같은 원본에서 나와야 한다. id 정렬은 동시각 거래의 월말 잔액 안정화용(명세 순서).
-  let txQ = supabase
-    .schema('finance')
-    .from('transactions')
-    .select('id,tx_at,ym,source,memo,bank,balance,amount_out,amount_in,category_id,split_parent_id,categories(type,name)')
-    .eq('brand', unit.brand)
-    .order('tx_at')
-    .order('id')
-    .limit(50000);
-  if (unit.store) txQ = txQ.eq('store', unit.store);
-
-  let posQ = supabase
-    .schema('finance')
-    .from('pos_sales')
-    .select('sale_date,gross')
-    .eq('brand', unit.brand)
-    .limit(50000);
-  if (unit.store) posQ = posQ.eq('store', unit.store);
-
-  // 자가 식권 판매(선수금) — 매출 대사에서 입금>POS 초과를 실측으로 설명하는 열
-  let giftQ = supabase
-    .schema('finance')
-    .from('pos_gift_sales')
-    .select('sale_date,gross')
-    .eq('brand', unit.brand)
-    .limit(50000);
-  if (unit.store) giftQ = giftQ.eq('store', unit.store);
-
+  // 거래를 전량 페이지로 읽어 메모리에서 집계한다(전처리1과 같은 방식) — 통장 표와 대사 열이
+  // 같은 원본에서 나와야 한다. `.limit(50000)`은 서버 Max Rows(20000)에서 조용히 깎이는 거짓
+  // 신호라 페이지 로더로 교체(2026-08-21 감사 P1-3). 월말 잔액은 앵커 방식(cashflow.ts)이라
+  // 정렬에 안 기대지만, id 정렬은 페이지 경계 안정용으로 유지한다.
   // 지점 뷰에서 빠지는 '지점 미지정' 가든 거래 건수 — 경고 표기용
   const unassignedQ = unit.store
     ? supabase
@@ -74,10 +50,40 @@ export default async function CashflowPage({ searchParams }: { searchParams: { u
         .is('store', null)
     : null;
 
-  const [{ data: txData, error: txErr }, { data: posData, error: posErr }, { data: giftData }, unassignedRes] =
-    await Promise.all([txQ, posQ, giftQ, unassignedQ ?? Promise.resolve({ count: null })]);
-  if (txErr) throw new Error(`통장 거래 조회 실패: ${txErr.message}`);
-  if (posErr) throw new Error(`POS 매출 조회 실패: ${posErr.message}`);
+  const [txData, posData, giftData, unassignedRes] = await Promise.all([
+    fetchAllRows<Record<string, unknown>>(
+      (from, to) => {
+        let q = supabase
+          .schema('finance')
+          .from('transactions')
+          .select('id,tx_at,ym,source,memo,bank,balance,amount_out,amount_in,category_id,split_parent_id,categories(type,name)')
+          .eq('brand', unit.brand)
+          .order('id')
+          .range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: '통장 거래' }
+    ),
+    fetchAllRows<{ sale_date: string; gross: number }>(
+      (from, to) => {
+        let q = supabase.schema('finance').from('pos_sales').select('sale_date,gross').eq('brand', unit.brand).order('id').range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: 'POS 매출' }
+    ),
+    // 자가 식권 판매(선수금) — 매출 대사에서 입금>POS 초과를 실측으로 설명하는 열
+    fetchAllRows<{ sale_date: string; gross: number }>(
+      (from, to) => {
+        let q = supabase.schema('finance').from('pos_gift_sales').select('sale_date,gross').eq('brand', unit.brand).order('id').range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: '식권 판매', missingTableOk: true }
+    ),
+    unassignedQ ?? Promise.resolve({ count: null }),
+  ]);
   const unassignedCount = unassignedRes?.count ?? 0;
 
   const txns: TxRow[] = (
@@ -102,7 +108,8 @@ export default async function CashflowPage({ searchParams }: { searchParams: { u
 
   // 통장 표 — 은행 거래만(카드 이용내역 등 제외해 현금 중복 방지). 건별분할 자식은 제외 —
   // 실제 통장 이동은 부모 한 건이고 자식은 손익용 파생 행이라, 안 거르면 그 금액이 이중이
-  // 된다(지표 loadBankCash와 동일 규칙). 쿼리가 tx_at,id 순이라 월말 잔액 선택도 안정적.
+  // 된다(지표 loadBankCash와 동일 규칙). 월말 잔액은 순서 비의존 앵커 방식(monthEndBalance)이라
+  // 행 순서에 안 기댄다 — 쿼리의 id 정렬은 페이지 경계 안정용일 뿐이다.
   const bankTxns = txns
     .filter((t) => t.source === 'bank' && t.bank != null && t.split_parent_id == null)
     .map((t) => ({

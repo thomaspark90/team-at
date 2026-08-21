@@ -4,6 +4,7 @@ import { dedupe } from '@/lib/finance/parse';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import { fetchExistingHashes } from '@/lib/finance/dedup';
+import { CARD_COMPANIES } from '@/lib/finance/cardOffset';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -48,12 +49,11 @@ export async function POST(req: Request) {
   const usageYm = yms[yms.length - 1] ?? null;
 
   // 매칭 후보: 은행 카드대금 결제 출금 (source=bank) — 같은 브랜드 통장의 결제 건만.
-  // '신한카드' 하드코딩이었으나 스탭밀은 비씨(선결제·BC바로)·현대카드라 후보가 0건이 됐다
-  // (2026-08-20) — cardOffset의 CARD_PAYMENT_RE와 같은 카드사 목록으로 확장.
+  // 카드사 목록은 cardOffset.CARD_COMPANIES 단일 정의에서 파생 — 배열 사본이 따로 놀면
+  // 대사 후보와 손익 상쇄의 판정이 어긋난다(2026-08-21 감사 C1, 사본 3벌 → 1벌).
+  // ilike(대소문자 무시)는 후보 '검색'이라 과잉 매칭이 안전한 쪽 — 판정 정본은 CARD_PAYMENT_RE.
   const brand = String(form.get('brand') ?? 'garden');
-  const CARD_MEMO_OR = ['비씨카드', 'BC바로카드', 'BC카드', '현대카드', '신한카드', '삼성카드', '국민카드', '롯데카드', '하나카드', '우리카드']
-    .map((k) => `memo.ilike.%${k}%`)
-    .join(',');
+  const CARD_MEMO_OR = CARD_COMPANIES.map((k) => `memo.ilike.%${k}%`).join(',');
   const { data: cand } = await supabase
     .schema('finance')
     .from('transactions')

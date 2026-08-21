@@ -156,6 +156,7 @@ export default function Dashboard({
   menuItems = [],
   loanMarkers = [],
   channelFees = [],
+  lumps = [],
   reportUnit,
 }: {
   txns: AggTx[];
@@ -169,11 +170,15 @@ export default function Dashboard({
   loanMarkers?: { brand: string; ym: string; amount: number; label: string }[];
   // 채널수수료 실입력(finance.channel_fees) — EBIT 차감(관리손익과 기준 통일). 없는 달은 1.7% 추정.
   channelFees?: { ym: string; amount: number; brand?: string | null }[];
+  // 미분해 지출 lump(finance.dashboard_lumps) — 명세 미연결 카드대금·세부 미수집 대체 출금.
+  // 관리손익의 cardLump·payLump 와 같은 규칙으로 지표 EBIT에서도 차감(2026-08-21 감사 P4-7).
+  lumps?: { brand: string; ym: string; kind: string; amount: number }[];
   // 상단 매장 필(FinanceNav ?unit=)이 정하는 브랜드+지점 — 이 화면 자체 토글은 없앴다(2026-08-19).
   reportUnit: { brand: 'staffmeal' | 'garden'; store: 'pangyo' | 'yangjae' | null };
 }) {
   const [unit, setUnit] = useState<Unit>('month');
-  const [netVat, setNetVat] = useState(true);
+  // 부가세 기준은 순액(공급가액) 단일 — 옛 '총액' 토글은 비용만 총액으로 바꾸고 매출(POS 공급가액)은
+  // 그대로 두는 반쪽 모드라 EBIT을 왜곡했고, 회계 기준도 공급가액으로 확정돼 제거(2026-08-21 감사 D6).
   // 브랜드+지점은 상단 매장 필에서만 바뀐다 — 페이지가 서버에서 다시 그려지며 이 prop이 갱신된다.
   const segId: SegId =
     reportUnit.brand === 'staffmeal' ? 'staffmeal' : reportUnit.store === 'yangjae' ? 'garden-yangjae' : reportUnit.store === 'pangyo' ? 'garden-pangyo' : 'garden';
@@ -293,22 +298,70 @@ export default function Dashboard({
     setMarkerEdit(null);
   };
 
-  const { months, expenseKeys } = useMemo(() => {
+  // 브랜드+지점 필터를 통과한 거래 — 손익 집계와 감가상각 차트가 같은 모집단을 쓴다
+  // (감가상각만 무필터 원본을 쓰던 버그 수정, 2026-08-21 감사 P4-2).
+  const filteredTx = useMemo(() => {
     // '전체'는 사업 브랜드만 — 개인(personal)은 손익 제외라 카테고리와 무관하게 뺀다.
     let tx = brand === 'all' ? txns.filter((t) => t.brand !== 'personal') : txns.filter((t) => (t.brand ?? 'garden') === brand);
+    if (brand === 'garden' && store !== 'all') tx = tx.filter((t) => t.store === store);
+    return tx;
+  }, [txns, brand, store]);
+
+  const { months, expenseKeys } = useMemo(() => {
     let pos = brand === 'all' ? posSales : posSales.filter((p) => (p.brand ?? 'garden') === brand);
-    if (brand === 'garden' && store !== 'all') {
-      tx = tx.filter((t) => t.store === store);
-      pos = pos.filter((p) => (p.store ?? '') === store);
-    }
-    // 채널수수료 — 관리손익과 같은 기준으로 EBIT에서 차감(실입력 우선, 없으면 1.7% 추정)
+    if (brand === 'garden' && store !== 'all') pos = pos.filter((p) => (p.store ?? '') === store);
+    // 채널수수료 — 관리손익과 같은 기준으로 EBIT에서 차감(실입력 우선, 없으면 1.7% 추정).
+    // 지점 뷰는 실입력(브랜드 단위)을 그 달 지점 매출비율로 안분 — 관리손익(computePnlMonth)과
+    // 같은 규칙. 안 하면 두 지점이 각각 전체 수수료를 빼 지점 EBIT 합이 어긋난다(2026-08-21 P4-3).
     const feeMap: Record<string, number> = {};
     for (const f of channelFees) {
       if (brand !== 'all' && (f.brand ?? 'garden') !== brand) continue;
       feeMap[f.ym] = (feeMap[f.ym] ?? 0) + Number(f.amount || 0);
     }
-    return aggregate(tx, cats, unit, netVat, pos, { channelFees: feeMap });
-  }, [txns, cats, unit, netVat, posSales, channelFees, brand, store]);
+    if (brand === 'garden' && store !== 'all') {
+      const brandPos = posSales.filter((p) => (p.brand ?? 'garden') === 'garden');
+      const supplyBy = (rows: typeof brandPos) => {
+        const m: Record<string, number> = {};
+        for (const p of rows) m[p.saleDate.slice(0, 7)] = (m[p.saleDate.slice(0, 7)] ?? 0) + p.supply;
+        return m;
+      };
+      const brandSupply = supplyBy(brandPos);
+      const storeSupply = supplyBy(brandPos.filter((p) => (p.store ?? '') === store));
+      for (const ym of Object.keys(feeMap)) {
+        const ratio = (brandSupply[ym] ?? 0) > 0 ? (storeSupply[ym] ?? 0) / brandSupply[ym] : 0;
+        feeMap[ym] = Math.round(feeMap[ym] * ratio);
+      }
+    }
+    const agg = aggregate(filteredTx, cats, unit, true, pos, { channelFees: feeMap });
+
+    // 카드 미분해·대체 출금 백스톱 — 관리손익(buildPnl cardLump·payLump)과 같은 규칙(2026-08-21 P4-7):
+    // 명세 미연결 카드대금 인출·세부 미수집 달의 쿠팡/네이버페이 대체 출금은 excluded 라 aggregate 가
+    // 건너뛰지만, 빼먹으면 그 달 지출이 증발해 지표 EBIT만 낙관적으로 벌어진다. 월 단위·브랜드 뷰에서만
+    // 더한다(주 단위는 월 키 데이터라 못 얹고, 지점 뷰는 lump 가 지점 미지정이라 관리손익도 0 — 동일).
+    if (unit === 'month' && store === 'all' && lumps.length > 0) {
+      const LUMP_LABEL: Record<string, string> = {
+        card: '카드 지출(미분해)',
+        coupang: '쿠팡(미분류)',
+        naverpay: '네이버페이(미분류)',
+      };
+      const byYm = new Map(agg.months.map((m) => [m.ym, m]));
+      const added = new Set<string>();
+      for (const l of lumps) {
+        if (brand === 'all' ? l.brand === 'personal' : l.brand !== brand) continue;
+        const mo = byYm.get(l.ym);
+        const label = LUMP_LABEL[l.kind] ?? l.kind;
+        if (!mo || !(l.amount > 0)) continue;
+        mo.sga += l.amount;
+        mo.ebit -= l.amount;
+        mo.net -= l.amount;
+        mo.profitRatio = mo.revenue > 0 ? mo.ebit / mo.revenue : null;
+        mo.expense[label] = (mo.expense[label] || 0) + l.amount;
+        added.add(label);
+      }
+      for (const k of Array.from(added)) if (!agg.expenseKeys.includes(k)) agg.expenseKeys.push(k);
+    }
+    return agg;
+  }, [filteredTx, txns, cats, unit, posSales, channelFees, lumps, brand, store]);
 
   // 진행월(이번 달, KST) — POS·은행이 아직 덜 올라와 추이 끝점이 왜곡되므로 기본은 숨긴다(토글로 표시)
   const nowYm = useMemo(() => {
@@ -362,23 +415,6 @@ export default function Dashboard({
           );
         })}
       </div>
-      <div className="inline-flex gap-1 rounded-md border border-border p-1">
-        {([true, false] as boolean[]).map((v) => {
-          const on = netVat === v;
-          return (
-            <button
-              key={String(v)}
-              onClick={() => setNetVat(v)}
-              className={`rounded-sm px-3 py-1 text-[13px] transition-colors ${
-                on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-              title={v ? '매출을 공급가액(총액÷1.1)으로 집계' : '매출을 통장 입금액(VAT 포함) 그대로 집계'}
-            >
-              {v ? '부가세 순액' : '총액'}
-            </button>
-          );
-        })}
-      </div>
       {/* 진행월 — 자료가 덜 올라온 이번 달은 기본 숨김(끝점 왜곡 방지), 필요할 때만 켠다 */}
       {unit === 'month' && (
         <button
@@ -426,24 +462,29 @@ export default function Dashboard({
   const isPast = focusIdx < visMonths.length - 1; // 최근이 아닌 과거 달을 보는 중
   const focusP = fmtP(last.ym); // 차트에서 선택 달 위치(강조선)
 
-  // 손익분기 매출(BEP) — 변동비 = 재료비+채널수수료(매출 비례), 고정비 = 판관비 전체(인건비 포함).
-  // BEP = 고정비 ÷ (1 − 변동비율). 변동비율 ≥ 1이면(비정상 달) 표시 생략.
+  // 손익분기 매출(BEP) — 변동비 = 재료비+채널수수료(매출 비례), 고정비 = 판관비(인건비 포함).
+  // 미분류·미상은 성격을 모르는 지출이라 고정비 분자에서 뺀다 — 섞으면 미분류가 큰 달의
+  // 손익분기선이 부풀어 오른다(2026-08-21 감사 P4-6). BEP = 고정비 ÷ (1 − 변동비율).
   const bepOf = (m: MonthAgg): number | null => {
     if (m.revenue <= 0) return null;
     const varRate = (m.cogs + m.fee) / m.revenue;
-    return varRate < 1 ? Math.round(m.sga / (1 - varRate)) : null;
+    const fixed = m.sga - (m.expense[UNCLASSIFIED] || 0) - (m.expense['미상'] || 0);
+    return varRate < 1 ? Math.round(fixed / (1 - varRate)) : null;
   };
   const lineData = visMonths.map((m) => ({ p: fmtP(m.ym), 매출: m.revenue, EBIT: m.ebit, 순이익: m.net, 손익분기: bepOf(m) }));
-  // 감가상각(자본적지출 5년 정액) 반영 영업이익 — 비교용
-  const dep = capexDepreciation(txns, cats);
+  // 감가상각(자본적지출 5년 정액) 반영 영업이익 — 비교용. 손익과 같은 필터(브랜드·지점) 모집단.
+  const dep = capexDepreciation(filteredTx, cats);
   const hasCapex = Object.keys(dep).length > 0;
   const depData = visMonths.map((m) => ({ p: fmtP(m.ym), 영업이익: m.ebit, '감가상각 반영': m.ebit - (dep[m.ym] ?? 0) }));
   const ratioData = visMonths.map((m) => ({ p: fmtP(m.ym), 손익률: m.profitRatio != null ? +(m.profitRatio * 100).toFixed(1) : null }));
-  // 원가 구조 — 재료비율·인건비율·Prime Cost(재료+인건비). 인건비는 지출 구성의 '인건비' 최상위 합.
+  // 원가 구조 — 재료비율·인건비율·Prime Cost. 인건비는 지출 구성의 '인건비' 최상위 합.
+  // Prime Cost 분자는 식자재(포장재 제외)+인건비 — 관리손익 primeCost 와 같은 정의로 통일
+  // (지표만 포장재를 포함해 항상 높게 나오던 불일치 수정, 2026-08-21 감사 P4-5).
   const costData = visMonths.map((m) => {
     const labor = m.expense['인건비'] || 0;
+    const food = m.cogs - (m.expense['포장재'] || 0);
     const pct = (v: number) => (m.revenue > 0 ? +((v / m.revenue) * 100).toFixed(1) : null);
-    return { p: fmtP(m.ym), 재료비율: pct(m.cogs), 인건비율: pct(labor), 'Prime Cost': pct(m.cogs + labor) };
+    return { p: fmtP(m.ym), 재료비율: pct(m.cogs), 인건비율: pct(labor), 'Prime Cost': pct(food + labor) };
   });
   // 객단가 × 식수 — 스탭밀 전용. 식수 = 메뉴 티어(Staff·Newbie·Boss) 판매 수량 합(스프·음료 제외),
   // 객단가 = (매출 − 식권판매) ÷ 식수. 식권은 식사 제공이 아니라 판매 시점 선매출이라 뺀다.
@@ -451,12 +492,13 @@ export default function Dashboard({
     const map = new Map<string, number>();
     for (const p of posSales) {
       if (brand !== 'all' && (p.brand ?? 'garden') !== brand) continue;
+      if (store !== 'all' && (p.store ?? '') !== store) continue; // 분모(m.revenue)와 같은 지점 필터(2026-08-21 P4-4)
       if ((p.category ?? '') !== '식권판매') continue;
       const ym = p.saleDate.slice(0, 7);
       map.set(ym, (map.get(ym) ?? 0) + p.supply);
     }
     return map;
-  }, [posSales, brand]);
+  }, [posSales, brand, store]);
   const avgTicketData = useMemo(() => {
     if (brand !== 'staffmeal' || unit !== 'month') return [];
     const meals = new Map<string, number>();
@@ -524,7 +566,9 @@ export default function Dashboard({
 
   const lastExpense = last.cogs + last.sga;
   const prevExpense = prev ? prev.cogs + prev.sga : null;
-  const unitLabel = unit === 'month' ? (isPast ? `${focusP}` : '이번 달') : '이번 주';
+  // '이번 달'은 실제 진행월을 볼 때만 — 진행월 기본 숨김 상태의 마지막 달(=지난달)을 '이번 달'로
+  // 부르던 라벨 오류 수정(2026-08-21 감사 P4-4). 그 외엔 달 이름을 그대로 쓴다.
+  const unitLabel = unit === 'month' ? (last.ym === nowYm ? '이번 달' : `${focusP}`) : '이번 주';
 
   // 차트별 노드 — order 배열 순서대로 렌더링(드래그로 순서 변경). 조건부로 안 그리는 차트는 키 자체를 비움.
   const chartNodes: Partial<Record<ChartId, React.ReactNode>> = {};
@@ -597,7 +641,7 @@ export default function Dashboard({
       {...fullProps('revenue')}
       onReorder={reorderChart}
       title="매출 추이"
-      subtitle="점선=평균 · 빨간 점선=손익분기 매출(고정비 ÷ (1−변동비율), 변동비=재료비+수수료)"
+      subtitle="점선=평균 · 빨간 점선=손익분기 매출(고정비 ÷ (1−변동비율), 변동비=재료비+수수료 · 고정비=판관비, 미분류·미상 제외)"
     >
       <ResponsiveContainer width="100%" height={chartH('revenue', 585)}>
         <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
@@ -740,7 +784,7 @@ export default function Dashboard({
       {...fullProps('cost')}
       onReorder={reorderChart}
       title="원가 구조 %"
-      subtitle="Prime Cost = 재료비+인건비 (F&B 목표 ≤60%) · 재료비 25~37% · 인건비 25~30%"
+      subtitle="Prime Cost = 식자재(포장재 제외)+인건비 — 관리손익과 같은 정의 (F&B 목표 ≤60%) · 재료비 25~37% · 인건비 25~30%"
     >
       <ResponsiveContainer width="100%" height={chartH('cost', 540)}>
         <LineChart data={costData} margin={{ top: 40, right: 16, bottom: 40, left: 8 }}>
@@ -878,7 +922,7 @@ export default function Dashboard({
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-3">
-          <Stat label={`${unitLabel} 매출${netVat ? ' (순액)' : ''}`} value={won(last.revenue)} delta={delta(last.revenue, prev?.revenue)} />
+          <Stat label={`${unitLabel} 매출 (순액)`} value={won(last.revenue)} delta={delta(last.revenue, prev?.revenue)} />
           <Stat label="지출(원가+판관비)" value={won(lastExpense)} delta={delta(lastExpense, prevExpense)} />
           <Stat label="영업이익(EBIT)" value={won(last.ebit)} delta={delta(last.ebit, prev?.ebit)} />
           <Stat label="당기순이익" value={won(last.net)} delta={delta(last.net, prev?.net)} />
@@ -911,11 +955,11 @@ export default function Dashboard({
       </div>
 
       <p className="m-0 text-[11px] text-muted-foreground">
-        {netVat
-          ? '* 부가세 순액(공급가액) 기준 — 매출과 과세 매입(재료비·과세 판관비)을 총액÷1.1로 순액 처리. 인건비·이자·수도·세금 등 면세 항목은 그대로. 과세 여부는 설정(계정과목)에서 조정.'
-          : '* 매출·비용 모두 통장 금액(부가세 포함) 그대로.'}{' '}
-        미분류 거래도 손익에 반영해요(수입→매출, 지출→&lsquo;미분류&rsquo; 비용) — 분류하면 정확한 계정으로 옮겨가요.
-        자본적지출·보증금·내부이체·부가세 납부(예수금 정산)는 손익에서 제외. 감가상각 미반영(EBIT=EBITDA).
+        * 부가세 순액(공급가액) 기준 — 매출(POS)과 과세 매입(재료비·과세 판관비)을 총액÷1.1로 순액 처리. 인건비·이자·수도·세금 등
+        면세 항목은 그대로. 과세 여부는 설정(계정과목)에서 조정. 미분류·미상 지출은 비용으로 반영하고(이익 과대 방지), 미분류
+        입금은 대출·자본유입일 수 있어 매출에 넣지 않아요 — 분류하면 정확한 계정으로 옮겨가요. 명세 미연결 카드대금·세부 미수집
+        대체 출금은 관리손익과 같은 규칙으로 &lsquo;카드 지출(미분해)&rsquo; 등 지출에 포함해요. 자본적지출·보증금·내부이체·부가세
+        납부(예수금 정산)는 손익 제외. 기말재고는 관리손익에서만 반영(지표 재료비 = 당월 매입). 감가상각 미반영(EBIT=EBITDA).
       </p>
     </div>
   );

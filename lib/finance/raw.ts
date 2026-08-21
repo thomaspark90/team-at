@@ -139,9 +139,14 @@ export function buildRawRows(rows: unknown[][]): RawRowInput[] {
   return rows.map((row, i) => ({ rowIndex: i, payload: row }));
 }
 
-/** 수집형(JSON 배열)을 raw 행으로 — 수집기가 보낸 객체를 손대지 않고 담는다 */
-export function buildRawRowsFromObjects(items: unknown[]): RawRowInput[] {
-  return items.map((item, i) => ({ rowIndex: i, payload: item }));
+/** 수집형(JSON 배열)을 raw 행으로 — 수집기가 보낸 객체를 손대지 않고 담는다.
+ *  dateOf 로 행의 거래일을 함께 심는다 — 안 심으면 row_date 가 NULL 이 되어 로우데이터
+ *  화면의 기간 필터에서 통째로 빠진다(2026-08-21 감사 B2 — 위 rowDate 경고의 실사고). */
+export function buildRawRowsFromObjects(
+  items: unknown[],
+  dateOf?: (item: unknown) => string | null | undefined
+): RawRowInput[] {
+  return items.map((item, i) => ({ rowIndex: i, payload: item, rowDate: dateOf ? (dateOf(item) ?? null) : null }));
 }
 
 /** 잘못 올린 배치 정리 — raw_rows 는 cascade 로 함께 삭제된다 */

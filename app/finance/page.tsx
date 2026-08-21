@@ -4,6 +4,7 @@ import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMemberStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
 import { buildSankey, type SankTx, type SankCat } from '@/lib/finance/sankey';
+import { fetchAllRows } from '@/lib/finance/fetchAll';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
 import NaverpayConfig from '@/components/finance/NaverpayConfig';
@@ -50,12 +51,19 @@ export default async function FinancePage({ searchParams }: { searchParams: { br
   // 현황 계산(스태프만) — 브랜드 세그먼트 적용('전체'는 합산)
   let overview: OverviewData | null = null;
   if (isStaff) {
-    let txQ = supabase.schema('finance').from('transactions').select('ym,category_id,amount_in,amount_out,brand');
-    if (seg !== 'all') txQ = txQ.eq('brand', seg);
-    const txnsRaw = unwrap(await txQ, '거래');
+    // 전량 페이지 조회 — 무제한 select 는 서버 Max Rows(20000)에서 조용히 잘려 최신 달(latest)
+    // 판정과 총 유입/유출 카드가 통째로 틀어진다(2026-08-21 감사 B6)
+    const txnsRaw = await fetchAllRows<SankTx & { brand?: string }>(
+      (from, to) => {
+        let q = supabase.schema('finance').from('transactions').select('ym,category_id,amount_in,amount_out,brand').order('id').range(from, to);
+        if (seg !== 'all') q = q.eq('brand', seg);
+        return q;
+      },
+      { page: 20000, label: '거래' }
+    );
     const catsRaw = unwrap(await supabase.schema('finance').from('categories').select('id,type,name,parent_id'), '계정과목');
     const closesRaw = unwrap(await supabase.schema('finance').from('monthly_close').select('ym,status,brand,store'), '월 확정');
-    const txns = (txnsRaw as (SankTx & { brand?: string })[] | null) ?? [];
+    const txns = txnsRaw;
     const cats = (catsRaw as SankCat[] | null) ?? [];
     const closes = (closesRaw as { ym: string; status: string; brand?: string; store?: string | null }[] | null) ?? [];
     const yms = Array.from(new Set(txns.map((t) => t.ym))).sort((a, b) => b.localeCompare(a));

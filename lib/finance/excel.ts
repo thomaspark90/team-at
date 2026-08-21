@@ -186,12 +186,23 @@ export function checkBalanceContinuity(txns: ParsedTransaction[]): ContinuityRep
 }
 
 // 매핑에 따라 전 행을 거래로 변환. 날짜 불가/금액 0 행(제목·합계 등)은 스킵.
+//
+// 지문(dedup) v2 (2026-08-21 감사 D9): identity(브랜드·은행)를 넘기면 새 체계로 지문을 만든다.
+//  - 브랜드·은행 포함 — 옛 지문은 'excel' 고정 프리픽스라, 스탭밀·가든 통장의 동일 패턴 거래가
+//    전역 UNIQUE 에서 교차 충돌해 한쪽이 조용히 소실될 수 있었다(감사 A2).
+//  - 동일 튜플 순번(seq) 포함 — 같은 날 같은 금액·같은 메모의 **실제 2건**(시간·잔액 열을 안
+//    매핑한 파일)이 1건으로 합쳐지던 문제(감사 A1). 같은 파일 재업로드는 순번이 똑같이 매겨져
+//    전부 중복으로 걸러진다.
+//  - legacyDedupHash(옛 지문)를 함께 실어 보낸다 — 저장/미리보기의 중복 대조가 두 지문을 다
+//    보므로, 옛 지문으로 적재된 과거 거래가 재업로드에서 신규로 오인되지 않는다(재중복 차단).
 export function rowsToTransactions(
   rows: string[][],
-  mapping: ExcelMapping
+  mapping: ExcelMapping,
+  identity?: { brand: string; bank: string }
 ): ParseResult & { skipped: number } {
   const start = mapping.header_row != null ? mapping.header_row + 1 : 0;
   const txns: ParsedTransaction[] = [];
+  const seqCount = new Map<string, number>(); // 동일 튜플 순번 — 파일 안 등장 순서라 재업로드에도 안정
   let skipped = 0;
   for (let r = start; r < rows.length; r++) {
     const row = rows[r];
@@ -223,6 +234,10 @@ export function rowsToTransactions(
     const time = mapping.time != null ? (parseDate(`2000-01-01 ${cell(mapping.time)}`)?.time ?? d.time) : d.time;
     const txAt = `${d.date}T${time ?? '00:00:00'}`;
     const balance = mapping.balance != null ? toNum(cell(mapping.balance)) : 0;
+    const legacy = hash('excel', txAt, amountOut, amountIn, balance, memo);
+    const tuple = `${txAt}|${amountOut}|${amountIn}|${balance}|${memo}`;
+    const seq = seqCount.get(tuple) ?? 0;
+    seqCount.set(tuple, seq + 1);
     txns.push({
       bank: 'excel',
       txAt,
@@ -233,7 +248,8 @@ export function rowsToTransactions(
       amountIn,
       balance,
       branch: null,
-      dedupHash: hash('excel', txAt, amountOut, amountIn, balance, memo),
+      dedupHash: identity ? hash('excel2', identity.brand, identity.bank, txAt, amountOut, amountIn, balance, memo, seq) : legacy,
+      legacyDedupHash: identity ? legacy : undefined,
       normalizedKey: normalizeKey(memo),
       rawRowIndex,
     });

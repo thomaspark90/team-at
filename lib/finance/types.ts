@@ -86,7 +86,10 @@ export interface ParsedTransaction {
   amountIn: number; // 입금
   balance: number; // 잔액 (dedup 지문의 핵심)
   branch: string | null; // 신한 거래점 (우리는 없음)
-  dedupHash: string; // 일시+출금+입금+잔액+내용 지문
+  dedupHash: string; // 일시+출금+입금+잔액+내용 지문 (엑셀 v2는 브랜드·은행·동일튜플 순번 포함)
+  /** 구지문(v1, 브랜드 없음) — 옛 지문으로 적재된 과거 거래와의 재업로드 대조용(2026-08-21 D9).
+      dedupe()·저장 라우트가 둘 다 확인해, 지문 개편이 재중복 적재를 만들지 않게 한다. */
+  legacyDedupHash?: string;
   normalizedKey: string; // 학습·자동분류용 정규화 키 (숫자·날짜 제거)
   source?: 'bank' | 'card'; // 기본 bank. 카드 이용내역은 'card'
   cardIssuer?: string; // 카드 발급사(예: '신한')

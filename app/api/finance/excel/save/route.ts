@@ -61,7 +61,8 @@ export async function POST(req: Request) {
   let sheetRows: string[][] = [];
   try {
     sheetRows = fileToRows(new Uint8Array(await file.arrayBuffer()));
-    result = rowsToTransactions(sheetRows, mapping);
+    // 지문 v2 — 브랜드·은행·동일튜플 순번 포함(2026-08-21 D9, rowsToTransactions 주석 참조)
+    result = rowsToTransactions(sheetRows, mapping, { brand, bank: bankLabel });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 422 });
   }
@@ -69,9 +70,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '거래를 읽지 못했어요.' }, { status: 422 });
   }
 
+  // 새 지문·구지문을 모두 대조 — 옛 지문으로 적재된 과거 거래가 신규로 오인되지 않게(D9)
   const existing = await fetchExistingHashes(
     supabase,
-    result.transactions.map((t) => t.dedupHash)
+    result.transactions.flatMap((t) => (t.legacyDedupHash ? [t.dedupHash, t.legacyDedupHash] : [t.dedupHash]))
   );
   // 기간은 신규가 아닌 '파일 전체' 기준 — 커버리지(부분 업로드) 판정이 정확해야 해서.
   const allDates = result.transactions.map((t) => t.txAt).sort();
@@ -111,9 +113,13 @@ export async function POST(req: Request) {
   // 같은 파일을 다시 올리면 '전부 중복'이라 새 거래가 안 생겨 영영 연결될 기회가 없다.
   // 그래서 중복으로 걸러진 건의 dedup_hash 로 기존 행을 찾아 원본 행을 채워준다(소급 연결).
   if (rawSaved) {
+    // 기존 행의 지문은 새(v2)일 수도, 구(v1)일 수도 있다 — 실제로 매칭된 쪽으로 연결한다(D9)
     const dupLinks = result.transactions
-      .filter((t) => existing.has(t.dedupHash) && t.rawRowIndex != null)
-      .map((t) => ({ hash: t.dedupHash, rawId: rawSaved.rowIdByIndex.get(t.rawRowIndex!) }))
+      .filter((t) => (existing.has(t.dedupHash) || (t.legacyDedupHash != null && existing.has(t.legacyDedupHash))) && t.rawRowIndex != null)
+      .map((t) => ({
+        hash: existing.has(t.dedupHash) ? t.dedupHash : t.legacyDedupHash!,
+        rawId: rawSaved.rowIdByIndex.get(t.rawRowIndex!),
+      }))
       .filter((d): d is { hash: string; rawId: number } => d.rawId != null);
     if (dupLinks.length > 0) {
       // 행마다 왕복하면 수천 건에서 타임아웃 — 한 번의 UPDATE 로 처리한다

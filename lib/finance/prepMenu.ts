@@ -40,6 +40,9 @@ export interface MenuColumn {
   amounts: Record<string, number>;
   /** 매출 뷰에서 함께 보여줄 주문수 — 요약에 수량이 꼭 필요하다는 요구(2026-08-20) */
   qtyAmounts?: Record<string, number>;
+  /** 상세 열의 원본 상품명(옵션 제외) — 메뉴 묶음 키는 라벨('상품 · 옵션')이 아니라 이걸로.
+      라벨로 묶으면 옵션이 있는 토스 데이터에서 상품이 옵션 조합 수만큼 쪼개진다(2026-08-21 감사 P2-3). */
+  product?: string;
   hint?: string;
 }
 
@@ -100,6 +103,7 @@ export function buildMenuPrep(
 ): MenuPrep {
   const perMenu = new Map<string, Record<string, number>>();
   const perProduct = new Map<string, Record<string, number>>();
+  const productOf = new Map<string, string>(); // 상세 키('상품 · 옵션') → 원본 상품명
   const perMenuQty = new Map<string, Record<string, number>>();
   const perProductQty = new Map<string, Record<string, number>>();
   const itemsTotal: Record<string, number> = {}; // 정합 비교는 항상 금액(gross) 기준
@@ -113,6 +117,7 @@ export function buildMenuPrep(
     add(m1, b, v);
     perMenu.set(menu, m1);
     const pKey = r.option ? `${r.product} · ${r.option}` : r.product;
+    productOf.set(pKey, r.product);
     const m2 = perProduct.get(pKey) ?? {};
     add(m2, b, v);
     perProduct.set(pKey, m2);
@@ -136,9 +141,11 @@ export function buildMenuPrep(
     add(giftQty, b, g.qty);
   }
 
-  const buckets = Array.from(new Set([...Object.keys(itemsTotal), ...Object.keys(posAmt)])).sort((a, b) =>
-    b.localeCompare(a)
-  );
+  // 식권도 버킷 유도에 포함 — 식권만 팔린 구간이 행째 사라지던 결함(전처리1의 2026-08-20
+  // 미분류-행-소실과 같은 유형, 2026-08-21 감사에서 발견)
+  const buckets = Array.from(
+    new Set([...Object.keys(itemsTotal), ...Object.keys(posAmt), ...Object.keys(giftAmt)])
+  ).sort((a, b) => b.localeCompare(a));
 
   const toColumns = (
     map: Map<string, Record<string, number>>,
@@ -152,6 +159,7 @@ export function buildMenuPrep(
         amounts,
         // 매출 뷰에서 수량을 병기 — 수량 뷰에선 amounts 자체가 수량이라 생략
         qtyAmounts: metric === 'gross' ? qtyMap.get(label) : undefined,
+        product: productOf.get(label) ?? label, // 요약(perMenu) 열은 라벨 자체가 메뉴 키
         _sum: Object.values(amounts).reduce((s, v) => s + v, 0),
       }))
       .sort((a, b) => b._sum - a._sum)
@@ -173,10 +181,11 @@ export function buildMenuPrep(
   };
   const posCol: MenuColumn = {
     key: 'pos_total',
-    label: 'POS 매출 (전처리3)',
+    label: '메뉴 매출 (전처리3)',
     kind: 'derived',
     amounts: posAmt,
-    hint: '전처리3·관리손익이 쓰는 pos_sales 총액(발생주의 정본).',
+    // '정본'이라 부르지 않는다 — 정본(POS 매출 합계)은 메뉴 매출 + 식권 판매(2026-08-21 감사 P2-4).
+    hint: "전처리3의 '메뉴 매출' 열(pos_sales)과 같은 값이에요. 정본(POS 매출 합계)은 여기에 식권 판매를 더한 것.",
   };
   const diffCol: MenuColumn = {
     key: 'diff',
@@ -186,17 +195,19 @@ export function buildMenuPrep(
     hint: '품목 합 − POS 매출. 0이 아니면 두 원천(상품별/요약 파일)이 어긋난 것 — 상품별 파일을 재업로드하면 그 달 기준으로 다시 맞춰져요.',
   };
 
-  // 식권 판매(선수금) — 매출 합계·정합 차이에 안 들어가는 참고 열. 페이히어 대시보드의
+  // 식권 판매 — 품목 리포트 밖이라 합계·정합 차이에 안 들어가는 참고 열. 페이히어 대시보드의
   // 실매출 = 메뉴 매출 합계 + 이 열 이라, 대시보드 숫자와의 대조가 화면에서 바로 된다.
   const giftCol: MenuColumn | null =
     Object.keys(giftAmt).length > 0
       ? {
           key: 'gift',
-          label: '식권 판매 (선수금)',
+          label: '식권 판매 (참고)',
           kind: 'derived',
           amounts: metric === 'qty' ? giftQty : giftAmt,
           qtyAmounts: metric === 'gross' ? giftQty : undefined,
-          hint: '식권을 판 돈 — 아직 식사를 제공하지 않아 매출이 아니에요(쓰는 날 일반 메뉴로 잡힘). 합계·정합 차이에 안 들어가요. 페이히어 실매출 = 메뉴 매출 합계 + 이 열.',
+          // 회계 기준(2026-08-20 대표·매니저 확정): 자가 식권은 판매 시점 매출 인식 — 사용할 때는
+          // POS에 아예 안 찍힌다. 옛 '아직 매출 아님' 문구는 개정 전 기준이라 정정(2026-08-21).
+          hint: '자가 식권 판매 — 판매한 날 매출로 인식해요(사용 시점엔 POS에 안 찍힘). 품목 리포트 밖이라 합계·정합 차이에는 안 들어가요. 페이히어 실매출 = 메뉴 매출 합계 + 이 열.',
         }
       : null;
   const tail = [

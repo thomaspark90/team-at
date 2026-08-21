@@ -8,7 +8,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildExpensePrep, type ExpenseTx } from './prepExpense';
 import { buildExpenseDetail, type CategoryInfo } from './prepExpenseDetail';
 import { buildRevenuePrep, type PosSaleRow } from './prepRevenue';
-import { monthEndBalance } from './cashflow';
+import { cashflow } from './cashflow';
+import { fetchAllRows } from './fetchAll';
 import type { UnitDef } from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,8 +26,8 @@ export interface SnapshotFigures {
   revenue: Record<string, number>; // key: pos, in_total, meal_ticket, rate, rate_adj
   /** 그 달 거래 행 수 — 재업로드·삭제 감지용 */
   txCount: number;
-  /** 은행 월말 잔액(그 달 거래 있는 계좌 합, cashflow 앵커 방식) — 은행 자료 재업로드 감지용.
-      2026-08-20 추가라 옛 스냅샷엔 없다 — diff는 양쪽 다 있을 때만 비교한다. */
+  /** 은행 월말 잔액 — 결산 화면·월별 요약과 같은 계산(cashflow: 계좌별 앵커 + 이월). 은행 자료
+      재업로드 감지용. 2026-08-20 추가라 옛 스냅샷엔 없다 — diff는 양쪽 다 있을 때만 비교한다. */
   bankBalance?: number | null;
 }
 
@@ -117,15 +118,28 @@ export async function computeMonthlyFigures(
   if (unit.store) giftQ = giftQ.eq('store', unit.store);
 
   // 은행 월말 잔액 — 결산 후 은행 자료가 재업로드되면 다른 집계보다 먼저 여기가 어긋난다.
-  // 분할 자식 제외(실제 통장 이동은 부모 한 건), 계좌별 앵커 계산 후 합산(cashflow와 동일 규칙).
-  let bankQ = db
-    .from('transactions')
-    .select('tx_at,bank,balance,amount_in,amount_out,split_parent_id')
-    .eq('brand', unit.brand)
-    .eq('ym', ym)
-    .eq('source', 'bank')
-    .limit(50000);
-  if (unit.store) bankQ = bankQ.eq('store', unit.store);
+  // 결산 화면·월별 요약과 **같은 계산**(cashflow: 계좌별 앵커 + 거래 없는 달 이월)을 쓰기 위해
+  // 그 달까지의 전 기간 은행 거래를 읽는다 — 단월 쿼리로 '그 달 거래 있는 계좌만' 합산하던
+  // 옛 방식은 거래 없는 계좌 잔액이 소실돼 화면과 어긋날 수 있었다(2026-08-21 감사 P3-4;
+  // 현 데이터는 전 계좌가 매달 거래가 있어 값 변화 없음 검증). 분할 자식 제외 규칙 동일.
+  const bankQ = (async () => {
+    const rows = await fetchAllRows<{ tx_at: string; ym: string; bank: string | null; balance: number | null; amount_in: number; amount_out: number; split_parent_id: number | null }>(
+      (from, to) => {
+        let q = db
+          .from('transactions')
+          .select('tx_at,ym,bank,balance,amount_in,amount_out,split_parent_id')
+          .eq('brand', unit.brand)
+          .lte('ym', ym)
+          .eq('source', 'bank')
+          .order('id')
+          .range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: '은행 거래' }
+    );
+    return { data: rows, error: null };
+  })();
   const [{ data: txData, error: txErr }, { data: posData, error: posErr }, { data: revData, error: revErr }, { data: catsData, error: catsErr }, { data: giftData }, { data: bankData }] =
     await Promise.all([txQ, posQ, revQ, db.from('categories').select('id,name,type,parent_id'), giftQ, bankQ]);
   if (txErr) throw new Error(`거래 조회 실패: ${txErr.message}`);
@@ -170,19 +184,12 @@ export async function computeMonthlyFigures(
   );
 
   const bankRows = (
-    (bankData as { tx_at: string; bank: string | null; balance: number | null; amount_in: number; amount_out: number; split_parent_id: number | null }[] | null) ?? []
+    (bankData as { tx_at: string; ym: string; bank: string | null; balance: number | null; amount_in: number; amount_out: number; split_parent_id: number | null }[] | null) ?? []
   ).filter((r) => r.bank != null && r.split_parent_id == null);
-  const byBank = new Map<string, typeof bankRows>();
-  for (const r of bankRows) {
-    const arr = byBank.get(r.bank!) ?? [];
-    arr.push(r);
-    byBank.set(r.bank!, arr);
-  }
-  let bankBalance: number | null = null;
-  for (const rows of Array.from(byBank.values())) {
-    const end = monthEndBalance(rows.map((r) => ({ tx_at: r.tx_at, amount_in: r.amount_in, amount_out: r.amount_out, balance: r.balance ?? 0 })));
-    if (end != null) bankBalance = (bankBalance ?? 0) + end;
-  }
+  const bankMonths = cashflow(
+    bankRows.map((r) => ({ ym: r.ym, bank: r.bank!, tx_at: r.tx_at, amount_in: r.amount_in, amount_out: r.amount_out, balance: r.balance ?? 0 }))
+  );
+  const bankBalance: number | null = bankMonths.find((m) => m.ym === ym)?.totalBalance ?? null;
 
   return {
     v: 1,

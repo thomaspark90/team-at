@@ -4,6 +4,7 @@ import type { PosDailyCat, PosParseResult } from '@/lib/finance/pos';
 import { WEATHER_SALES_CACHE_PATH } from '@/lib/garden/weatherSales';
 import { brandLabel, storeLabel, type Brand } from '@/lib/finance/types';
 import { logActivity } from '@/lib/finance/activity';
+import { confirmedYmsOfUnit } from '@/lib/finance/monthLock';
 
 // POS 파싱 결과 → pos_sales/pos_items 저장 — 업로드(pos/apply)와 원본 재처리(originals/[id]/reprocess)
 // 가 공유하는 핵심 로직. 파싱만 다르고(파일 vs 보관된 Blob) 저장 절차는 완전히 동일해야 한다.
@@ -171,23 +172,21 @@ export async function applyPosParseResult(
 ): Promise<PosApplyOutcome> {
   const { brand, store, posType, actionLabel, confirmMismatch } = ctx;
 
-  // 확정된 달 보호 — 확정은 (ym, brand, store) 3단위, POS 는 정확히 그 단위로 귀속
-  const { data: closed, error: closeErr } = await supabase
-    .schema('finance')
-    .from('monthly_close')
-    .select('ym,status')
-    .in('ym', r.yms)
-    .eq('brand', brand)
-    .eq('store', store)
-    .eq('status', 'confirmed');
-  if (closeErr && !isMissingTable(closeErr)) {
-    return { ok: false, status: 500, error: `확정월 확인 실패: ${closeErr.message}` };
+  // 확정된 달 보호 — 확정은 (ym, brand, store) 3단위, POS 는 정확히 그 단위로 귀속.
+  // 판정은 monthLock.confirmedYmsOfUnit 단일 소스(2026-08-21 C4). 테이블 미생성 환경만 허용.
+  let confirmedYms: string[] = [];
+  try {
+    confirmedYms = await confirmedYmsOfUnit(supabase as never, { brand, store, yms: r.yms });
+  } catch (e) {
+    if (!isMissingTable(e as { code?: string; message?: string })) {
+      return { ok: false, status: 500, error: `확정월 확인 실패: ${(e as Error).message}` };
+    }
   }
-  if (closed && closed.length > 0) {
+  if (confirmedYms.length > 0) {
     return {
       ok: false,
       status: 409,
-      error: `이미 확정된 달(${closed.map((c: { ym: string }) => c.ym).join(', ')})은 덮어쓸 수 없습니다.`,
+      error: `이미 확정된 달(${confirmedYms.join(', ')})은 덮어쓸 수 없습니다.`,
     };
   }
 

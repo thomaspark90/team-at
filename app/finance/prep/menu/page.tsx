@@ -15,6 +15,7 @@ import {
   type MenuMetric,
   type PosDailyTotal,
 } from '@/lib/finance/prepMenu';
+import { fetchAllRows } from '@/lib/finance/fetchAll';
 import MenuPrefsPanel from '@/components/finance/MenuPrefsPanel';
 
 // 전처리4 — POS 메뉴별 판매. 품목 리포트(pos_items)를 기간 축으로 펼치고,
@@ -51,21 +52,8 @@ export default async function PrepMenuPage({
     : 'month';
   const metric: MenuMetric = searchParams.metric === 'qty' ? 'qty' : 'gross';
 
-  let itemsQ = supabase
-    .schema('finance')
-    .from('pos_items')
-    .select('sale_date,category,product,option,qty,gross')
-    .eq('brand', unit.brand)
-    .limit(50000);
-  if (unit.store) itemsQ = itemsQ.eq('store', unit.store);
-  let posQ = supabase
-    .schema('finance')
-    .from('pos_sales')
-    .select('sale_date,gross')
-    .eq('brand', unit.brand)
-    .limit(50000);
-  if (unit.store) posQ = posQ.eq('store', unit.store);
-
+  // 전량 페이지 조회 — `.limit(50000)`은 서버 Max Rows(20000)에서 조용히 깎인다(2026-08-21 감사 P1-3).
+  // pos_items 는 상품×옵션×일 단위라 이 저장소에서 가장 먼저 상한에 닿는 테이블(2026-08 기준 1.9만 행).
   const prefsQ = supabase
     .schema('finance')
     .from('prep_menu_prefs')
@@ -73,17 +61,39 @@ export default async function PrepMenuPage({
     .eq('brand', unit.brand)
     .eq('store', unit.store ?? '')
     .maybeSingle();
-  let giftQ = supabase
-    .schema('finance')
-    .from('pos_gift_sales')
-    .select('sale_date,qty,gross')
-    .eq('brand', unit.brand)
-    .limit(50000);
-  if (unit.store) giftQ = giftQ.eq('store', unit.store);
-  const [{ data: itemsData, error: itemsErr }, { data: posData, error: posErr }, { data: prefs }, { data: giftData }] =
-    await Promise.all([itemsQ, posQ, prefsQ, giftQ]);
-  if (itemsErr) throw new Error(`품목 조회 실패: ${itemsErr.message}`);
-  if (posErr) throw new Error(`POS 매출 조회 실패: ${posErr.message}`);
+  const [itemsData, posData, { data: prefs }, giftData] = await Promise.all([
+    fetchAllRows<ItemSaleRow>(
+      (from, to) => {
+        let q = supabase
+          .schema('finance')
+          .from('pos_items')
+          .select('sale_date,category,product,option,qty,gross')
+          .eq('brand', unit.brand)
+          .order('id')
+          .range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: '품목' }
+    ),
+    fetchAllRows<PosDailyTotal>(
+      (from, to) => {
+        let q = supabase.schema('finance').from('pos_sales').select('sale_date,gross').eq('brand', unit.brand).order('id').range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: 'POS 매출' }
+    ),
+    prefsQ,
+    fetchAllRows<GiftSale>(
+      (from, to) => {
+        let q = supabase.schema('finance').from('pos_gift_sales').select('sale_date,qty,gross').eq('brand', unit.brand).order('id').range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: '식권 판매', missingTableOk: true }
+    ),
+  ]);
   const hidden = new Set(((prefs?.hidden as string[] | null) ?? []).filter((x) => typeof x === 'string'));
   const sortPref = ((prefs?.sort as string[] | null) ?? []).filter((x) => typeof x === 'string');
   const merges = (prefs?.merges ?? {}) as Record<string, string[]>;
@@ -92,13 +102,7 @@ export default async function PrepMenuPage({
   const visiblePref = (prefs?.visible as string[] | null) ?? null;
   const isShown = (label: string) => (visiblePref ? visiblePref.includes(label) : !hidden.has(label));
 
-  const { buckets: allBuckets, summary, detail } = buildMenuPrep(
-    (itemsData as ItemSaleRow[] | null) ?? [],
-    (posData as PosDailyTotal[] | null) ?? [],
-    grain,
-    metric,
-    (giftData as GiftSale[] | null) ?? []
-  );
+  const { buckets: allBuckets, summary, detail } = buildMenuPrep(itemsData, posData, grain, metric, giftData);
   const buckets = allBuckets.slice(0, LIMIT[grain]);
 
   // 병합 적용 — 소스 열의 금액을 대표 열로 합산하고 소스 열은 제거. 표시 차원의 병합이라
@@ -162,7 +166,10 @@ export default async function PrepMenuPage({
     const groupQty = new Map<string, Record<string, number>>();
     for (const c of detailShown) {
       if (c.kind !== 'menu') continue;
-      const k = menuKeyOf(c.label);
+      // 묶음 키는 라벨('상품 · 옵션')이 아니라 원본 상품명으로 — 라벨로 묶으면 옵션 있는
+      // 토스 데이터에서 같은 메뉴가 옵션 조합 수만큼 쪼개진다(2026-08-21 감사 P2-3).
+      // 병합 대표 열처럼 product 가 없는 합성 열은 라벨의 ' · ' 앞 토막으로 폴백.
+      const k = menuKeyOf(c.product ?? c.label.split(' · ')[0]);
       if (!groups.has(k)) {
         groups.set(k, {});
         groupQty.set(k, {});

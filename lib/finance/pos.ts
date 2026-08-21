@@ -289,6 +289,13 @@ export function parsePosRows(rows: unknown[][]): PosParseResult {
     totals,
     excluded,
     meta: { sheet: SHEET_NAME, dataRows, completed, canceled },
+    // 로우데이터 레이어 적재용 — 페이히어(payhere.ts)만 채우고 토스는 조용히 빠져 있어
+    // 양재천 POS 원본이 한 건도 보관되지 않았다(2026-08-21 감사 A5 수정).
+    raw: {
+      rows,
+      header: rows[loc.hdr] ?? null,
+      dates: rows.map((r, i) => (i > loc.hdr ? toYmd((r ?? [])[ci.date]) : null)),
+    },
   };
 }
 
