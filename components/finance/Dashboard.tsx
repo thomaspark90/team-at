@@ -625,7 +625,7 @@ export default function Dashboard({
   );
 
   chartNodes.ebit = (
-    <ChartCard key="ebit" id="ebit" {...fullProps('ebit')} onReorder={reorderChart} title="영업이익 추이" subtitle="EBIT · 당기순이익 · 채널수수료 차감(실입력 없는 달은 1.7% 추정)">
+    <ChartCard key="ebit" id="ebit" {...fullProps('ebit')} onReorder={reorderChart} title="영업이익 추이" subtitle="EBIT · 당기순이익 · 채널수수료 차감(실입력 없는 달은 1.7% 추정) · 부가세 납부는 예수금 정산이라 지출 제외">
       <ResponsiveContainer width="100%" height={chartH('ebit', 585)}>
         <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 40, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
@@ -915,7 +915,7 @@ export default function Dashboard({
           ? '* 부가세 순액(공급가액) 기준 — 매출과 과세 매입(재료비·과세 판관비)을 총액÷1.1로 순액 처리. 인건비·이자·수도·세금 등 면세 항목은 그대로. 과세 여부는 설정(계정과목)에서 조정.'
           : '* 매출·비용 모두 통장 금액(부가세 포함) 그대로.'}{' '}
         미분류 거래도 손익에 반영해요(수입→매출, 지출→&lsquo;미분류&rsquo; 비용) — 분류하면 정확한 계정으로 옮겨가요.
-        자본적지출·보증금·내부이체는 손익에서 제외. 감가상각 미반영(EBIT=EBITDA).
+        자본적지출·보증금·내부이체·부가세 납부(예수금 정산)는 손익에서 제외. 감가상각 미반영(EBIT=EBITDA).
       </p>
     </div>
   );

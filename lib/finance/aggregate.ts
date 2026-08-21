@@ -29,6 +29,7 @@ export interface AggTx {
   store?: string | null; // 'pangyo' | 'yangjae' — 가든 지점 필터용(집계 자체는 사용 안 함)
   source?: string | null; // 'bank' | 'naverpay' | 'coupang' | 'card' — 카드대금 상쇄 판정용(없으면 상쇄 생략)
   is_card_payment?: boolean; // 은행 카드대금 인출 — memo 없는 안전 뷰(dashboard_tx)가 패턴으로 계산해 준다
+  is_vat_payment?: boolean; // 부가세 납부/환급 — 같은 뷰가 패턴으로 계산. 손익 제외(pnl.ts와 규칙 통일)
 }
 export type Unit = 'month' | 'week';
 
@@ -138,6 +139,9 @@ export function aggregate(
       if (t.is_card_payment) addCard(key, k, 'cogs', amt);
       else if (isCollected) collectedByPeriod.set(key, (collectedByPeriod.get(key) ?? 0) + amt);
     } else if (c.type === 'sga') {
+      // 부가세 납부(예수금 정산) — 매출이 공급가액(VAT 제외) 기준이라 지출로 잡으면 이중 차감.
+      // 관리손익(pnl.ts is_vat_payment)과 같은 규칙으로 EBIT에서 제외(2026-08-21).
+      if (t.is_vat_payment) continue;
       const amt = netAmt(t.amount_out, c) - netAmt(t.amount_in, c);
       mo.sga += amt;
       const k = nameOf(c);
