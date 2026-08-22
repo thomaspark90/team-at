@@ -142,9 +142,10 @@ export async function GET(req: Request) {
     slots[s.key] = { done, full, range: cov.label, count: a.count, at: a.at || null, via: a.via };
   }
 
-  // 4) POS 매출 — 지점 단위 존재 여부(대시보드 현황 보드용). 업로드는 자료 입력 페이지에서.
-  //    가든 POS = 양재천(토스)만 — 판교 페이히어는 가든 회계와 무관(2026-08-17 대표 지시), 스탭밀은 단일('').
-  const posStores = brand === 'garden' ? ['yangjae'] : [''];
+  // 4) POS 매출 — 지점 단위 존재 여부(현황 보드 + 월 확정 게이트용). 업로드는 자료 입력 페이지에서.
+  //    가든은 두 지점 모두 — 확정이 지점 단위라 게이트가 자기 지점 POS 를 봐야 한다(2026-08-22 감사
+  //    C-5: 판교 POS 만 올라온 달에 양재천을 확정해도 통과하던 구멍). 스탭밀은 단일('').
+  const posStores = brand === 'garden' ? ['yangjae', 'pangyo'] : [''];
   const pos: Record<string, { done: boolean; days: number; supply: number }> = {};
   for (const st of posStores) {
     const { data: posRows } = await supabase

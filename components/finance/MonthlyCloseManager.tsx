@@ -88,12 +88,18 @@ export default function MonthlyCloseManager({
       if (!res.ok) throw new Error(j.error || '업로드 현황 확인 실패');
       const slots = j.slots as Record<string, SlotStatus>;
       // 사용 은행 설정 반영 — 이 브랜드가 안 쓰는 은행 슬롯은 확정 점검에서 요구하지 않는다
-      return slotsForBanks((j.banks as string[] | undefined) ?? null).flatMap((s) => {
+      const issues = slotsForBanks((j.banks as string[] | undefined) ?? null).flatMap((s) => {
         const st = slots[s.key];
         if (!st?.done) return [`${s.label} — 업로드 안 됨`];
         if (!st.full) return [`${s.label} — ${st.range ?? '일부'} 구간만 올라옴 (부분)`];
         return [];
       });
+      // POS 매출 — 확정은 지점 단위인데 은행·카드 검사는 브랜드 공용이라, 자기 지점 POS 가
+      // 안 올라온 달이 게이트를 통과하던 구멍을 막는다(2026-08-22 감사 C-5)
+      const posKey = unit === 'staffmeal' ? '' : unit;
+      const pos = (j.pos as Record<string, { done: boolean; days: number }> | undefined)?.[posKey];
+      if (pos && !pos.done) issues.push('POS 매출 — 이 달 업로드 없음');
+      return issues;
     } catch {
       return null;
     }
