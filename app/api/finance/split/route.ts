@@ -103,7 +103,7 @@ export async function POST(req: Request) {
   }
 
   const now = new Date().toISOString();
-  const children = allocations.map((a) => ({
+  const children = allocations.map((a, idx) => ({
     bank: parent.bank,
     source: parent.source,
     card_issuer: parent.card_issuer,
@@ -119,7 +119,9 @@ export async function POST(req: Request) {
     brand: a.brand,
     store: a.store,
     split_parent_id: parent.id,
-    dedup_hash: hash('split', parent.id, a.brand, a.store ?? '', Math.round(a.amount)),
+    // 배분 순번(idx) 포함 — 같은 (브랜드,지점,금액) 배분 2건이 지문 충돌로 UNIQUE 위반
+    // 저장 실패가 나던 문제(2026-08-21 감사 A8). 해제 시 자식이 전부 삭제되므로 재분할에도 안전.
+    dedup_hash: hash('split', parent.id, idx, a.brand, a.store ?? '', Math.round(a.amount)),
     normalized_key: parent.normalized_key,
     // 원거래에 계정이 있었으면 그대로 상속 — 분할해도 분류를 다시 할 필요 없음
     category_id: parent.category_id,

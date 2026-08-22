@@ -23,6 +23,14 @@ function parseCardDate(v: unknown): { iso: string; ym: string } | null {
 
 // 헤더명으로 컬럼 위치를 잡아 순서 변화에 강건. rows = 시트 전체(헤더 포함).
 export function parseCardRows(rows: unknown[][], issuer = '신한'): ParsedTransaction[] {
+  return parseCardRowsFull(rows, issuer).transactions;
+}
+
+// raw 레이어 적재용 메타(헤더 행·행별 거래일)까지 함께 — parseCardXlsx 가 쓴다(2026-08-22 감사 B6).
+function parseCardRowsFull(
+  rows: unknown[][],
+  issuer = '신한'
+): { transactions: ParsedTransaction[]; hdr: number; dates: (string | null)[] } {
   let h = -1;
   for (let i = 0; i < Math.min(rows.length, 10); i++) {
     const r = (rows[i] ?? []).map((x) => String(x ?? '').trim());
@@ -31,7 +39,7 @@ export function parseCardRows(rows: unknown[][], issuer = '신한'): ParsedTrans
       break;
     }
   }
-  if (h < 0) return [];
+  if (h < 0) return { transactions: [], hdr: -1, dates: rows.map(() => null) };
   const hdr = rows[h].map((x) => String(x ?? '').trim());
   const ci = {
     date: hdr.indexOf('거래일'),
@@ -42,10 +50,12 @@ export function parseCardRows(rows: unknown[][], issuer = '신한'): ParsedTrans
   };
 
   const out: ParsedTransaction[] = [];
+  const dates: (string | null)[] = rows.map(() => null);
   for (let i = h + 1; i < rows.length; i++) {
     const r = rows[i] ?? [];
     const dt = parseCardDate(r[ci.date]);
     if (!dt) continue; // 합계('총 N건')·빈 행 스킵
+    dates[i] = dt.iso.slice(0, 10);
     const merchant = String(r[ci.merchant] ?? '').trim();
     const raw = r[ci.amount];
     const amt = typeof raw === 'number' ? raw : Number(String(raw ?? '').replace(/[,\s원]/g, '')) || 0;
@@ -70,21 +80,24 @@ export function parseCardRows(rows: unknown[][], issuer = '신한'): ParsedTrans
       branch: null,
       dedupHash: hash('card', issuer, approval, dt.iso, amt, merchant),
       normalizedKey: normalizeKey(merchant),
+      rawRowIndex: i, // 원본 파일에서의 절대 행 번호 — raw 레이어(raw_rows.row_index) 역참조용
     });
   }
-  return out;
+  return { transactions: out, hdr: h, dates };
 }
 
 export function parseCardXlsx(data: Uint8Array | ArrayBuffer, issuer = '신한'): ParseResult {
   const wb = XLSX.read(data, { type: 'array', cellDates: true });
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' }) as unknown[][];
-  const transactions = parseCardRows(rows, issuer);
+  const { transactions, hdr, dates } = parseCardRowsFull(rows, issuer);
   return {
     bank: 'shinhan',
     transactions,
     totalRows: transactions.length,
     sumIn: transactions.reduce((s, t) => s + t.amountIn, 0),
     sumOut: transactions.reduce((s, t) => s + t.amountOut, 0),
+    // 로우데이터 레이어 적재용 — 카드 명세는 raw 미연결이었다(2026-08-21 감사 B6 수정)
+    raw: { rows, header: hdr >= 0 ? (rows[hdr] ?? null) : null, dates },
   };
 }

@@ -7,7 +7,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 //   area 예: pos-garden-yangjae · pos-garden-pangyo · pos-staffmeal ·
 //            bank-excel-<brand> · bank-pdf-<brand>-<은행> · card-<brand> · receipt-coupang · bean-scan
 // 목적: 파서 개선 시 재업로드 요청 없이 서버 보관본으로 재처리, 과거 자료 열람(/finance/originals).
-// 실패해도 업로드 흐름을 깨지 않는다 — 보관은 부가 기능이라 항상 조용히 삼킨다.
+// 실패해도 업로드 흐름을 깨지 않는다 — 다만 조용히 삼키지는 않는다(2026-08-22 감사 A6):
+// 서버 로그에 남기고 boolean 을 돌려줘 호출부가 응답에 '원본 보관 실패'를 실을 수 있게 한다.
+// (Blob 정지 같은 인프라 장애는 infra-healthcheck 가 별도로 감시한다.)
 
 export const ORIGINALS_PREFIX = 'originals/';
 
@@ -30,7 +32,7 @@ export async function archiveOriginal(
   user: { id: string; email?: string | null },
   file: File,
   meta: ArchiveMeta,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const ym = meta.ym ?? kstYm();
     const path = `${ORIGINALS_PREFIX}${meta.area}/${ym}/${Date.now()}-${safeName(file.name)}`;
@@ -52,7 +54,10 @@ export async function archiveOriginal(
       uploaded_by: user.id,
       uploaded_by_email: user.email ?? null,
     });
-  } catch {
-    // 보관 실패는 비치명적 — 업로드 자체는 계속 진행
+    return true;
+  } catch (e) {
+    // 보관 실패는 비치명적 — 업로드 자체는 계속 진행하되, 로그와 반환값으로 드러낸다
+    console.error(`[originals] 원본 보관 실패 (${meta.area}/${file.name}):`, (e as Error).message);
+    return false;
   }
 }

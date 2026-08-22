@@ -42,7 +42,8 @@ export default function MonthlyCloseManager({
     loading: boolean;
     error?: string;
     snapshot?: { version: number; createdAt: string } | null;
-    diffs?: { label: string; was: number; now: number }[];
+    // section·key — '지출 합계'처럼 라벨이 겹치는 항목(전처리1 total vs 전처리2 total) 구분용(2026-08-22)
+    diffs?: { section?: string; key?: string; label: string; was: number; now: number }[];
   };
   const [snaps, setSnaps] = useState<Record<string, SnapState>>({});
   async function loadSnap(ym: string) {
@@ -298,8 +299,9 @@ export default function MonthlyCloseManager({
                       ) : !ready ? (
                         <Link
                           href={
+                            // unit 을 함께 넘긴다 — 없으면 전 브랜드 미분류가 열려 표의 건수와 어긋난다(2026-08-22 감사 C-4)
                             r.unclassified > 0
-                              ? `/finance/classify?ym=${r.ym}&unclassified=1`
+                              ? `/finance/classify?ym=${r.ym}&unit=${unit}&unclassified=1`
                               : `/finance/classify?ym=${r.ym}&brand=garden&store=none`
                           }
                           className="ta-btn text-[13px]"
@@ -348,7 +350,7 @@ export default function MonthlyCloseManager({
                               </span>
                               <ul className="m-0 flex list-none flex-col gap-0.5 p-0 tabular-nums text-muted-foreground">
                                 {sn.diffs.slice(0, 8).map((d) => (
-                                  <li key={d.label}>
+                                  <li key={`${d.section ?? ''}:${d.key ?? d.label}`}>
                                     {d.label}: {won(d.was)} → <b className="text-foreground">{won(d.now)}</b> (
                                     {d.now - d.was > 0 ? '+' : ''}
                                     {won(d.now - d.was)})

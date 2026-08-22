@@ -291,8 +291,8 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                             )}
                             {r.pending.collectedOther !== 0 && (
                               <div className="flex items-baseline justify-between gap-2">
-                                <dt className="text-muted-foreground" title="네이버페이·쿠팡 수집분 중 설비·개인 등 비용 외 계정으로 분류된 몫 — 카드대금 차감 정합을 위해 포함돼요">
-                                  기타(비용 외) ⓘ
+                                <dt className="text-muted-foreground" title="네이버페이·쿠팡 수집분 중 비용 외 계정(설비·개인 등)·미분류·미상 몫 — 카드대금 차감 정합을 위해 포함돼요">
+                                  수집분 미확정 ⓘ
                                 </dt>
                                 <dd className="m-0 tabular-nums">{won(r.pending.collectedOther)}</dd>
                               </div>

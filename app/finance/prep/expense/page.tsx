@@ -7,6 +7,7 @@ import AccountingNav from '@/components/AccountingNav';
 import { unitOf, UNITS } from '@/lib/finance/types';
 import { buildExpensePrep, type ExpenseGrain, type ExpenseTx } from '@/lib/finance/prepExpense';
 import { fetchAllRows } from '@/lib/finance/fetchAll';
+import { countUnassignedGarden } from '@/lib/finance/unassignedStore';
 
 // 전처리1 — 지출 총합. 로우데이터 다음 단계로, 소스별 지출을 기간 단위로 모으되
 // 중복 제거(카드대금 − 수집분)를 계산식 그대로 화면에 드러낸다.
@@ -40,6 +41,9 @@ export default async function PrepExpensePage({
   const grain: ExpenseGrain = GRAINS.some((g) => g.key === searchParams.grain)
     ? (searchParams.grain as ExpenseGrain)
     : 'month';
+
+  // 지점 뷰가 조용히 빼는 '지점 미지정' 가든 거래 — 경고 배너(2026-08-22 감사 D12, 월별 요약과 동일)
+  const unassignedCount = unit.store ? await countUnassignedGarden(supabase) : 0;
 
   // 거래를 전량 읽어 메모리에서 집계한다 — 규칙(카드대금 판별·차감)이 코드 한곳에 모여 있어야
   // 화면에 계산식 그대로 보여줄 수 있다. `.limit(50000)`은 잘림 방어가 아니라 서버 Max Rows
@@ -109,6 +113,12 @@ export default async function PrepExpensePage({
           )}
         </p>
 
+        {unit.store && unassignedCount > 0 && (
+          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+            ⚠️ 지점이 지정되지 않은 가든 거래 {unassignedCount}건이 이 지점 표에서 빠져 있어요. 분류 화면에서
+            지점을 지정해 주세요.
+          </div>
+        )}
         {/* 기간 단위 토글 */}
         <div className="mb-4 flex items-center gap-3">
           <div className="flex overflow-hidden rounded-md border border-border">

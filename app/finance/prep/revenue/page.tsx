@@ -8,6 +8,7 @@ import { unitOf, UNITS } from '@/lib/finance/types';
 import type { ExpenseGrain, ExpenseTx } from '@/lib/finance/prepExpense';
 import { buildRevenuePrep, type PosSaleRow, type GiftSaleRow } from '@/lib/finance/prepRevenue';
 import { fetchAllRows } from '@/lib/finance/fetchAll';
+import { countUnassignedGarden } from '@/lib/finance/unassignedStore';
 
 // 전처리3 — 매출 총합. POS 매출(발생)과 통장 입금(정산)을 나란히 놓고 대사한다.
 // 차이를 숨기지 않고 '차이'와 '정산률' 열로 드러낸다 — 이상한 구간이 곧 조사할 지점.
@@ -37,6 +38,9 @@ export default async function PrepRevenuePage({
   const grain: ExpenseGrain = GRAINS.some((g) => g.key === searchParams.grain)
     ? (searchParams.grain as ExpenseGrain)
     : 'month';
+
+  // 지점 뷰가 조용히 빼는 '지점 미지정' 가든 거래 — 경고 배너(2026-08-22 감사 D12, 월별 요약과 동일)
+  const unassignedCount = unit.store ? await countUnassignedGarden(supabase) : 0;
 
   // 전량 페이지 조회 — `.limit(50000)`은 서버 Max Rows(20000)에서 조용히 깎인다(2026-08-21 감사 P1-3).
   // 거래는 조인 필터(categories!inner) 대신 전 거래를 받아 JS로 거른다 — 월별 요약·결산과 같은
@@ -118,6 +122,12 @@ export default async function PrepRevenuePage({
           정상 범위(90~105%)인지로 &ldquo;{unit.label} 장사값이 제대로 들어오고 있나&rdquo;를 봐요.
         </p>
 
+        {unit.store && unassignedCount > 0 && (
+          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+            ⚠️ 지점이 지정되지 않은 가든 거래 {unassignedCount}건이 이 지점 표에서 빠져 있어요. 분류 화면에서
+            지점을 지정해 주세요.
+          </div>
+        )}
         <div className="mb-4 flex items-center gap-3">
           <div className="flex overflow-hidden rounded-md border border-border">
             {GRAINS.map((g) => (

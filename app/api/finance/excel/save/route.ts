@@ -81,7 +81,7 @@ export async function POST(req: Request) {
   const periodEnd = allDates[allDates.length - 1]?.slice(0, 10);
 
   // 원본 보관 — 재파싱 대비. 슬롯(은행 등)별로 구분해 area 를 나눈다.
-  await archiveOriginal(supabase, user, file, {
+  const originalArchived = await archiveOriginal(supabase, user, file, {
     area: `bank-excel-${brand}${slot ? `-${slot}` : ''}`,
     ym: slotYm ?? periodStart?.slice(0, 7),
     brand,
@@ -158,7 +158,7 @@ export async function POST(req: Request) {
         slot_ym: slotYm,
       });
     }
-    return NextResponse.json({ saved: 0, duplicates, autoClassified: 0, blockedConfirmed: 0 });
+    return NextResponse.json({ saved: 0, duplicates, autoClassified: 0, blockedConfirmed: 0, originalArchived });
   }
 
   // 학습 규칙(normalized_key → category_id)으로 자동 분류
@@ -255,5 +255,6 @@ export async function POST(req: Request) {
     duplicates,
     autoClassified: insertRows.filter((r) => r.category_id).length,
     blockedConfirmed, // 확정월이라 제외된 건수
+    originalArchived,
   });
 }

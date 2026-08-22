@@ -99,7 +99,7 @@ export function buildExpenseDetail(
   const perCat = new Map<number, Record<string, number>>(); // 최상위 계정 id → 기간별 금액
   const cardPayment: Record<string, number> = {};
   const collectedAll: Record<string, number> = {}; // 수집분 전액 — 월 뷰 차감용(전처리1과 동일)
-  const collectedOther: Record<string, number> = {}; // 수집분 중 비용 외(설비·개인·잡손익 등, 미상 제외)
+  const collectedOther: Record<string, number> = {}; // 수집분 미확정 — 비용 외 계정 + 미분류 + 미상(D7 통일)
   const unclassified: Record<string, number> = {};
   const misang: Record<string, number> = {};
   const settledCard: Record<string, number> = {};
@@ -113,14 +113,15 @@ export function buildExpenseDetail(
 
     if (isCollected) {
       add(collectedAll, b, net);
-      if (t.category_id == null) add(unclassified, b, net); // 수집분 미분류 — 순액(합계 정합)
-      else if (isMisang) add(misang, b, net);
-      else if (cat && EXPENSE_TYPES.has(cat.type)) {
+      // 수집분의 미분류·미상은 '미분류'/'미상' 열이 아니라 '수집분 미확정'으로 —
+      // 전처리1은 수집분을 소스 줄(네이버페이·쿠팡)에 통째로 담아 미분류·미상 줄이 은행·카드분만이라,
+      // 여기서 섞으면 같은 라벨의 셀 값이 화면마다 달라진다(2026-08-21 감사 C-1 / D7 통일).
+      if (cat && EXPENSE_TYPES.has(cat.type) && !isMisang) {
         const top = topOf(cat.id)!;
         const m = perCat.get(top.id) ?? {};
         add(m, b, net);
         perCat.set(top.id, m);
-      } else add(collectedOther, b, net); // 설비·개인·잡손익 등 — 합계엔 포함(전처리1 정합)
+      } else add(collectedOther, b, net); // 비용 외 계정 + 미분류 + 미상 — 합계엔 포함(전처리1 정합)
       continue;
     }
 
@@ -233,24 +234,24 @@ export function buildExpenseDetail(
     },
     {
       key: 'collected_other',
-      label: '기타(비용 외)',
+      label: '수집분 미확정',
       kind: 'note',
       amounts: collectedOther,
-      hint: '수집분 중 설비·개인·잡손익 등 비용이 아닌 계정으로 분류된 몫 — 카드대금 차감 정합을 위해 합계에 포함해요.',
+      hint: '네이버페이·쿠팡 수집분 중 비용 외 계정(설비·개인 등)·미분류·미상 몫 — 카드대금 차감 정합을 위해 합계에 포함해요.',
     },
     {
       key: 'unclassified',
       label: '미분류',
       kind: 'note',
       amounts: unclassified,
-      hint: '아직 계정이 없는 지출 — 분류하면 실제 계정 열로 옮겨가요. 관리손익과 같은 규칙으로 합계에 포함해요.',
+      hint: '아직 계정이 없는 은행·카드 지출 — 전처리1의 미분류 줄과 같은 값이에요. 분류하면 실제 계정 열로 옮겨가요.',
     },
     {
       key: 'misang',
       label: '미상',
       kind: 'note',
       amounts: misang,
-      hint: "용도를 판단하지 못해 '미상'으로 보류한 지출 — 이익이 부풀지 않게 합계에 포함해요.",
+      hint: "용도를 판단하지 못해 '미상'으로 보류한 은행·카드 지출 — 전처리1의 미상 줄과 같은 값이에요.",
     },
     {
       key: 'total',
@@ -300,7 +301,7 @@ export function buildExpenseDetail(
       label: '미분해·미분류',
       kind: 'note',
       amounts: pending,
-      hint: '카드 기타(미분해) + 기타(비용 외) + 미분류 + 미상 — 분류가 진행될수록 줄어들어요.',
+      hint: '카드 기타(미분해) + 수집분 미확정 + 미분류 + 미상 — 분류가 진행될수록 줄어들어요.',
     },
     { key: 'total', label: isMonth ? '지출 합계 (비용)' : '현금 유출 합계', kind: 'total', amounts: total },
   ];

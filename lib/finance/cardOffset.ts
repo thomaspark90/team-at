@@ -37,6 +37,23 @@ export const CARD_PAYMENT_RE = new RegExp(`(${CARD_COMPANIES.join('|')})`);
 /** 자동수집 소스 — 결제가 사실상 전량 카드라 카드대금 인출과 겹친다 */
 export const COLLECTED_SOURCES = new Set(['naverpay', 'coupang']);
 
+/**
+ * 카드 명세 행 ↔ 수집분 자동 상쇄 (2026-08-22 감사 D3).
+ * 카드 명세를 올리면 그 안의 네이버페이·쿠팡 결제 행이 수집분(세부)과 같은 돈이라 이중이 된다 —
+ * 명세의 해당 가맹점 행을 '대체' 계정(excluded)으로 자동 분류해 세부가 대신 잡히게 한다.
+ * (세부 수집이 없는 달은 관리손익 payLump·지표 dashboard_lumps 가 대체 출금을 도로 지출로 세워
+ *  이익 과대를 막는다 — 규칙이 양방향으로 닫혀 있다.)
+ *
+ * ⚠️ 가맹점명 **정확 일치**만 — 과잉 매칭이 누락보다 위험하다.
+ *    '쿠팡이츠'는 제외: 쿠팡 주문 수집기(상품 주문)에 안 잡혀 수집분과 겹치지 않음을
+ *    실측으로 확인(2026-08-22, 13건 전수 무겹침) — 일반 지출(식비 등)로 분류하는 게 맞다.
+ */
+export const CARD_STATEMENT_SUBST: Record<string, 'coupang' | 'naverpay'> = {
+  네이버페이: 'naverpay',
+  쿠팡: 'coupang',
+  '쿠팡(쿠페이)': 'coupang',
+};
+
 /** 손익에 같이 실린 카드대금·수집분에서 겹치는 몫 — 음수 방지 클램프 */
 export const cardDupOffset = (cardPay: number, collected: number) =>
   Math.max(0, Math.min(cardPay, collected));

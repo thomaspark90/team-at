@@ -8,6 +8,7 @@ import { unitOf, UNITS } from '@/lib/finance/types';
 import type { ExpenseGrain, ExpenseTx } from '@/lib/finance/prepExpense';
 import { buildExpenseDetail, type CategoryInfo } from '@/lib/finance/prepExpenseDetail';
 import { fetchAllRows } from '@/lib/finance/fetchAll';
+import { countUnassignedGarden } from '@/lib/finance/unassignedStore';
 
 // 전처리2 — 지출 세분화. 전처리1(소스별)과 같은 돈을 계정과목 축으로 다시 자른 표.
 // 합계는 전처리1과 정확히 일치한다 — 다르면 어느 한쪽이 거짓말을 하는 것.
@@ -37,6 +38,9 @@ export default async function PrepExpenseDetailPage({
   const grain: ExpenseGrain = GRAINS.some((g) => g.key === searchParams.grain)
     ? (searchParams.grain as ExpenseGrain)
     : 'month';
+
+  // 지점 뷰가 조용히 빼는 '지점 미지정' 가든 거래 — 경고 배너(2026-08-22 감사 D12, 월별 요약과 동일)
+  const unassignedCount = unit.store ? await countUnassignedGarden(supabase) : 0;
 
   // 전량 페이지 조회 — `.limit(50000)`은 서버 Max Rows(20000)에서 조용히 깎인다(2026-08-21 감사 P1-3)
   const [data, { data: catsData, error: catsErr }] = await Promise.all([
@@ -101,6 +105,12 @@ export default async function PrepExpenseDetailPage({
           계정(인건비)으로 합쳐 보여요. 금액을 누르면 그 계정 건들이 분류 화면에 필터된 상태로 열려요.
         </p>
 
+        {unit.store && unassignedCount > 0 && (
+          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+            ⚠️ 지점이 지정되지 않은 가든 거래 {unassignedCount}건이 이 지점 표에서 빠져 있어요. 분류 화면에서
+            지점을 지정해 주세요.
+          </div>
+        )}
         <div className="mb-4 flex items-center gap-3">
           <div className="flex overflow-hidden rounded-md border border-border">
             {GRAINS.map((g) => (
@@ -135,7 +145,7 @@ export default async function PrepExpenseDetailPage({
         )}
 
         {/* 상단 요약 — 5+1 그룹. 그룹 합 = 아래 상세 열 합 = 지출 합계 */}
-        <h2 className="mb-2 mt-2 text-[15px] font-medium">월별 요약</h2>
+        <h2 className="mb-2 mt-2 text-[15px] font-medium">{isMonth ? '월별' : grain === 'week' ? '주별' : '일별'} 요약</h2>
         <div className="mb-8 overflow-auto rounded-md border border-border">
           <table className="w-max min-w-full border-collapse text-[13px]">
             <thead className="sticky top-0 z-10 bg-card">

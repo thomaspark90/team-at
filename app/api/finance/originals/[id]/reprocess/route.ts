@@ -6,6 +6,7 @@ import type { Brand } from '@/lib/finance/types';
 import { createClient } from '@/lib/supabase/server';
 import { resolveRole } from '@/lib/finance/access';
 import { applyPosParseResult } from '@/lib/finance/pos-apply';
+import { saveRawBatchSafe } from '@/lib/finance/raw';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -57,5 +58,28 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
 
   const outcome = await applyPosParseResult(supabase, user, { brand, store, posType, actionLabel: 'POS 원본 재처리' }, r);
   if (!outcome.ok) return NextResponse.json({ error: outcome.error }, { status: outcome.status });
+
+  // 로우데이터 적재 — 재처리도 업로드와 같은 규칙으로 원본을 남긴다(2026-08-21 감사 B5:
+  // 파서를 고쳐 재처리하면 pos_sales 는 새 값인데 raw 는 옛 배치뿐이던 간극 수정).
+  // raw 는 append-only 라 새 배치가 옛 배치를 대체하는 게 아니라 나란히 남는다(파서 버전별 흔적).
+  if (r.raw && r.raw.rows.length > 0) {
+    const dates = r.raw.dates.filter((d): d is string => d != null).sort();
+    await saveRawBatchSafe(
+      supabase,
+      {
+        source: 'pos',
+        issuer: posType,
+        brand,
+        store: store || null,
+        filename: row.filename,
+        header: r.raw.header,
+        originalId: Number(params.id),
+        periodStart: dates[0] ?? null,
+        periodEnd: dates[dates.length - 1] ?? null,
+        userId: user.id,
+      },
+      r.raw.rows.map((rw, i) => ({ rowIndex: i, payload: rw, rowDate: r.raw!.dates[i] ?? null }))
+    );
+  }
   return NextResponse.json(outcome.body);
 }

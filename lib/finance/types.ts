@@ -105,4 +105,6 @@ export interface ParseResult {
   totalRows: number; // 파싱 성공한 거래 줄 수
   sumIn: number;
   sumOut: number;
+  /** 로우데이터 레이어 적재용 — 파서가 읽은 원본 시트(카드 명세 등, 채우는 파서만) */
+  raw?: { rows: unknown[][]; header: unknown[] | null; dates: (string | null)[] };
 }

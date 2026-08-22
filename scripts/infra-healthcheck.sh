@@ -48,7 +48,8 @@ const fs = require('fs');
 const env = fs.readFileSync('$ROOT/.env.local', 'utf8');
 const token = env.match(/BLOB_READ_WRITE_TOKEN=(\S+)/)?.[1];
 (async () => {
-  const r = await put('health/__probe__.txt', 'x', { access: 'private', token, addRandomSuffix: false });
+  // allowOverwrite — 이전 실행의 del 이 실패해 프로브 파일이 남으면 'already exists' 오탐이 났다(2026-08-22)
+  const r = await put('health/__probe__.txt', 'x', { access: 'private', token, addRandomSuffix: false, allowOverwrite: true });
   const res = await fetch(r.url, { headers: { authorization: 'Bearer ' + token } });
   if (!res.ok) throw new Error('읽기 ' + res.status);
   await del(r.url, { token });
@@ -96,6 +97,21 @@ check_collector() { # $1=이름 $2=last-success 경로
 }
 check_collector "네이버페이" "/Users/thomasparks/Projects/naverpay-export/out/last-success.txt"
 check_collector "쿠팡" "/Users/thomasparks/Projects/coupang-export/out/last-success.txt"
+
+# ── 5. DB 백업 신선도 (매일 21시 백업 — 50시간 이내 = 정상) ──────────
+# 2026-08-22 감사 D8: 백업이 8주 연속 실패해도 로그 파일에만 남고 아무도 몰랐다 — 여기서 감시.
+BK_DIR="/Users/thomasparks/Backups/team-at-db"
+BK_LATEST=$(ls -t "$BK_DIR"/teamat-*.sql.gz 2>/dev/null | head -1)
+if [[ -z "$BK_LATEST" ]]; then
+  fail "DB 백업" "백업 파일이 하나도 없어요($BK_DIR)"
+else
+  BK_AGE_H=$(( ($(date +%s) - $(stat -f %m "$BK_LATEST")) / 3600 ))
+  if (( BK_AGE_H < 50 )); then
+    log "✅ DB 백업 정상 (${BK_AGE_H}시간 전 — $(basename "$BK_LATEST"))"
+  else
+    fail "DB 백업" "마지막 백업이 ${BK_AGE_H}시간 전 — backup-db.sh 가 멈춰 있어요(~/Backups/team-at-db/backup.log 확인)"
+  fi
+fi
 
 # ── 심박 + 요약 ──────────────────────────────────────────────────────
 echo "$(date -u +%FT%TZ) 점검 완료 — 실패 ${FAILS}건" | tee "$HEARTBEAT" >> "$REPORT"

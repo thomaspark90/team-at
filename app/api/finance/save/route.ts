@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 
   // 원본 보관 — 재파싱 대비
   const bankDates = result.transactions.map((t) => t.txAt).sort();
-  await archiveOriginal(supabase, user, file, {
+  const originalArchived = await archiveOriginal(supabase, user, file, {
     area: `bank-pdf-${brand}-${bank}`,
     ym: bankDates[0]?.slice(0, 7),
     brand,
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
     );
   }
   if (fresh.length === 0) {
-    return NextResponse.json({ saved: 0, duplicates, autoClassified: 0, blockedConfirmed: 0 });
+    return NextResponse.json({ saved: 0, duplicates, autoClassified: 0, blockedConfirmed: 0, originalArchived });
   }
 
   // 학습 규칙(normalized_key → category_id)으로 자동 분류
@@ -158,5 +158,6 @@ export async function POST(req: Request) {
     duplicates,
     autoClassified: rows.filter((r) => r.category_id).length,
     blockedConfirmed, // 확정월이라 제외된 건수
+    originalArchived,
   });
 }

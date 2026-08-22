@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
   // 원본 보관 — 재파싱 대비. 배치가 여러 브랜드에 걸칠 수 있어 brand는 비워 둔다(품목에 각자 있음).
   const receiptYmds = items.map((i) => i.ymd).sort();
-  await archiveOriginal(supabase, user, file, {
+  const originalArchived = await archiveOriginal(supabase, user, file, {
     area: 'receipt-coupang',
     ym: receiptYmds[0]?.slice(0, 7),
     note: '쿠팡영수증',
@@ -73,6 +73,9 @@ export async function POST(req: Request) {
   const now = new Date().toISOString();
   const groups = groupByApproval(items);
   const rowsToInsert: Record<string, unknown>[] = [];
+  // 동일 품목 순번 — 한 영수증에 같은 (판매자,금액,상품) 줄이 2개면 지문이 겹쳐 배치 전체가
+  // UNIQUE 위반으로 실패하던 문제(2026-08-21 감사 A7). 파일 내 등장 순서라 재적용에도 안정.
+  const lineSeq = new Map<string, number>();
   const parentIds: number[] = [];
   let matchedGroups = 0;
 
@@ -84,6 +87,9 @@ export async function POST(req: Request) {
     parentIds.push(parent.id);
     for (const it of its) {
       const keySrc = it.seller && !/쿠팡\(주\)/.test(it.seller) ? it.seller : it.product;
+      const lineKey = `${approvalNo}|${it.seller}|${it.amount}|${it.product}`;
+      const seq = lineSeq.get(lineKey) ?? 0;
+      lineSeq.set(lineKey, seq + 1);
       rowsToInsert.push({
         bank: 'shinhan',
         source: 'card',
@@ -100,7 +106,10 @@ export async function POST(req: Request) {
         amount_in: 0,
         balance: 0,
         branch: null,
-        dedup_hash: hash('receipt', approvalNo, it.seller, it.amount, it.product),
+        // v2: 동일 품목 순번(seq) 포함. 구지문은 _legacy_hash 로 실어 아래 dedup 이 병행 대조 —
+        // 옛 지문으로 적재된 과거 분해분이 재적용에서 신규로 오인되지 않게(엑셀 지문 v2와 같은 방식)
+        dedup_hash: hash('receipt', approvalNo, it.seller, it.amount, it.product, seq),
+        _legacy_hash: hash('receipt', approvalNo, it.seller, it.amount, it.product),
         normalized_key: normalizeKey(keySrc),
         approval_no: approvalNo,
         category_id: null,
@@ -114,10 +123,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ matchedGroups: 0, inserted: 0, note: '매칭되는 카드 쿠팡 거래가 없습니다.' });
   }
 
-  // 품목 dedup(재적용 대비)
-  const hashes = rowsToInsert.map((r) => r.dedup_hash as string);
+  // 품목 dedup(재적용 대비) — 새 지문(순번 포함)과 구지문을 모두 대조(재중복 차단)
+  const hashes = rowsToInsert.flatMap((r) => [r.dedup_hash as string, r._legacy_hash as string]);
   const existing = await fetchExistingHashes(supabase, hashes);
-  const freshRows = rowsToInsert.filter((r) => !existing.has(r.dedup_hash as string));
+  const freshRows = rowsToInsert
+    .filter((r) => !existing.has(r.dedup_hash as string) && !existing.has(r._legacy_hash as string))
+    .map(({ _legacy_hash, ...r }) => r); // 보조 필드는 저장하지 않는다
 
   // 1) 품목(영수증 분해분)을 먼저 저장. 실패 시 원본을 잠그지 않아 lump 누락/이중계상 없음.
   let uploadId: number | null = null;
@@ -168,5 +179,5 @@ export async function POST(req: Request) {
   }
 
   await logActivity(supabase, user, '쿠팡 전표 분해', `${matchedGroups}건 매칭 · ${freshRows.length}행`);
-  return NextResponse.json({ matchedGroups, inserted: freshRows.length, duplicates: rowsToInsert.length - freshRows.length });
+  return NextResponse.json({ matchedGroups, inserted: freshRows.length, duplicates: rowsToInsert.length - freshRows.length, originalArchived });
 }

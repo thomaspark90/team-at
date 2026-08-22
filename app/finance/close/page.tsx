@@ -79,6 +79,7 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
     }
     agg.set(t.ym, a);
   }
+  const totalUnassigned = Array.from(agg.values()).reduce((s, a) => s + a.unassigned, 0);
   const months: MonthRow[] = Array.from(agg.entries())
     .filter(([, a]) => a.total > 0 || a.unassigned > 0)
     .map(([ym, a]) => {
@@ -237,6 +238,14 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
           {unit.store ? '와 지점 미지정 가든 거래' : ''}가 0건인 달만 확정할 수 있고, 확정하면 그 달·그 단위의 지출 자료 분류가
           잠겨요. {allowConfirm ? '' : '(확정 권한은 관리자에게 요청하세요.)'}
         </p>
+        {/* 지점 뷰의 손익 요약이 조용히 빼는 '지점 미지정' 거래 — 경고 배너(2026-08-22 감사 D12).
+            아래 확정 표에는 달별 건수가 있지만, 손익 요약(지출·통장 열)에도 빠져 있음을 여기서 알린다. */}
+        {unit.store && totalUnassigned > 0 && (
+          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+            ⚠️ 지점이 지정되지 않은 가든 거래 {totalUnassigned}건이 아래 손익 요약에서 빠져 있어요. 분류 화면에서
+            지점을 지정해 주세요(해당 달은 지정 완료 전까지 확정할 수 없어요).
+          </div>
+        )}
         {/* personal 은 위에서 리다이렉트되므로 여기 unit 은 항상 사업 단위.
             좌측 연·월 사이드바 — 달을 고르면 표에서 그 달 행을 하이라이트·스크롤(2026-08-03) */}
         <MonthShell brand={unit.brand} initialTodos={initialTodos}>

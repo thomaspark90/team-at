@@ -94,8 +94,10 @@ export async function POST(req: Request) {
 
   // 원본 보관 — 파서 개선 시 재업로드 요청 없이 재처리할 수 있게. 이번 파일이 전부 기존 자료와
   // 동일해 아무것도 안 바뀌었으면(changedYms 빈 배열) 원본 자료함에 중복 파일을 남기지 않는다.
+  // 보관 실패는 응답에 드러낸다(2026-08-22 감사 A6, null = 보관 대상 아님).
+  let originalArchived: boolean | null = null;
   if (outcome.body.changedYms.length > 0) {
-    await archiveOriginal(supabase, user, file, {
+    originalArchived = await archiveOriginal(supabase, user, file, {
       area: `pos-${brand}${store ? `-${store}` : ''}`,
       ym: r.ym,
       brand,
@@ -104,5 +106,5 @@ export async function POST(req: Request) {
     });
   }
 
-  return NextResponse.json(outcome.body);
+  return NextResponse.json({ ...outcome.body, originalArchived });
 }
