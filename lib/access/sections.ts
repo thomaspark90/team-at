@@ -8,7 +8,7 @@ export const SECTIONS: AppSection[] = [
   { key: 'studio', href: '/studio', label: 'Staff Meal', desc: '스탭밀 인스타 스토리 이미지 · 메뉴 관리' },
   { key: 'garden', href: '/garden', label: 'Garden Service', desc: '원두 발주 · 레시피 · 분쇄도 · 리뷰' },
   { key: 'accounting', href: '/dashboard', label: '회계', desc: '지출 분류 · 자료 업로드 · 월 결산' },
-  { key: 'report', href: '/finance/dashboard', label: '리포트', desc: '손익 대시보드 · 지표 분석' },
+  { key: 'report', href: '/finance/pnl', label: '리포트', desc: '관리손익 · 지표 분석' },
 ];
 
 export const SECTION_KEYS = SECTIONS.map((s) => s.key);

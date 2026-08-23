@@ -73,7 +73,7 @@ export default function TabNav() {
             const active =
               tab.href === '/dashboard'
                 ? inAccounting(p)
-                : tab.href === '/finance/dashboard'
+                : tab.key === 'report'
                   ? p.startsWith('/finance') && !inAccounting(p)
                   : p === tab.href || p.startsWith(tab.href + '/');
             return (
@@ -152,7 +152,7 @@ export default function TabNav() {
               const active =
                 tab.href === '/dashboard'
                   ? inAccounting(p)
-                  : tab.href === '/finance/dashboard'
+                  : tab.key === 'report'
                     ? p.startsWith('/finance') && !inAccounting(p)
                     : p === tab.href || p.startsWith(tab.href + '/');
               return (

@@ -63,7 +63,7 @@ describe('sectionsForApiPath — API → 섹션 후보', () => {
 describe('firstAllowedHref — 허용 섹션의 첫 진입 경로', () => {
   it('null(제한 없음) = 첫 섹션, 일부 허용 = 그중 첫 항목, 전부 불허 = null', () => {
     expect(firstAllowedHref(null)).toBe(SECTIONS[0].href);
-    expect(firstAllowedHref(['report'])).toBe('/finance/dashboard');
+    expect(firstAllowedHref(['report'])).toBe('/finance/pnl');
     expect(firstAllowedHref(['garden', 'accounting'])).toBe('/garden'); // SECTIONS 순서 기준
     expect(firstAllowedHref([])).toBeNull(); // null 이 아니면 계정이 엉뚱한 곳으로 풀린다
   });

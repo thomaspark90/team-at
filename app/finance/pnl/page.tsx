@@ -36,7 +36,9 @@ export default async function PnlPage({
   const user = await getSessionUser(supabase);
   if (!user) redirect('/');
   const role = await resolveRoleStamped(supabase, user);
-  if (!role || !['admin', 'classifier'].includes(role)) redirect('/finance');
+  if (!role) redirect('/finance');
+  // viewer(팀원)는 관리손익 접근 불가 — 리포트 섹션의 첫 화면인 지표로 보낸다(구 /finance/dashboard 가 하던 역할)
+  if (!['admin', 'classifier'].includes(role)) redirect('/finance/metrics');
 
   const unit = unitOf(searchParams.unit) ?? UNITS[0];
   const seg = unit.brand as BrandSeg;

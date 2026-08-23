@@ -82,8 +82,8 @@ export default async function AccountingDashboardPage({ searchParams }: { search
           <div className="pt-[54px]">
           <MonthShell initialTodos={initialTodos} brand={unit.brand}>
             {/* 기장 현황은 상태 그리드의 숫자·배지로 충분해 업무 보드(기장 칸반)는 제거(2026-08-01 대표 지시).
-                단발 업무 추가는 리포트 재무 대시보드(/finance/dashboard)의 업무 보드에 남아 있음.
-                되살리려면 TaskBoard board="accounting" 섹션을 다시 넣으면 됨. */}
+                리포트 쪽 업무 보드도 같은 이유로 제거(2026-08-21) — TaskBoard 컴포넌트·API·lib 모두 삭제됨.
+                되살리려면 해당 커밋을 되돌려야 함. */}
             <AccountingBoards fixedBrand={unit.brand} unitId={unit.id} mode="status" />
           </MonthShell>
           </div>
