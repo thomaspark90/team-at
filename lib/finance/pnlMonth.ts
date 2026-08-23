@@ -9,7 +9,7 @@ import type { Brand, Store } from './types';
 // 월 결산 페이지의 손익 드릴다운(/api/finance/pnl-month)과 관리손익 페이지가 이 코드를 공용해
 // 두 화면의 숫자가 항상 일치한다("같은 코드 = 같은 숫자").
 
-export type BrandSeg = Exclude<Brand, 'personal'>;
+export type BrandSeg = Exclude<Brand, 'personal' | 'eastpark'>; // 개인·이스트파크(과거 귀속 전용)는 손익 세그먼트가 아니다
 
 export type PnlPosRowS = PnlPosRow & { store?: string };
 

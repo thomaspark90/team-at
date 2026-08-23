@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: '요청 형식이 잘못됐어요.' }, { status: 400 });
   }
   const brand = body.brand;
-  if (!brand || !['garden', 'staffmeal', 'personal'].includes(brand)) {
+  if (!brand || !['garden', 'staffmeal', 'personal', 'eastpark'].includes(brand)) {
     return NextResponse.json({ error: '브랜드가 올바르지 않습니다.' }, { status: 400 });
   }
   const items = (body.items ?? []).filter(

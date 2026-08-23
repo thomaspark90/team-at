@@ -49,9 +49,11 @@ export async function fetchMerchantBrandMap(
 
   const map = new Map<string, MerchantBrandRule>();
   byKey.forEach((list, key) => {
-    const brands = new Set(list.map((r) => r.brand));
+    // 이스트파크(가든 지점 운영 전 이전 브랜드)는 가든 계열로 합산 — 시대만 다르고 같은 사업장이라
+    // 이력이 갈린 것으로 치지 않는다. 최종 귀속은 ingest 쪽 시대 보정(gardenEraBrand)이 가른다.
+    const brands = new Set(list.map((r) => (r.brand === 'eastpark' ? 'garden' : r.brand)));
     if (brands.size !== 1) return; // 이력이 갈리는 가맹점은 사전에서 제외
-    const brand = list[0].brand;
+    const brand = Array.from(brands)[0];
     if (brand !== 'staffmeal' && brand !== 'garden' && brand !== 'personal') return;
     const branches = new Set(list.map((r) => r.branch ?? ''));
     const stores = new Set(list.map((r) => r.store ?? ''));

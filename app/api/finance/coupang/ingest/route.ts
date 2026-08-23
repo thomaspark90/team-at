@@ -8,6 +8,7 @@ import { resolveMisangCatId } from '@/lib/finance/misang';
 import { recordIngestSuccess } from '@/lib/ingest-health';
 import { fetchStoreRuleMap } from '@/lib/finance/storeRules';
 import { fetchMerchantBrandMap, MERCHANT_MIN_EVIDENCE } from '@/lib/finance/merchantBrand';
+import { gardenEraBrand } from '@/lib/finance/era';
 import { buildRawRowsFromObjects, saveRawBatchSafe } from '@/lib/finance/raw';
 import { lockedYmsByBrand, isLockedYm } from '@/lib/finance/ingestLock';
 
@@ -125,6 +126,16 @@ export async function POST(req: Request) {
     merchantResolved++;
   });
 
+  // 브랜드 시대 보정(2026-08-23) — 가든 지점 운영 전(2025-09 이전)의 가든 판정·기본값은
+  // 이전 브랜드 '이스트파크' 귀속. 배송지 판정은 주소→현재 브랜드만 알므로 여기서 월로 가른다.
+  mapped.forEach((m) => {
+    const era = gardenEraBrand(m.brand, m.ym);
+    if (era !== m.brand) {
+      m.brand = era;
+      m.store = null; // 지점(판교/양재천)은 가든 전용 차원
+    }
+  });
+
   // 재적재 중복 차단 (dedup_hash 기존 여부 + 현재 금액 청크 조회)
   const hashes = Array.from(new Set(mapped.map((m) => m.dedup_hash)));
   const existing = new Set<string>();
@@ -200,25 +211,31 @@ export async function POST(req: Request) {
   for (const g of Array.from(dupGroups.values())) {
     // 확정월 보호 — 옮기기 전(현재 brand·ym)과 옮긴 후(대상 brand·같은 ym) 어느 쪽이든
     // 확정돼 있으면 그 행의 백필을 보류한다(양쪽 장부의 결산값이 바뀌므로).
-    const hs = Array.from(new Set(g.hashes)).filter((h) => {
+    // 시대 보정 — 가든 판정이라도 지점 운영 전(2025-09 이전) 행은 이스트파크로 옮긴다(행별 ym 기준).
+    const byTarget = new Map<string, string[]>();
+    Array.from(new Set(g.hashes)).forEach((h) => {
       const cur = existingRow.get(h);
-      if (cur && (isLockedYm(lockedByBrand, cur.brand, cur.ym) || isLockedYm(lockedByBrand, g.brand, cur.ym))) {
+      const target = gardenEraBrand(g.brand, cur?.ym ?? '9999-99');
+      if (cur && (isLockedYm(lockedByBrand, cur.brand, cur.ym) || isLockedYm(lockedByBrand, target, cur.ym))) {
         lockedUpdateSkipped++;
-        return false;
+        return;
       }
-      return true;
+      byTarget.set(target, [...(byTarget.get(target) ?? []), h]);
     });
-    for (let i = 0; i < hs.length; i += 100) {
-      const store = g.branch === '판교' ? 'pangyo' : g.branch === '양재천' ? 'yangjae' : null;
-      let q = supabase
-        .from('transactions')
-        .update({ brand: g.brand, branch: g.branch, store, brand_basis: 'shipping' })
-        .in('dedup_hash', hs.slice(i, i + 100));
-      q = g.branch
-        ? q.or(`brand.neq.${g.brand},branch.neq.${g.branch},branch.is.null`)
-        : q.neq('brand', g.brand);
-      const { data } = await q.select('id');
-      brandUpdated += data?.length ?? 0;
+    for (const [target, hs] of Array.from(byTarget.entries())) {
+      for (let i = 0; i < hs.length; i += 100) {
+        const store =
+          target === 'garden' ? (g.branch === '판교' ? 'pangyo' : g.branch === '양재천' ? 'yangjae' : null) : null;
+        let q = supabase
+          .from('transactions')
+          .update({ brand: target, branch: g.branch, store, brand_basis: 'shipping' })
+          .in('dedup_hash', hs.slice(i, i + 100));
+        q = g.branch
+          ? q.or(`brand.neq.${target},branch.neq.${g.branch},branch.is.null`)
+          : q.neq('brand', target);
+        const { data } = await q.select('id');
+        brandUpdated += data?.length ?? 0;
+      }
     }
   }
 
@@ -246,8 +263,9 @@ export async function POST(req: Request) {
   }
   // 학습된 지점 규칙 — 배송지가 지점까지 못 짚은 가든 건을 가맹점명으로 보완(2026-08-17).
   // 브랜드가 명시 판정(_explicit_brand)된 건에만 적용 — 미매칭 건까지 덮으면 '미상' 파킹 취지가 무너진다.
+  // 시대 보정으로 이스트파크가 된 행은 제외(m.brand 확인) — 지점은 가든 전용 차원
   const isGardenResolved = (m: (typeof fresh)[number]) =>
-    m._explicit_brand === 'garden' || (m._merchant_brand && m.brand === 'garden');
+    m.brand === 'garden' && (m._explicit_brand === 'garden' || m._merchant_brand);
   const storeCandidateKeys = fresh.filter((m) => isGardenResolved(m) && !m.store).map((m) => m.normalized_key);
   const keyToStore = await fetchStoreRuleMap(supabase, storeCandidateKeys);
   const now = new Date().toISOString();

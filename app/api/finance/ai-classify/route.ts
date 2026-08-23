@@ -114,7 +114,7 @@ export async function POST(req: Request) {
 
   const reqBody = (await req.json().catch(() => ({}))) as { brand?: string; ym?: string };
   const brand =
-    reqBody.brand && ['garden', 'staffmeal', 'personal'].includes(reqBody.brand) ? reqBody.brand : null;
+    reqBody.brand && ['garden', 'staffmeal', 'personal', 'eastpark'].includes(reqBody.brand) ? reqBody.brand : null;
   // 현재 보는 스코프만 처리 — 전 기간 미분류를 한 번에 돌리면 그룹이 많아 60초 타임아웃(2026-08-03).
   // 'YYYY-MM'(월) 또는 'YYYY'(연도 전체 — 사이드바 연도 선택, 2026-08-20)를 받는다.
   const ym = typeof reqBody.ym === 'string' && /^\d{4}(-\d{2})?$/.test(reqBody.ym) ? reqBody.ym : null;

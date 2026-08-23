@@ -7,13 +7,15 @@ export type BankSource = 'shinhan' | 'woori' | 'naverpay' | 'excel';
 // DB 기본값 'garden': 기존 수집 경로(신한·우리·신한카드·쿠팡·네이버)는 모두 가든 귀속.
 // 'personal'(개인) — 사업 계정으로 결제한 사적 지출. 손익 제외이며 사업 브랜드 세그먼트(BRANDS)에는
 // 넣지 않는다(관리손익·리포트 축 오염 방지). 회계단위 탭(UNITS)에만 '개인'으로 노출된다.
-export type Brand = 'staffmeal' | 'garden' | 'personal';
-export const BRANDS: { id: Exclude<Brand, 'personal'>; label: string }[] = [
+// 'eastpark'(이스트파크) — 가든 지점 운영 전(2025-09 이전) 같은 자리의 이전 브랜드(2026-08-23).
+// personal 과 같은 원리로 BRANDS(사업 세그먼트)·UNITS 에는 넣지 않는다 — 과거 귀속 전용.
+export type Brand = 'staffmeal' | 'garden' | 'personal' | 'eastpark';
+export const BRANDS: { id: Exclude<Brand, 'personal' | 'eastpark'>; label: string }[] = [
   { id: 'garden', label: '가든서비스' },
   { id: 'staffmeal', label: '스탭밀' },
 ];
 // 개인 포함 전체 브랜드 라벨(표시용) — BRANDS(사업 브랜드)와 분리해 리포트 세그먼트 오염을 막는다.
-const BRAND_LABELS: Record<string, string> = { garden: '가든서비스', staffmeal: '스탭밀', personal: '개인' };
+const BRAND_LABELS: Record<string, string> = { garden: '가든서비스', staffmeal: '스탭밀', personal: '개인', eastpark: '이스트파크' };
 export const brandLabel = (b: string | null | undefined) => (b ? (BRAND_LABELS[b] ?? '미지정') : '미지정');
 
 // 매장 지점 — 가든서비스에만 의미(스탭밀=단일 매장, store null/'').

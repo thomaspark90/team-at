@@ -39,14 +39,14 @@ export async function POST(req: Request) {
   const store = body.store ?? null;
   const scope = body.scope === 'key' ? 'key' : 'selected';
   if (!ids.length) return NextResponse.json({ error: '이동할 거래를 선택하세요.' }, { status: 400 });
-  if (brand !== 'staffmeal' && brand !== 'garden' && brand !== 'personal') {
+  if (brand !== 'staffmeal' && brand !== 'garden' && brand !== 'personal' && brand !== 'eastpark') {
     return NextResponse.json({ error: '브랜드가 올바르지 않습니다.' }, { status: 400 });
   }
   if (store != null && store !== 'pangyo' && store !== 'yangjae') {
     return NextResponse.json({ error: '지점이 올바르지 않습니다.' }, { status: 400 });
   }
   if (brand !== 'garden' && store != null) {
-    return NextResponse.json({ error: `${brand === 'personal' ? '개인' : '스탭밀'}은 지점 구분이 없습니다.` }, { status: 400 });
+    return NextResponse.json({ error: `${brandLabel(brand)}은(는) 지점 구분이 없습니다.` }, { status: 400 });
   }
 
   // 확정된 달 — (ym, brand) 단위. 원 브랜드/대상 브랜드 어느 쪽이든 확정이면 그 달은 스킵.

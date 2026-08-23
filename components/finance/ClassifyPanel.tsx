@@ -97,7 +97,7 @@ export default function ClassifyPanel({
   lockedBrand?: 'staffmeal' | 'garden' | null; // 브랜드 스코프 멤버 — 서버에서 해당 브랜드만 내려옴, 브랜드 탭 숨김
   // 단위 고정 뷰(내비 2단 구조) — 스탭밀/양재천점/판교점 페이지: 브랜드·지점 탭 숨김.
   // 가든 지점 단위는 '지점 미지정(공용)' 거래도 함께 보여준다 — 지정·분할로 정리해야 하는 대상이라서.
-  fixedUnit?: { brand: 'staffmeal' | 'garden' | 'personal'; store: 'pangyo' | 'yangjae' | null } | null;
+  fixedUnit?: { brand: Brand; store: 'pangyo' | 'yangjae' | null } | null;
 }) {
   // 서버 데이터 재조회 — 갱신 중 전역 인디케이터 표시
   const { refresh } = useRefresh();
@@ -204,7 +204,7 @@ export default function ClassifyPanel({
   const [splitTarget, setSplitTarget] = useState<SplitTarget | null>(null);
   const [splitSug, setSplitSug] = useState<SplitRuleSuggestion | null>(null);
   // 브랜드·지점 일괄 이동(재분류 소급 도구)
-  const [moveBrand, setMoveBrand] = useState<'garden' | 'staffmeal' | 'personal' | ''>('');
+  const [moveBrand, setMoveBrand] = useState<'garden' | 'staffmeal' | 'personal' | 'eastpark' | ''>('');
   const [moveStore, setMoveStore] = useState<'pangyo' | 'yangjae' | ''>('');
   const [moveScope, setMoveScope] = useState<'selected' | 'key'>('selected');
   const [moving, setMoving] = useState(false);
@@ -1074,6 +1074,7 @@ export default function ClassifyPanel({
               { label: '가든서비스(양재천점)', brand: 'garden', store: 'yangjae' },
               { label: '가든서비스(판교점)', brand: 'garden', store: 'pangyo' },
               { label: '가든 미지정', brand: 'garden', store: 'none' },
+              { label: '이스트파크', brand: 'eastpark', store: 'all' },
             ].map(({ label, brand, store }) => {
               const on = brandFilter === brand && (brand === 'garden' ? storeFilter === store : true);
               return (
@@ -1201,7 +1202,7 @@ export default function ClassifyPanel({
             <select
               value={moveBrand}
               onChange={(e) => {
-                setMoveBrand(e.target.value as 'garden' | 'staffmeal' | 'personal' | '');
+                setMoveBrand(e.target.value as 'garden' | 'staffmeal' | 'personal' | 'eastpark' | '');
                 setMoveStore('');
               }}
               className="ta-input text-[13px]"
@@ -1210,6 +1211,7 @@ export default function ClassifyPanel({
               <option value="garden">가든서비스</option>
               <option value="staffmeal">스탭밀</option>
               <option value="personal">개인</option>
+              <option value="eastpark">이스트파크(前 브랜드)</option>
             </select>
             {moveBrand === 'garden' && (
               <select value={moveStore} onChange={(e) => setMoveStore(e.target.value as 'pangyo' | 'yangjae' | '')} className="ta-input text-[13px]">
@@ -1318,6 +1320,8 @@ export default function ClassifyPanel({
                             ? '개인'
                             : tx.brand === 'staffmeal'
                             ? '스탭밀'
+                            : tx.brand === 'eastpark'
+                            ? '이스트파크'
                             : `가든${tx.store ? `·${storeLabel(tx.store)}` : ''}`}
                         </span>
                         {tx.brand_basis === 'default' && (
