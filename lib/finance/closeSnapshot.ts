@@ -66,7 +66,7 @@ const LABELS: Record<string, string> = {
   g_pending: '미분해·미분류',
   pos: 'POS 매출',
   pos_menu: '메뉴 매출',
-  gift: '식권 판매',
+  gift: '식권·금액권 판매', // 스탭밀=자가 식권 / 가든=금액권·선불권(선수금) — 스냅샷 라벨은 브랜드 공용
   in_total: '통장 입금 합계',
   meal_ticket: '식권 정산',
   rate: '정산률',

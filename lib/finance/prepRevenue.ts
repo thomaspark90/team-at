@@ -242,10 +242,12 @@ export function buildRevenuePrep(
       ? [
           {
             key: 'gift',
-            label: '식권 판매',
+            label: hasMealTicket ? '식권 판매' : '금액권 판매',
             kind: 'pos' as const,
             amounts: giftAmt,
-            hint: '자가 식권(식권 10장 등) 판매 — 사용 시점엔 POS에 안 찍으므로(매니저 확인) 판매 시점을 매출로 인식해요. 언제 식권이 잘 팔렸는지 이 열로 봐요.',
+            hint: hasMealTicket
+              ? '자가 식권(식권 10장 등) 판매 — 사용 시점엔 POS에 안 찍으므로(매니저 확인) 판매 시점을 매출로 인식해요. 언제 식권이 잘 팔렸는지 이 열로 봐요.'
+              : '금액권·선불권 판매(선수금) — 사용 시점엔 POS 메뉴 매출로 찍히므로 판매 시점을 매출로 인식해요.',
           },
         ]
       : []),

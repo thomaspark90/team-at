@@ -42,11 +42,13 @@ export async function loadPnlPos(supabase: SupabaseClient, seg: BrandSeg): Promi
       { label: '식권 판매', missingTableOk: true }
     ),
   ]);
+  // 매출 구성 라벨 — 스탭밀=자가 식권, 가든=금액권·선불권(가든은 식권이 아예 없다, 2026-08-23 대표 확인)
+  const giftLabel = seg === 'garden' ? '금액권 판매' : '식권판매';
   const giftAsPos = giftRaw.map(
     (g) => {
       const gross = Number(g.gross);
       const vat = Math.round(gross - gross / 1.1);
-      return { ym: g.ym, category: '식권판매', qty: Number(g.qty), gross, vat, supply: gross - vat, brand: g.brand, store: g.store };
+      return { ym: g.ym, category: giftLabel, qty: Number(g.qty), gross, vat, supply: gross - vat, brand: g.brand, store: g.store };
     }
   );
   const posRows = [...posRaw, ...giftAsPos] as (PnlPosRowS & { brand?: string })[];
