@@ -76,7 +76,8 @@ export async function POST(req: Request) {
       const { data, error } = await supabase
         .schema('finance')
         .from('transactions')
-        .update({ brand, store })
+        // brand_basis=manual — 사용자가 직접 확정한 귀속. '귀속 미확정(default)' 큐에서 빠진다.
+        .update({ brand, store, brand_basis: 'manual' })
         .in('id', ok.map((r) => r.id))
         .select('id');
       if (error) return NextResponse.json({ error: `이동 실패: ${error.message}` }, { status: 500 });
@@ -106,7 +107,8 @@ export async function POST(req: Request) {
       let q = supabase
         .schema('finance')
         .from('transactions')
-        .update({ brand, store })
+        // brand_basis=manual — 가맹점 단위 소급 이동도 사용자 확정 귀속으로 기록
+        .update({ brand, store, brand_basis: 'manual' })
         .eq('normalized_key', g.key)
         .eq('brand', g.fromBrand);
       if (excludedYms.length) q = q.not('ym', 'in', `(${excludedYms.join(',')})`);

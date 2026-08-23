@@ -39,7 +39,7 @@ export default async function ClassifyPage({
   let txQuery = supabase
     .schema('finance')
     .from('transactions')
-    .select('id,memo,channel,normalized_key,amount_in,amount_out,category_id,tx_at,bank,source,is_installment,branch,brand,store,split_parent_id')
+    .select('id,memo,channel,normalized_key,amount_in,amount_out,category_id,tx_at,bank,source,is_installment,branch,brand,brand_basis,store,split_parent_id')
     .order('tx_at', { ascending: false });
   if (brandScope) txQuery = txQuery.eq('brand', brandScope);
   if (/^\d{4}-\d{2}$/.test(selYm)) txQuery = txQuery.eq('ym', selYm);

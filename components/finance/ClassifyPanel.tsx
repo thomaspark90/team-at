@@ -26,6 +26,7 @@ export interface TxRow {
   is_installment?: boolean;
   branch?: string | null; // naverpay: 배송지 기반 지점(1차 분류) — '판교' | '양재천' | '스탭밀'
   brand: string; // 'staffmeal' | 'garden' — 규칙 학습·키 일괄분류의 경계
+  brand_basis?: string | null; // 귀속 근거: 'shipping'(배송지 판정) | 'manual'(사용자 확정) | 'default'(기본값 — 귀속 미확정)
   store?: string | null; // 매장 지점: 'pangyo' | 'yangjae' | null(스탭밀·미지정)
   split_parent_id?: number | null; // 건별 분할로 생긴 행이면 원거래 id
 }
@@ -266,6 +267,9 @@ export default function ClassifyPanel({
   // 계정을 이름으로 감지(유형 무관), 기존에 미상으로 분류한 건들도 자동 포함된다.
   const misangCat = cats.find((c) => c.name.includes('미상'));
   const [misangOnly, setMisangOnly] = useState(false);
+  // '귀속 미확정' 모아보기 — 배송지 미해석으로 기본값(garden)에 굳은 수집 건. 브랜드·지점
+  // 이동 도구로 직접 귀속을 확정하는 큐(2026-08-23, brand_basis 도입).
+  const [basisOnly, setBasisOnly] = useState(false);
   // 거래일자 정렬 방향 — 헤더의 '거래일자'를 눌러 최신순(↓)↔과거순(↑) 전환(2026-08-21 대표 요청).
   // 예전에는 '미분류 먼저'가 1차 정렬키라, 분류·미분류가 섞인 달에서 날짜가 두 덩어리로
   // 갈려 뒤죽박죽으로 보였다. 이제 표시 순서는 날짜 하나로만 정하고, 미분류를 몰아보려면
@@ -313,8 +317,12 @@ export default function ClassifyPanel({
       matchesCat(r)
   );
   const misangCount = misangCat ? filteredExceptMisang.filter((r) => r.category_id === misangCat.id).length : 0;
+  // 귀속 미확정 건수 — 미상 버튼과 같은 원리로, 자기 필터를 뺀 기준(filteredExceptMisang)에서 센다
+  const basisCount = filteredExceptMisang.filter((r) => r.brand_basis === 'default').length;
   const filtered = filteredExceptMisang.filter(
-    (r) => !misangOnly || (misangCat != null && r.category_id === misangCat.id)
+    (r) =>
+      (!misangOnly || (misangCat != null && r.category_id === misangCat.id)) &&
+      (!basisOnly || r.brand_basis === 'default')
   );
   const classifiedCount = filtered.filter((r) => r.category_id != null).length;
   const progress = filtered.length ? Math.round((classifiedCount / filtered.length) * 100) : 0;
@@ -955,6 +963,7 @@ export default function ClassifyPanel({
           onClick={() => {
             setUnclOnly((v) => !v);
             setMisangOnly(false);
+            setBasisOnly(false);
           }}
           className={`rounded-md border px-3 py-[7px] text-[13px] font-medium ${
             unclOnly ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground'
@@ -968,12 +977,30 @@ export default function ClassifyPanel({
             onClick={() => {
               setMisangOnly((v) => !v);
               setUnclOnly(false);
+              setBasisOnly(false);
             }}
             className={`rounded-md border px-3 py-[7px] text-[13px] font-medium ${
               misangOnly ? 'border-amber-500 bg-amber-500/10 text-amber-600' : 'border-border text-muted-foreground hover:text-foreground'
             }`}
           >
             미상 {misangCount}건
+          </button>
+        )}
+        {basisCount > 0 && (
+          // 귀속 미확정 모아보기 — 배송지 미해석으로 기본값(가든)에 굳은 수집 건.
+          // 행을 선택해 '브랜드·지점 이동'으로 실제 귀속(스탭밀/판교/양재천/개인)을 확정한다.
+          <button
+            onClick={() => {
+              setBasisOnly((v) => !v);
+              setUnclOnly(false);
+              setMisangOnly(false);
+            }}
+            title="배송지를 읽지 못해 기본값(가든)으로 들어온 쿠팡·네이버페이 거래 — 선택해서 브랜드·지점 이동으로 귀속을 확정해요"
+            className={`rounded-md border px-3 py-[7px] text-[13px] font-medium ${
+              basisOnly ? 'border-destructive bg-destructive/10 text-destructive' : 'border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            귀속 미확정 {basisCount}건
           </button>
         )}
         <input
@@ -1288,6 +1315,14 @@ export default function ClassifyPanel({
                             ? '스탭밀'
                             : `가든${tx.store ? `·${storeLabel(tx.store)}` : ''}`}
                         </span>
+                        {tx.brand_basis === 'default' && (
+                          <span
+                            title="귀속 미확정 — 배송지를 읽지 못해 기본값(가든)으로 들어온 거래예요. 선택해서 '브랜드·지점 이동'으로 실제 귀속을 확정해 주세요"
+                            className="shrink-0 rounded bg-destructive/10 px-1.5 py-0.5 text-[11px] font-medium text-destructive"
+                          >
+                            귀속?
+                          </span>
+                        )}
                         {storeSug && (
                           <button
                             type="button"

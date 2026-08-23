@@ -75,6 +75,8 @@ export async function POST(req: Request) {
       _explicit_brand: brand, // insert 전에 제거 — dedup 시 기존 행 brand·branch 갱신용
       _raw_idx: rawIdx, // insert 전에 제거 — 수집 원본 행(raw_rows) 역참조용
       brand: brand ?? 'garden',
+      // 귀속 근거 — 배송지 판정이면 shipping, 미해석 기본값(garden)이면 default('귀속 미확정' 큐 대상)
+      brand_basis: brand ? 'shipping' : 'default',
       store,
       bank: 'coupang',
       source: 'coupang',
@@ -188,7 +190,7 @@ export async function POST(req: Request) {
       const store = g.branch === '판교' ? 'pangyo' : g.branch === '양재천' ? 'yangjae' : null;
       let q = supabase
         .from('transactions')
-        .update({ brand: g.brand, branch: g.branch, store })
+        .update({ brand: g.brand, branch: g.branch, store, brand_basis: 'shipping' })
         .in('dedup_hash', hs.slice(i, i + 100));
       q = g.branch
         ? q.or(`brand.neq.${g.brand},branch.neq.${g.branch},branch.is.null`)
