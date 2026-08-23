@@ -15,6 +15,38 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export const isStoreBlocking = (cat: { type: string; name: string } | null | undefined): boolean =>
   !cat || cat.name === '미상' || cat.type !== 'excluded';
 
+// 지점 뷰(전처리 화면) 전용 — 이 지점의 데이터 기간(첫 거래 월~) 안의 미지정 건만 센다.
+// 미지정 건은 본질적으로 '가든 공용'이라 양재·판교 화면이 같은 수를 보여줬는데, 오픈 전
+// 귀속 미확정분(2024~)까지 섞여 두 지점 경고가 서로 뒤엉켰다(2026-08-23 대표 지시: 분리).
+// 확정 게이트(close)는 월 단위 countUnassignedGarden 그대로 — 잠금 규칙은 기간 스코프와 무관.
+export async function countUnassignedGardenForStore(
+  supabase: SupabaseClient,
+  store: string,
+): Promise<{ count: number; sinceYm: string | null }> {
+  const { data: first } = await supabase
+    .schema('finance')
+    .from('transactions')
+    .select('ym')
+    .eq('brand', 'garden')
+    .eq('store', store)
+    .order('ym', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  const sinceYm = (first as { ym: string } | null)?.ym ?? null;
+  if (!sinceYm) return { count: 0, sinceYm };
+  const { data, error } = await supabase
+    .schema('finance')
+    .from('transactions')
+    .select('id, categories(type,name)')
+    .eq('brand', 'garden')
+    .is('store', null)
+    .gte('ym', sinceYm)
+    .limit(10000);
+  if (error) throw new Error(`지점 미지정 확인 실패: ${error.message}`);
+  const rows = (data ?? []) as unknown as { id: number; categories: { type: string; name: string } | null }[];
+  return { count: rows.filter((r) => isStoreBlocking(r.categories)).length, sinceYm };
+}
+
 export async function countUnassignedGarden(supabase: SupabaseClient, ym?: string): Promise<number> {
   let q = supabase
     .schema('finance')

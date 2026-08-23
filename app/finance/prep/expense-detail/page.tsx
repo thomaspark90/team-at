@@ -8,7 +8,7 @@ import { unitOf, UNITS } from '@/lib/finance/types';
 import type { ExpenseGrain, ExpenseTx } from '@/lib/finance/prepExpense';
 import { buildExpenseDetail, type CategoryInfo } from '@/lib/finance/prepExpenseDetail';
 import { fetchAllRows } from '@/lib/finance/fetchAll';
-import { countUnassignedGarden } from '@/lib/finance/unassignedStore';
+import { countUnassignedGardenForStore } from '@/lib/finance/unassignedStore';
 
 // 전처리2 — 지출 세분화. 전처리1(소스별)과 같은 돈을 계정과목 축으로 다시 자른 표.
 // 합계는 전처리1과 정확히 일치한다 — 다르면 어느 한쪽이 거짓말을 하는 것.
@@ -40,7 +40,9 @@ export default async function PrepExpenseDetailPage({
     : 'month';
 
   // 지점 뷰가 조용히 빼는 '지점 미지정' 가든 거래 — 경고 배너(2026-08-22 감사 D12, 월별 요약과 동일)
-  const unassignedCount = unit.store ? await countUnassignedGarden(supabase) : 0;
+  const unassigned = unit.store
+    ? await countUnassignedGardenForStore(supabase, unit.store)
+    : { count: 0, sinceYm: null };
 
   // 전량 페이지 조회 — `.limit(50000)`은 서버 Max Rows(20000)에서 조용히 깎인다(2026-08-21 감사 P1-3)
   const [data, { data: catsData, error: catsErr }] = await Promise.all([
@@ -105,10 +107,10 @@ export default async function PrepExpenseDetailPage({
           계정(인건비)으로 합쳐 보여요. 금액을 누르면 그 계정 건들이 분류 화면에 필터된 상태로 열려요.
         </p>
 
-        {unit.store && unassignedCount > 0 && (
+        {unit.store && unassigned.count > 0 && (
           <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
-            ⚠️ 지점이 지정되지 않은 가든 거래 {unassignedCount}건이 이 지점 표에서 빠져 있어요. 분류 화면에서
-            지점을 지정해 주세요.
+            ⚠️ 가든 공용(지점 미지정) 거래 {unassigned.count}건이 이 지점 운영 기간({unassigned.sinceYm}~)에
+            있어요 — 지정 전까지 어느 지점 표에도 안 잡혀요. 분류 화면에서 지점을 지정해 주세요.
           </div>
         )}
         <div className="mb-4 flex items-center gap-3">

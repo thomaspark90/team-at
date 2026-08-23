@@ -7,7 +7,7 @@ import AccountingNav from '@/components/AccountingNav';
 import { unitOf, UNITS } from '@/lib/finance/types';
 import { buildExpensePrep, type ExpenseGrain, type ExpenseTx } from '@/lib/finance/prepExpense';
 import { fetchAllRows } from '@/lib/finance/fetchAll';
-import { countUnassignedGarden } from '@/lib/finance/unassignedStore';
+import { countUnassignedGardenForStore } from '@/lib/finance/unassignedStore';
 import { cashflow } from '@/lib/finance/cashflow';
 import { buildBalanceColumns } from '@/lib/finance/balanceColumns';
 
@@ -45,7 +45,9 @@ export default async function PrepExpensePage({
     : 'month';
 
   // 지점 뷰가 조용히 빼는 '지점 미지정' 가든 거래 — 경고 배너(2026-08-22 감사 D12, 월별 요약과 동일)
-  const unassignedCount = unit.store ? await countUnassignedGarden(supabase) : 0;
+  const unassigned = unit.store
+    ? await countUnassignedGardenForStore(supabase, unit.store)
+    : { count: 0, sinceYm: null };
 
   // 거래를 전량 읽어 메모리에서 집계한다 — 규칙(카드대금 판별·차감)이 코드 한곳에 모여 있어야
   // 화면에 계산식 그대로 보여줄 수 있다. `.limit(50000)`은 잘림 방어가 아니라 서버 Max Rows
@@ -136,10 +138,10 @@ export default async function PrepExpensePage({
           )}
         </p>
 
-        {unit.store && unassignedCount > 0 && (
+        {unit.store && unassigned.count > 0 && (
           <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
-            ⚠️ 지점이 지정되지 않은 가든 거래 {unassignedCount}건이 이 지점 표에서 빠져 있어요. 분류 화면에서
-            지점을 지정해 주세요.
+            ⚠️ 가든 공용(지점 미지정) 거래 {unassigned.count}건이 이 지점 운영 기간({unassigned.sinceYm}~)에
+            있어요 — 지정 전까지 어느 지점 표에도 안 잡혀요. 분류 화면에서 지점을 지정해 주세요.
           </div>
         )}
         {/* 기간 단위 토글 */}

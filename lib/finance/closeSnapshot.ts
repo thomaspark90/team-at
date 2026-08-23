@@ -194,7 +194,9 @@ export async function computeMonthlyFigures(
     (posData as PosSaleRow[] | null) ?? [],
     mapTx(revData),
     'month',
-    (giftData as { sale_date: string; qty: number; gross: number }[] | null) ?? []
+    (giftData as { sale_date: string; qty: number; gross: number }[] | null) ?? [],
+    [],
+    unit.brand === 'garden' ? 'garden' : 'staffmeal', // 가든은 식권 없음 — 식권 축·보정 제외(2026-08-23)
   );
 
   const bankRows = (

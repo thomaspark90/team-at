@@ -128,7 +128,9 @@ export default async function CashflowPage({ searchParams }: { searchParams: { u
     (posData as PosSaleRow[] | null) ?? [],
     txns.filter((t) => t.cat_type === 'revenue'),
     'month',
-    (giftData as GiftSaleRow[] | null) ?? []
+    (giftData as GiftSaleRow[] | null) ?? [],
+    [],
+    unit.brand === 'garden' ? 'garden' : 'staffmeal', // 가든은 식권 없음 — 식권 축·보정 제외(2026-08-23)
   );
   const recon = buildCashflowRecon(months, expensePrep, revenuePrep, txns);
 

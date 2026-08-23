@@ -163,7 +163,9 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
     (posData as PosSaleRow[] | null) ?? [],
     fullTxns.filter((t) => t.cat_type === 'revenue'),
     'month',
-    (giftData as { sale_date: string; qty: number; gross: number }[] | null) ?? []
+    (giftData as { sale_date: string; qty: number; gross: number }[] | null) ?? [],
+    [],
+    unit.brand === 'garden' ? 'garden' : 'staffmeal', // 가든은 식권 없음 — 식권 축·보정 제외(2026-08-23)
   );
   const amountsOf = (cols: { key: string; amounts: Record<string, number> }[], key: string) =>
     cols.find((c) => c.key === key)?.amounts ?? {};

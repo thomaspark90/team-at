@@ -69,6 +69,12 @@ const nextYm = (ym: string): string => {
   return d.toISOString().slice(0, 7);
 };
 
+// 브랜드 프로파일 — 회수(입금) 구조가 달라 정산률 산식이 갈린다(2026-08-23 대표 확인).
+//   staffmeal: 식권 앱 정산(전월분 익월 중순 입금)이 커서 '보정 정산률'(식권 전월 귀속)이 정본.
+//   garden:    식권 사업자가 아예 없다. 회수 시차는 카드 매입 정산(D+1~2)·간편결제 정산뿐이라
+//              보정 없이 원식 정산률로 보되, 월말 며칠치가 다음 달로 넘어가는 이월만 감안한다.
+export type RevenueProfile = 'staffmeal' | 'garden';
+
 export function buildRevenuePrep(
   pos: PosSaleRow[],
   txns: ExpenseTx[], // revenue 계정으로 분류된 거래만 넘겨받는다
@@ -78,9 +84,12 @@ export function buildRevenuePrep(
   // 분류 전 매출 입금이 여기 숨으면 정산률이 낮게 나와 '미정산' 오진 경고가 뜬다.
   // 정산률·입금 합계에는 넣지 않는다(계정 미확정 돈을 매출로 단정하지 않는 보수 원칙) —
   // 열로 드러내 "분류하면 정산률이 오를 수 있는 몫"임을 보여주기만 한다.
-  unclassifiedIn: ExpenseTx[] = []
+  unclassifiedIn: ExpenseTx[] = [],
+  profile: RevenueProfile = 'staffmeal'
 ): RevenuePrep {
   const isMonth = grain === 'month';
+  // 식권 축은 스탭밀 전용 — 가든에서 식권류 memo가 우연히 매칭돼도 별도 축으로 빼지 않는다.
+  const hasMealTicket = profile === 'staffmeal';
 
   const posAmt: Record<string, number> = {};
   for (const p of pos) {
@@ -103,7 +112,7 @@ export function buildRevenuePrep(
   for (const t of txns) {
     const b = bucketOf(t, grain);
     const net = (t.amount_in || 0) - (t.amount_out || 0);
-    if (MEAL_TICKET_RE.test(t.memo ?? '')) {
+    if (hasMealTicket && MEAL_TICKET_RE.test(t.memo ?? '')) {
       add(mealTicket, b, net);
       continue;
     }
@@ -132,9 +141,10 @@ export function buildRevenuePrep(
     for (const [b, v] of Object.entries(m)) add(inTotal, b, v);
   for (const [b, v] of Object.entries(mealTicket)) add(inTotal, b, v);
 
-  // 보정 입금 — 식권류를 전월(장사한 달)로 귀속. 월 뷰에서만 의미가 있다.
+  // 보정 입금 — 식권류를 전월(장사한 달)로 귀속. 월 뷰·스탭밀에서만 의미가 있다
+  // (가든은 식권이 없어 보정 축 자체가 성립하지 않는다 — 원식 정산률이 그대로 판정 기준).
   const adjusted: Record<string, number> = {};
-  if (isMonth) {
+  if (isMonth && hasMealTicket) {
     for (const m of Array.from(perCat.values()))
       for (const [b, v] of Object.entries(m)) add(adjusted, b, v);
     for (const [b, v] of Object.entries(mealTicket)) add(adjusted, prevYm(b), v);
@@ -157,42 +167,49 @@ export function buildRevenuePrep(
     diff[b] = i - p;
     if (p > 0) {
       rate[b] = Math.round((i * 1000) / p) / 10;
-      if (isMonth) rateAdj[b] = Math.round(((adjusted[b] ?? 0) * 1000) / p) / 10;
+      if (isMonth && hasMealTicket) rateAdj[b] = Math.round(((adjusted[b] ?? 0) * 1000) / p) / 10;
     }
   }
 
-  // 경고 판정 — 전 달의 rateAdj가 나온 뒤에 돈다. 식권대장 정산이 가끔 한 달 건너뛰어
-  // 다음 달에 두 달치가 합산 입금되는데(2025-12→2026-01, 2026-06→2026-07 실측), 그러면
-  // 밀린 달은 낮게·받은 달은 높게 나와 단월 비율이 거짓 경고가 된다. 반대 방향으로 이탈한
-  // 인접 달과 2개월 합산해 정상 범위면 '정산 밀림'으로 판정해 문구를 바꾼다(2026-08-20 대표 승인).
+  // 경고 판정 — 전 달의 판정 비율이 나온 뒤에 돈다. 스탭밀은 식권대장 정산이 가끔 한 달
+  // 건너뛰어 다음 달에 두 달치가 합산 입금되고(2025-12→2026-01, 2026-06→2026-07 실측),
+  // 가든은 월말 카드 매입 정산(D+1~2)이 다음 달 초 입금으로 넘어간다. 어느 쪽이든 밀린 달은
+  // 낮게·받은 달은 높게 나와 단월 비율이 거짓 경고가 되므로, 반대 방향으로 이탈한 인접 달과
+  // 2개월 합산해 정상 범위면 '정산 이월'로 판정해 문구를 바꾼다(2026-08-20 대표 승인 규칙 확장).
   if (isMonth) {
+    // 판정 축 — 스탭밀: 보정 정산률(식권 전월 귀속) / 가든: 원식 정산률(보정 축 없음)
+    const judgeRate = hasMealTicket ? rateAdj : rate;
+    const judgeAmt = hasMealTicket ? adjusted : inTotal;
+    const rateLabel = hasMealTicket ? '보정 정산률' : '정산률';
+    const lagLabel = hasMealTicket ? '식권 정산이 한 달 밀려' : '월말 카드·간편결제 정산이 다음 달로 넘어가';
+    const lagCaveat = hasMealTicket ? '식권 시차를 감안해도' : '카드 정산 시차를 감안해도';
     const pairRate = (a: string, b2: string): number | null => {
       const pp = (posTotalAmt[a] ?? 0) + (posTotalAmt[b2] ?? 0);
       if (pp <= 0) return null;
-      return Math.round((((adjusted[a] ?? 0) + (adjusted[b2] ?? 0)) * 1000) / pp) / 10;
+      return Math.round((((judgeAmt[a] ?? 0) + (judgeAmt[b2] ?? 0)) * 1000) / pp) / 10;
     };
     for (const b of buckets) {
-      const r = rateAdj[b];
+      const r = judgeRate[b];
       if (r == null) continue;
-      // 최신 1~2개월은 식권 정산·은행 자료가 아직이라 판정 보류
-      if (b >= prevYm(latestYm)) continue;
+      // 판정 보류 — 스탭밀: 최신 1~2개월(식권 정산·은행 자료 미도래) / 가든: 최신 1개월(카드 D+2·은행 자료)
+      if (hasMealTicket ? b >= prevYm(latestYm) : b >= latestYm) continue;
       if (r >= RATE_OK_MIN && r <= RATE_OK_MAX) continue;
       const partner = [nextYm(b), prevYm(b)]
-        .filter((n) => rateAdj[n] != null && (rateAdj[n]! - 100) * (r - 100) < 0)
+        .filter((n) => judgeRate[n] != null && (judgeRate[n]! - 100) * (r - 100) < 0)
         .map((n) => ({ n, pr: pairRate(b, n) }))
         .find((x) => x.pr != null && x.pr >= RATE_OK_MIN && x.pr <= RATE_OK_MAX);
       if (partner) {
         warnings.push({
           bucket: b,
-          message: `보정 정산률 ${r}% — 식권 정산이 한 달 밀려 인접 달과 합산 입금된 패턴이에요(${partner.n}와 2개월 합산 ${partner.pr}%로 정상 범위). 회수 문제는 아니에요.`,
+          message: `${rateLabel} ${r}% — ${lagLabel} 인접 달과 합산 입금된 패턴이에요(${partner.n}와 2개월 합산 ${partner.pr}%로 정상 범위). 회수 문제는 아니에요.`,
         });
       } else {
         warnings.push({
           bucket: b,
           message:
             r > 100
-              ? `보정 정산률 ${r}% — 식권 시차를 감안해도 입금이 POS보다 많아요. POS 밖 매출이나 분류 오류 후보예요.`
-              : `보정 정산률 ${r}% — 식권 시차를 감안해도 입금이 부족해요. 은행 자료 누락이나 미정산 후보예요.`,
+              ? `${rateLabel} ${r}% — ${lagCaveat} 입금이 POS보다 많아요. POS 밖 매출이나 분류 오류 후보예요.`
+              : `${rateLabel} ${r}% — ${lagCaveat} 입금이 부족해요. 은행 자료 누락이나 미정산 후보예요.`,
         });
       }
     }
@@ -217,7 +234,9 @@ export function buildRevenuePrep(
       label: '메뉴 매출',
       kind: 'pos',
       amounts: posAmt,
-      hint: '판매일 기준 일반 메뉴 매출(pos_sales). 자가 식권으로 먹은 식사는 POS에 안 찍혀 여기 없어요.',
+      hint: hasMealTicket
+        ? '판매일 기준 일반 메뉴 매출(pos_sales). 자가 식권으로 먹은 식사는 POS에 안 찍혀 여기 없어요.'
+        : '판매일 기준 POS 매출(pos_sales) — 토스 POS 실매출이에요.',
     },
     ...(Object.keys(giftAmt).length > 0
       ? [
@@ -235,17 +254,23 @@ export function buildRevenuePrep(
       label: 'POS 매출 합계 (정본)',
       kind: 'total',
       amounts: posTotalAmt,
-      hint: '메뉴 매출 + 식권 판매 = 페이히어 실매출과 일치. 월 성과 평가·관리손익·결산의 정본이에요.',
+      hint: hasMealTicket
+        ? '메뉴 매출 + 식권 판매 = 페이히어 실매출과 일치. 월 성과 평가·관리손익·결산의 정본이에요.'
+        : '토스 POS 실매출과 일치. 월 성과 평가·관리손익·결산의 정본이에요.',
     },
     ...incomeColumns,
-    {
-      key: 'meal_ticket',
-      label: '식권 정산 (전월분)',
-      kind: 'income',
-      cat: '기타매출',
-      amounts: mealTicket,
-      hint: '식권대장(현대벤디스)·올리브식권 정산 — 손님은 지난달에 결제했고 돈이 이번 달 중순에 들어온 거예요. 이번 달 장사값이 아니에요.',
-    },
+    ...(hasMealTicket
+      ? [
+          {
+            key: 'meal_ticket',
+            label: '식권 정산 (전월분)',
+            kind: 'income' as const,
+            cat: '기타매출',
+            amounts: mealTicket,
+            hint: '식권대장(현대벤디스)·올리브식권 정산 — 손님은 지난달에 결제했고 돈이 이번 달 중순에 들어온 거예요. 이번 달 장사값이 아니에요.',
+          },
+        ]
+      : []),
     {
       key: 'in_total',
       label: '통장 입금 합계',
@@ -269,9 +294,11 @@ export function buildRevenuePrep(
       label: '정산률 %',
       kind: 'derived',
       amounts: rate,
-      hint: '당월 입금 ÷ 당월 POS — 식권·카드 시차 때문에 매출 증감기에 크게 널뛰어요. 참고용.',
+      hint: hasMealTicket
+        ? '당월 입금 ÷ 당월 POS — 식권·카드 시차 때문에 매출 증감기에 크게 널뛰어요. 참고용.'
+        : `당월 입금 ÷ 당월 POS — 회수가 정상인지는 이걸 봐요. 카드 매입(D+1~2)·간편결제 정산 시차로 월말 며칠치가 다음 달로 넘어가 ${RATE_OK_MIN}~${RATE_OK_MAX}% 안이면 정상, 최신 달은 정산이 아직이라 낮게 나오는 게 정상이에요.`,
     },
-    ...(isMonth
+    ...(isMonth && hasMealTicket
       ? [
           {
             key: 'rate_adj',

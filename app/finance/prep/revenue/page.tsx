@@ -8,7 +8,7 @@ import { unitOf, UNITS } from '@/lib/finance/types';
 import type { ExpenseGrain, ExpenseTx } from '@/lib/finance/prepExpense';
 import { buildRevenuePrep, type PosSaleRow, type GiftSaleRow } from '@/lib/finance/prepRevenue';
 import { fetchAllRows } from '@/lib/finance/fetchAll';
-import { countUnassignedGarden } from '@/lib/finance/unassignedStore';
+import { countUnassignedGardenForStore } from '@/lib/finance/unassignedStore';
 import { cashflow } from '@/lib/finance/cashflow';
 import { buildBalanceColumns } from '@/lib/finance/balanceColumns';
 
@@ -42,7 +42,9 @@ export default async function PrepRevenuePage({
     : 'month';
 
   // 지점 뷰가 조용히 빼는 '지점 미지정' 가든 거래 — 경고 배너(2026-08-22 감사 D12, 월별 요약과 동일)
-  const unassignedCount = unit.store ? await countUnassignedGarden(supabase) : 0;
+  const unassigned = unit.store
+    ? await countUnassignedGardenForStore(supabase, unit.store)
+    : { count: 0, sinceYm: null };
 
   // 전량 페이지 조회 — `.limit(50000)`은 서버 Max Rows(20000)에서 조용히 깎인다(2026-08-21 감사 P1-3).
   // 거래는 조인 필터(categories!inner) 대신 전 거래를 받아 JS로 거른다 — 월별 요약·결산과 같은
@@ -104,7 +106,11 @@ export default async function PrepRevenuePage({
   const txns = allTxns.filter((t) => t.cat_type === 'revenue');
   const unclassifiedIn = allTxns.filter((t) => t.category_id == null && (t.amount_in || 0) > 0);
 
-  const { buckets: allBuckets, columns: builderColumns, warnings } = buildRevenuePrep(posData, txns, grain, giftData, unclassifiedIn);
+  // 브랜드 프로파일 — 가든은 식권이 아예 없어 식권 축·보정 정산률을 빼고 원식 정산률로 판정(2026-08-23)
+  const { buckets: allBuckets, columns: builderColumns, warnings } = buildRevenuePrep(
+    posData, txns, grain, giftData, unclassifiedIn,
+    unit.brand === 'garden' ? 'garden' : 'staffmeal',
+  );
   // 월말 잔액 참고 열(월 뷰 전용) — 계좌 2개 이상(가든 양재)이면 계좌별+합산(2026-08-23 그릴 확정)
   const balCols =
     grain === 'month'
@@ -139,15 +145,27 @@ export default async function PrepRevenuePage({
         </div>
         <p className="mb-5 max-w-[880px] text-[13px] text-muted-foreground">
           매출 평가의 정본은 <b>POS 매출(발생주의 — 판매한 날 기준)</b>이에요. 관리손익도 이 기준이고요.
-          이 표의 통장 입금 축은 매출 인식이 아니라 <b>회수 검증</b>이에요 — 카드는 1~2영업일,
-          식권대장·올리브식권 정산은 <b>한 달</b> 늦게 들어오니, 식권 시차를 되돌린 <b>보정 정산률</b>이
-          정상 범위(90~105%)인지로 &ldquo;{unit.label} 장사값이 제대로 들어오고 있나&rdquo;를 봐요.
+          이 표의 통장 입금 축은 매출 인식이 아니라 <b>회수 검증</b>이에요 —{' '}
+          {unit.brand === 'garden' ? (
+            // 가든은 식권이 아예 없다(2026-08-23 대표 확인) — 회수 시차는 카드·간편결제 정산뿐
+            <>
+              카드 매입 정산은 1~2영업일, 간편결제 정산도 며칠 늦게 들어와 월말 며칠치가 다음 달로
+              넘어가요. 그래서 <b>정산률</b>이 정상 범위(90~105%)인지로 &ldquo;{unit.label} 장사값이
+              제대로 들어오고 있나&rdquo;를 봐요.
+            </>
+          ) : (
+            <>
+              카드는 1~2영업일, 식권대장·올리브식권 정산은 <b>한 달</b> 늦게 들어오니, 식권 시차를
+              되돌린 <b>보정 정산률</b>이 정상 범위(90~105%)인지로 &ldquo;{unit.label} 장사값이 제대로
+              들어오고 있나&rdquo;를 봐요.
+            </>
+          )}
         </p>
 
-        {unit.store && unassignedCount > 0 && (
+        {unit.store && unassigned.count > 0 && (
           <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
-            ⚠️ 지점이 지정되지 않은 가든 거래 {unassignedCount}건이 이 지점 표에서 빠져 있어요. 분류 화면에서
-            지점을 지정해 주세요.
+            ⚠️ 가든 공용(지점 미지정) 거래 {unassigned.count}건이 이 지점 운영 기간({unassigned.sinceYm}~)에
+            있어요 — 지정 전까지 어느 지점 표에도 안 잡혀요. 분류 화면에서 지점을 지정해 주세요.
           </div>
         )}
         <div className="mb-4 flex items-center gap-3">
