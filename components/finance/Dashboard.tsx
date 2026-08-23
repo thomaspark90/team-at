@@ -169,7 +169,8 @@ export default function Dashboard({
   // '대여금' 분류 거래의 (브랜드, 월)별 합계 — 통장 차트 빨간 원 마커. 서버(metrics/page)에서 프리페치.
   loanMarkers?: { brand: string; ym: string; amount: number; label: string }[];
   // 채널수수료 실입력(finance.channel_fees) — EBIT 차감(관리손익과 기준 통일). 없는 달은 1.7% 추정.
-  channelFees?: { ym: string; amount: number; brand?: string | null }[];
+  // store: ''=브랜드 단위(레거시, 지점 뷰에선 안분) / 'yangjae'·'pangyo'=지점 실액(2026-08-23).
+  channelFees?: { ym: string; amount: number; brand?: string | null; store?: string | null }[];
   // 미분해 지출 lump(finance.dashboard_lumps) — 명세 미연결 카드대금·세부 미수집 대체 출금.
   // 관리손익의 cardLump·payLump 와 같은 규칙으로 지표 EBIT에서도 차감(2026-08-21 감사 P4-7).
   lumps?: { brand: string; ym: string; kind: string; amount: number }[];
@@ -311,14 +312,22 @@ export default function Dashboard({
     let pos = brand === 'all' ? posSales : posSales.filter((p) => (p.brand ?? 'garden') === brand);
     if (brand === 'garden' && store !== 'all') pos = pos.filter((p) => (p.store ?? '') === store);
     // 채널수수료 — 관리손익과 같은 기준으로 EBIT에서 차감(실입력 우선, 없으면 1.7% 추정).
-    // 지점 뷰는 실입력(브랜드 단위)을 그 달 지점 매출비율로 안분 — 관리손익(computePnlMonth)과
-    // 같은 규칙. 안 하면 두 지점이 각각 전체 수수료를 빼 지점 EBIT 합이 어긋난다(2026-08-21 P4-3).
+    // 지점 실액(store 지정 행)은 그 지점에만, 브랜드 단위('') 레거시 입력분은 지점 뷰에서
+    // 매출비율로 안분 — 관리손익(computePnlMonth)과 같은 규칙(2026-08-21 P4-3, 지점 차원 2026-08-23).
     const feeMap: Record<string, number> = {};
+    const feeLump: Record<string, number> = {}; // 브랜드 단위('') 입력분 — 지점 뷰에서만 안분 대상
     for (const f of channelFees) {
       if (brand !== 'all' && (f.brand ?? 'garden') !== brand) continue;
-      feeMap[f.ym] = (feeMap[f.ym] ?? 0) + Number(f.amount || 0);
+      const fStore = f.store ?? '';
+      if (store !== 'all') {
+        if (fStore === store) feeMap[f.ym] = (feeMap[f.ym] ?? 0) + Number(f.amount || 0);
+        else if (fStore === '') feeLump[f.ym] = (feeLump[f.ym] ?? 0) + Number(f.amount || 0);
+        // 다른 지점 실액은 이 뷰 밖
+      } else {
+        feeMap[f.ym] = (feeMap[f.ym] ?? 0) + Number(f.amount || 0);
+      }
     }
-    if (brand === 'garden' && store !== 'all') {
+    if (brand === 'garden' && store !== 'all' && Object.keys(feeLump).length > 0) {
       const brandPos = posSales.filter((p) => (p.brand ?? 'garden') === 'garden');
       const supplyBy = (rows: typeof brandPos) => {
         const m: Record<string, number> = {};
@@ -327,9 +336,9 @@ export default function Dashboard({
       };
       const brandSupply = supplyBy(brandPos);
       const storeSupply = supplyBy(brandPos.filter((p) => (p.store ?? '') === store));
-      for (const ym of Object.keys(feeMap)) {
+      for (const ym of Object.keys(feeLump)) {
         const ratio = (brandSupply[ym] ?? 0) > 0 ? (storeSupply[ym] ?? 0) / brandSupply[ym] : 0;
-        feeMap[ym] = Math.round(feeMap[ym] * ratio);
+        feeMap[ym] = (feeMap[ym] ?? 0) + Math.round(feeLump[ym] * ratio);
       }
     }
     const agg = aggregate(filteredTx, cats, unit, true, pos, { channelFees: feeMap });
@@ -932,6 +941,14 @@ export default function Dashboard({
       {visMonths.length > 0 && last.revenue === 0 && (
         <div className="-mt-2 text-[11px] text-muted-foreground">
           이 기간 <b>POS 매출이 없어요</b> — 매출은 <a href="/finance/pnl" className="underline">관리손익</a>에서 토스 매출리포트를 올려야 잡혀요.
+        </div>
+      )}
+      {/* 판교 손익의 성격 고지(2026-08-23, 지점 분리 회계 확정에 따른 안내) — 판교는 통장·카드 지출이
+          없고 인건비·임대료가 스탭밀 장부 귀속(대표 확정)이라, 이 숫자는 완전한 지점 손익이 아니다 */}
+      {segId === 'garden-pangyo' && (
+        <div className="-mt-2 text-[11px] text-muted-foreground">
+          ⓘ 판교 손익은 <b>기여이익 성격</b>이에요 — 판교는 통장·카드 지출이 없고(수집분·POS만) 인건비·임대료는 스탭밀 장부에
+          귀속돼 있어(대표 확정), 여기 영업이익은 그 비용들을 빼기 전 숫자예요.
         </div>
       )}
 

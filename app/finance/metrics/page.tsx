@@ -81,8 +81,8 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
 
   // 채널수수료 실입력 — 지표 EBIT도 관리손익과 같은 기준(실입력 우선, 없으면 추정율)으로 차감(2026-08-20)
   const loadChannelFees = async () => {
-    const { data } = await supabase.schema('finance').from('channel_fees').select('ym,amount,brand');
-    return ((data as { ym: string; amount: number; brand?: string | null }[] | null) ?? []);
+    const { data } = await supabase.schema('finance').from('channel_fees').select('ym,amount,brand,store');
+    return ((data as { ym: string; amount: number; brand?: string | null; store?: string | null }[] | null) ?? []);
   };
 
   // 통장 입출금·월말 잔액 월별 집계 — 지표 첫 차트용(2026-08-04 대표 지시).

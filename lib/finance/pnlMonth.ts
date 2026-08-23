@@ -56,12 +56,13 @@ export async function loadPnlPos(supabase: SupabaseClient, seg: BrandSeg): Promi
 
 export interface PnlMonthResult {
   p: PnlResult;
-  /** channel_fees 실제 입력값(지점 뷰는 매출비율 안분). null = 미입력(추정률 사용) */
+  /** channel_fees 실제 입력값. 지점 뷰: 지점 실액 우선, 브랜드('') 입력분은 매출비율 안분해 가산.
+      null = 미입력(추정률 사용). (지점 차원 추가 2026-08-23, G5 선행) */
   channelFee: number | null;
   /** 브랜드 단위 기말재고 원본(안분 전) — 입력란 초기값·미입력 경고용 */
   invBrand: PnlInventory[];
-  /** channel_fees 브랜드 행(안분 전) — 지점 뷰 입력란 초기값용 */
-  myFees: { amount: number; brand?: string }[];
+  /** 이 뷰의 입력란 초기값용 channel_fees 행 — 지점 뷰는 그 지점 행만, 브랜드 뷰는 브랜드('') 행만 */
+  myFees: { amount: number; brand?: string; store?: string }[];
   /** 지점 뷰에서 빠져 있는 '지점 미지정' 가든 손익 지출 합 — 경고용(브랜드 뷰는 0) */
   unassignedOut: number;
   /** 지점 매출비율(브랜드 뷰는 1) — 재고·수수료 안분 근사치 표기용 */
@@ -104,7 +105,7 @@ export async function computePnlMonth(
     txnsQ,
     supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable'),
     supabase.schema('finance').from('inventory').select('ym,kind,amount,brand'),
-    supabase.schema('finance').from('channel_fees').select('amount,brand').eq('ym', ym),
+    supabase.schema('finance').from('channel_fees').select('amount,brand,store').eq('ym', ym),
     unassignedQ ?? Promise.resolve(null),
   ]);
   // 카드대금 인출 판정(memo 패턴)을 빌더에 넘긴다 — buildPnl 이 수집분(네이버페이·쿠팡)과의
@@ -124,11 +125,25 @@ export async function computePnlMonth(
   const inventory: PnlInventory[] = store
     ? invBrand.map((i) => ({ ...i, amount: Math.round(i.amount * storeRatio) }))
     : invBrand;
-  // 채널수수료 실제 입력값, 지점 뷰는 매출비율 안분
-  const feeRows = feeRes.error ? [] : (((feeRes.data as { amount: number; brand?: string }[] | null) ?? []));
-  const myFees = feeRows.filter((f) => (f.brand ?? 'garden') === seg);
-  const feeSum = myFees.length > 0 ? myFees.reduce((s, f) => s + f.amount, 0) : null;
-  const channelFee = feeSum != null ? (store ? Math.round(feeSum * storeRatio) : feeSum) : null;
+  // 채널수수료 실제 입력값 — 지점 차원(2026-08-23, G5 선행):
+  //  · 지점 뷰: 그 지점 실액(store='yangjae'/'pangyo') 우선. 브랜드 단위('') 입력분이 남아 있으면
+  //    레거시 규칙대로 매출비율 안분해 가산(둘이 섞여 있어도 이중이 아니게 — 실액은 실액대로,
+  //    브랜드 lump 는 안분 몫만).
+  //  · 브랜드 뷰: 전 행 합(지점 실액 + 브랜드 단위).
+  const feeRows = feeRes.error ? [] : (((feeRes.data as { amount: number; brand?: string; store?: string }[] | null) ?? []));
+  const brandFeeRows = feeRows.filter((f) => (f.brand ?? 'garden') === seg);
+  const storeFeeRows = store ? brandFeeRows.filter((f) => (f.store ?? '') === store) : [];
+  const lumpFeeRows = brandFeeRows.filter((f) => !(f.store ?? ''));
+  const myFees = store ? storeFeeRows : lumpFeeRows;
+  let channelFee: number | null = null;
+  if (store) {
+    const exact = storeFeeRows.reduce((s, f) => s + f.amount, 0);
+    const lump = lumpFeeRows.reduce((s, f) => s + f.amount, 0);
+    channelFee =
+      storeFeeRows.length > 0 || lumpFeeRows.length > 0 ? exact + Math.round(lump * storeRatio) : null;
+  } else {
+    channelFee = brandFeeRows.length > 0 ? brandFeeRows.reduce((s, f) => s + f.amount, 0) : null;
+  }
 
   // 지점 미지정 지출(손익 계정만) — 지점 뷰 합계에서 빠져 있음을 경고
   const catTypeById = new Map(cats.map((c) => [c.id, c.type]));

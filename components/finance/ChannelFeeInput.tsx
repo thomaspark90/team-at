@@ -1,10 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useRefresh } from '@/components/Refresh';
 import { won } from '@/lib/finance/format';
 
 // 월별 채널수수료(정산서 실제 금액) 입력. 미입력이면 관리손익에서 공급가액×기본율로 추정.
+// 가든은 지점별 정산 주체가 달라(양재천=토스, 판교=페이히어) 지점 단위로 저장한다(2026-08-23, G5 선행).
+// 지점은 페이지 URL(?unit=yangjae|pangyo)에서 읽는다 — 관리손익 페이지의 매장 필과 항상 일치.
 export default function ChannelFeeInput({
   ym,
   brand,
@@ -16,6 +19,10 @@ export default function ChannelFeeInput({
   initial: number | null; // 실제 입력값(없으면 null=추정)
   estimate: number; // 추정 금액(참고 표시)
 }) {
+  const params = useSearchParams();
+  const unitParam = params.get('unit');
+  const store = brand === 'garden' && (unitParam === 'yangjae' || unitParam === 'pangyo') ? unitParam : '';
+  const storeLabel = store === 'yangjae' ? '양재천점(토스 정산)' : store === 'pangyo' ? '판교점(페이히어 정산)' : null;
   const { refresh } = useRefresh();
   const [val, setVal] = useState(initial != null ? String(initial) : '');
   const [saving, setSaving] = useState(false);
@@ -30,7 +37,7 @@ export default function ChannelFeeInput({
       const res = await fetch('/api/finance/channel-fees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ym, amount, brand }),
+        body: JSON.stringify({ ym, amount, brand, store }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || '저장 실패');
@@ -60,10 +67,11 @@ export default function ChannelFeeInput({
   return (
     <div className="rounded-md bg-muted/40 p-6">
       <h2 className="text-[15px] text-foreground">
-        채널수수료 <span className="font-normal text-muted-foreground">(선택)</span>
+        채널수수료{storeLabel ? ` — ${storeLabel}` : ''} <span className="font-normal text-muted-foreground">(선택)</span>
       </h2>
       <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
         카드사·간편결제·배달앱 <b>정산서의 그 달 총 수수료</b>를 넣으면 순매출이 정확해져요. 안 넣으면 <b>추정 {won(estimate)}</b>으로 잡혀요.
+        {storeLabel && ' 이 입력은 이 지점 몫으로만 저장돼요(가든 전체 뷰에는 두 지점 합이 잡혀요).'}
       </p>
       <div className="mt-3 flex items-center gap-2">
         <div className="relative flex-1">

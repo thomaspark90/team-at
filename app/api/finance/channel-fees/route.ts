@@ -4,7 +4,8 @@ import { resolveRole } from '@/lib/finance/access';
 
 export const runtime = 'nodejs';
 
-// 월별·브랜드별 채널수수료 저장. { ym, amount, brand? }. amount=null 이면 삭제(추정으로 되돌림).
+// 월별·브랜드별(·지점별) 채널수수료 저장. { ym, amount, brand?, store? }. amount=null 이면 삭제(추정으로 되돌림).
+// store: ''=브랜드 단위(레거시, 지점 뷰에선 매출비율 안분) / 'yangjae'·'pangyo'=지점 실액(2026-08-23, G5 선행).
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -19,7 +20,11 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const ym = String(body?.ym ?? '');
   const brand = String(body?.brand ?? 'garden');
+  const store = String(body?.store ?? '');
   if (!['garden', 'staffmeal'].includes(brand)) return NextResponse.json({ error: '브랜드가 올바르지 않습니다.' }, { status: 400 });
+  if (!['', 'yangjae', 'pangyo'].includes(store) || (brand === 'staffmeal' && store !== '')) {
+    return NextResponse.json({ error: '지점이 올바르지 않습니다.' }, { status: 400 });
+  }
   if (!/^\d{4}-\d{2}$/.test(ym)) return NextResponse.json({ error: '월(ym)이 올바르지 않습니다.' }, { status: 400 });
 
   // 확정된 달은 변경 불가 — 수수료는 브랜드 단위 입력인데 확정은 지점 단위라,
@@ -35,11 +40,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `${ym}은 이미 확정된 단위가 있어 채널수수료를 바꿀 수 없어요.` }, { status: 409 });
   }
 
-  // amount 미지정/null → 삭제(추정으로 복귀)
+  // amount 미지정/null → 삭제(추정으로 복귀). 자기 (브랜드, 지점) 행만.
   if (body?.amount == null || body?.amount === '') {
-    const { error } = await supabase.schema('finance').from('channel_fees').delete().eq('ym', ym).eq('brand', brand);
+    const { error } = await supabase
+      .schema('finance')
+      .from('channel_fees')
+      .delete()
+      .eq('ym', ym)
+      .eq('brand', brand)
+      .eq('store', store);
     if (error) return NextResponse.json({ error: `삭제 실패: ${error.message}` }, { status: 500 });
-    return NextResponse.json({ ok: true, ym, brand, amount: null });
+    return NextResponse.json({ ok: true, ym, brand, store, amount: null });
   }
 
   const amount = Math.round(Number(body.amount));
@@ -48,8 +59,8 @@ export async function POST(req: Request) {
   const { error } = await supabase
     .schema('finance')
     .from('channel_fees')
-    .upsert({ ym, brand, amount, entered_by: user.id, updated_at: new Date().toISOString() }, { onConflict: 'ym,brand' });
+    .upsert({ ym, brand, store, amount, entered_by: user.id, updated_at: new Date().toISOString() }, { onConflict: 'ym,brand,store' });
   if (error) return NextResponse.json({ error: `저장 실패: ${error.message}` }, { status: 500 });
 
-  return NextResponse.json({ ok: true, ym, brand, amount });
+  return NextResponse.json({ ok: true, ym, brand, store, amount });
 }

@@ -112,6 +112,11 @@ export default function ClosePnlDrilldown({ ym, unitId, colSpan }: { ym: string;
                 이 달 POS 매출이 없어(미업로드) 지출만 잡혀요 — 영업이익이 실제보다 낮게 보여요.
               </p>
             )}
+            {unitId === 'pangyo' && (
+              <p className="mb-1.5 mt-0 text-[11px] text-muted-foreground">
+                ⓘ 판교 손익은 기여이익 성격 — 통장·카드 지출이 없고 인건비·임대료는 스탭밀 장부 귀속이라(대표 확정), 그 비용들을 빼기 전 숫자예요.
+              </p>
+            )}
             <table className="w-full border-collapse text-[12px]">
               <tbody>
                 <Line label="총매출 (VAT 포함)" amount={data.sales.gross} muted />
