@@ -54,6 +54,8 @@ export interface RawRange {
 export interface RawQuery {
   source: RawSource;
   brand?: string | null;
+  /** 계좌(발급기관) 필터 — 'shinhan' | 'woori' 등. 통장 2개 단위(가든 양재)의 개별 보기(2026-08-23) */
+  issuer?: string | null;
   from?: string | null; // 'YYYY-MM-DD'
   to?: string | null;
   q?: string | null; // 전체 검색
@@ -87,7 +89,7 @@ export function monthRange(ym: string): [string, string] {
  */
 export async function fetchRawBatches(
   supabase: AnyClient,
-  opts: { source: RawSource; brand?: string | null; from?: string | null; to?: string | null }
+  opts: { source: RawSource; brand?: string | null; issuer?: string | null; from?: string | null; to?: string | null }
 ): Promise<RawBatchRow[]> {
   let q = supabase
     .schema('finance')
@@ -98,6 +100,7 @@ export async function fetchRawBatches(
     .limit(200);
 
   if (opts.brand) q = q.or(`brand.eq.${opts.brand},brand.is.null`);
+  if (opts.issuer) q = q.eq('issuer', opts.issuer);
   if (opts.from && opts.to) {
     // 기간이 겹치는 배치만 — 여러 달이 담긴 파일도 잡히게
     q = q.or(
@@ -138,6 +141,7 @@ export async function fetchRawTotals(
     p_filters: query.filters && Object.keys(query.filters).length > 0 ? query.filters : null,
     p_ranges: Object.keys(ranges).length > 0 ? ranges : null,
     p_cols: cols,
+    p_issuer: query.issuer ?? null,
   });
   if (error) throw new Error(`소계 조회 실패: ${error.message}`);
   const j = (data ?? {}) as { count?: number; sums?: Record<string, number> };
@@ -166,6 +170,7 @@ export async function fetchRawRows(
     p_desc: !!sort.desc,
     p_offset: page.offset,
     p_limit: page.limit,
+    p_issuer: query.issuer ?? null,
   });
   if (error) throw new Error(`원본 행 조회 실패: ${error.message}`);
 

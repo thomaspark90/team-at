@@ -7,6 +7,7 @@ import AccountingNav from '@/components/AccountingNav';
 import RawTable from '@/components/finance/RawTable';
 import { unitOf, UNITS } from '@/lib/finance/types';
 import { deriveColumns, fetchRawBatches, fetchRawRows, RAW_SOURCES } from '@/lib/finance/rawQuery';
+import { bankShort } from '@/lib/finance/cashflow';
 import { parseRawQuery } from '@/lib/finance/rawParams';
 
 // 로우데이터 — 파서가 읽은 원본 행을 가공 전 그대로 보는 화면(2026-08-19).
@@ -27,12 +28,16 @@ export default async function RawPage({ searchParams }: { searchParams: Record<s
   );
   const query = { ...parseRawQuery(sp), brand: unit.brand };
 
-  const batches = await fetchRawBatches(supabase, {
+  // 배치는 계좌 필터 없이 받아 '이 단위가 쓰는 계좌 목록'을 뽑고(칩 노출 판단),
+  // 표시·컬럼 유도용 목록은 선택된 계좌로 거른다 — 신한/우리 헤더가 달라 섞이면 열이 어긋난다.
+  const allBatches = await fetchRawBatches(supabase, {
     source: query.source,
     brand: unit.brand,
     from: query.from,
     to: query.to,
   });
+  const issuers = Array.from(new Set(allBatches.map((b) => b.issuer).filter((x): x is string => !!x))).sort();
+  const batches = query.issuer ? allBatches.filter((b) => b.issuer === query.issuer) : allBatches;
   const rows = await fetchRawRows(supabase, query, { offset: 0, limit: 200 });
   const columns = deriveColumns(batches, rows);
 
@@ -62,8 +67,12 @@ export default async function RawPage({ searchParams }: { searchParams: Record<s
     return out.reverse(); // 최신이 앞
   })();
 
-  const href = (next: { source?: string; from?: string | null; to?: string | null }) => {
-    const p = new URLSearchParams({ unit: unit.id, source: next.source ?? query.source });
+  const href = (next: { source?: string; issuer?: string | null; from?: string | null; to?: string | null }) => {
+    const source = next.source ?? query.source;
+    const p = new URLSearchParams({ unit: unit.id, source });
+    // 계좌 필터 — 같은 소스 안에서만 유지(소스를 바꾸면 그 소스의 계좌 개념이 다르므로 해제)
+    const issuer = 'issuer' in next ? next.issuer : source === query.source ? query.issuer : null;
+    if (issuer) p.set('issuer', issuer);
     if (next.from && next.to) {
       p.set('from', next.from);
       p.set('to', next.to);
@@ -110,6 +119,32 @@ export default async function RawPage({ searchParams }: { searchParams: Record<s
               </Link>
             ))}
           </div>
+          {/* 계좌 칩 — 계좌가 2개 이상인 단위(가든 양재: 신한+우리)에서만. 표·소계·CSV 전부 이 필터를 따른다(2026-08-23) */}
+          {issuers.length >= 2 && (
+            <div className="flex overflow-hidden rounded-md border border-border">
+              <Link
+                href={href({ issuer: null })}
+                aria-current={!query.issuer ? 'page' : undefined}
+                className={`px-3 py-1.5 text-[13px] transition-colors ${
+                  !query.issuer ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                전체 계좌
+              </Link>
+              {issuers.map((iss) => (
+                <Link
+                  key={iss}
+                  href={href({ issuer: iss })}
+                  aria-current={query.issuer === iss ? 'page' : undefined}
+                  className={`px-3 py-1.5 text-[13px] transition-colors ${
+                    query.issuer === iss ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {bankShort(iss)}
+                </Link>
+              ))}
+            </div>
+          )}
           {halves.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
               <Link

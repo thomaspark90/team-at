@@ -42,9 +42,12 @@ export function parseRawQuery(sp: URLSearchParams): RawQuery {
     }
   });
 
+  const issuer = sp.get('issuer');
   return {
     source: isRawSource(source) ? source : 'bank',
     brand: sp.get('brand'),
+    // 계좌 필터 — 배치 issuer 값('shinhan' 등 소문자 식별자)만 허용
+    issuer: issuer && /^[a-z0-9_-]{1,20}$/.test(issuer) ? issuer : null,
     from: from && DATE_RE.test(from) ? from : null,
     to: to && DATE_RE.test(to) ? to : null,
     q: sp.get('q'),
@@ -58,6 +61,7 @@ export function parseRawQuery(sp: URLSearchParams): RawQuery {
 export function rawQueryToParams(query: RawQuery, extra?: Record<string, string>): URLSearchParams {
   const p = new URLSearchParams({ source: query.source });
   if (query.brand) p.set('brand', query.brand);
+  if (query.issuer) p.set('issuer', query.issuer);
   if (query.from) p.set('from', query.from);
   if (query.to) p.set('to', query.to);
   if (query.q) p.set('q', query.q);

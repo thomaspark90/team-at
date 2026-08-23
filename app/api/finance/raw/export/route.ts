@@ -30,6 +30,7 @@ export async function GET(req: Request) {
     const batches = await fetchRawBatches(supabase, {
       source: query.source,
       brand: query.brand,
+      issuer: query.issuer,
       from: query.from,
       to: query.to,
     });
