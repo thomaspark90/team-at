@@ -10,6 +10,7 @@ import { useMonthCtx } from './MonthShell';
 import { storeLabel, bankSourceLabel, type Brand, type Store } from '@/lib/finance/types';
 import { classifyDraftKey, loadClassifyDraft, saveClassifyDraft } from '@/lib/finance/classifyDraft';
 import { guessStoreFromMemo, type StoreCode } from '@/lib/finance/storeGuess';
+import { isStoreBlocking } from '@/lib/finance/unassignedStore';
 
 export interface TxRow {
   id: number;
@@ -129,6 +130,11 @@ export default function ClassifyPanel({
   };
   // 건별분할 잠금 계정(원거래 표식)
   const splitCatId = cats.find((c) => c.type === 'excluded' && c.name === '건별분할')?.id;
+  // 지점 미지정 중 '정리 대상' 판정 — 확정 게이트·사이드바 배지와 같은 isStoreBlocking 단일 규칙
+  // (2026-08-23). 순수 손익 제외(개인 지출 등)로 파킹된 미지정 건은 카운터·미분류만 필터에서 제외 —
+  // 게이트는 통과하는데 화면 숫자만 남는 불일치 방지. (catById는 아래 선언을 사용)
+  const storePending = (r: TxRow) =>
+    r.brand === 'garden' && !r.store && isStoreBlocking(r.category_id == null ? null : catById.get(r.category_id));
   // 기준 순서 — 최신 거래부터(표시 정렬은 아래 sorted에서 방향만 뒤집는다)
   const sortTxns = (arr: TxRow[]) => [...arr].sort((a, b) => b.tx_at.localeCompare(a.tx_at) || a.id - b.id);
   const [rows, setRows] = useState<TxRow[]>(() => sortTxns(txns));
@@ -301,7 +307,8 @@ export default function ClassifyPanel({
       // '미분류만'은 사이드바 배지(computeUnclassifiedByMonth)와 같은 정의를 쓴다 — 카테고리
       // 미지정뿐 아니라 가든의 '지점 미지정'(카테고리는 있어도 store가 없는 건)도 남겨야
       // 배지 숫자와 이 필터를 켰을 때 보이는 건수가 일치한다(2026-08-17 사이드바 "1" ↔ 미분류만 0건 불일치).
-      (!unclOnly || r.category_id == null || (r.brand === 'garden' && !r.store) || keepVisible.current.has(r.id)) &&
+      // 미지정 중에서도 storePending(=isStoreBlocking) 인 건만 — 배지·게이트와 동일 규칙(2026-08-23).
+      (!unclOnly || r.category_id == null || storePending(r) || keepVisible.current.has(r.id)) &&
       (!q || r.memo.toLowerCase().includes(q) || r.normalized_key.toLowerCase().includes(q) || (r.channel ?? '').toLowerCase().includes(q)) &&
       matchesCat(r)
   );
@@ -865,7 +872,8 @@ export default function ClassifyPanel({
 
   const unclassified = filtered.filter((r) => r.category_id == null).length;
   // 지점 미지정 — 카테고리는 이미 있어도 지점이 없으면 방치되기 쉬워 미분류와 별도로 센다(2026-08-17).
-  const unassignedStore = filtered.filter((r) => r.brand === 'garden' && !r.store).length;
+  // 순수 손익 제외로 파킹된 건은 제외(storePending) — 게이트·배지와 동일 규칙(2026-08-23).
+  const unassignedStore = filtered.filter(storePending).length;
   const hasSug = Object.keys(suggestions).length > 0;
   const confidentKeys = new Set<string>();
   for (const r of rows) {

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { UPLOAD_SLOTS, slotsForBanks, type UploadSlot } from './uploadSlots';
 import { monthCoverage, type DayInterval } from './coverage';
+import { isStoreBlocking } from './unassignedStore';
 
 const toYm = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 const lastDayOf = (ym: string) => {
@@ -247,24 +248,41 @@ export async function computeBoardTodos(
 // 가든 지점 페이지(store 지정)는 미분류(category_id null)뿐 아니라 '지점 미지정'(store null,
 // 카테고리는 이미 있는 건 포함)도 함께 센다 — 카테고리만 채워지고 지점이 조용히 방치되는 사고
 // (2026-08-17 미트박스 건: category_id=재료비인데 store=null이라 어떤 배지에도 안 걸렸음)를 막기 위함.
+// 단, 지점 미지정의 판정은 확정 게이트와 같은 isStoreBlocking 단일 규칙(2026-08-23) — 순수 손익
+// 제외(개인 지출 등)로 파킹된 건은 어느 지점 손익에도 안 들어가므로 배지에서도 안 센다. 게이트만
+// 고치고 배지를 두면 '할 일 없는데 숫자가 남는' 불일치가 생긴다(2026-08-23 6·5·3월 배지 잔존 건).
 export async function computeUnclassifiedByMonth(
   supabase: SupabaseClient,
   brand?: string,
   store?: string
 ): Promise<Record<string, number>> {
-  const { data, error } = await fetchAll<{ ym: string }>((a, b) => {
-    let s = supabase.schema('finance').from('transactions').select('ym');
+  type UnclRow = {
+    ym: string;
+    store?: string | null;
+    category_id?: number | null;
+    categories?: { type: string; name: string } | null;
+  };
+  const { data, error } = await fetchAll<UnclRow>((a, b) => {
+    const tx = supabase.schema('finance').from('transactions');
     if (store) {
-      s = s.eq('brand', 'garden').or(`store.is.null,and(store.eq.${store},category_id.is.null)`);
-    } else {
-      s = s.is('category_id', null);
-      if (brand) s = s.eq('brand', brand);
+      return tx
+        .select('ym,store,category_id,categories(type,name)')
+        .eq('brand', 'garden')
+        .or(`store.is.null,and(store.eq.${store},category_id.is.null)`)
+        .order('id')
+        .range(a, b) as unknown as PromiseLike<QueryResult<UnclRow>>;
     }
+    let s = tx.select('ym').is('category_id', null);
+    if (brand) s = s.eq('brand', brand);
     return s.order('id').range(a, b);
   });
   if (error) throw new Error(error.message);
   const counts: Record<string, number> = {};
-  for (const r of data ?? []) counts[String(r.ym)] = (counts[String(r.ym)] ?? 0) + 1;
+  for (const r of data ?? []) {
+    // 지점 미지정(store null) 행은 blocking 분류만 집계 — 미분류(category null) 행은 항상 집계
+    if (store && r.store == null && r.category_id != null && !isStoreBlocking(r.categories)) continue;
+    counts[String(r.ym)] = (counts[String(r.ym)] ?? 0) + 1;
+  }
   return counts;
 }
 
