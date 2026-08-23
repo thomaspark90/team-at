@@ -255,6 +255,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
             channelFees={channelFees}
             lumps={lumps}
             reportUnit={isAll ? { brand: 'all', store: null } : { brand: unit.brand as 'staffmeal' | 'garden', store: unit.store }}
+            showIncentiveSim={['admin', 'classifier'].includes(role)}
           />
         </MonthShell>
       </div>

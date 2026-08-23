@@ -231,3 +231,19 @@ export function capexDepreciation(txns: AggTx[], cats: AggCat[], usefulMonths = 
   for (const k of Object.keys(dep)) dep[k] = Math.round(dep[k]);
   return dep;
 }
+
+// 자본적지출 원금의 월별 합(상각 전) — 인센 시뮬레이션이 상각 개월수를 바꿔가며 재분산할 수
+// 있게 지출 시점 그대로 넘긴다(2026-08-23 대표 결정: 인센 기준 = 손익 − 투자 상각, 개월수 가변).
+export function capexByMonth(txns: AggTx[], cats: AggCat[]): Record<string, number> {
+  const capexRoot = cats.find((c) => c.type === 'excluded' && c.name === '자본적지출' && c.parent_id == null);
+  if (!capexRoot) return {};
+  const capexIds = new Set<number>([capexRoot.id]);
+  for (const c of cats) if (c.parent_id === capexRoot.id) capexIds.add(c.id);
+  const out: Record<string, number> = {};
+  for (const t of txns) {
+    if (t.category_id == null || !capexIds.has(t.category_id) || !(t.amount_out > 0)) continue;
+    const ym = t.tx_at.slice(0, 7);
+    out[ym] = (out[ym] ?? 0) + t.amount_out;
+  }
+  return out;
+}

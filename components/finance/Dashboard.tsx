@@ -17,7 +17,8 @@ import {
   ReferenceDot,
   LabelList,
 } from 'recharts';
-import { aggregate, capexDepreciation, UNCLASSIFIED, type AggTx, type AggCat, type Unit, type MonthAgg } from '@/lib/finance/aggregate';
+import { aggregate, capexDepreciation, capexByMonth, UNCLASSIFIED, type AggTx, type AggCat, type Unit, type MonthAgg } from '@/lib/finance/aggregate';
+import IncentiveSim from '@/components/finance/IncentiveSim';
 import { bankShort } from '@/lib/finance/cashflow';
 import { wonNum as won } from '@/lib/finance/format';
 import { useMonthCtx } from './MonthShell';
@@ -159,6 +160,7 @@ export default function Dashboard({
   channelFees = [],
   lumps = [],
   reportUnit,
+  showIncentiveSim = false,
 }: {
   txns: AggTx[];
   cats: AggCat[];
@@ -178,6 +180,8 @@ export default function Dashboard({
   // 상단 매장 필(FinanceNav ?unit=)이 정하는 브랜드+지점 — 이 화면 자체 토글은 없앴다(2026-08-19).
   // 'all' = 전사 통합(사업 브랜드 합산, 개인 제외) — 지표 페이지의 '전사 통합' 링크로 진입(2026-08-23).
   reportUnit: { brand: 'staffmeal' | 'garden' | 'all'; store: 'pangyo' | 'yangjae' | null };
+  // 인센 시뮬레이션 노출 — 보상 설계 도구라 admin/classifier 만(서버 페이지에서 role 판정해 전달)
+  showIncentiveSim?: boolean;
 }) {
   const [unit, setUnit] = useState<Unit>('month');
   // 부가세 기준은 순액(공급가액) 단일 — 옛 '총액' 토글은 비용만 총액으로 바꾸고 매출(POS 공급가액)은
@@ -1018,6 +1022,18 @@ export default function Dashboard({
         })()}
         {order.map((id) => chartNodes[id] ?? null)}
       </div>
+
+      {/* 인센 시뮬레이션(2026-08-23 대표 결정) — 인센 기준 = EBIT − 투자 상각(개월수 가변).
+          월 단위·단일 세그먼트에서만(전사 통합은 투자 귀속이 섞여 무의미), 진행월 제외(visMonths)는
+          차트와 같은 규칙. 손익 3형제 산식은 무변경 — 이 카드만의 파생 계산이다. */}
+      {showIncentiveSim && unit === 'month' && segId !== 'all' && (
+        <IncentiveSim
+          months={visMonths.map((m) => ({ ym: m.ym, ebit: m.ebit }))}
+          capexOut={capexByMonth(filteredTx, cats)}
+          segId={segId}
+          segLabel={seg.label}
+        />
+      )}
 
       <p className="m-0 text-[11px] text-muted-foreground">
         * 부가세 순액(공급가액) 기준 — 매출(POS)과 과세 매입(재료비·과세 판관비)을 총액÷1.1로 순액 처리. 인건비·이자·수도·세금 등
