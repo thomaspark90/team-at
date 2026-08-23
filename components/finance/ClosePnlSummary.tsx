@@ -325,17 +325,22 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                     }`}
                     title={noPos ? 'POS 매출 미업로드 — 통장 실입금 − 지출로 임시 계산한 값이에요' : undefined}
                   >
-                    {/* 누르면 아래에 그 달 관리손익 요약(부가세·수수료 제외) 드릴다운 */}
+                    {/* 누르면 아래에 그 달 관리손익 요약(부가세·수수료 제외) 드릴다운.
+                        순익(양수)은 초록 배경 + 흰 글자 배지로 강조(2026-08-23 대표 지시) — 적자는 기존 빨간 글자 유지. */}
                     <button
                       type="button"
                       onClick={() => toggle(r.ym)}
-                      className="cursor-pointer tabular-nums underline decoration-dotted underline-offset-2 transition-colors hover:opacity-70"
+                      className={`cursor-pointer tabular-nums underline decoration-dotted underline-offset-2 transition-colors ${
+                        profit > 0
+                          ? 'rounded-[10px] bg-positive px-2 py-0.5 text-white decoration-white/60 hover:opacity-90'
+                          : 'hover:opacity-70'
+                      }`}
                       title="누르면 이 달 관리손익 요약(부가세·수수료 제외)이 펼쳐져요"
                       aria-expanded={expanded.has(r.ym)}
                     >
-                      <span className="mr-1 text-[11px] text-muted-foreground">{expanded.has(r.ym) ? '▾' : '▸'}</span>
+                      <span className={`mr-1 text-[11px] ${profit > 0 ? 'text-white/70' : 'text-muted-foreground'}`}>{expanded.has(r.ym) ? '▾' : '▸'}</span>
                       {profit < 0 ? `−${won(-profit)}` : won(profit)}
-                      {noPos && <span className="ml-0.5 text-muted-foreground">†</span>}
+                      {noPos && <span className={`ml-0.5 ${profit > 0 ? 'text-white/70' : 'text-muted-foreground'}`}>†</span>}
                     </button>
                     {/* 이익률 병기 — 지출 구성 %들과 합이 100%로 닫힌다(2026-08-21 대표 요청).
                         지출% 합 = 지출÷매출, 이익률 = 손익÷매출 이라 둘을 더하면 항상 100%. */}
