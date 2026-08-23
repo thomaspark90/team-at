@@ -25,6 +25,9 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
 
   const role = await resolveRoleStamped(supabase, user);
   if (!role) redirect('/finance'); // 멤버(admin/classifier/viewer)만 — viewer는 이름 없는 안전 뷰로
+  // '전사 통합'(?unit=all) — 사업 브랜드 합산(개인 제외) 뷰. 매장 필(UNITS) 밖의 특수 진입점이라
+  // 상단 내비가 아닌 이 페이지의 링크로만 드나든다(2026-08-23, G6 브랜드 통합 손익).
+  const isAll = searchParams.unit === 'all';
   const unit = unitOf(searchParams.unit) ?? UNITS[0];
 
   // ⚠️ 전량 조회(페이지네이션) — limit 없이 한 번만 select 하면 PostgREST 응답이 프로젝트
@@ -220,10 +223,21 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
       <FinanceNav role={role} />
       <div className="mx-auto max-w-[1680px] px-6 py-8">
         <div className="mb-5 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">지표</h1>
-          <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
-            ← 업로드로
-          </Link>
+          <h1 className="m-0 text-[22px] tracking-[-0.5px]">지표{isAll ? ' — 전사 통합' : ''}</h1>
+          <span className="flex items-baseline gap-4">
+            {isAll ? (
+              <Link href="/finance/metrics" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+                ← 매장별 보기
+              </Link>
+            ) : (
+              <Link href="/finance/metrics?unit=all" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+                전사 통합 →
+              </Link>
+            )}
+            <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+              ← 업로드로
+            </Link>
+          </span>
         </div>
         <p className="mb-5 text-[13px] text-muted-foreground">
           <b>매출은 POS(발생주의)</b>, 지출은 통장·카드 기준이에요. 통장 현금흐름·잔액은 <Link href="/finance/cashflow" className="underline">월별 요약</Link>·<Link href="/finance/flow" className="underline">자금 흐름</Link>에서 봐요.
@@ -240,7 +254,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
             loanMarkers={loanMarkers}
             channelFees={channelFees}
             lumps={lumps}
-            reportUnit={{ brand: unit.brand as 'staffmeal' | 'garden', store: unit.store }}
+            reportUnit={isAll ? { brand: 'all', store: null } : { brand: unit.brand as 'staffmeal' | 'garden', store: unit.store }}
           />
         </MonthShell>
       </div>

@@ -50,8 +50,15 @@ const token = env.match(/BLOB_READ_WRITE_TOKEN=(\S+)/)?.[1];
 (async () => {
   // allowOverwrite — 이전 실행의 del 이 실패해 프로브 파일이 남으면 'already exists' 오탐이 났다(2026-08-22)
   const r = await put('health/__probe__.txt', 'x', { access: 'private', token, addRandomSuffix: false, allowOverwrite: true });
-  const res = await fetch(r.url, { headers: { authorization: 'Bearer ' + token } });
-  if (!res.ok) throw new Error('읽기 ' + res.status);
+  // 덮어쓰기 직후 CDN 전파 지연으로 읽기가 잠깐 404 — 최대 10초 재시도(2026-08-23 실측 ~4.5초)
+  let ok = false, last = 0;
+  for (let i = 0; i < 5; i++) {
+    const res = await fetch(r.url, { headers: { authorization: 'Bearer ' + token } });
+    last = res.status;
+    if (res.ok) { ok = true; break; }
+    await new Promise((s) => setTimeout(s, 2000));
+  }
+  if (!ok) throw new Error('읽기 ' + last);
   await del(r.url, { token });
   console.log('OK');
 })().catch(e => { console.log('FAIL ' + e.message.slice(0, 120)); });
@@ -111,6 +118,22 @@ else
   else
     fail "DB 백업" "마지막 백업이 ${BK_AGE_H}시간 전 — backup-db.sh 가 멈춰 있어요(~/Backups/team-at-db/backup.log 확인)"
   fi
+fi
+
+# ── 6. 재무 정합 일일 대사 (2026-08-23, 감사 후속) ───────────────────
+# 앱과 독립된 SQL 재계산으로 전처리↔결산 스냅샷↔원장 정합·보안 상태를 대사한다.
+# 0행이면 정상. 행이 나오면 "결산 후 뭔가 바뀌었거나 보호 장치가 풀렸다"는 신호 —
+# scripts/sql/finance-integrity.sql 의 체크 항목(c1~c8) 참조.
+INTEGRITY=$(psql "$DB_URL" -At -F' — ' -f "$ROOT/scripts/sql/finance-integrity.sql" 2>&1)
+if [[ $? -ne 0 ]]; then
+  fail "재무 정합 대사" "쿼리 실행 실패: $(echo "$INTEGRITY" | head -c 140)"
+elif [[ -n "$INTEGRITY" ]]; then
+  N=$(echo "$INTEGRITY" | wc -l | tr -d ' ')
+  log "❗ 재무 정합 이상 ${N}건:"
+  echo "$INTEGRITY" | while IFS= read -r line; do log "   $line"; done
+  fail "재무 정합 대사" "이상 ${N}건 — $(echo "$INTEGRITY" | head -1 | head -c 120)"
+else
+  log "✅ 재무 정합 대사 정상 (전처리↔스냅샷·분할·귀속·보호장치)"
 fi
 
 # ── 심박 + 요약 ──────────────────────────────────────────────────────

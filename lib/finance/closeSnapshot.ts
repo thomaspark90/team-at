@@ -10,6 +10,8 @@ import { buildExpenseDetail, type CategoryInfo } from './prepExpenseDetail';
 import { buildRevenuePrep, type PosSaleRow } from './prepRevenue';
 import { cashflow, bankShort } from './cashflow';
 import { fetchAllRows } from './fetchAll';
+import { loadPnlPos, computePnlMonth, type BrandSeg } from './pnlMonth';
+import type { Store } from './types';
 import type { UnitDef } from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -32,10 +34,14 @@ export interface SnapshotFigures {
   /** 계좌별 월말 잔액 — 통장 2개 단위(가든 양재)에서 어느 계좌가 바뀌었는지까지 감지
       (2026-08-23 그릴 확정). 옛 스냅샷엔 없다 — diff는 양쪽 다 있을 때만 비교한다. */
   bankBalances?: Record<string, number> | null;
+  /** 관리손익 요약 동결(2026-08-23, 감사 제안 ④) — 전처리 값만 얼리던 결산값에 손익 층을 추가해,
+      산식·분류가 바뀌었을 때 "영업이익이 얼마에서 얼마로" 를 버전으로 비교할 수 있게 한다.
+      계산은 화면과 같은 코드(computePnlMonth — "같은 코드 = 같은 숫자"). 옛 스냅샷엔 없다. */
+  pnl?: Record<string, number> | null;
 }
 
 export interface FigureDiff {
-  section: 'expense' | 'groups' | 'revenue' | 'txCount' | 'bank';
+  section: 'expense' | 'groups' | 'revenue' | 'txCount' | 'bank' | 'pnl';
   key: string;
   label: string;
   was: number;
@@ -67,6 +73,11 @@ const LABELS: Record<string, string> = {
   rate_adj: '보정 정산률',
   txCount: '거래 행 수',
   bankBalance: '은행 월말 잔액',
+  pnl_operating: '영업이익(관리손익)',
+  pnl_netSales: '순매출',
+  pnl_cogs: '재료비',
+  pnl_labor: '인건비(손익)',
+  pnl_fixed: '고정비',
 };
 
 /** 한 달·한 단위의 결산값을 화면과 같은 빌더로 계산한다 */
@@ -198,6 +209,24 @@ export async function computeMonthlyFigures(
     ? Object.fromEntries(bankMonth.banks.map((b) => [b.bank, b.balance]))
     : null;
 
+  // 관리손익 요약 — 화면(관리손익·결산 드릴다운)과 같은 코드로 계산해 동결(2026-08-23).
+  // 실패해도 결산 자체를 막지 않는다(부가 층) — null 로 남기고 콘솔에만 기록.
+  let pnlFrozen: Record<string, number> | null = null;
+  try {
+    const seg = unit.brand as BrandSeg;
+    const pos = await loadPnlPos(supabase, seg);
+    const { p } = await computePnlMonth(supabase, { seg, store: (unit.store ?? null) as Store | null, ym, pos });
+    pnlFrozen = {
+      pnl_operating: p.operatingProfit,
+      pnl_netSales: p.netSales,
+      pnl_cogs: p.cogs.total,
+      pnl_labor: p.labor,
+      pnl_fixed: p.fixed,
+    };
+  } catch (e) {
+    console.error('[close] 손익 동결 실패 — 전처리 결산값만 저장합니다:', (e as Error).message);
+  }
+
   return {
     v: 1,
     expense: pick(p1.rows),
@@ -206,6 +235,7 @@ export async function computeMonthlyFigures(
     txCount: txns.length,
     bankBalance,
     bankBalances,
+    pnl: pnlFrozen,
   };
 }
 
@@ -226,6 +256,15 @@ export function diffFigures(was: SnapshotFigures, now: SnapshotFigures): FigureD
   // 은행 잔액 — 옛 스냅샷(2026-08-20 이전)엔 필드가 없어 그때는 비교하지 않는다(가짜 변동 방지)
   if (was.bankBalance !== undefined && now.bankBalance !== undefined && (was.bankBalance ?? 0) !== (now.bankBalance ?? 0))
     out.push({ section: 'bank', key: 'bankBalance', label: LABELS.bankBalance, was: was.bankBalance ?? 0, now: now.bankBalance ?? 0 });
+  // 손익 동결 비교(2026-08-23) — 양쪽 다 기록된 경우만(옛 스냅샷 가짜 변동 방지)
+  if (was.pnl != null && now.pnl != null) {
+    const pnlKeys = new Set([...Object.keys(was.pnl), ...Object.keys(now.pnl)]);
+    for (const k of Array.from(pnlKeys)) {
+      const a = was.pnl[k] ?? 0;
+      const b = now.pnl[k] ?? 0;
+      if (a !== b) out.push({ section: 'pnl', key: k, label: LABELS[k] ?? k, was: a, now: b });
+    }
+  }
   // 계좌별 잔액 — 통장 2개 단위에서 어느 계좌가 바뀌었는지까지(2026-08-23). 양쪽 다 기록된 경우만.
   if (was.bankBalances != null && now.bankBalances != null) {
     const bankKeys = new Set([...Object.keys(was.bankBalances), ...Object.keys(now.bankBalances)]);

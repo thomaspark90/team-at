@@ -176,14 +176,17 @@ export default function Dashboard({
   // 관리손익의 cardLump·payLump 와 같은 규칙으로 지표 EBIT에서도 차감(2026-08-21 감사 P4-7).
   lumps?: { brand: string; ym: string; kind: string; amount: number }[];
   // 상단 매장 필(FinanceNav ?unit=)이 정하는 브랜드+지점 — 이 화면 자체 토글은 없앴다(2026-08-19).
-  reportUnit: { brand: 'staffmeal' | 'garden'; store: 'pangyo' | 'yangjae' | null };
+  // 'all' = 전사 통합(사업 브랜드 합산, 개인 제외) — 지표 페이지의 '전사 통합' 링크로 진입(2026-08-23).
+  reportUnit: { brand: 'staffmeal' | 'garden' | 'all'; store: 'pangyo' | 'yangjae' | null };
 }) {
   const [unit, setUnit] = useState<Unit>('month');
   // 부가세 기준은 순액(공급가액) 단일 — 옛 '총액' 토글은 비용만 총액으로 바꾸고 매출(POS 공급가액)은
   // 그대로 두는 반쪽 모드라 EBIT을 왜곡했고, 회계 기준도 공급가액으로 확정돼 제거(2026-08-21 감사 D6).
   // 브랜드+지점은 상단 매장 필에서만 바뀐다 — 페이지가 서버에서 다시 그려지며 이 prop이 갱신된다.
   const segId: SegId =
-    reportUnit.brand === 'staffmeal' ? 'staffmeal' : reportUnit.store === 'yangjae' ? 'garden-yangjae' : reportUnit.store === 'pangyo' ? 'garden-pangyo' : 'garden';
+    reportUnit.brand === 'all'
+      ? 'all'
+      : reportUnit.brand === 'staffmeal' ? 'staffmeal' : reportUnit.store === 'yangjae' ? 'garden-yangjae' : reportUnit.store === 'pangyo' ? 'garden-pangyo' : 'garden';
   const seg = SEGMENTS.find((s) => s.id === segId) ?? SEGMENTS[0];
   const { brand, store } = seg;
   // 좌측 연·월 사이드바(MonthShell)와 동기 — 고른 달의 요약 타일·구성비를 비춘다. 셸 밖(구 화면)이면 null → 최근 달.
@@ -968,6 +971,26 @@ export default function Dashboard({
           이 기간 <b>POS 매출이 없어요</b> — 매출은 <a href="/finance/pnl" className="underline">관리손익</a>에서 토스 매출리포트를 올려야 잡혀요.
         </div>
       )}
+      {/* 전사 통합 — 브랜드 간 대여금 상계 카드(2026-08-23, G6). 대여금은 excluded 분류라 손익엔
+          비중복이고, 전사 '잔고' 관점에서 서로 상쇄되는 내부 채권·채무임을 숫자로 보여준다 */}
+      {segId === 'all' && loanMarkers.length > 0 && (() => {
+        const byBrand = new Map<string, number>();
+        for (const m of loanMarkers) byBrand.set(m.brand, (byBrand.get(m.brand) ?? 0) + m.amount);
+        const entries = Array.from(byBrand.entries()).filter(([, v]) => v !== 0);
+        if (entries.length === 0) return null;
+        const bl = (b: string) => (b === 'staffmeal' ? '스탭밀' : b === 'garden' ? '가든서비스' : b);
+        return (
+          <div className="-mt-2 rounded-md bg-muted/40 px-4 py-3 text-[13px]">
+            <span className="font-medium">브랜드 간 대여 순잔액</span>
+            <span className="ml-3 tabular-nums text-muted-foreground">
+              {entries.map(([b, v]) => `${bl(b)} 장부 ${v > 0 ? '순대여 +' : '순차입 −'}${Math.abs(v).toLocaleString()}원`).join(' · ')}
+            </span>
+            <span className="ml-2 text-[11px] text-muted-foreground">
+              — 브랜드 간 이동(대여금 계정)이라 손익엔 안 잡히고, 전사 합산 잔고에서는 서로 상쇄돼요.
+            </span>
+          </div>
+        );
+      })()}
       {/* 판교 손익의 성격 고지(2026-08-23, 지점 분리 회계 확정에 따른 안내) — 판교는 통장·카드 지출이
           없고 인건비·임대료가 스탭밀 장부 귀속(대표 확정)이라, 이 숫자는 완전한 지점 손익이 아니다 */}
       {segId === 'garden-pangyo' && (
