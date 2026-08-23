@@ -47,6 +47,17 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
     });
   const grainLink = (page: string, grain: ExpenseGrain = 'month') =>
     `/finance/prep/${page}?unit=${unitId}&grain=${grain}`;
+  // 전월대비 잔고 증감 — 손익과는 시차(회수·정산)로 다르지만 "실제로 통장에 얼마 남았는지"를
+  // 바로 보여준다(2026-08-23 대표 요청). 달력상 직전 달의 잔고가 있는 달만 계산한다.
+  const prevYmOf = (ym: string) => {
+    const [y, m] = ym.split('-').map(Number);
+    return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+  };
+  const balanceDelta = (r: PnlSummaryRow): number | null => {
+    if (r.bankBalance == null) return null;
+    const prev = rows.find((x) => x.ym === prevYmOf(r.ym));
+    return prev?.bankBalance == null ? null : r.bankBalance - prev.bankBalance;
+  };
   return (
     <section className="mb-8">
       <div className="mb-1 flex flex-wrap items-baseline gap-x-3">
@@ -66,7 +77,9 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
         미분해 %가 크면(⚠ 5%+) 나머지 비율이 실제보다 낮게 보여요.
         실입금은 회수 참고용(카드 1~2일·식권 정산 한 달 시차). †는 POS 미업로드 달 —
         실입금 − 지출로 임시 계산한 값이라 POS 파일을 올리면 정식 손익으로 바뀌어요.
-        은행 잔고는 그 달 말일 통장 잔액(진행 중인 달은 최신 거래일 기준) — 전월 잔고 + 손익과 다른 게 정상이에요(잔고 ⓘ 참고).
+        은행 잔고는 그 달 말일 통장 잔액(진행 중인 달은 최신 거래일 기준) — 잔고 아래 작은 숫자는 전월대비
+        증감으로, 회수 시차 때문에 손익과 다르지만 실제로 통장에 얼마 남았는지를 바로 보여줘요.
+        전월 잔고 + 손익과 다른 게 정상이에요(잔고 ⓘ 참고).
         매출 외 입금·비용 외 출금 두 열이 그 차이 중 시차를 뺀 몫을 그 자리에서 설명해요.
       </p>
       {/* xl 이상(표가 다 들어가는 폭)에선 overflow를 풀어 ⓘ·미분해 팝오버가 잘리지 않게 —
@@ -361,6 +374,18 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                   </td>
                   <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
                     {r.bankBalance == null ? '' : won(r.bankBalance)}
+                    {/* 전월대비 증감 — 손익과 다른 건 시차 때문(잔고 ⓘ), 실제 통장에 남은 돈의 변화를 바로 본다 */}
+                    {(() => {
+                      const delta = balanceDelta(r);
+                      return delta == null ? null : (
+                        <div
+                          className={`text-[11px] ${delta >= 0 ? 'text-positive' : 'text-destructive'}`}
+                          title="전월 말 잔고 대비 증감 — 회수 시차·손익 밖 입출금 때문에 손익과는 달라요(잔고 ⓘ 참고)"
+                        >
+                          전월대비 {delta >= 0 ? '+' : '−'}{Math.abs(delta).toLocaleString()}
+                        </div>
+                      );
+                    })()}
                     {/* 계좌 2개 이상(가든 양재)이면 합산 아래 계좌별 분해(2026-08-23 그릴 확정) */}
                     {r.bankDetail && r.bankDetail.length >= 2 && (
                       <div className="text-[11px] text-muted-foreground/70">
