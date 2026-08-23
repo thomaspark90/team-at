@@ -8,6 +8,7 @@ import AccountingNav from '@/components/AccountingNav';
 import ClassifyPanel, { type TxRow, type Cat, type SplitRule } from '@/components/finance/ClassifyPanel';
 import MonthShell from '@/components/finance/MonthShell';
 import { computeUnclassifiedByMonth } from '@/lib/finance/boardTodos';
+import { fetchMerchantBrandMap, type MerchantBrandRule } from '@/lib/finance/merchantBrand';
 import { unitOf } from '@/lib/finance/types';
 
 export default async function ClassifyPage({
@@ -103,6 +104,24 @@ export default async function ClassifyPage({
   const { data: storeRuleRows } = await supabase.schema('finance').from('store_rules').select('normalized_key,store');
   const storeRules = (storeRuleRows as { normalized_key: string; store: string }[] | null) ?? [];
 
+  // 가맹점 이력 힌트(2026-08-23) — 이 달의 '귀속 미확정' 행에 대해, 같은 가맹점의 확정 이력
+  // (배송지 판정·사용자 확정)이 100% 한 브랜드면 "과거 N건 모두 ○○" 배지를 띄운다.
+  const defaultKeys = Array.from(
+    new Set(
+      ((txns as TxRow[]) ?? [])
+        .filter((t) => t.brand_basis === 'default' && t.normalized_key)
+        .map((t) => t.normalized_key),
+    ),
+  );
+  const merchantHintMap = defaultKeys.length
+    ? await fetchMerchantBrandMap(supabase, defaultKeys).catch(() => new Map<string, MerchantBrandRule>())
+    : new Map<string, MerchantBrandRule>();
+  const merchantHints = Array.from(merchantHintMap, ([normalized_key, r]) => ({
+    normalized_key,
+    brand: r.brand,
+    count: r.evidence,
+  }));
+
   // 설정에서 '재무로'로 돌아올 때 지금 이 분류 화면(단위·월·필터 그대로)으로 오도록 현재 URL을 from으로 넘긴다.
   const backQs = new URLSearchParams();
   for (const [k, v] of Object.entries(searchParams)) if (typeof v === 'string' && v) backQs.set(k, v);
@@ -138,6 +157,7 @@ export default async function ClassifyPage({
             rules={rules}
             splitRules={splitRules}
             storeRules={storeRules}
+            merchantHints={merchantHints}
             lockedBrand={brandScope}
             fixedUnit={unit ? { brand: unit.brand, store: unit.store } : null}
             initialFilter={{

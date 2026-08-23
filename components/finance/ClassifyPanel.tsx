@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { wonNum as won, fmtYm as fmtYmLabel } from '@/lib/finance/format';
 import SplitModal, { type SplitTarget, type SplitRuleSuggestion } from './SplitModal';
 import { useMonthCtx } from './MonthShell';
-import { storeLabel, bankSourceLabel, type Brand, type Store } from '@/lib/finance/types';
+import { storeLabel, bankSourceLabel, brandLabel, type Brand, type Store } from '@/lib/finance/types';
 import { classifyDraftKey, loadClassifyDraft, saveClassifyDraft } from '@/lib/finance/classifyDraft';
 import { guessStoreFromMemo, type StoreCode } from '@/lib/finance/storeGuess';
 import { isStoreBlocking } from '@/lib/finance/unassignedStore';
@@ -79,6 +79,7 @@ export default function ClassifyPanel({
   rules = [],
   splitRules = [],
   storeRules = [],
+  merchantHints = [],
   initialFilter,
   lockedBrand = null,
   fixedUnit = null,
@@ -90,6 +91,8 @@ export default function ClassifyPanel({
   rules?: { normalized_key: string; category_id: number; brand: string }[];
   splitRules?: SplitRule[];
   storeRules?: { normalized_key: string; store: string }[]; // 학습된 가맹점→지점(2026-08-17, 지점 미지정 보완)
+  // 가맹점 이력 힌트(2026-08-23) — 귀속 미확정 행의 가맹점이 확정 이력에서 100% 한 브랜드였으면 배지로 제안
+  merchantHints?: { normalized_key: string; brand: string; count: number }[];
   initialFilter?: { ym?: string; type?: string; cat?: string; unclassified?: boolean; source?: string; brand?: string; store?: string };
   lockedBrand?: 'staffmeal' | 'garden' | null; // 브랜드 스코프 멤버 — 서버에서 해당 브랜드만 내려옴, 브랜드 탭 숨김
   // 단위 고정 뷰(내비 2단 구조) — 스탭밀/양재천점/판교점 페이지: 브랜드·지점 탭 숨김.
@@ -108,6 +111,8 @@ export default function ClassifyPanel({
   // 지점 미지정 보완 — 학습된 가맹점→지점 규칙, 없으면 memo/channel(쿠팡 배송지 요약 포함) 휴리스틱('양재'/'판교' 문자열)으로 제안.
   // 둘 다 자동 확정이 아니라 '제안' 표시 → 한 클릭으로 사람이 확인해야 지정된다.
   const storeRuleMap = new Map(storeRules.map((r) => [r.normalized_key, r.store as StoreCode]));
+  // 가맹점 이력 힌트 — 귀속 미확정('귀속?') 행 옆에 "과거 N건 모두 ○○" 배지로 제안(확정은 사람이)
+  const merchantHintMap = new Map(merchantHints.map((h) => [h.normalized_key, h]));
   const storeSugFor = (t: TxRow): StoreCode | undefined => {
     if (t.brand !== 'garden' || t.store) return undefined;
     return (
@@ -1321,6 +1326,15 @@ export default function ClassifyPanel({
                             className="shrink-0 rounded bg-destructive/10 px-1.5 py-0.5 text-[11px] font-medium text-destructive"
                           >
                             귀속?
+                          </span>
+                        )}
+                        {tx.brand_basis === 'default' && merchantHintMap.has(tx.normalized_key) && (
+                          <span
+                            title="가맹점 이력 힌트 — 이 가맹점의 확정된 과거 거래(배송지 판정·사용자 확정)가 전부 한 브랜드였어요. 선택해서 '브랜드·지점 이동'으로 확정해 주세요"
+                            className="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600"
+                          >
+                            과거 {merchantHintMap.get(tx.normalized_key)!.count}건 모두{' '}
+                            {brandLabel(merchantHintMap.get(tx.normalized_key)!.brand)}
                           </span>
                         )}
                         {storeSug && (

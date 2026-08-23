@@ -7,6 +7,7 @@ import { resolvePersonalCat, applyPersonalCategory } from '@/lib/finance/persona
 import { resolveMisangCatId } from '@/lib/finance/misang';
 import { recordIngestSuccess } from '@/lib/ingest-health';
 import { fetchStoreRuleMap } from '@/lib/finance/storeRules';
+import { fetchMerchantBrandMap, MERCHANT_MIN_EVIDENCE } from '@/lib/finance/merchantBrand';
 import { buildRawRowsFromObjects, saveRawBatchSafe } from '@/lib/finance/raw';
 import { lockedYmsByBrand, isLockedYm } from '@/lib/finance/ingestLock';
 
@@ -73,10 +74,11 @@ export async function POST(req: Request) {
     const store = branch === '판교' ? 'pangyo' : branch === '양재천' ? 'yangjae' : null;
     return {
       _explicit_brand: brand, // insert 전에 제거 — dedup 시 기존 행 brand·branch 갱신용
+      _merchant_brand: false, // insert 전에 제거 — 가맹점 사전 2차 판정 표식(아래에서 설정)
       _raw_idx: rawIdx, // insert 전에 제거 — 수집 원본 행(raw_rows) 역참조용
       brand: brand ?? 'garden',
-      // 귀속 근거 — 배송지 판정이면 shipping, 미해석 기본값(garden)이면 default('귀속 미확정' 큐 대상)
-      brand_basis: brand ? 'shipping' : 'default',
+      // 귀속 근거 — 배송지 판정 shipping / 가맹점 사전 merchant(아래) / 미해석 기본값 default('귀속 미확정' 큐)
+      brand_basis: (brand ? 'shipping' : 'default') as string,
       store,
       bank: 'coupang',
       source: 'coupang',
@@ -101,6 +103,26 @@ export async function POST(req: Request) {
       classified_at: null,
       upload_id: null as number | null,
     };
+  });
+
+  // 가맹점 사전 2차 판정(2026-08-23) — 쿠팡 키는 '쿠팡+상품명'이라 반복 구매 상품 단위로만
+  // 적용된다. 주소 미해석 주문의 정본 교정은 주소해석 백필(--resolve-only)이며, 그 전에
+  // 확정 이력이 100% 한 브랜드인 반복 상품만 먼저 귀속시킨다(brand_basis='merchant').
+  const merchantMap = await fetchMerchantBrandMap(
+    supabase,
+    mapped.filter((m) => !m._explicit_brand).map((m) => m.normalized_key),
+  );
+  let merchantResolved = 0;
+  mapped.forEach((m) => {
+    if (m._explicit_brand) return;
+    const rule = merchantMap.get(m.normalized_key);
+    if (!rule || rule.evidence < MERCHANT_MIN_EVIDENCE) return;
+    m._merchant_brand = true;
+    m.brand = rule.brand;
+    m.branch = rule.branch;
+    m.store = rule.store;
+    m.brand_basis = 'merchant';
+    merchantResolved++;
   });
 
   // 재적재 중복 차단 (dedup_hash 기존 여부 + 현재 금액 청크 조회)
@@ -161,7 +183,7 @@ export async function POST(req: Request) {
   // 배송지 미매칭(_explicit_brand 없음) 건은 브랜드가 기본값(garden)으로 조용히 굳지 않도록
   // 학습 규칙을 건너뛰고 무조건 '미상'으로 파킹한다 — 특정 가맹점이 평소 한 브랜드로
   // 학습돼 있으면 미매칭 주문까지 조용히 같은 브랜드 지출로 섞여버리는 사고를 막기 위함(2026-08-09).
-  const hasUnmatched = mapped.some((m) => !m._explicit_brand);
+  const hasUnmatched = mapped.some((m) => !m._explicit_brand && !m._merchant_brand);
   const misangCatId = hasUnmatched ? await resolveMisangCatId(supabase) : null;
 
   // 이미 적재된 건도 브랜드·지점은 소급 갱신 — 도입 이전 적재분 백필.
@@ -212,7 +234,7 @@ export async function POST(req: Request) {
   const lockedNote = lockedNewSkipped + lockedUpdateSkipped > 0 ? ` · 확정월 보류 ${lockedNewSkipped + lockedUpdateSkipped}` : '';
   if (fresh.length === 0) {
     await recordIngestSuccess('coupang', `저장 0 · 중복 ${mapped.length}${lockedNote}`);
-    return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0, brandUpdated, personalCategorized, amountUpdated, lockedNewSkipped, lockedUpdateSkipped });
+    return NextResponse.json({ saved: 0, duplicates: mapped.length, autoClassified: 0, brandUpdated, personalCategorized, amountUpdated, merchantResolved, lockedNewSkipped, lockedUpdateSkipped });
   }
 
   // 학습 규칙(normalized_key → category_id)으로 자동 분류 — 규칙은 브랜드별
@@ -224,16 +246,18 @@ export async function POST(req: Request) {
   }
   // 학습된 지점 규칙 — 배송지가 지점까지 못 짚은 가든 건을 가맹점명으로 보완(2026-08-17).
   // 브랜드가 명시 판정(_explicit_brand)된 건에만 적용 — 미매칭 건까지 덮으면 '미상' 파킹 취지가 무너진다.
-  const storeCandidateKeys = fresh.filter((m) => m._explicit_brand === 'garden' && !m.store).map((m) => m.normalized_key);
+  const isGardenResolved = (m: (typeof fresh)[number]) =>
+    m._explicit_brand === 'garden' || (m._merchant_brand && m.brand === 'garden');
+  const storeCandidateKeys = fresh.filter((m) => isGardenResolved(m) && !m.store).map((m) => m.normalized_key);
   const keyToStore = await fetchStoreRuleMap(supabase, storeCandidateKeys);
   const now = new Date().toISOString();
   let autoClassified = 0;
   fresh.forEach((m) => {
-    if (m._explicit_brand === 'garden' && !m.store) {
+    if (isGardenResolved(m) && !m.store) {
       const s = keyToStore.get(m.normalized_key);
       if (s) m.store = s;
     }
-    if (!m._explicit_brand && misangCatId != null) {
+    if (!m._explicit_brand && !m._merchant_brand && misangCatId != null) {
       m.category_id = misangCatId;
       m.classified_at = now as never;
       autoClassified++;
@@ -287,7 +311,7 @@ export async function POST(req: Request) {
     buildRawRowsFromObjects(valid, (r) => String((r as IngestRow).paid_at ?? '').slice(0, 10) || null)
   );
 
-  const insertRows = fresh.map(({ _explicit_brand, _raw_idx, ...rest }) => ({
+  const insertRows = fresh.map(({ _explicit_brand, _merchant_brand, _raw_idx, ...rest }) => ({
     ...rest,
     raw_row_id: rawSaved?.rowIdByIndex.get(_raw_idx) ?? null,
   }));
@@ -297,6 +321,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `저장 실패: ${insErr.message}` }, { status: 500 });
   }
 
-  await recordIngestSuccess('coupang', `저장 ${fresh.length} · 중복 ${mapped.length - fresh.length}${lockedNote}`);
-  return NextResponse.json({ saved: fresh.length, duplicates: mapped.length - fresh.length, autoClassified, brandUpdated, personalCategorized, amountUpdated, lockedNewSkipped, lockedUpdateSkipped });
+  const merchantNote = merchantResolved > 0 ? ` · 가맹점판정 ${merchantResolved}` : '';
+  await recordIngestSuccess('coupang', `저장 ${fresh.length} · 중복 ${mapped.length - fresh.length}${merchantNote}${lockedNote}`);
+  return NextResponse.json({ saved: fresh.length, duplicates: mapped.length - fresh.length, autoClassified, brandUpdated, personalCategorized, amountUpdated, merchantResolved, lockedNewSkipped, lockedUpdateSkipped });
 }
