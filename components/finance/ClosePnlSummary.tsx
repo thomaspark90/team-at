@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Popover from '@/components/finance/Popover';
 import ClosePnlDrilldown from '@/components/finance/ClosePnlDrilldown';
 import type { ExpenseGrain } from '@/lib/finance/prepExpense';
+import { bankShort } from '@/lib/finance/cashflow';
 
 // 월 결산 페이지의 월별 손익 요약 — 전처리 빌더의 결과를 그대로 받아 표만 그린다(2026-08-20 대표 요청).
 // 매출(POS·발생주의 정본)·실입금(통장)·지출(전처리1 합계)·손익(매출−지출)을 월별로.
@@ -22,6 +23,8 @@ export interface PnlSummaryRow {
   pending: { cardOther: number; collectedOther: number; unclassified: number; misang: number };
   /** 은행 월말 잔액(통장 표와 같은 앵커 계산) — 은행 자료 없는 달은 null */
   bankBalance: number | null;
+  /** 계좌별 월말 잔액 — 계좌 2개 이상(가든 양재)이면 셀 아래 작은 글씨로 분해(2026-08-23 그릴 확정) */
+  bankDetail: { bank: string; balance: number }[] | null;
   /** 손익↔잔고 다리 — 월별 요약(buildCashflowRecon)과 같은 값. 은행 자료 없는 달은 null */
   nonSalesIn: number | null; // 매출 외 입금(투자·환급·반환 등)
   nonExpenseOut: number | null; // 비용 외 출금(인테리어·보증금·대여금·투자 등)
@@ -353,6 +356,12 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                   </td>
                   <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
                     {r.bankBalance == null ? '' : won(r.bankBalance)}
+                    {/* 계좌 2개 이상(가든 양재)이면 합산 아래 계좌별 분해(2026-08-23 그릴 확정) */}
+                    {r.bankDetail && r.bankDetail.length >= 2 && (
+                      <div className="text-[11px] text-muted-foreground/70">
+                        {r.bankDetail.map((b) => `${bankShort(b.bank)} ${won(b.balance) || 0}`).join(' · ')}
+                      </div>
+                    )}
                   </td>
                 </tr>
                 {expanded.has(r.ym) && <ClosePnlDrilldown ym={r.ym} unitId={unitId} colSpan={14} />}

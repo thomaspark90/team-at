@@ -8,7 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildExpensePrep, type ExpenseTx } from './prepExpense';
 import { buildExpenseDetail, type CategoryInfo } from './prepExpenseDetail';
 import { buildRevenuePrep, type PosSaleRow } from './prepRevenue';
-import { cashflow } from './cashflow';
+import { cashflow, bankShort } from './cashflow';
 import { fetchAllRows } from './fetchAll';
 import type { UnitDef } from './types';
 
@@ -29,6 +29,9 @@ export interface SnapshotFigures {
   /** 은행 월말 잔액 — 결산 화면·월별 요약과 같은 계산(cashflow: 계좌별 앵커 + 이월). 은행 자료
       재업로드 감지용. 2026-08-20 추가라 옛 스냅샷엔 없다 — diff는 양쪽 다 있을 때만 비교한다. */
   bankBalance?: number | null;
+  /** 계좌별 월말 잔액 — 통장 2개 단위(가든 양재)에서 어느 계좌가 바뀌었는지까지 감지
+      (2026-08-23 그릴 확정). 옛 스냅샷엔 없다 — diff는 양쪽 다 있을 때만 비교한다. */
+  bankBalances?: Record<string, number> | null;
 }
 
 export interface FigureDiff {
@@ -189,7 +192,11 @@ export async function computeMonthlyFigures(
   const bankMonths = cashflow(
     bankRows.map((r) => ({ ym: r.ym, bank: r.bank!, tx_at: r.tx_at, amount_in: r.amount_in, amount_out: r.amount_out, balance: r.balance ?? 0 }))
   );
-  const bankBalance: number | null = bankMonths.find((m) => m.ym === ym)?.totalBalance ?? null;
+  const bankMonth = bankMonths.find((m) => m.ym === ym) ?? null;
+  const bankBalance: number | null = bankMonth?.totalBalance ?? null;
+  const bankBalances: Record<string, number> | null = bankMonth
+    ? Object.fromEntries(bankMonth.banks.map((b) => [b.bank, b.balance]))
+    : null;
 
   return {
     v: 1,
@@ -198,6 +205,7 @@ export async function computeMonthlyFigures(
     revenue: pick(p3.columns),
     txCount: txns.length,
     bankBalance,
+    bankBalances,
   };
 }
 
@@ -218,6 +226,15 @@ export function diffFigures(was: SnapshotFigures, now: SnapshotFigures): FigureD
   // 은행 잔액 — 옛 스냅샷(2026-08-20 이전)엔 필드가 없어 그때는 비교하지 않는다(가짜 변동 방지)
   if (was.bankBalance !== undefined && now.bankBalance !== undefined && (was.bankBalance ?? 0) !== (now.bankBalance ?? 0))
     out.push({ section: 'bank', key: 'bankBalance', label: LABELS.bankBalance, was: was.bankBalance ?? 0, now: now.bankBalance ?? 0 });
+  // 계좌별 잔액 — 통장 2개 단위에서 어느 계좌가 바뀌었는지까지(2026-08-23). 양쪽 다 기록된 경우만.
+  if (was.bankBalances != null && now.bankBalances != null) {
+    const bankKeys = new Set([...Object.keys(was.bankBalances), ...Object.keys(now.bankBalances)]);
+    for (const bk of Array.from(bankKeys)) {
+      const a = was.bankBalances[bk] ?? 0;
+      const b = now.bankBalances[bk] ?? 0;
+      if (a !== b) out.push({ section: 'bank', key: `bankBalance:${bk}`, label: `은행 잔액 · ${bankShort(bk)}`, was: a, now: b });
+    }
+  }
   // 합계·핵심부터 보이게
   const rank = (d: FigureDiff) => (d.key === 'total' ? 0 : d.section === 'txCount' ? 1 : 2);
   return out.sort((a, b) => rank(a) - rank(b) || Math.abs(b.now - b.was) - Math.abs(a.now - a.was));

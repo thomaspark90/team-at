@@ -1,6 +1,10 @@
 // 통장 현금흐름 집계: 월별 × 은행별 입금/출금 + 은행 합산.
 // 분류(카테고리)와 무관하게 통장 자체의 인/아웃을 본다.
 
+/** 은행 축약 표기 — 계좌별 잔액 분해 열·부제에 쓴다(2026-08-23 그릴 확정: 은행명만, 역할 라벨 없음) */
+export const BANK_SHORT: Record<string, string> = { shinhan: '신한', woori: '우리', excel: '엑셀' };
+export const bankShort = (bank: string): string => BANK_SHORT[bank] ?? bank;
+
 export interface BankCash {
   bank: string;
   inflow: number;

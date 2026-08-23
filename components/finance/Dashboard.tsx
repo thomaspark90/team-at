@@ -18,6 +18,7 @@ import {
   LabelList,
 } from 'recharts';
 import { aggregate, capexDepreciation, UNCLASSIFIED, type AggTx, type AggCat, type Unit, type MonthAgg } from '@/lib/finance/aggregate';
+import { bankShort } from '@/lib/finance/cashflow';
 import { wonNum as won } from '@/lib/finance/format';
 import { useMonthCtx } from './MonthShell';
 
@@ -242,24 +243,35 @@ export default function Dashboard({
 
   // 통장 입출금·잔액 월별 시계열 — 브랜드 필터만 적용(통장은 브랜드 단위, 가든 지점 구분 없음).
   // 선두의 전부-0 달은 잘라 실데이터 시작부터 그린다.
-  const bankData = useMemo(() => {
+  const { bankData, bankNames } = useMemo(() => {
     const rows =
       brand === 'all'
         ? bankCash.filter((r) => r.brand !== 'personal')
         : bankCash.filter((r) => (r.brand || 'garden') === brand);
-    const byYm = new Map<string, { in: number; out: number; bal: number }>();
+    // 계좌 2개 이상(가든 양재)이면 합산 선 + 계좌별 선을 함께 그린다(2026-08-23 그릴 확정)
+    const names = Array.from(new Set(rows.map((r) => r.bank))).sort();
+    const byYm = new Map<string, { in: number; out: number; bal: number; perBank: Record<string, number> }>();
     for (const r of rows) {
-      const a = byYm.get(r.ym) ?? { in: 0, out: 0, bal: 0 };
+      const a = byYm.get(r.ym) ?? { in: 0, out: 0, bal: 0, perBank: {} };
       a.in += r.inflow;
       a.out += r.outflow;
       a.bal += r.balance;
+      a.perBank[r.bank] = (a.perBank[r.bank] ?? 0) + r.balance;
       byYm.set(r.ym, a);
     }
     const all = Array.from(byYm.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([ym, a]) => ({ p: ym.slice(2).replace('-', '.'), 입금: a.in, 출금: a.out, '월말 잔액': a.bal }));
+      .map(([ym, a]) => ({
+        p: ym.slice(2).replace('-', '.'),
+        입금: a.in,
+        출금: a.out,
+        '월말 잔액': a.bal,
+        ...(names.length >= 2
+          ? Object.fromEntries(names.map((n) => [`잔액 · ${bankShort(n)}`, a.perBank[n] ?? 0]))
+          : {}),
+      }));
     const first = all.findIndex((d) => d.입금 !== 0 || d.출금 !== 0 || d['월말 잔액'] !== 0);
-    return first < 0 ? [] : all.slice(first);
+    return { bankData: first < 0 ? [] : all.slice(first), bankNames: names };
   }, [bankCash, brand]);
   // 대여금 마커 — 현재 브랜드 것만, 통장 차트의 그 달 잔액 지점에 붙인다.
   // 문구 수정은 낙관적으로 로컬(markerLabels)에 먼저 반영하고 chart_annotations에 저장.
@@ -628,6 +640,19 @@ export default function Dashboard({
               {/* 라벨이 잔액 선과 겹치지 않게 선 위 30px — 경사 구간에서도 선이 라벨을 안 지나가게 */}
               <LabelList dataKey="월말 잔액" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
             </Line>
+            {/* 계좌별 잔액 — 계좌 2개 이상(가든 양재)일 때만 가는 점선으로 병행(2026-08-23 그릴 확정) */}
+            {bankNames.length >= 2 &&
+              bankNames.map((n) => (
+                <Line
+                  key={`bal-${n}`}
+                  type="monotone"
+                  dataKey={`잔액 · ${bankShort(n)}`}
+                  stroke={LINE2}
+                  strokeWidth={1}
+                  strokeDasharray="4 3"
+                  dot={{ r: 1.5, fill: LINE2 }}
+                />
+              ))}
             {/* 대여금 마커 — '대여금' 분류 거래가 있는 달의 잔액 지점. 클릭하면 문구 수정 */}
             {bankMarkers.map((m) => (
               <ReferenceDot

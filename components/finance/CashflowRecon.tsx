@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { CashflowRecon } from '@/lib/finance/cashflowRecon';
+import { bankShort } from '@/lib/finance/cashflow';
 import { fmtYm } from '@/lib/finance/format';
 
 // 월별 요약 대사 표 — 행=월, 열은 통장 / 매출 대사(전처리3) / 지출 대사(전처리1) 세 그룹.
@@ -14,16 +15,26 @@ interface ColDef {
   muted?: boolean; // 파생·설명 성격의 열은 톤을 낮춘다
 }
 
+// 통장 그룹은 계좌 수에 따라 렌더 시점에 만든다 — 계좌 2개 이상(가든 양재)이면 잔액을
+// 계좌별 열로 분해하고 '합산' 열을 붙인다(2026-08-23 그릴 확정). 1개면 기존과 동일.
+const bankGroup = (banks: string[]): { label: string; href?: (unit: string) => string; cols: ColDef[] } => ({
+  label: '통장 (현금흐름)',
+  cols: [
+    { key: 'bankIn', label: '입금' },
+    { key: 'bankOut', label: '출금' },
+    { key: 'net', label: '순증감' },
+    ...(banks.length >= 2
+      ? banks.map((b) => ({
+          key: `bal:${b}`,
+          label: `잔액 · ${bankShort(b)}`,
+          hint: `${bankShort(b)} 계좌의 월말 잔액(거래 없는 달은 직전 잔액 이월).`,
+        }))
+      : []),
+    { key: 'balance', label: banks.length >= 2 ? '잔액 합산' : '월말 잔액' },
+  ],
+});
+
 const GROUPS: { label: string; href?: (unit: string) => string; cols: ColDef[] }[] = [
-  {
-    label: '통장 (현금흐름)',
-    cols: [
-      { key: 'bankIn', label: '입금' },
-      { key: 'bankOut', label: '출금' },
-      { key: 'net', label: '순증감' },
-      { key: 'balance', label: '월말 잔액' },
-    ],
-  },
   {
     label: '매출 대사 — 전처리3',
     href: (unit) => `/finance/prep/revenue?unit=${unit}`,
@@ -85,6 +96,7 @@ const GROUPS: { label: string; href?: (unit: string) => string; cols: ColDef[] }
 
 export default function CashflowReconTable({ recon, unitId }: { recon: CashflowRecon; unitId: string }) {
   const { months, warnings } = recon;
+  const groups = [bankGroup(recon.banks ?? []), ...GROUPS];
   const warnByYm = new Map<string, string[]>();
   for (const w of warnings) {
     const arr = warnByYm.get(w.bucket) ?? [];
@@ -109,7 +121,7 @@ export default function CashflowReconTable({ recon, unitId }: { recon: CashflowR
           <thead className="sticky top-0 z-10 bg-card">
             <tr className="border-b border-border/50 text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
               <th className="sticky left-0 z-20 bg-card px-3 py-1.5" />
-              {GROUPS.map((g) => (
+              {groups.map((g) => (
                 <th key={g.label} colSpan={g.cols.length} className="border-l-2 border-l-border px-3 py-1.5 text-left font-normal">
                   {g.href ? (
                     <Link href={g.href(unitId)} className="transition-colors hover:text-foreground">
@@ -123,7 +135,7 @@ export default function CashflowReconTable({ recon, unitId }: { recon: CashflowR
             </tr>
             <tr className="border-b border-border text-muted-foreground">
               <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">월</th>
-              {GROUPS.flatMap((g) =>
+              {groups.flatMap((g) =>
                 g.cols.map((c, i) => (
                   <th
                     key={c.key}
@@ -152,9 +164,11 @@ export default function CashflowReconTable({ recon, unitId }: { recon: CashflowR
                     {warns && <span>⚠ </span>}
                     {fmtYm(m.ym)}
                   </td>
-                  {GROUPS.flatMap((g) =>
+                  {groups.flatMap((g) =>
                     g.cols.map((c, i) => {
-                      const v = m[c.key as keyof typeof m] as number | null;
+                      const v = c.key.startsWith('bal:')
+                        ? (m.bankBalances?.find((b) => b.bank === c.key.slice(4))?.balance ?? null)
+                        : (m[c.key as keyof typeof m] as number | null);
                       const display =
                         c.key === 'rateAdj' ? (v == null || v === 0 ? '' : `${v.toLocaleString('ko-KR')}%`) : won(v);
                       const signed = c.key === 'net' && v != null && v !== 0;
@@ -178,7 +192,7 @@ export default function CashflowReconTable({ recon, unitId }: { recon: CashflowR
       </div>
 
       <div className="mt-4 flex flex-col gap-1 text-[12px] text-muted-foreground">
-        {GROUPS.flatMap((g) => g.cols)
+        {groups.flatMap((g) => g.cols)
           .filter((c) => c.hint)
           .map((c) => (
             <p key={c.key} className="m-0">

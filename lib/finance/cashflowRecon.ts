@@ -20,6 +20,8 @@ export interface ReconMonth {
   bankOut: number | null;
   net: number | null;
   balance: number | null;
+  /** 계좌별 월말 잔액(이월 포함) — 계좌가 2개 이상인 단위(가든 양재)의 분해 열용(2026-08-23) */
+  bankBalances: { bank: string; balance: number }[] | null;
   /** 매출 대사 — 전처리3 월 뷰와 동일한 값 */
   posSales: number;
   giftSale: number; // 자가 식권 판매(선수금) — POS 매출엔 없고 카드 입금엔 포함
@@ -37,6 +39,8 @@ export interface CashflowRecon {
   months: ReconMonth[];
   /** 전처리1·3 경고에 은행 누락 경고를 더한 것 — 숨기지 않고 이 화면에도 보여준다 */
   warnings: { bucket: string; message: string }[];
+  /** 이 단위가 쓰는 계좌 목록(정렬) — 2개 이상이면 표가 잔액을 계좌별로 분해한다 */
+  banks: string[];
 }
 
 const colAmounts = (prep: RevenuePrep, key: string): Record<string, number> =>
@@ -103,6 +107,7 @@ export function buildCashflowRecon(
       bankOut: bank ? bank.totalOut : null,
       net: bank ? bank.totalIn - bank.totalOut : null,
       balance: bank ? bank.totalBalance : null,
+      bankBalances: bank ? bank.banks.map((b) => ({ bank: b.bank, balance: b.balance })) : null,
       posSales: posAmt[ym] ?? 0,
       giftSale: giftAmt[ym] ?? 0,
       salesIn: salesInAmt[ym] ?? 0,
@@ -147,5 +152,6 @@ export function buildCashflowRecon(
   for (const w of revenue.warnings) if (!missing.has(w.bucket)) warnings.push(w);
   warnings.sort((a, b) => b.bucket.localeCompare(a.bucket));
 
-  return { months, warnings };
+  const banks = Array.from(new Set(bankMonths.flatMap((m) => m.banks.map((b) => b.bank)))).sort();
+  return { months, warnings, banks };
 }

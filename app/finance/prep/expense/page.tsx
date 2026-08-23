@@ -8,6 +8,8 @@ import { unitOf, UNITS } from '@/lib/finance/types';
 import { buildExpensePrep, type ExpenseGrain, type ExpenseTx } from '@/lib/finance/prepExpense';
 import { fetchAllRows } from '@/lib/finance/fetchAll';
 import { countUnassignedGarden } from '@/lib/finance/unassignedStore';
+import { cashflow } from '@/lib/finance/cashflow';
+import { buildBalanceColumns } from '@/lib/finance/balanceColumns';
 
 // 전처리1 — 지출 총합. 로우데이터 다음 단계로, 소스별 지출을 기간 단위로 모으되
 // 중복 제거(카드대금 − 수집분)를 계산식 그대로 화면에 드러낸다.
@@ -48,12 +50,20 @@ export default async function PrepExpensePage({
   // 거래를 전량 읽어 메모리에서 집계한다 — 규칙(카드대금 판별·차감)이 코드 한곳에 모여 있어야
   // 화면에 계산식 그대로 보여줄 수 있다. `.limit(50000)`은 잘림 방어가 아니라 서버 Max Rows
   // (20000)에서 조용히 깎이는 거짓 신호라 페이지 로더로 교체(2026-08-21 감사 P1-3).
-  const data = await fetchAllRows<Omit<ExpenseTx, 'cat_type' | 'cat_name'> & { categories: { type: string; name: string } | null }>(
+  const data = await fetchAllRows<
+    Omit<ExpenseTx, 'cat_type' | 'cat_name'> & {
+      categories: { type: string; name: string } | null;
+      bank: string | null;
+      balance: number | null;
+      split_parent_id: number | null;
+    }
+  >(
     (from, to) => {
       let q = supabase
         .schema('finance')
         .from('transactions')
-        .select('tx_at,ym,source,memo,amount_out,amount_in,category_id,categories(type,name)')
+        // bank·balance·split_parent_id — 월말 잔액 참고 열용(2026-08-23 그릴 확정, 월 뷰 전용)
+        .select('tx_at,ym,source,memo,amount_out,amount_in,category_id,bank,balance,split_parent_id,categories(type,name)')
         .eq('brand', unit.brand)
         .order('id')
         .range(from, to);
@@ -75,7 +85,20 @@ export default async function PrepExpensePage({
     cat_name: t.categories?.name ?? null,
   }));
 
-  const { buckets: allBuckets, rows, warnings } = buildExpensePrep(txns, grain);
+  const { buckets: allBuckets, rows: builderRows, warnings } = buildExpensePrep(txns, grain);
+  // 월말 잔액 참고 열(월 뷰 전용) — 계좌 2개 이상(가든 양재)이면 계좌별+합산, 1개면 합산만.
+  // 월별 요약과 같은 계산(cashflow 이월)이라 화면 간 정합. 지출 합계에는 안 들어간다.
+  const balRows =
+    grain === 'month'
+      ? buildBalanceColumns(
+          cashflow(
+            data
+              .filter((t) => t.source === 'bank' && t.bank != null && t.split_parent_id == null)
+              .map((t) => ({ ym: t.ym, bank: t.bank!, tx_at: t.tx_at, amount_in: t.amount_in, amount_out: t.amount_out, balance: t.balance ?? 0 }))
+          )
+        ).map((c) => ({ key: c.key, label: c.label, kind: 'note' as const, amounts: c.amounts, hint: c.hint }))
+      : [];
+  const rows = [...builderRows, ...balRows];
   const buckets = allBuckets.slice(0, LIMIT[grain]);
   const won = (n: number) => (n === 0 ? '' : n.toLocaleString());
   const warnByBucket = new Map(warnings.map((w) => [w.bucket, w.message]));

@@ -9,6 +9,8 @@ import type { ExpenseGrain, ExpenseTx } from '@/lib/finance/prepExpense';
 import { buildRevenuePrep, type PosSaleRow, type GiftSaleRow } from '@/lib/finance/prepRevenue';
 import { fetchAllRows } from '@/lib/finance/fetchAll';
 import { countUnassignedGarden } from '@/lib/finance/unassignedStore';
+import { cashflow } from '@/lib/finance/cashflow';
+import { buildBalanceColumns } from '@/lib/finance/balanceColumns';
 
 // 전처리3 — 매출 총합. POS 매출(발생)과 통장 입금(정산)을 나란히 놓고 대사한다.
 // 차이를 숨기지 않고 '차이'와 '정산률' 열로 드러낸다 — 이상한 구간이 곧 조사할 지점.
@@ -55,12 +57,20 @@ export default async function PrepRevenuePage({
       },
       { page: 20000, label: 'POS 매출' }
     ),
-    fetchAllRows<Omit<ExpenseTx, 'cat_type' | 'cat_name'> & { categories: { type: string; name: string } | null }>(
+    fetchAllRows<
+      Omit<ExpenseTx, 'cat_type' | 'cat_name'> & {
+        categories: { type: string; name: string } | null;
+        bank: string | null;
+        balance: number | null;
+        split_parent_id: number | null;
+      }
+    >(
       (from, to) => {
         let q = supabase
           .schema('finance')
           .from('transactions')
-          .select('tx_at,ym,source,memo,amount_out,amount_in,category_id,categories(type,name)')
+          // bank·balance·split_parent_id — 월말 잔액 참고 열용(2026-08-23 그릴 확정, 월 뷰 전용)
+          .select('tx_at,ym,source,memo,amount_out,amount_in,category_id,bank,balance,split_parent_id,categories(type,name)')
           .eq('brand', unit.brand)
           .order('id')
           .range(from, to);
@@ -94,7 +104,19 @@ export default async function PrepRevenuePage({
   const txns = allTxns.filter((t) => t.cat_type === 'revenue');
   const unclassifiedIn = allTxns.filter((t) => t.category_id == null && (t.amount_in || 0) > 0);
 
-  const { buckets: allBuckets, columns, warnings } = buildRevenuePrep(posData, txns, grain, giftData, unclassifiedIn);
+  const { buckets: allBuckets, columns: builderColumns, warnings } = buildRevenuePrep(posData, txns, grain, giftData, unclassifiedIn);
+  // 월말 잔액 참고 열(월 뷰 전용) — 계좌 2개 이상(가든 양재)이면 계좌별+합산(2026-08-23 그릴 확정)
+  const balCols =
+    grain === 'month'
+      ? buildBalanceColumns(
+          cashflow(
+            txData
+              .filter((t) => t.source === 'bank' && t.bank != null && t.split_parent_id == null)
+              .map((t) => ({ ym: t.ym, bank: t.bank!, tx_at: t.tx_at, amount_in: t.amount_in, amount_out: t.amount_out, balance: t.balance ?? 0 }))
+          )
+        ).map((c) => ({ key: c.key, label: c.label, kind: 'note' as const, amounts: c.amounts, hint: c.hint }))
+      : [];
+  const columns = [...builderColumns, ...balCols];
   const buckets = allBuckets.slice(0, LIMIT[grain]);
   const won = (n: number) => (n === 0 ? '' : n.toLocaleString());
   const warnByBucket = new Map(warnings.map((w) => [w.bucket, w.message]));

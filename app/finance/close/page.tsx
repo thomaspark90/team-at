@@ -185,6 +185,8 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
       .map((t) => ({ ym: t.ym, bank: t.bank!, tx_at: t.tx_at, amount_in: t.amount_in, amount_out: t.amount_out, balance: t.balance ?? 0 }))
   );
   const balanceByYm = new Map(bankMonths.map((m) => [m.ym, m.totalBalance]));
+  // 계좌별 분해(가든 양재 통장 2개) — 셀 아래 작은 글씨용(2026-08-23 그릴 확정)
+  const bankDetailByYm = new Map(bankMonths.map((m) => [m.ym, m.banks.map((b) => ({ bank: b.bank, balance: b.balance }))]));
   // 매출 외 입금·비용 외 출금 — 잔고와 손익의 차이를 그 자리에서 설명하는 두 열.
   // 월별 요약과 같은 계산(buildCashflowRecon)을 재사용해 두 화면 숫자가 항상 일치한다.
   const recon = buildCashflowRecon(bankMonths, p1, p3, fullTxns);
@@ -211,6 +213,7 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
         misang: misangA[ym] ?? 0,
       },
       bankBalance: balanceByYm.get(ym) ?? null,
+      bankDetail: bankDetailByYm.get(ym) ?? null,
       nonSalesIn: reconByYm.get(ym)?.nonSalesIn ?? null,
       nonExpenseOut: reconByYm.get(ym)?.nonExpenseOut ?? null,
       groups: {
