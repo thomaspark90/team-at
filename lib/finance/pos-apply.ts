@@ -212,9 +212,45 @@ export async function applyPosParseResult(
 
   const brandLine = `${brandLabel(brand)}${store ? `·${storeLabel(store)}` : ''}(${posType})`;
 
+  // 선수금(gift) 누락 백필 — dup 판정(checkYmDuplicates)은 pos_sales 내용만 보므로, gift 테이블
+  // 도입(2026-08-20) 전에 올렸던 달은 '동일'로 건너뛰어도 선수금 행이 비어 있을 수 있다
+  // (실사고: 양재 2026-05~07 금액권·선불권 417만 누락, 2026-08-23). 그 달만 gift 행을 채운다.
+  const giftBackfillYms = new Set<string>();
+  {
+    const targetYms = Array.from(new Set((r.giftRows ?? []).map((d) => d.ym))).filter((ym) => dupYms.has(ym));
+    if (targetYms.length > 0) {
+      const { data: haveGift } = await supabase
+        .schema('finance')
+        .from('pos_gift_sales')
+        .select('ym')
+        .eq('brand', brand)
+        .eq('store', store)
+        .in('ym', targetYms);
+      const have = new Set(((haveGift ?? []) as { ym: string }[]).map((g) => g.ym));
+      for (const ym of targetYms) if (!have.has(ym)) giftBackfillYms.add(ym);
+    }
+  }
+  const upsertGiftBackfill = async (): Promise<string | null> => {
+    if (giftBackfillYms.size === 0) return null;
+    const ts = new Date().toISOString();
+    const giftInsert = (r.giftRows ?? [])
+      .filter((d) => giftBackfillYms.has(d.ym))
+      .map((d) => ({ ym: d.ym, sale_date: d.saleDate, brand, store, item: d.item, qty: d.qty, gross: d.gross, uploaded_by: user.id, uploaded_at: ts }));
+    const { error } = await supabase
+      .schema('finance')
+      .from('pos_gift_sales')
+      .upsert(giftInsert, { onConflict: 'sale_date,brand,store,item' });
+    if (error && !isMissingTable(error)) return error.message;
+    return null;
+  };
+
   if (changedYms.length === 0) {
     // 요청한 모든 달이 이미 저장된 자료와 동일 — DB 쓰기·원본 재아카이브 없이 그대로 알린다.
-    await logActivity(supabase, user, actionLabel, `${brandLine} · ${r.yms.join(', ')} 전부 기존 자료와 동일 — 건너뜀`);
+    // 단 선수금 누락 달이 있으면 그 백필만 수행한다(위 실사고의 복구 경로).
+    const giftErr = await upsertGiftBackfill();
+    if (giftErr) return { ok: false, status: 500, error: `식권 판매 저장 실패: ${giftErr}` };
+    const giftNote = giftBackfillYms.size > 0 ? ` · 선수금 백필 ${Array.from(giftBackfillYms).join(', ')}` : '';
+    await logActivity(supabase, user, actionLabel, `${brandLine} · ${r.yms.join(', ')} 전부 기존 자료와 동일 — 건너뜀${giftNote}`);
     return {
       ok: true,
       body: {
@@ -313,7 +349,8 @@ export async function applyPosParseResult(
 
   // 식권 판매(선수금) — pos_gift_sales. 매출에서 제외되는 금액을 버리지 않고 담는다(2026-08-20).
   // pos_items 와 같은 (upsert 후 잔여 정리) 절차. 테이블 미생성이면 조용히 건너뛴다(비치명).
-  const giftRows = (r.giftRows ?? []).filter((d) => !dupYms.has(d.ym));
+  // dup 달이라도 선수금이 비어 있으면(giftBackfillYms) 포함 — 위 백필 규칙과 동일.
+  const giftRows = (r.giftRows ?? []).filter((d) => !dupYms.has(d.ym) || giftBackfillYms.has(d.ym));
   if (giftRows.length > 0) {
     const giftInsert = giftRows.map((d) => ({
       ym: d.ym,
