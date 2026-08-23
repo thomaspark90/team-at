@@ -4,6 +4,7 @@ import { logActivity } from '@/lib/finance/activity';
 import { canConfirm } from '@/lib/finance/access';
 import { unitOf } from '@/lib/finance/types';
 import { computeMonthlyFigures, type SnapshotFigures } from '@/lib/finance/closeSnapshot';
+import { countUnassignedGarden } from '@/lib/finance/unassignedStore';
 
 export const runtime = 'nodejs';
 
@@ -66,14 +67,9 @@ export async function POST(req: Request) {
       );
     }
     if (unit.store) {
-      const { count: reUnassigned } = await supabase
-        .schema('finance')
-        .from('transactions')
-        .select('id', { count: 'exact', head: true })
-        .eq('ym', ym)
-        .eq('brand', 'garden')
-        .is('store', null);
-      if (reUnassigned && reUnassigned > 0) {
+      // 확정과 같은 규칙 — 순수 손익 제외(excluded, 미상 제외)는 안 센다(2026-08-23)
+      const reUnassigned = await countUnassignedGarden(supabase, ym);
+      if (reUnassigned > 0) {
         return NextResponse.json(
           { error: `지점 미지정 가든 거래 ${reUnassigned}건이 남아 재결산할 수 없어요 — 분류 화면에서 지점을 지정해주세요.`, unassigned: reUnassigned },
           { status: 409 }
@@ -116,16 +112,11 @@ export async function POST(req: Request) {
         { status: 409 }
       );
     }
-    // 가든 지점 확정은 '지점 미지정' 가든 거래도 0건이어야 함 — 미지정이 남으면 지점 손익이 불완전한 채 잠긴다
+    // 가든 지점 확정은 '지점 미지정' 가든 거래도 0건이어야 함 — 미지정이 남으면 지점 손익이 불완전한 채 잠긴다.
+    // 단 순수 손익 제외(excluded, 미상 제외) 분류는 안 센다 — '개인 지출' 파킹 건이 결산을 막지 않게(2026-08-23).
     if (unit.store) {
-      const { count: unassigned } = await supabase
-        .schema('finance')
-        .from('transactions')
-        .select('id', { count: 'exact', head: true })
-        .eq('ym', ym)
-        .eq('brand', 'garden')
-        .is('store', null);
-      if (unassigned && unassigned > 0) {
+      const unassigned = await countUnassignedGarden(supabase, ym);
+      if (unassigned > 0) {
         return NextResponse.json(
           { error: `지점 미지정 가든 거래 ${unassigned}건이 남아 확정할 수 없습니다. 분류 화면에서 지점을 지정하거나 분할해주세요.`, unassigned },
           { status: 409 }

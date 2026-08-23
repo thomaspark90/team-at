@@ -17,6 +17,7 @@ import { buildRevenuePrep, type PosSaleRow } from '@/lib/finance/prepRevenue';
 import { cashflow } from '@/lib/finance/cashflow';
 import { buildCashflowRecon } from '@/lib/finance/cashflowRecon';
 import { fetchAllRows } from '@/lib/finance/fetchAll';
+import { isStoreBlocking } from '@/lib/finance/unassignedStore';
 
 export default async function ClosePage({ searchParams }: { searchParams: { brand?: string; unit?: string } }) {
   const supabase = await createClient();
@@ -39,10 +40,17 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
   // 월별 거래수·미분류수 집계 (데이터량이 작아 JS 집계) — 선택된 단위만.
   // 가든 지점 단위는 '지점 미지정' 가든 거래도 함께 집계 — 미지정이 남으면 확정 불가.
   // 확정 게이트 재료 — 전량 페이지 조회(무제한 select 는 서버 Max Rows 에서 잘려 미분류가
-  // 0으로 보였다 — 2026-08-21 감사 P3-3; 확정 자체는 서버(count) 재검증이 막지만 화면이 어긋난다)
-  const txns = await fetchAllRows<{ ym: string; category_id: number | null; store: string | null }>(
+  // 0으로 보였다 — 2026-08-21 감사 P3-3; 확정 자체는 서버(count) 재검증이 막지만 화면이 어긋난다).
+  // categories 는 미지정 판정용 — 순수 손익 제외 분류는 미지정이어도 결산을 안 막는다(2026-08-23).
+  const txns = await fetchAllRows<{ ym: string; category_id: number | null; store: string | null; categories: { type: string; name: string } | null }>(
     (from, to) =>
-      supabase.schema('finance').from('transactions').select('ym,category_id,store').eq('brand', unit.brand).order('id').range(from, to),
+      supabase
+        .schema('finance')
+        .from('transactions')
+        .select('ym,category_id,store,categories(type,name)')
+        .eq('brand', unit.brand)
+        .order('id')
+        .range(from, to),
     { page: 20000, label: '거래' }
   );
 
@@ -60,14 +68,15 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
     (closes ?? []).map((c: { ym: string; status: string; confirmed_at: string | null }) => [c.ym, c])
   );
   const agg = new Map<string, { total: number; unclassified: number; unassigned: number }>();
-  for (const t of (txns as { ym: string; category_id: number | null; store: string | null }[]) ?? []) {
+  for (const t of txns) {
     const a = agg.get(t.ym) ?? { total: 0, unclassified: 0, unassigned: 0 };
     if (unit.store) {
-      // 지점 단위: 그 지점 거래 + 미지정 거래(확정 차단 사유)를 나눠 센다
+      // 지점 단위: 그 지점 거래 + 미지정 거래(확정 차단 사유)를 나눠 센다.
+      // 미지정은 서버 게이트와 같은 규칙(isStoreBlocking) — 순수 손익 제외 분류는 안 센다(2026-08-23)
       if (t.store === unit.store) {
         a.total += 1;
         if (t.category_id == null) a.unclassified += 1;
-      } else if (t.store == null) {
+      } else if (t.store == null && isStoreBlocking(t.categories)) {
         a.unassigned += 1;
       } else {
         agg.set(t.ym, a);
