@@ -12,8 +12,11 @@ tx as (
   from finance.transactions t
   left join finance.categories c on c.id = t.category_id
 ),
+-- 재계산은 **확정 단위와 같은 축** — 스탭밀은 store 필터 없음(''), 가든은 지점 정확 일치.
+-- 지점 스냅샷은 store 필터로 계산되므로(미지정 행 제외) 재계산도 같은 필터를 써야 하고,
+-- 브랜드 합으로 비교하면 한 지점만 확정된 달에 오탐이 난다(2026-08-23 보강).
 per as (
-  select brand, ym,
+  select brand, coalesce(store,'') st, ym,
     sum(case when coalesce(source,'bank') not in ('naverpay','coupang','card')
               and memo ~ '(비씨카드|BC바로카드|BC카드|현대카드|신한카드|삼성카드|국민카드|롯데카드|하나카드|우리카드)'
               and (amount_out - amount_in) > 0
@@ -38,53 +41,72 @@ per as (
            and not (memo ~ '(비씨카드|BC바로카드|BC카드|현대카드|신한카드|삼성카드|국민카드|롯데카드|하나카드|우리카드)'
                     and (amount_out - amount_in) > 0)
       then amount_out - amount_in else 0 end) as misang
-  from tx group by brand, ym
+  from tx group by brand, coalesce(store,''), ym
 ),
-calc as (
-  select brand, ym,
+-- 단위별 재계산: 스탭밀(store='') = 브랜드 전체(지점 무관 합), 가든 지점 = 그 지점 행만
+calc_unit as (
+  -- 지점 단위(가든 양재/판교) — store 정확 일치
+  select brand, st, ym,
     bank_direct + greatest(card_payment - naverpay - coupang, 0) + naverpay + coupang + card_stmt + unclassified + misang as total
-  from per
+  from per where st <> ''
+  union all
+  -- 브랜드 단위(스탭밀) — 전 행 합(스냅샷 계산도 store 필터가 없다)
+  select brand, '' as st, ym,
+    sum(bank_direct) + greatest(sum(card_payment) - sum(naverpay) - sum(coupang), 0)
+      + sum(naverpay) + sum(coupang) + sum(card_stmt) + sum(unclassified) + sum(misang) as total
+  from per group by brand, ym
 ),
 snap as (
-  select distinct on (brand, store, ym) brand, store, ym,
+  select distinct on (brand, store, ym) brand, coalesce(store,'') st, ym,
     (figures->'expense'->>'total')::bigint as snap_total,
     (figures->'revenue'->>'pos')::bigint as snap_pos,
     (figures->>'txCount')::int as snap_txc
   from finance.close_snapshots
   order by brand, store, ym, version desc
 ),
--- 스냅샷은 (brand, store) 단위 — 브랜드 합계 비교는 지점 스냅샷 합으로
-snap_brand as (
-  select brand, ym, sum(snap_total) snap_total, sum(snap_pos) snap_pos, sum(snap_txc) snap_txc
-  from snap group by brand, ym
-),
 confirmed as (
-  select distinct brand, ym from finance.monthly_close where status = 'confirmed'
+  select brand, coalesce(store,'') st, ym from finance.monthly_close where status = 'confirmed'
 ),
 c1 as (
-  select 'c1_전처리1_스냅샷_불일치' as check, c.brand || ' ' || c.ym || ': 재계산 ' || c.total || ' vs 스냅샷 ' || s.snap_total as detail
-  from calc c
-  join confirmed cf on cf.brand = c.brand and cf.ym = c.ym
-  join snap_brand s on s.brand = c.brand and s.ym = c.ym
+  select 'c1_전처리1_스냅샷_불일치' as check,
+    c.brand || '/' || coalesce(nullif(c.st,''),'-') || ' ' || c.ym || ': 재계산 ' || c.total || ' vs 스냅샷 ' || s.snap_total as detail
+  from confirmed cf
+  join snap s on s.brand = cf.brand and s.st = cf.st and s.ym = cf.ym
+  join calc_unit c on c.brand = cf.brand and c.st = cf.st and c.ym = cf.ym
   where c.total <> s.snap_total
 ),
--- c2) 매출 정본(pos_sales + 식권) vs 스냅샷 + 결산 후 거래 수 변동
-pos as (
-  select brand, to_char(sale_date,'YYYY-MM') ym, sum(gross) g from finance.pos_sales group by 1,2
+-- c2) 매출 정본(pos_sales + 식권) vs 스냅샷 + 결산 후 거래 수 변동 — 확정 단위 축
+pos_unit as (
+  select brand, coalesce(store,'') st, to_char(sale_date,'YYYY-MM') ym, sum(gross) g from finance.pos_sales group by 1,2,3
 ),
-gift as (
-  select brand, to_char(sale_date,'YYYY-MM') ym, sum(gross) g from finance.pos_gift_sales group by 1,2
+gift_unit as (
+  select brand, coalesce(store,'') st, to_char(sale_date,'YYYY-MM') ym, sum(gross) g from finance.pos_gift_sales group by 1,2,3
 ),
-txc as ( select brand, ym, count(*) c from finance.transactions group by 1,2 ),
+txc_unit as (
+  select brand, coalesce(store,'') st, ym, count(*) c from finance.transactions group by 1,2,3
+),
+-- 브랜드 단위(store='')는 전 행 합으로 다시 편다(스탭밀 스냅샷 계산과 동일 축)
+posv as (
+  select brand, st, ym, g from pos_unit where st <> ''
+  union all select brand, '' st, ym, sum(g) from pos_unit group by brand, ym
+),
+giftv as (
+  select brand, st, ym, g from gift_unit where st <> ''
+  union all select brand, '' st, ym, sum(g) from gift_unit group by brand, ym
+),
+txcv as (
+  select brand, st, ym, c from txc_unit where st <> ''
+  union all select brand, '' st, ym, sum(c) from txc_unit group by brand, ym
+),
 c2 as (
   select 'c2_매출정본_또는_거래수_변동' as check,
-    s.brand || ' ' || s.ym || ': pos 재계산 ' || (coalesce(p.g,0)+coalesce(g.g,0)) || ' vs 스냅샷 ' || s.snap_pos
+    s.brand || '/' || coalesce(nullif(s.st,''),'-') || ' ' || s.ym || ': pos 재계산 ' || (coalesce(p.g,0)+coalesce(g.g,0)) || ' vs 스냅샷 ' || s.snap_pos
       || ' · 거래수 ' || coalesce(t.c,0) || ' vs ' || s.snap_txc as detail
-  from snap_brand s
-  join confirmed cf on cf.brand = s.brand and cf.ym = s.ym
-  left join pos p on p.brand = s.brand and p.ym = s.ym
-  left join gift g on g.brand = s.brand and g.ym = s.ym
-  left join txc t on t.brand = s.brand and t.ym = s.ym
+  from confirmed cf
+  join snap s on s.brand = cf.brand and s.st = cf.st and s.ym = cf.ym
+  left join posv p on p.brand = s.brand and p.st = s.st and p.ym = s.ym
+  left join giftv g on g.brand = s.brand and g.st = s.st and g.ym = s.ym
+  left join txcv t on t.brand = s.brand and t.st = s.st and t.ym = s.ym
   where coalesce(p.g,0)+coalesce(g.g,0) <> s.snap_pos or coalesce(t.c,0) <> s.snap_txc
 ),
 -- c3) 전처리4 정합 — 상품별 합 = 일자별 매출. **지점 단위 비교**(가든은 지점별 파일이 따로라
