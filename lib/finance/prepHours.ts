@@ -228,3 +228,142 @@ export function buildHoursPrep(
     range: dates.length ? { from: dates[0], to: lastDate } : null,
   };
 }
+
+// ── 매출 비중 (2026-08-26 대표 요청) ─────────────────────────────────────────
+// 선택 상품이 그 지점 전체 POS 매출에서 몇 %인지. 분모(전체 매출)는 같은 테이블의 전 상품 합이고,
+// 이 합은 pos_sales(전처리3 정본)와 4개월 수량·금액 완전 일치가 검증돼 있다.
+
+export interface ShareRow {
+  bucket: string;
+  days: number; // 그 구간의 영업일 수(매장 기준)
+  itemQty: number;
+  itemGross: number;
+  totalGross: number;
+  share: number | null; // itemGross ÷ totalGross
+  avgGram: number | null;
+}
+
+export interface ShareAverage {
+  grain: ExpenseGrain;
+  label: string; // '일 평균' · '주 평균' · '월 평균'
+  buckets: number; // 평균을 낸 구간 수
+  itemQty: number; // 구간당 평균 판매 건수
+  itemGross: number; // 구간당 평균 상품 매출
+  totalGross: number; // 구간당 평균 전체 매출
+  share: number | null; // 가중 비중(합÷합) — 구간별 비중의 산술평균이 아니다
+  avgGram: number | null;
+}
+
+export interface SharePrep {
+  rows: ShareRow[]; // 최신 구간 먼저
+  totals: ShareRow; // 전 구간 합(bucket='합계')
+  averages: ShareAverage[]; // 일·주·월 — 상품이 팔린 구간만 대상
+}
+
+const AVG_GRAINS: { grain: ExpenseGrain; label: string }[] = [
+  { grain: 'day', label: '일 평균' },
+  { grain: 'week', label: '주 평균' },
+  { grain: 'month', label: '월 평균' },
+];
+
+interface ShareAcc {
+  itemQty: number;
+  itemGross: number;
+  itemGrams: number;
+  hasGram: boolean;
+  totalGross: number;
+  days: Set<string>;
+}
+const emptyShare = (): ShareAcc => ({ itemQty: 0, itemGross: 0, itemGrams: 0, hasGram: false, totalGross: 0, days: new Set() });
+
+function accumulate(map: Map<string, ShareAcc>, key: string, r: HourSale, isItem: boolean, brand: string, store: string) {
+  const a = map.get(key) ?? emptyShare();
+  a.totalGross += Number(r.gross);
+  a.days.add(r.sale_date);
+  if (isItem) {
+    a.itemQty += Number(r.qty);
+    a.itemGross += Number(r.gross);
+    const rule = gramRuleFor(brand, store, r.product, r.sale_date);
+    if (rule) {
+      a.itemGrams += Number(r.list_price) / rule.wonPerGram;
+      a.hasGram = true;
+    }
+  }
+  map.set(key, a);
+}
+
+const toShareRow = (bucket: string, a: ShareAcc): ShareRow => ({
+  bucket,
+  days: a.days.size,
+  itemQty: a.itemQty,
+  itemGross: a.itemGross,
+  totalGross: a.totalGross,
+  share: a.totalGross > 0 ? a.itemGross / a.totalGross : null,
+  avgGram: a.hasGram && a.itemQty > 0 ? a.itemGrams / a.itemQty : null,
+});
+
+/**
+ * @param all     기간 안의 전 상품 행(분모)
+ * @param product 비중을 볼 상품(분자)
+ */
+export function buildSharePrep(
+  all: HourSale[],
+  product: string,
+  brand: string,
+  store: string,
+  grain: ExpenseGrain = 'day',
+): SharePrep {
+  const byBucket = new Map<string, ShareAcc>();
+  const total = emptyShare();
+  // 평균용 — 세 단위를 동시에 쌓는다(토글과 무관하게 일·주·월 평균을 함께 보여주려고)
+  const byGrain: Record<ExpenseGrain, Map<string, ShareAcc>> = { day: new Map(), week: new Map(), month: new Map() };
+
+  for (const r of all) {
+    const isItem = r.product === product;
+    accumulate(byBucket, bucketOfDate(r.sale_date, grain), r, isItem, brand, store);
+    for (const g of AVG_GRAINS) accumulate(byGrain[g.grain], bucketOfDate(r.sale_date, g.grain), r, isItem, brand, store);
+    total.totalGross += Number(r.gross);
+    total.days.add(r.sale_date);
+    if (isItem) {
+      total.itemQty += Number(r.qty);
+      total.itemGross += Number(r.gross);
+      const rule = gramRuleFor(brand, store, r.product, r.sale_date);
+      if (rule) {
+        total.itemGrams += Number(r.list_price) / rule.wonPerGram;
+        total.hasGram = true;
+      }
+    }
+  }
+
+  const rows = Array.from(byBucket.entries())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([b, a]) => toShareRow(b, a));
+
+  const averages: ShareAverage[] = AVG_GRAINS.map(({ grain: g, label }) => {
+    // 상품이 안 팔린 구간(판매 개시 전 등)은 평균에서 뺀다 — 넣으면 평균이 근거 없이 희석된다
+    const accs = Array.from(byGrain[g].values()).filter((a) => a.itemQty !== 0);
+    const n = accs.length;
+    const sum = accs.reduce(
+      (s, a) => ({
+        itemQty: s.itemQty + a.itemQty,
+        itemGross: s.itemGross + a.itemGross,
+        totalGross: s.totalGross + a.totalGross,
+        itemGrams: s.itemGrams + a.itemGrams,
+        hasGram: s.hasGram || a.hasGram,
+      }),
+      { itemQty: 0, itemGross: 0, totalGross: 0, itemGrams: 0, hasGram: false },
+    );
+    return {
+      grain: g,
+      label,
+      buckets: n,
+      itemQty: n ? sum.itemQty / n : 0,
+      itemGross: n ? sum.itemGross / n : 0,
+      totalGross: n ? sum.totalGross / n : 0,
+      share: sum.totalGross > 0 ? sum.itemGross / sum.totalGross : null,
+      avgGram: sum.hasGram && sum.itemQty > 0 ? sum.itemGrams / sum.itemQty : null,
+    };
+  });
+
+  return { rows, totals: toShareRow('합계', total), averages };
+}

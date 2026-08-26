@@ -7,7 +7,13 @@ import AccountingNav from '@/components/AccountingNav';
 import { unitOf, UNITS } from '@/lib/finance/types';
 import type { ExpenseGrain } from '@/lib/finance/prepExpense';
 import { fetchAllRows } from '@/lib/finance/fetchAll';
-import { buildHoursPrep, productOptions, type HourSale, type TrendRow } from '@/lib/finance/prepHours';
+import {
+  buildHoursPrep,
+  buildSharePrep,
+  productOptions,
+  type HourSale,
+  type TrendRow,
+} from '@/lib/finance/prepHours';
 import HoursProductPicker from '@/components/finance/HoursProductPicker';
 
 // 전처리5 — 시간대별 판매. pos_item_hours(영업일 × 시각 × 상품)를 시간대·기간·요일 세 축으로 편다.
@@ -46,7 +52,7 @@ export default async function PrepHoursPage({
   const grain: ExpenseGrain = GRAINS.some((g) => g.key === searchParams.grain)
     ? (searchParams.grain as ExpenseGrain)
     : 'day';
-  const span = SPANS.find((s) => s.key === searchParams.span) ?? SPANS[1];
+  const span = SPANS.find((s) => s.key === searchParams.span) ?? SPANS[3]; // 기본 전체
   const since = span.days ? ymd(new Date(Date.now() - span.days * 86_400_000)) : null;
   const store = unit.store ?? '';
 
@@ -77,6 +83,8 @@ export default async function PrepHoursPage({
   const picked = rows.filter((r) => r.product === selected);
   const { hours, trend: allTrend, dow, totals, rule } = buildHoursPrep(picked, unit.brand, store, grain);
   const trend = allTrend.slice(0, TREND_LIMIT[grain]);
+  const share = buildSharePrep(rows, selected, unit.brand, store, grain);
+  const shareRows = share.rows.slice(0, TREND_LIMIT[grain]);
 
   const href = (next: { product?: string; grain?: string; span?: string }) =>
     `/finance/prep/hours?unit=${unit.id}&product=${encodeURIComponent(next.product ?? selected)}&grain=${
@@ -220,10 +228,125 @@ export default async function PrepHoursPage({
                 건당 <b className="tabular-nums">{n0(totals.qty ? totals.gross / totals.qty : 0)}원</b>
                 <span className="text-muted-foreground"> · 매출 {n0(totals.gross)}원(VAT 포함)</span>
               </span>
+              <span>
+                전체 매출의{' '}
+                <b className="tabular-nums">{share.totals.share === null ? '—' : `${(share.totals.share * 100).toFixed(1)}%`}</b>
+                <span className="text-muted-foreground"> · 매장 전체 {n0(share.totals.totalGross)}원</span>
+              </span>
               <span className="text-muted-foreground">
                 하루 평균 {totals.days ? n1(totals.qty / totals.days) : 0}건
               </span>
             </div>
+
+            <h2 className="mb-2 text-[15px] font-medium">매출 비중</h2>
+            <div className="mb-3 overflow-auto rounded-md border border-border">
+              <table className="w-max min-w-full border-collapse text-[13px]">
+                <thead className="sticky top-0 z-10 bg-card">
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="whitespace-nowrap px-3 py-2 text-left font-normal">단위</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right font-normal">구간 수</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right font-normal">판매 건수</th>
+                    {hasGram && <th className="whitespace-nowrap px-3 py-2 text-right font-normal">평균 그램</th>}
+                    <th className="whitespace-nowrap px-3 py-2 text-right font-normal">{selected} 매출</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right font-normal">매장 전체 매출</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right font-normal">비중</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {share.averages.map((a) => (
+                    <tr key={a.grain} className="border-b border-border/50 last:border-0">
+                      <td className="whitespace-nowrap px-3 py-1.5">{a.label}</td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                        {a.buckets}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{n1(a.itemQty)}</td>
+                      {hasGram && (
+                        <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">
+                          {a.avgGram === null ? '' : `${n0(a.avgGram)}g`}
+                        </td>
+                      )}
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right font-medium tabular-nums">
+                        {n0(a.itemGross)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                        {n0(a.totalGross)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right font-medium tabular-nums">
+                        {a.share === null ? '' : `${(a.share * 100).toFixed(1)}%`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mb-4 text-[12px] text-muted-foreground">
+              평균은 <b>{selected}가 팔린 구간</b>만 대상이에요(판매 개시 전 구간을 넣으면 평균이 근거 없이
+              희석돼요). 비중은 구간별 비중의 산술평균이 아니라 <b>합 ÷ 합(가중)</b>이고, 매장 전체 매출은 같은
+              표의 전 상품 합 — 전처리3 POS 매출(정본)과 일치해요.
+            </p>
+
+            <div className="mb-2 overflow-auto rounded-md border border-border">
+              <table className="w-max min-w-full border-collapse text-[13px]">
+                <thead className="sticky top-0 z-10 bg-card">
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="whitespace-nowrap px-3 py-2 text-left font-normal">구간</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right font-normal">영업일</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right font-normal">판매 건수</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right font-normal">{selected} 매출</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right font-normal">매장 전체 매출</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right font-normal">비중</th>
+                    <th className="w-[200px] px-3 py-2 text-left font-normal">분포</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-border bg-muted/40">
+                    <td className="whitespace-nowrap px-3 py-1.5 font-medium">전체</td>
+                    <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                      {share.totals.days}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-1.5 text-right font-medium tabular-nums">
+                      {n0(share.totals.itemQty)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-1.5 text-right font-medium tabular-nums">
+                      {n0(share.totals.itemGross)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">
+                      {n0(share.totals.totalGross)}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-1.5 text-right font-medium tabular-nums">
+                      {share.totals.share === null ? '' : `${(share.totals.share * 100).toFixed(1)}%`}
+                    </td>
+                    <td className="px-3 py-1.5" />
+                  </tr>
+                  {shareRows.map((r) => (
+                    <tr key={r.bucket} className="border-b border-border/50 last:border-0">
+                      <td className="whitespace-nowrap px-3 py-1.5 tabular-nums">{bucketLabel(r.bucket)}</td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                        {r.days}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{n0(r.itemQty)}</td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{n0(r.itemGross)}</td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                        {n0(r.totalGross)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right font-medium tabular-nums">
+                        {r.share === null ? '' : `${(r.share * 100).toFixed(1)}%`}
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <span
+                          className="block h-2 rounded-sm bg-foreground/70"
+                          style={{ width: `${Math.max(1, Math.min(100, (r.share ?? 0) * 100))}%` }}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mb-8 text-[12px] text-muted-foreground">
+              구간 단위는 위 <b>일별·주별·월별</b> 토글을 따라요. 매출은 둘 다 실판매금액(VAT 포함)이라 비중은
+              같은 기준끼리의 비교예요. 막대는 비중(0~100%)이에요.
+            </p>
 
             <h2 className="mb-2 text-[15px] font-medium">시간대별</h2>
             <div className="mb-2 overflow-auto rounded-md border border-border">
