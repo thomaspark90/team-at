@@ -166,11 +166,11 @@ export default async function PrepHoursPage({
           <>
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <HoursProductPicker
-                products={products}
+                products={products.map((p) => ({ product: p.product, category: p.category, qty: p.qty, gram: p.gram }))}
                 value={selected}
-                hrefFor={(p) =>
-                  `/finance/prep/hours?unit=${unit.id}&product=${encodeURIComponent(p)}&grain=${grain}&span=${span.key}`
-                }
+                unit={unit.id}
+                grain={grain}
+                span={span.key}
               />
               <div className="flex overflow-hidden rounded-md border border-border">
                 {SPANS.map((s) => (
