@@ -49,6 +49,7 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
     { href: '/finance/prep/expense-detail', label: '전처리2 지출구분' },
     { href: '/finance/prep/revenue', label: '전처리3 매출' },
     { href: '/finance/prep/menu', label: '전처리4 메뉴' },
+    { href: '/finance/prep/hours', label: '전처리5 시간대' },
     { href: '/finance/classify', label: '지출 자료 분류' },
     { href: '/finance/uploads', label: '자료 이력' },
     { href: '/finance/originals', label: '원본 자료함' },

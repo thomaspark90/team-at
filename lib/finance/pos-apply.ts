@@ -230,6 +230,56 @@ export async function applyPosParseResult(
       for (const ym of targetYms) if (!have.has(ym)) giftBackfillYms.add(ym);
     }
   }
+  // 시간대 행(pos_item_hours) 누락 백필 — gift 와 같은 원리(2026-08-26 신설 이전에 올린 달은
+  // dup 판정으로 건너뛰어도 시간대 행이 비어 있다). 그 달만 시간대 행을 채운다.
+  const hoursBackfillYms = new Set<string>();
+  {
+    const targetYms = Array.from(new Set((r.hours ?? []).map((d) => d.ym))).filter((ym) => dupYms.has(ym));
+    if (targetYms.length > 0) {
+      const { data: haveHours } = await supabase
+        .schema('finance')
+        .from('pos_item_hours')
+        .select('ym')
+        .eq('brand', brand)
+        .eq('store', store)
+        .in('ym', targetYms);
+      const have = new Set(((haveHours ?? []) as { ym: string }[]).map((g) => g.ym));
+      for (const ym of targetYms) if (!have.has(ym)) hoursBackfillYms.add(ym);
+    }
+  }
+
+  // 시간대 행 저장 — 대상 달 필터만 다르고 절차는 본 저장과 동일(upsert 후 잔여 정리는 호출부에서).
+  const upsertHours = async (yms: Set<string>, ts: string): Promise<string | null> => {
+    const rows = (r.hours ?? []).filter((d) => yms.has(d.ym));
+    if (rows.length === 0) return null;
+    const { error } = await supabase
+      .schema('finance')
+      .from('pos_item_hours')
+      .upsert(
+        rows.map((d) => ({
+          ym: d.ym,
+          sale_date: d.saleDate,
+          hour: d.hour,
+          brand,
+          store,
+          category: d.category,
+          product: d.product,
+          option: d.option,
+          qty: d.qty,
+          orders: d.orders,
+          list_price: d.listPrice,
+          gross: d.gross,
+          vat: d.vat,
+          supply: d.supply,
+          uploaded_by: user.id,
+          uploaded_at: ts,
+        })),
+        { onConflict: 'sale_date,hour,brand,store,category,product,option' },
+      );
+    if (error && !isMissingTable(error)) return error.message;
+    return null;
+  };
+
   const upsertGiftBackfill = async (): Promise<string | null> => {
     if (giftBackfillYms.size === 0) return null;
     const ts = new Date().toISOString();
@@ -249,6 +299,8 @@ export async function applyPosParseResult(
     // 단 선수금 누락 달이 있으면 그 백필만 수행한다(위 실사고의 복구 경로).
     const giftErr = await upsertGiftBackfill();
     if (giftErr) return { ok: false, status: 500, error: `식권 판매 저장 실패: ${giftErr}` };
+    const hoursErr = await upsertHours(hoursBackfillYms, new Date().toISOString());
+    if (hoursErr) return { ok: false, status: 500, error: `시간대 판매 저장 실패: ${hoursErr}` };
     const giftNote = giftBackfillYms.size > 0 ? ` · 선수금 백필 ${Array.from(giftBackfillYms).join(', ')}` : '';
     await logActivity(supabase, user, actionLabel, `${brandLine} · ${r.yms.join(', ')} 전부 기존 자료와 동일 — 건너뜀${giftNote}`);
     return {
@@ -339,6 +391,24 @@ export async function applyPosParseResult(
       await supabase
         .schema('finance')
         .from('pos_items')
+        .delete()
+        .in('ym', changedYms)
+        .eq('brand', brand)
+        .eq('store', store)
+        .lt('uploaded_at', now);
+    }
+  }
+
+  // 시간대별 품목(pos_item_hours) — 토스 리포트('주문시작시각' 컬럼)만 채운다(2026-08-26).
+  // pos_items 와 같은 (upsert 후 잔여 정리) 절차. 테이블 미생성이면 조용히 건너뛴다(비치명).
+  {
+    const targetYms = new Set([...changedYms, ...Array.from(hoursBackfillYms)]);
+    const hoursErr = await upsertHours(targetYms, now);
+    if (hoursErr) return { ok: false, status: 500, error: `시간대 판매 저장 실패: ${hoursErr}` };
+    if (!hoursErr && (r.hours ?? []).some((d) => targetYms.has(d.ym))) {
+      await supabase
+        .schema('finance')
+        .from('pos_item_hours')
         .delete()
         .in('ym', changedYms)
         .eq('brand', brand)

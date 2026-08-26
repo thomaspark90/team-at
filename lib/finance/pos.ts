@@ -45,6 +45,28 @@ export interface PosItemRow {
   supply: number;
 }
 
+// (영업일 × 시각 × 카테고리 × 상품 × 옵션) 행 — finance.pos_item_hours 용. 토스 리포트의
+// '주문시작시각'을 쓴다(페이히어는 이 컬럼이 없어 비어 있다).
+//  - listPrice(상품가격 합, 할인 전)를 따로 담는 이유: 그램 단위 판매(가든 양재천 '브런치바')는
+//    '정가 ÷ 그램당 단가'로 그램을 역산하는데, 할인·선불권 결제 행은 실판매금액이 깎이거나 0이라
+//    gross 로 재면 담은 양이 사라진다.
+//  - orders 는 이 버킷 안의 서로 다른 주문번호 수 — 한 주문에 같은 상품이 두 접시 들어가는
+//    경우(브런치바 2인분)를 수량과 구분하려고 센다.
+export interface PosItemHourRow {
+  ym: string;
+  saleDate: string;
+  hour: number; // 0~23
+  category: string;
+  product: string;
+  option: string;
+  qty: number;
+  orders: number;
+  listPrice: number;
+  gross: number;
+  vat: number;
+  supply: number;
+}
+
 // (일 × 상품) 식권·상품권 판매 행 — finance.pos_gift_sales 용. 선수금이라 매출(rows)에서
 // 빠지는 금액을 버리지 않고 담는다(2026-08-20) — 보정 정산률 100% 초과의 주 원인 실측용.
 export interface PosGiftRow {
@@ -61,6 +83,7 @@ export interface PosParseResult {
   rows: PosDailyCat[]; // (일 × 카테고리) 집계 — pos_sales 삽입용
   items?: PosItemRow[]; // (일 × 카테고리 × 상품명 × 옵션) — pos_items 삽입용. 토스만 채운다.
   giftRows?: PosGiftRow[]; // (일 × 상품) 식권 판매(선수금) — pos_gift_sales 삽입용
+  hours?: PosItemHourRow[]; // (일 × 시각 × 카테고리 × 상품 × 옵션) — pos_item_hours 삽입용. 토스만 채운다.
   byCategory: PosCategoryAgg[]; // 월 카테고리 요약
   totals: { qty: number; gross: number; vat: number; supply: number };
   excluded: { rows: number; gross: number; vat: number }; // 제외된 상품권
@@ -137,6 +160,20 @@ function toYmd(v: unknown): string | null {
   return null;
 }
 
+// 주문시작시각 → 0~23 시. 신형은 '2026-08-23 13:49:27' 문자열, 구형 엑셀은 serial(날짜+시각 소수부).
+// 형식을 못 읽으면 null — 그 행은 시간대 집계에서만 빠지고 매출 집계엔 영향이 없다.
+function toHour(v: unknown): number | null {
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    const frac = v - Math.floor(v);
+    const h = Math.floor(frac * 24 + 1e-9);
+    return h >= 0 && h <= 23 ? h : null;
+  }
+  const m = String(v ?? '').match(/(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const h = Number(m[1]);
+  return h >= 0 && h <= 23 ? h : null;
+}
+
 const num = (v: unknown): number => {
   if (typeof v === 'number') return v;
   const n = Number(String(v ?? '').replace(/[,\s]/g, ''));
@@ -152,6 +189,10 @@ function locateColumns(rows: unknown[][]): { hdr: number; ci: Record<string, num
         hdr: i,
         ci: {
           date: norm.indexOf('주문기준일자'),
+          // 시간대 리포트용(2026-08-26) — 없으면 -1 이고 hours 가 빈 배열이 된다(구 형식·다른 리포트 대비)
+          time: norm.indexOf('주문시작시각'),
+          orderNo: norm.indexOf('주문번호'),
+          price: norm.indexOf('상품가격'),
           state: norm.indexOf('결제상태'),
           channel: norm.indexOf('주문채널'),
           name: norm.indexOf('상품명'),
@@ -185,6 +226,8 @@ export function parsePosRows(rows: unknown[][]): PosParseResult {
   const { ci } = loc;
   const daily = new Map<string, PosDailyCat>(); // key = saleDate|category
   const itemAgg = new Map<string, PosItemRow>(); // key = saleDate|category|product|option
+  // key = saleDate|hour|category|product|option — 주문번호는 orders(고유 주문 수) 계산용으로 따로 모은다
+  const hourAgg = new Map<string, { row: PosItemHourRow; orderNos: Set<string> }>();
   const giftAgg = new Map<string, PosGiftRow>(); // key = saleDate|item — 선수금 판매
   const excluded = { rows: 0, gross: 0, vat: 0 };
   const ymCount = new Map<string, number>();
@@ -242,6 +285,27 @@ export function parsePosRows(rows: unknown[][]): PosParseResult {
     it.vat += vat;
     it.supply += gross - vat;
     itemAgg.set(itemKey, it);
+
+    // 시간대 행 — '주문시작시각'이 있는 리포트(토스)만. 시각을 못 읽는 행은 조용히 건너뛴다.
+    const hour = ci.time >= 0 ? toHour(r[ci.time]) : null;
+    if (hour !== null) {
+      const hKey = `${itemKey}|${hour}`;
+      const h =
+        hourAgg.get(hKey) ??
+        {
+          row: { ym, saleDate, hour, category, product, option, qty: 0, orders: 0, listPrice: 0, gross: 0, vat: 0, supply: 0 },
+          orderNos: new Set<string>(),
+        };
+      h.row.qty += num(r[ci.qty]);
+      // 상품가격(정가) — 컬럼이 없으면 실판매금액으로 폴백(할인분만큼 과소 계상됨을 감수)
+      h.row.listPrice += Math.round(ci.price >= 0 ? num(r[ci.price]) : gross);
+      h.row.gross += gross;
+      h.row.vat += vat;
+      h.row.supply += gross - vat;
+      const ord = ci.orderNo >= 0 ? String(r[ci.orderNo] ?? '').trim() : '';
+      if (ord) h.orderNos.add(ord);
+      hourAgg.set(hKey, h);
+    }
   }
 
   const out = Array.from(daily.values()).sort(
@@ -279,12 +343,24 @@ export function parsePosRows(rows: unknown[][]): PosParseResult {
     (a, b) => a.saleDate.localeCompare(b.saleDate) || a.item.localeCompare(b.item),
   );
 
+  const hours = Array.from(hourAgg.values())
+    .map(({ row, orderNos }) => ({ ...row, orders: orderNos.size }))
+    .sort(
+      (a, b) =>
+        a.saleDate.localeCompare(b.saleDate) ||
+        a.hour - b.hour ||
+        a.category.localeCompare(b.category) ||
+        a.product.localeCompare(b.product) ||
+        a.option.localeCompare(b.option),
+    );
+
   return {
     ym,
     yms,
     rows: out,
     items,
     giftRows,
+    hours,
     byCategory,
     totals,
     excluded,
