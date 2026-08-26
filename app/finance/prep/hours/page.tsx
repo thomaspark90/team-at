@@ -91,7 +91,7 @@ export default async function PrepHoursPage({
   const bucketLabel = (b: string) =>
     grain === 'week' ? `${b.slice(5).replace('-', '/')}~` : grain === 'day' ? b.slice(5).replace('-', '/') : b;
 
-  const trendTable = (list: TrendRow[], firstLabel: string, showHours: boolean) => (
+  const trendTable = (list: TrendRow[], firstLabel: string, showHours: boolean, label: (b: string) => string) => (
     <div className="overflow-auto rounded-md border border-border">
       <table className="w-max min-w-full border-collapse text-[13px]">
         <thead className="sticky top-0 z-10 bg-card">
@@ -109,7 +109,7 @@ export default async function PrepHoursPage({
         <tbody>
           {list.map((t) => (
             <tr key={t.bucket} className="border-b border-border/50 last:border-0">
-              <td className="whitespace-nowrap px-3 py-1.5 tabular-nums">{bucketLabel(t.bucket)}</td>
+              <td className="whitespace-nowrap px-3 py-1.5 tabular-nums">{label(t.bucket)}</td>
               <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">{t.days}</td>
               <td className="whitespace-nowrap px-3 py-1.5 text-right font-medium tabular-nums">{n0(t.qty)}</td>
               <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
@@ -283,10 +283,10 @@ export default async function PrepHoursPage({
             </p>
 
             <h2 className="mb-2 text-[15px] font-medium">기간 추이</h2>
-            <div className="mb-8">{trendTable(trend, '구간', true)}</div>
+            <div className="mb-8">{trendTable(trend, '구간', true, bucketLabel)}</div>
 
             <h2 className="mb-2 text-[15px] font-medium">요일별</h2>
-            <div className="mb-4">{trendTable(dow, '요일', false)}</div>
+            <div className="mb-4">{trendTable(dow, '요일', false, (b) => `${b}요일`)}</div>
 
             <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
               {rule ? (
