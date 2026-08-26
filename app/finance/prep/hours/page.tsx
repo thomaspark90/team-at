@@ -9,8 +9,11 @@ import type { ExpenseGrain } from '@/lib/finance/prepExpense';
 import { fetchAllRows } from '@/lib/finance/fetchAll';
 import {
   buildHoursPrep,
+  buildProductShareGrid,
   buildSharePrep,
   productOptions,
+  weekOrdinalLabel,
+  OTHER_COL,
   type HourSale,
   type TrendRow,
 } from '@/lib/finance/prepHours';
@@ -51,7 +54,7 @@ export default async function PrepHoursPage({
   if (unit.brand === 'personal') redirect('/finance/classify?unit=personal');
   const grain: ExpenseGrain = GRAINS.some((g) => g.key === searchParams.grain)
     ? (searchParams.grain as ExpenseGrain)
-    : 'day';
+    : 'week';
   const span = SPANS.find((s) => s.key === searchParams.span) ?? SPANS[3]; // 기본 전체
   const since = span.days ? ymd(new Date(Date.now() - span.days * 86_400_000)) : null;
   const store = unit.store ?? '';
@@ -85,6 +88,8 @@ export default async function PrepHoursPage({
   const trend = allTrend.slice(0, TREND_LIMIT[grain]);
   const share = buildSharePrep(rows, selected, unit.brand, store, grain);
   const shareRows = share.rows.slice(0, TREND_LIMIT[grain]);
+  const grid = buildProductShareGrid(rows, grain, { top: 12, pin: selected });
+  const gridRows = grid.rows.slice(0, TREND_LIMIT[grain]);
 
   const href = (next: { product?: string; grain?: string; span?: string }) =>
     `/finance/prep/hours?unit=${unit.id}&product=${encodeURIComponent(next.product ?? selected)}&grain=${
@@ -97,7 +102,11 @@ export default async function PrepHoursPage({
   const hasGram = totals.grams !== null;
   const maxQty = Math.max(1, ...hours.map((h) => Math.abs(h.qty)));
   const bucketLabel = (b: string) =>
-    grain === 'week' ? `${b.slice(5).replace('-', '/')}~` : grain === 'day' ? b.slice(5).replace('-', '/') : b;
+    grain === 'week'
+      ? `${weekOrdinalLabel(b)} (${b.slice(5).replace('-', '/')}~)`
+      : grain === 'day'
+      ? b.slice(5).replace('-', '/')
+      : b;
 
   const trendTable = (list: TrendRow[], firstLabel: string, showHours: boolean, label: (b: string) => string) => (
     <div className="overflow-auto rounded-md border border-border">
@@ -346,6 +355,75 @@ export default async function PrepHoursPage({
             <p className="mb-8 text-[12px] text-muted-foreground">
               구간 단위는 위 <b>일별·주별·월별</b> 토글을 따라요. 매출은 둘 다 실판매금액(VAT 포함)이라 비중은
               같은 기준끼리의 비교예요. 막대는 비중(0~100%)이에요.
+            </p>
+
+            <h2 className="mb-2 text-[15px] font-medium">구간 × 상품 비중</h2>
+            <div className="mb-2 overflow-auto rounded-md border border-border">
+              <table className="w-max min-w-full border-collapse text-[13px]">
+                <thead className="sticky top-0 z-10 bg-card">
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">기간</th>
+                    <th className="whitespace-nowrap px-3 py-2 text-right font-normal">매장 전체</th>
+                    {grid.columns.map((c) => (
+                      <th
+                        key={c.product}
+                        className={`whitespace-nowrap px-3 py-2 text-right font-normal ${
+                          c.product === selected ? 'border-l-2 border-l-border text-foreground' : ''
+                        } ${c.product === OTHER_COL ? 'text-muted-foreground/70' : ''}`}
+                      >
+                        <span className="inline-flex flex-col items-end leading-tight">
+                          <span>{c.product}</span>
+                          <span className="text-[11px] text-muted-foreground/70">{(c.share * 100).toFixed(1)}%</span>
+                        </span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[grid.totalRow, ...gridRows].map((r, i) => (
+                    <tr
+                      key={r.bucket}
+                      className={`border-b border-border/50 last:border-0 ${i === 0 ? 'border-b-border bg-muted/40' : ''}`}
+                    >
+                      <td
+                        className={`sticky left-0 z-10 whitespace-nowrap px-3 py-1.5 tabular-nums ${
+                          i === 0 ? 'bg-muted/40 font-medium' : 'bg-background'
+                        }`}
+                      >
+                        {i === 0 ? '전체' : bucketLabel(r.bucket)}
+                        {i > 0 && <span className="ml-1 text-[11px] text-muted-foreground">{r.days}일</span>}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                        {n0(r.total)}
+                      </td>
+                      {r.cells.map((c) => (
+                        <td
+                          key={c.product}
+                          className={`whitespace-nowrap px-3 py-1.5 text-right tabular-nums ${
+                            c.product === selected ? 'border-l-2 border-l-border' : ''
+                          } ${c.product === OTHER_COL ? 'text-muted-foreground' : ''}`}
+                        >
+                          {c.gross === 0 ? (
+                            ''
+                          ) : (
+                            <span className="inline-flex flex-col items-end leading-tight">
+                              <span className={c.product === selected ? 'font-medium' : ''}>
+                                {(c.share * 100).toFixed(1)}%
+                              </span>
+                              <span className="text-[11px] text-muted-foreground">{n0(c.gross)}</span>
+                            </span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mb-8 text-[12px] text-muted-foreground">
+              행은 구간(위 토글), 열은 <b>매출 상위 12개 상품 + 기타</b>예요. 보고 있는 상품({selected})은 상위권
+              밖이어도 항상 첫 열에 고정됩니다. 큰 숫자가 <b>그 구간 매장 매출 대비 비중</b>, 작은 숫자가 매출
+              (VAT 포함)이고, 한 행의 비중 합은 100%예요.
             </p>
 
             <h2 className="mb-2 text-[15px] font-medium">시간대별</h2>

@@ -367,3 +367,105 @@ export function buildSharePrep(
 
   return { rows, totals: toShareRow('합계', total), averages };
 }
+
+// ── 구간 × 전 상품 비중 표 (2026-08-26 대표 요청) ──────────────────────────
+// 전처리4(기간 × 상품 매출)와 같은 뼈대지만 값이 **비중**이다 — 브런치바가 다른 메뉴 대비
+// 어느 정도인지 한 표에서 비교하려는 것. 열이 260개까지 가므로 상위 N + '기타'로 접고,
+// 보고 있는 상품은 상위권 밖이어도 항상 첫 열에 고정한다.
+
+export const OTHER_COL = '기타';
+
+export interface GridCell {
+  product: string;
+  gross: number;
+  qty: number;
+  share: number; // 그 구간 매장 매출 대비
+}
+export interface GridRow {
+  bucket: string;
+  days: number;
+  total: number; // 그 구간 매장 전체 매출
+  cells: GridCell[]; // columns 와 같은 순서
+}
+export interface ProductGrid {
+  columns: { product: string; gross: number; share: number }[]; // 전 구간 기준 — 마지막이 '기타'
+  rows: GridRow[]; // 최신 구간 먼저
+  totalRow: GridRow; // 전 구간 합(bucket='전체')
+}
+
+/**
+ * @param top 상품 열 수(기타 제외). 기본 12
+ * @param pin 항상 첫 열에 두는 상품(보고 있는 상품)
+ */
+export function buildProductShareGrid(
+  all: HourSale[],
+  grain: ExpenseGrain,
+  opts: { top?: number; pin?: string } = {},
+): ProductGrid {
+  const top = opts.top ?? 12;
+  const pin = opts.pin ?? '';
+
+  const byProduct = new Map<string, number>();
+  const bucketTotal = new Map<string, number>();
+  const bucketDays = new Map<string, Set<string>>();
+  const cell = new Map<string, { gross: number; qty: number }>(); // `${bucket}|${product}`
+  let grand = 0;
+
+  for (const r of all) {
+    const b = bucketOfDate(r.sale_date, grain);
+    const gross = Number(r.gross);
+    const qty = Number(r.qty);
+    byProduct.set(r.product, (byProduct.get(r.product) ?? 0) + gross);
+    bucketTotal.set(b, (bucketTotal.get(b) ?? 0) + gross);
+    if (!bucketDays.has(b)) bucketDays.set(b, new Set());
+    bucketDays.get(b)!.add(r.sale_date);
+    const k = `${b}|${r.product}`;
+    const c = cell.get(k) ?? { gross: 0, qty: 0 };
+    c.gross += gross;
+    c.qty += qty;
+    cell.set(k, c);
+    grand += gross;
+  }
+
+  const ranked = Array.from(byProduct.entries())
+    .filter(([p]) => p !== pin)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, Math.max(0, top - (pin && byProduct.has(pin) ? 1 : 0)))
+    .map(([p]) => p);
+  const names = pin && byProduct.has(pin) ? [pin, ...ranked] : ranked;
+
+  const shareOf = (part: number, whole: number) => (whole > 0 ? part / whole : 0);
+  const namedGrand = names.reduce((s, p) => s + (byProduct.get(p) ?? 0), 0);
+  const columns = [
+    ...names.map((p) => ({ product: p, gross: byProduct.get(p) ?? 0, share: shareOf(byProduct.get(p) ?? 0, grand) })),
+    { product: OTHER_COL, gross: grand - namedGrand, share: shareOf(grand - namedGrand, grand) },
+  ];
+
+  const rowOf = (bucket: string, total: number, days: number, pick: (p: string) => { gross: number; qty: number }): GridRow => {
+    const cells = names.map((p) => {
+      const c = pick(p);
+      return { product: p, gross: c.gross, qty: c.qty, share: shareOf(c.gross, total) };
+    });
+    const named = cells.reduce((s, c) => s + c.gross, 0);
+    cells.push({ product: OTHER_COL, gross: total - named, qty: 0, share: shareOf(total - named, total) });
+    return { bucket, days, total, cells };
+  };
+
+  const rows = Array.from(bucketTotal.keys())
+    .sort((a, b) => b.localeCompare(a))
+    .map((b) =>
+      rowOf(b, bucketTotal.get(b) ?? 0, bucketDays.get(b)?.size ?? 0, (p) => cell.get(`${b}|${p}`) ?? { gross: 0, qty: 0 }),
+    );
+
+  const allDays = new Set(all.map((r) => r.sale_date)).size;
+  const totalRow = rowOf('전체', grand, allDays, (p) => ({ gross: byProduct.get(p) ?? 0, qty: 0 }));
+
+  return { columns, rows, totalRow };
+}
+
+/** 주 버킷(월요일 날짜) → '8월 3주차' — 그 달 안에서 월요일이 몇 번째인지 */
+export function weekOrdinalLabel(mondayYmd: string): string {
+  const m = Number(mondayYmd.slice(5, 7));
+  const d = Number(mondayYmd.slice(8, 10));
+  return `${m}월 ${Math.floor((d - 1) / 7) + 1}주차`;
+}
