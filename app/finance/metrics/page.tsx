@@ -8,6 +8,8 @@ import type { AggTx, AggCat } from '@/lib/finance/aggregate';
 import { monthEndBalance } from '@/lib/finance/cashflow';
 import { UNITS, unitOf } from '@/lib/finance/types';
 import { GRAM_PRODUCTS } from '@/lib/finance/gramProducts';
+import { get as getBlob } from '@vercel/blob';
+import { WEATHER_SALES_CACHE_PATH } from '@/lib/garden/weatherSales';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
 import dynamic from 'next/dynamic';
@@ -223,6 +225,46 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
     }));
   };
 
+  // 날씨 × 매출 상관 — /api/garden-weather-sales 가 하루 한 번 계산해 Blob 에 넣어 둔 결과를
+  // 그대로 읽어 쓴다(2026-08-31 대표 요청, 지표에도 노출). 여기선 절대 재계산하지 않는다 —
+  // 전 기간 POS 스캔 + Open-Meteo 아카이브 조회라 지표 로딩이 수십 초 밀린다.
+  // 캐시가 없거나(첫 진입) 형식이 다르면 조용히 카드만 빠진다. 갱신은 가든 → 날씨 분석에서.
+  const loadWeatherImpact = async () => {
+    if (isAll || unit.brand !== 'garden') return null;
+    try {
+      const res = await getBlob(WEATHER_SALES_CACHE_PATH, { access: 'private', useCache: false });
+      if (!res) return null;
+      const cached = JSON.parse(await new Response(res.stream).text());
+      const key = `${unit.store ?? ''}-supply`;
+      const series = (cached?.payload?.series ?? []) as {
+        key: string;
+        label: string;
+        result: {
+          n: number; r2: number; tempRef: string;
+          temp: { label: string; pct: number; t: number; n: number }[];
+          rain: { label: string; pct: number; t: number; n: number }[];
+          trendPct: number; trendT: number; holidayPct: number | null; holidayT: number | null;
+        } | null;
+      }[];
+      const hit = series.find((x) => x.key === key);
+      if (!hit?.result) return null;
+      const r = hit.result;
+      return {
+        label: hit.label,
+        computedAt: cached.computedAt as string,
+        n: r.n,
+        r2: r.r2,
+        tempRef: r.tempRef,
+        effects: [...r.temp, ...r.rain].map((e) => ({ label: e.label, pct: e.pct, t: e.t, days: e.n })),
+        trendPct: r.trendPct,
+        holidayPct: r.holidayPct,
+        holidayT: r.holidayT,
+      };
+    } catch {
+      return null;
+    }
+  };
+
   // 미분해 지출 lump — 명세 미연결 카드대금·세부 미수집 대체 출금(dashboard_lumps 안전 뷰).
   // 관리손익의 cardLump·payLump 와 같은 규칙으로 지표 EBIT에서도 차감(2026-08-21 감사 P4-7).
   // 뷰 미마이그레이션 환경이면 빈 배열(그때만 구 동작 = lump 미반영).
@@ -233,7 +275,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
   };
 
   // 5개 테이블이 서로 독립적이라 병렬로 조회 — 예전엔 순차 await라 지표 페이지 로딩이 밀렸다.
-  const [txns, cats, posSales, bankCash, menuItems, loanMarkers, channelFees, lumps, gramItems] = await Promise.all([
+  const [txns, cats, posSales, bankCash, menuItems, loanMarkers, channelFees, lumps, gramItems, weatherImpact] = await Promise.all([
     loadTxns(),
     loadCats(),
     loadPosSales(),
@@ -243,6 +285,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
     loadChannelFees(),
     loadLumps(),
     loadGramItems(),
+    loadWeatherImpact(),
   ]);
 
   return (
@@ -279,6 +322,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
           bankCash={bankCash}
           menuItems={menuItems}
           gramItems={gramItems}
+          weatherImpact={weatherImpact}
           loanMarkers={loanMarkers}
           channelFees={channelFees}
           lumps={lumps}

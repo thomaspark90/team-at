@@ -6,6 +6,7 @@ import {
   Line,
   BarChart,
   Bar,
+  Cell,
   ComposedChart,
   XAxis,
   YAxis,
@@ -59,7 +60,7 @@ const CAT_SURFACE = 'var(--chart-surface)';
 const CAT_MAX = 8; // 8색까지, 초과 카테고리는 '기타'로 접음
 
 // 지표 페이지 차트 순서 — 헤더 그립을 드래그해서 바꾸면 이 브라우저에 저장(계정과 무관)
-const DEFAULT_CHART_ORDER = ['bank', 'revenue', 'brunch', 'ebit', 'capex', 'ratio', 'expense', 'nature', 'cost', 'avg', 'yoy', 'gift', 'menu'] as const;
+const DEFAULT_CHART_ORDER = ['bank', 'revenue', 'brunch', 'ebit', 'capex', 'ratio', 'expense', 'nature', 'cost', 'avg', 'yoy', 'weather', 'gift', 'menu'] as const;
 type ChartId = (typeof DEFAULT_CHART_ORDER)[number];
 const CHART_ORDER_KEY = 'finance-metrics-chart-order-v1';
 
@@ -159,6 +160,7 @@ export default function Dashboard({
   bankCash = [],
   menuItems = [],
   gramItems = [],
+  weatherImpact = null,
   loanMarkers = [],
   channelFees = [],
   lumps = [],
@@ -172,6 +174,19 @@ export default function Dashboard({
   bankCash?: { ym: string; brand: string; bank: string; inflow: number; outflow: number; balance: number }[];
   // 스탭밀 상품별 판매량(finance.pos_items) — 메뉴 판매량 추이 차트 전용
   menuItems?: { saleDate: string; category: string; product: string; qty: number }[];
+  // 날씨 × 매출 회귀 결과(/api/garden-weather-sales 의 Blob 캐시) — 가든 지점에서만.
+  // 값은 '기준 밴드 대비 %'이고 t 는 유의성(|t|≥2 면 통상 유의). 재계산은 여기서 하지 않는다.
+  weatherImpact?: {
+    label: string;
+    computedAt: string;
+    n: number;
+    r2: number;
+    tempRef: string;
+    effects: { label: string; pct: number; t: number; days: number }[];
+    trendPct: number;
+    holidayPct: number | null;
+    holidayT: number | null;
+  } | null;
   // 그램 단위 판매 상품(가든 양재천 '브런치바') 일별 행 — 매출 추이 옆 추이 차트 전용(2026-08-31).
   // supply=공급가액(매출 추이와 같은 기준), listPrice=정가 합(그램 역산 기준, gramProducts.ts).
   gramItems?: { saleDate: string; product: string; qty: number; supply: number; listPrice: number }[];
@@ -1076,6 +1091,56 @@ export default function Dashboard({
   // 식권은 스탭밀 제도 — 가든의 gift 행은 금액권·선불권(상품권)이라 '식권'으로 부르면 오해다.
   // 가든 세그먼트에선 이 차트를 그리지 않는다(2026-08-31 대표 지시). 전사 통합은 스탭밀 몫이
   // 실재하므로 유지.
+  // 날씨 × 매출 — 밴드별 효과(기준 대비 %). 계산은 가든 '날씨 분석'이 하루 한 번 하고
+  // 여기선 그 결과만 그린다(2026-08-31 대표 요청). |t|≥2 = 통계적으로 뚜렷 → 진한 색.
+  if (weatherImpact && weatherImpact.effects.length > 0) {
+    const wd = weatherImpact.effects
+      .filter((e) => e.days >= 3) // 관측 3일 미만 밴드는 계수가 튀어 의미가 없다
+      .map((e) => ({ p: e.label, 효과: +e.pct.toFixed(1), sig: Math.abs(e.t) >= 2, days: e.days }));
+    const computed = weatherImpact.computedAt?.slice(0, 10) ?? '';
+    chartNodes.weather = (
+      <ChartCard
+        key="weather"
+        id="weather"
+        {...fullProps('weather')}
+        onReorder={reorderChart}
+        title="날씨 영향 — 일 매출"
+        subtitle={`기준 = 기온 ${weatherImpact.tempRef} · 비 1mm 미만인 날. 막대 = 기준 대비 %(요일·공휴일·성장 트렌드 통제) · 진한 막대는 통계적으로 뚜렷(|t|≥2) · 표본 ${weatherImpact.n}일 · R² ${weatherImpact.r2.toFixed(2)} · ${computed} 기준`}
+      >
+        <ResponsiveContainer width="100%" height={chartH('weather', 420)}>
+          <BarChart data={wd} layout="vertical" margin={{ top: 8, right: 56, bottom: 8, left: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+            <XAxis type="number" tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={AXIS} />
+            <YAxis type="category" dataKey="p" tick={axisTick} stroke={AXIS} width={80} />
+            <Tooltip content={<ChartTooltip fmt={(v: number) => `${v}%`} />} />
+            <ReferenceLine x={0} stroke={REF} />
+            <Bar dataKey="효과" radius={[0, 3, 3, 0]} maxBarSize={22}>
+              {wd.map((d, i) => (
+                <Cell
+                  key={i}
+                  fill={d.효과 < 0 ? 'hsl(var(--destructive))' : CAT[0]}
+                  fillOpacity={d.sig ? 1 : 0.35}
+                />
+              ))}
+              <LabelList dataKey="효과" position="right" formatter={pctLabel} style={pointLabel} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          성장 트렌드 {weatherImpact.trendPct > 0 ? '+' : ''}
+          {weatherImpact.trendPct.toFixed(0)}%(기간 처음→끝, 날씨와 별개)
+          {weatherImpact.holidayPct != null &&
+            ` · 공휴일 ${weatherImpact.holidayPct > 0 ? '+' : ''}${weatherImpact.holidayPct.toFixed(0)}%${
+              Math.abs(weatherImpact.holidayT ?? 0) >= 2 ? '' : '(불유의)'
+            }`}
+          {' · 계산은 '}
+          <a href="/garden/weather" className="underline">가든 → 날씨 분석</a>
+          에서 갱신해요.
+        </p>
+      </ChartCard>
+    );
+  }
+
   if (unit === 'month' && hasGift && brand !== 'garden') {
     chartNodes.gift = (
       <ChartCard
