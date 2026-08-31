@@ -252,11 +252,14 @@ export function simpleImpact(days: DayPoint[], isHoliday: (ymd: string) => boole
     return { ...r, i: m > 0 ? r.sales / m : 1 };
   });
 
+  // 밴드 대표값은 **중앙값**. 평균을 쓰면 하루가 밴드를 만든다 — 판교 '공휴일 전날'이 크리스마스
+  // 이브(지수 4.08) 하나 때문에 평균 +24.6%로 뜨는데, 중앙값으로는 −11%다(2026-08-31 실측).
+  // 우리가 회귀를 신뢰하지 않기로 한 이유와 같은 이유로 여기서도 이상치에 끌려가면 안 된다.
   const band = (label: string, test: (r: (typeof idx)[number]) => boolean): BandIndex | null => {
     const sel = idx.filter(test);
     if (sel.length < 3) return null; // 3일 미만은 숫자로 안 내놓는다
-    const mean = sel.reduce((s, r) => s + r.i, 0) / sel.length;
-    return { label, n: sel.length, index: +mean.toFixed(3), pct: +((mean - 1) * 100).toFixed(1) };
+    const m = median(sel.map((r) => r.i));
+    return { label, n: sel.length, index: +m.toFixed(3), pct: +((m - 1) * 100).toFixed(1) };
   };
   const keep = (arr: (BandIndex | null)[]) => arr.filter((b): b is BandIndex => b !== null);
 

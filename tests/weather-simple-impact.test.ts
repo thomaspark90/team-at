@@ -56,3 +56,19 @@ describe('simpleImpact', () => {
     expect(simpleImpact(Array.from({ length: 10 }, (_, i) => mk(i, 1000)), noHoliday)).toBeNull();
   });
 });
+
+describe('simpleImpact — 이상치', () => {
+  it('밴드 대표값은 중앙값 — 하루가 밴드를 만들지 못한다', () => {
+    // 35일 중 5일만 조건(각기 다른 요일), 그중 하루만 매출 4배. 평균이면 +60%대가 되지만
+    // 중앙값이면 평소(0%)로 남아야 한다.
+    const days = Array.from({ length: 35 }, (_, i) => {
+      const flagged = i < 5;
+      const spike = i === 0;
+      return mk(i, spike ? 4000 : 1000, flagged ? 3 : 0); // 비 1–5mm 밴드로 태깅
+    });
+    const r = simpleImpact(days, noHoliday)!;
+    const b = r.rain.find((x) => x.label === '비 1–5mm')!;
+    expect(b.n).toBe(5);
+    expect(b.pct).toBe(0); // 중앙값 = 1.00
+  });
+});

@@ -1207,7 +1207,7 @@ export default function Dashboard({
           {...fullProps('weather')}
           onReorder={reorderChart}
           title="날씨·달력이 실제로 만든 차이"
-          subtitle={`그날 매출 ÷ 같은 달·같은 요일 매출의 중앙값 — 1.00(=0%)이 평소예요. 계절·요일·성장세가 자동으로 빠져서, 남는 건 '그날이 특별했나'뿐이에요 · 영업일 ${imp.days}일`}
+          subtitle={`그날 매출 ÷ 같은 달·같은 요일 매출의 중앙값 — 0%가 평소예요. 계절·요일·성장세가 자동으로 빠져서 남는 건 '그날이 특별했나'뿐 · 밴드 대표값도 중앙값이라 하루가 밴드를 만들지 못해요 · 영업일 ${imp.days}일`}
         >
           <ResponsiveContainer width="100%" height={chartH('weather', 520)}>
             <BarChart data={impRows} layout="vertical" margin={{ top: 8, right: 64, bottom: 8, left: 8 }}>
