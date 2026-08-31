@@ -247,6 +247,53 @@ export async function applyPosParseResult(
       for (const ym of targetYms) if (!have.has(ym)) hoursBackfillYms.add(ym);
     }
   }
+  // 품목 행(pos_items) 누락 백필 — 같은 원리(2026-08-31). 품목 테이블 신설(2026-08-08) 전에 올렸던 달은
+  // dup 판정으로 건너뛰어 품목 행이 비어 있다(실사고: 양재 2026-05~07 상품별 리포트 공백). 그 달만 채운다.
+  const itemsBackfillYms = new Set<string>();
+  {
+    const targetYms = Array.from(new Set((r.items ?? []).map((d) => d.ym))).filter((ym) => dupYms.has(ym));
+    if (targetYms.length > 0) {
+      const { data: haveItems } = await supabase
+        .schema('finance')
+        .from('pos_items')
+        .select('ym')
+        .eq('brand', brand)
+        .eq('store', store)
+        .in('ym', targetYms);
+      const have = new Set(((haveItems ?? []) as { ym: string }[]).map((g) => g.ym));
+      for (const ym of targetYms) if (!have.has(ym)) itemsBackfillYms.add(ym);
+    }
+  }
+
+  // 품목 행 저장 — 대상 달 필터만 다르고 절차는 본 저장과 동일(upsert 후 잔여 정리는 호출부에서).
+  // 반환: { inserted, skipped(테이블 미생성), error }
+  const upsertItems = async (yms: Set<string>, ts: string): Promise<{ inserted: number; skipped: boolean; error: string | null }> => {
+    const rows = (r.items ?? []).filter((d) => yms.has(d.ym));
+    if (rows.length === 0) return { inserted: 0, skipped: false, error: null };
+    const { error } = await supabase
+      .schema('finance')
+      .from('pos_items')
+      .upsert(
+        rows.map((d) => ({
+          ym: d.ym,
+          sale_date: d.saleDate,
+          brand,
+          store,
+          category: d.category,
+          product: d.product,
+          option: d.option,
+          qty: d.qty,
+          gross: d.gross,
+          vat: d.vat,
+          supply: d.supply,
+          uploaded_by: user.id,
+          uploaded_at: ts,
+        })),
+        { onConflict: 'sale_date,brand,store,category,product,option' },
+      );
+    if (error) return isMissingTable(error) ? { inserted: 0, skipped: true, error: null } : { inserted: 0, skipped: false, error: error.message };
+    return { inserted: rows.length, skipped: false, error: null };
+  };
 
   // 시간대 행 저장 — 대상 달 필터만 다르고 절차는 본 저장과 동일(upsert 후 잔여 정리는 호출부에서).
   const upsertHours = async (yms: Set<string>, ts: string): Promise<string | null> => {
@@ -299,18 +346,22 @@ export async function applyPosParseResult(
     // 단 선수금 누락 달이 있으면 그 백필만 수행한다(위 실사고의 복구 경로).
     const giftErr = await upsertGiftBackfill();
     if (giftErr) return { ok: false, status: 500, error: `식권 판매 저장 실패: ${giftErr}` };
-    const hoursErr = await upsertHours(hoursBackfillYms, new Date().toISOString());
+    const ts = new Date().toISOString();
+    const hoursErr = await upsertHours(hoursBackfillYms, ts);
     if (hoursErr) return { ok: false, status: 500, error: `시간대 판매 저장 실패: ${hoursErr}` };
+    const itemsRes = await upsertItems(itemsBackfillYms, ts);
+    if (itemsRes.error) return { ok: false, status: 500, error: `품목 매출 저장 실패: ${itemsRes.error}` };
     const giftNote = giftBackfillYms.size > 0 ? ` · 선수금 백필 ${Array.from(giftBackfillYms).join(', ')}` : '';
-    await logActivity(supabase, user, actionLabel, `${brandLine} · ${r.yms.join(', ')} 전부 기존 자료와 동일 — 건너뜀${giftNote}`);
+    const itemsNote = itemsBackfillYms.size > 0 ? ` · 품목 백필 ${Array.from(itemsBackfillYms).join(', ')}` : '';
+    await logActivity(supabase, user, actionLabel, `${brandLine} · ${r.yms.join(', ')} 전부 기존 자료와 동일 — 건너뜀${giftNote}${itemsNote}`);
     return {
       ok: true,
       body: {
         ym: r.ym,
         yms: r.yms,
         inserted: 0,
-        itemsInserted: 0,
-        itemsSkipped: false,
+        itemsInserted: itemsRes.inserted,
+        itemsSkipped: itemsRes.skipped,
         supply: r.totals.supply,
         excludedRows: r.excluded.rows,
         staleCleaned: true,
@@ -360,34 +411,16 @@ export async function applyPosParseResult(
     .lt('uploaded_at', now);
 
   // 품목 단위(pos_items) — 토스·페이히어(상품별 조회) 파서만 items 를 만든다.
+  // dup 달이라도 품목이 비어 있으면(itemsBackfillYms) 함께 채운다 — 잔여 정리는 바뀐 달(changedYms)에만.
   let itemsInserted = 0;
   let itemsSkipped = false;
-  const items = (r.items ?? []).filter((d) => !dupYms.has(d.ym));
-  if (items.length > 0) {
-    const itemRows = items.map((d) => ({
-      ym: d.ym,
-      sale_date: d.saleDate,
-      brand,
-      store,
-      category: d.category,
-      product: d.product,
-      option: d.option,
-      qty: d.qty,
-      gross: d.gross,
-      vat: d.vat,
-      supply: d.supply,
-      uploaded_by: user.id,
-      uploaded_at: now,
-    }));
-    const { error: itemErr } = await supabase
-      .schema('finance')
-      .from('pos_items')
-      .upsert(itemRows, { onConflict: 'sale_date,brand,store,category,product,option' });
-    if (itemErr) {
-      if (isMissingTable(itemErr)) itemsSkipped = true;
-      else return { ok: false, status: 500, error: `품목 매출 저장 실패: ${itemErr.message}` };
-    } else {
-      itemsInserted = itemRows.length;
+  {
+    const targetYms = new Set([...changedYms, ...Array.from(itemsBackfillYms)]);
+    const res = await upsertItems(targetYms, now);
+    if (res.error) return { ok: false, status: 500, error: `품목 매출 저장 실패: ${res.error}` };
+    itemsInserted = res.inserted;
+    itemsSkipped = res.skipped;
+    if (res.inserted > 0) {
       await supabase
         .schema('finance')
         .from('pos_items')
