@@ -259,10 +259,11 @@ export default function Dashboard({
       setPickedMenus(null);
     }
   }, [menuPrefKey]);
-  const toggleMenu = (name: string) =>
-    setPickedMenus((prev) => {
-      const base = prev ?? [];
-      const next = base.includes(name) ? base.filter((x) => x !== name) : [...base, name];
+  // ⚠ 저장값이 없을 때(pickedMenus=null)는 화면에 켜져 있는 기본 3개가 시작점이어야 한다.
+  // 빈 배열에서 시작하면 첫 클릭에 기본 선택이 통째로 사라진다(2026-08-31 실사고).
+  const toggleMenu = (name: string, current: string[]) =>
+    setPickedMenus(() => {
+      const next = current.includes(name) ? current.filter((x) => x !== name) : [...current, name];
       try {
         localStorage.setItem(menuPrefKey, JSON.stringify(next));
       } catch {
@@ -855,7 +856,7 @@ export default function Dashboard({
             return (
               <button
                 key={n}
-                onClick={() => toggleMenu(n)}
+                onClick={() => toggleMenu(n, activeMenus)}
                 aria-pressed={on}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
                   on ? 'border-foreground/30 bg-muted text-foreground' : 'border-border text-muted-foreground hover:text-foreground'
