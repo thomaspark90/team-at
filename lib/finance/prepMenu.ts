@@ -99,7 +99,8 @@ export function buildMenuPrep(
   posTotals: PosDailyTotal[],
   grain: ExpenseGrain,
   metric: MenuMetric,
-  gifts: GiftSale[] = [] // 식권 판매(선수금) — 매출·정합 밖 참고 열(2026-08-20 대표 요청)
+  gifts: GiftSale[] = [], // 선수금 판매 — 매출·정합 밖 참고 열(2026-08-20 대표 요청)
+  giftLabel = '식권 판매' // 브랜드별 표기(스탭밀=식권 / 가든=선불권) — types.giftSaleLabel
 ): MenuPrep {
   const perMenu = new Map<string, Record<string, number>>();
   const perProduct = new Map<string, Record<string, number>>();
@@ -201,13 +202,13 @@ export function buildMenuPrep(
     Object.keys(giftAmt).length > 0
       ? {
           key: 'gift',
-          label: '식권 판매 (참고)',
+          label: `${giftLabel} (참고)`,
           kind: 'derived',
           amounts: metric === 'qty' ? giftQty : giftAmt,
           qtyAmounts: metric === 'gross' ? giftQty : undefined,
           // 회계 기준(2026-08-20 대표·매니저 확정): 자가 식권은 판매 시점 매출 인식 — 사용할 때는
           // POS에 아예 안 찍힌다. 옛 '아직 매출 아님' 문구는 개정 전 기준이라 정정(2026-08-21).
-          hint: '자가 식권 판매 — 판매한 날 매출로 인식해요(사용 시점엔 POS에 안 찍힘). 품목 리포트 밖이라 합계·정합 차이에는 안 들어가요. 페이히어 실매출 = 메뉴 매출 합계 + 이 열.',
+          hint: `${giftLabel}(선수금) — 판매한 날 매출로 인식해요(쓸 때는 POS에 0원으로 찍혀 이중계상이 없어요). 품목 리포트 밖이라 합계·정합 차이에는 안 들어가요. POS 실매출 = 메뉴 매출 합계 + 이 열.`,
         }
       : null;
   const tail = [

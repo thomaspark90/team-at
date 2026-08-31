@@ -1,4 +1,5 @@
 import type { SalesRow } from '@/lib/finance/sales-data';
+import { GIFT_CATEGORY, giftSaleLabel } from '@/lib/finance/types';
 
 // 매출 요약 — POS 발생주의 매출 행(일×카테고리)을 받아 합계 카드·30일 막대·카테고리 요약을 그린다.
 // 스탭밀(/studio/sales)과 가든(/garden/sales)이 공유하는 서버 컴포넌트. 금액은 전부 공급가액(VAT 제외).
@@ -7,7 +8,10 @@ import type { SalesRow } from '@/lib/finance/sales-data';
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
 const monthLabel = (ym: string) => `${Number(ym.slice(5, 7))}월`;
 
-export default function SalesSummary({ rows }: { rows: SalesRow[] }) {
+export default function SalesSummary({ rows, brand }: { rows: SalesRow[]; brand?: string }) {
+  // 선수금 행의 category 는 DB 상수('식권판매')라 브랜드에 맞는 말로 바꿔 보여준다
+  // (가든엔 식권 제도가 없고 선불권·금액권이다 — 2026-08-31 대표 지시).
+  const catLabel = (c: string) => (c === GIFT_CATEGORY ? giftSaleLabel(brand) : c);
   const kstToday = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
   const thisYm = kstToday.slice(0, 7);
   const lastYm = new Date(new Date(thisYm + '-15').getTime() - 30 * 86_400_000).toISOString().slice(0, 7);
@@ -102,7 +106,7 @@ export default function SalesSummary({ rows }: { rows: SalesRow[] }) {
           <div className="mt-6 flex flex-col gap-4">
             {cats.map(([cat, v]) => (
               <div key={cat} className="flex items-center gap-3">
-                <span className="w-24 flex-shrink-0 truncate text-[13px]">{cat}</span>
+                <span className="w-24 flex-shrink-0 truncate text-[13px]" title={catLabel(cat)}>{catLabel(cat)}</span>
                 <div className="h-2 min-w-0 flex-1 overflow-hidden rounded bg-muted/40">
                   <div className="h-full rounded" style={{ width: `${(v / (cats[0][1] || 1)) * 100}%`, background: 'hsl(var(--number-colored) / 0.6)' }} />
                 </div>

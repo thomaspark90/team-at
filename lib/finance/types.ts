@@ -28,6 +28,14 @@ export const STORES: { id: Store; label: string }[] = [
 export const storeLabel = (s: string | null | undefined) =>
   STORES.find((x) => x.id === s)?.label ?? '미지정';
 
+// 선수금 판매(pos_gift_sales) 표시 라벨 — 브랜드마다 물건이 다르다.
+// 스탭밀 = 자가 식권(Staff 10장 등), 가든 = 선불권·금액권(상품권). 가든엔 식권 제도가 아예 없어서
+// '식권'으로 부르면 오해가 생긴다(2026-08-31 대표 지시). DB의 category 값('식권판매')은 그대로 두고
+// 화면 표기만 갈라 쓴다 — 값을 바꾸면 그 문자열로 매칭하는 집계들이 조용히 깨진다.
+export const giftSaleLabel = (brand?: string | null) => (brand === 'garden' ? '선불권 판매' : '식권 판매');
+/** dashboard_pos 뷰가 선수금 행에 붙이는 category 상수 — 매칭용(표시용 아님) */
+export const GIFT_CATEGORY = '식권판매';
+
 // 회계 단위(손익 리포트 축): 스탭밀 / 가든-판교 / 가든-양재천
 export interface AccountingUnit {
   brand: Brand;

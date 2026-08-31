@@ -4,7 +4,7 @@ import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMemberStamped } from '@/lib/access/stamp';
 import TabNav from '@/components/TabNav';
 import AccountingNav from '@/components/AccountingNav';
-import { unitOf, UNITS } from '@/lib/finance/types';
+import { giftSaleLabel, unitOf, UNITS } from '@/lib/finance/types';
 import type { ExpenseGrain } from '@/lib/finance/prepExpense';
 import {
   buildMenuPrep,
@@ -91,7 +91,7 @@ export default async function PrepMenuPage({
         if (unit.store) q = q.eq('store', unit.store);
         return q;
       },
-      { page: 20000, label: '식권 판매', missingTableOk: true }
+      { page: 20000, label: '선수금 판매', missingTableOk: true }
     ),
   ]);
   const hidden = new Set(((prefs?.hidden as string[] | null) ?? []).filter((x) => typeof x === 'string'));
@@ -102,7 +102,8 @@ export default async function PrepMenuPage({
   const visiblePref = (prefs?.visible as string[] | null) ?? null;
   const isShown = (label: string) => (visiblePref ? visiblePref.includes(label) : !hidden.has(label));
 
-  const { buckets: allBuckets, summary, detail } = buildMenuPrep(itemsData, posData, grain, metric, giftData);
+  const giftLabel = giftSaleLabel(unit.brand);
+  const { buckets: allBuckets, summary, detail } = buildMenuPrep(itemsData, posData, grain, metric, giftData, giftLabel);
   const buckets = allBuckets.slice(0, LIMIT[grain]);
 
   // 병합 적용 — 소스 열의 금액을 대표 열로 합산하고 소스 열은 제거. 표시 차원의 병합이라
@@ -332,8 +333,8 @@ export default async function PrepMenuPage({
               </p>
             ))}
           <p className="m-0 mt-2">
-            식권 판매(선수금)는 품목 리포트와 POS 매출 양쪽에서 제외돼 있어요 — 식권을 <b>쓴</b> 날의 일반
-            메뉴 행으로 잡혀요.
+            {giftLabel}(선수금)는 품목 리포트와 POS 매출 양쪽에서 제외돼 있어요 — <b>쓴</b> 날은 결제금액이
+            0원으로 찍혀서 이중으로 잡히지 않아요.
           </p>
           {unit.brand === 'staffmeal' && (
             <p className="m-0 mt-1">

@@ -3,7 +3,7 @@ import { unwrap } from './db';
 import { fetchAllRows } from './fetchAll';
 import { CARD_PAYMENT_RE } from './cardOffset';
 import { buildPnl, VAT_PAYMENT_RE, type PnlCat, type PnlTx, type PnlPosRow, type PnlInventory, type PnlResult } from './pnl';
-import type { Brand, Store } from './types';
+import { giftSaleLabel, type Brand, type Store } from './types';
 
 // 관리손익 '한 달' 데이터 로딩+계산 — /finance/pnl 페이지 본문(PnlBody)에서 추출(2026-08-21).
 // 월 결산 페이지의 손익 드릴다운(/api/finance/pnl-month)과 관리손익 페이지가 이 코드를 공용해
@@ -42,8 +42,8 @@ export async function loadPnlPos(supabase: SupabaseClient, seg: BrandSeg): Promi
       { label: '식권 판매', missingTableOk: true }
     ),
   ]);
-  // 매출 구성 라벨 — 스탭밀=자가 식권, 가든=금액권·선불권(가든은 식권이 아예 없다, 2026-08-23 대표 확인)
-  const giftLabel = seg === 'garden' ? '금액권 판매' : '식권판매';
+  // 매출 구성 라벨 — 스탭밀=자가 식권, 가든=선불권·금액권(가든은 식권이 아예 없다, 2026-08-31 대표 지시)
+  const giftLabel = giftSaleLabel(seg === 'garden' ? 'garden' : 'staffmeal');
   const giftAsPos = giftRaw.map(
     (g) => {
       const gross = Number(g.gross);

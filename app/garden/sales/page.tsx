@@ -150,7 +150,7 @@ export default async function GardenSalesPage({ searchParams }: { searchParams: 
           ) : (
             <>
               <div className="py-[54px]">
-                <SalesSummary rows={shown} />
+                <SalesSummary rows={shown} brand="garden" />
               </div>
               <MenuSalesReport americano={americano} menus={menuSeries} />
               {reviewSales.length > 0 && <ReviewSalesReport data={reviewSales} />}
