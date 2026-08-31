@@ -18,6 +18,7 @@ import {
   LabelList,
 } from 'recharts';
 import { aggregate, capexDepreciation, capexByMonth, UNCLASSIFIED, type AggTx, type AggCat, type Unit, type MonthAgg } from '@/lib/finance/aggregate';
+import { COST_NATURE_NOTES, COST_UNDETERMINED_LABEL } from '@/lib/finance/costNature';
 import IncentiveSim from '@/components/finance/IncentiveSim';
 import { bankShort } from '@/lib/finance/cashflow';
 import { wonNum as won } from '@/lib/finance/format';
@@ -57,7 +58,7 @@ const CAT_SURFACE = 'var(--chart-surface)';
 const CAT_MAX = 8; // 8색까지, 초과 카테고리는 '기타'로 접음
 
 // 지표 페이지 차트 순서 — 헤더 그립을 드래그해서 바꾸면 이 브라우저에 저장(계정과 무관)
-const DEFAULT_CHART_ORDER = ['bank', 'revenue', 'ebit', 'capex', 'ratio', 'expense', 'cost', 'avg', 'yoy', 'gift', 'menu'] as const;
+const DEFAULT_CHART_ORDER = ['bank', 'revenue', 'ebit', 'capex', 'ratio', 'expense', 'nature', 'cost', 'avg', 'yoy', 'gift', 'menu'] as const;
 type ChartId = (typeof DEFAULT_CHART_ORDER)[number];
 const CHART_ORDER_KEY = 'finance-metrics-chart-order-v1';
 
@@ -380,6 +381,7 @@ export default function Dashboard({
         const label = LUMP_LABEL[l.kind] ?? l.kind;
         if (!mo || !(l.amount > 0)) continue;
         mo.sga += l.amount;
+        mo.undeterminedCost += l.amount; // 성격 미상 — 고정/변동 어느 쪽에도 안 섞는다
         mo.ebit -= l.amount;
         mo.net -= l.amount;
         mo.profitRatio = mo.revenue > 0 ? mo.ebit / mo.revenue : null;
@@ -490,16 +492,27 @@ export default function Dashboard({
   const isPast = focusIdx < visMonths.length - 1; // 최근이 아닌 과거 달을 보는 중
   const focusP = fmtP(last.ym); // 차트에서 선택 달 위치(강조선)
 
-  // 손익분기 매출(BEP) — 변동비 = 재료비+채널수수료(매출 비례), 고정비 = 판관비(인건비 포함).
-  // 미분류·미상은 성격을 모르는 지출이라 고정비 분자에서 뺀다 — 섞으면 미분류가 큰 달의
+  // 손익분기 매출(BEP) — 고정비·변동비는 계정과목의 고정/변동 구분(cost_nature)을 따른다(2026-08-31,
+  // 이전엔 '변동비=재료비+수수료, 고정비=판관비 전체'로 코드에 박혀 있었음). 채널수수료는 매출 비례라 변동.
+  // 미분류·미상·미지정(미확정)은 성격을 모르는 지출이라 어느 쪽에도 안 넣는다 — 섞으면 미분류가 큰 달의
   // 손익분기선이 부풀어 오른다(2026-08-21 감사 P4-6). BEP = 고정비 ÷ (1 − 변동비율).
   const bepOf = (m: MonthAgg): number | null => {
     if (m.revenue <= 0) return null;
-    const varRate = (m.cogs + m.fee) / m.revenue;
-    const fixed = m.sga - (m.expense[UNCLASSIFIED] || 0) - (m.expense['미상'] || 0);
-    return varRate < 1 ? Math.round(fixed / (1 - varRate)) : null;
+    const varRate = (m.variableCost + m.fee) / m.revenue;
+    return varRate < 1 ? Math.round(m.fixedCost / (1 - varRate)) : null;
   };
   const lineData = visMonths.map((m) => ({ p: fmtP(m.ym), 매출: m.revenue, EBIT: m.ebit, 순이익: m.net, 손익분기: bepOf(m) }));
+  // 고정비·변동비 — 지출(원가+판관비)을 계정과목 고정/변동 구분으로 나눈 월별 스택. 변동비율 = 변동비 ÷ 매출.
+  const natureData = visMonths.map((m) => ({
+    p: fmtP(m.ym),
+    고정비: m.fixedCost,
+    변동비: m.variableCost,
+    [COST_UNDETERMINED_LABEL]: m.undeterminedCost,
+    총지출: m.cogs + m.sga,
+    변동비율: m.revenue > 0 ? +((m.variableCost / m.revenue) * 100).toFixed(1) : null,
+  }));
+  const NATURE_KEYS = ['고정비', '변동비', COST_UNDETERMINED_LABEL] as const;
+  const natureColor = (k: string) => (k === '고정비' ? CAT[1] : k === '변동비' ? CAT[0] : CAT_OTHER);
   // 감가상각(자본적지출 5년 정액) 반영 영업이익 — 비교용. 손익과 같은 필터(브랜드·지점) 모집단.
   const dep = capexDepreciation(filteredTx, cats);
   const hasCapex = Object.keys(dep).length > 0;
@@ -682,7 +695,7 @@ export default function Dashboard({
       {...fullProps('revenue')}
       onReorder={reorderChart}
       title="매출 추이"
-      subtitle="점선=평균 · 빨간 점선=손익분기 매출(고정비 ÷ (1−변동비율), 변동비=재료비+수수료 · 고정비=판관비, 미분류·미상 제외)"
+      subtitle="점선=평균 · 빨간 점선=손익분기 매출(고정비 ÷ (1−변동비율) — 계정과목의 고정/변동 구분 기준, 채널수수료는 변동, 미확정 제외)"
     >
       <ResponsiveContainer width="100%" height={chartH('revenue', 585)}>
         <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
@@ -815,6 +828,69 @@ export default function Dashboard({
           </ul>
         </div>
       </div>
+    </ChartCard>
+  );
+
+  // 고정비·변동비 — 오른쪽은 선택 달 구성(금액·지출 대비 비중), 아래는 분류 결정 노트(costNature.ts).
+  const natureLast = natureData[focusIdx];
+  const natureBreakdown = natureLast
+    ? NATURE_KEYS.map((k) => {
+        const value = Number(natureLast[k] ?? 0);
+        return { name: k, value, pct: natureLast.총지출 > 0 ? (value / natureLast.총지출) * 100 : 0, color: natureColor(k) };
+      }).filter((b) => b.value !== 0)
+    : [];
+  chartNodes.nature = (
+    <ChartCard
+      key="nature"
+      id="nature"
+      {...fullProps('nature')}
+      onReorder={reorderChart}
+      title="고정비 · 변동비"
+      subtitle={`지출(원가+판관비)을 계정과목의 고정/변동 구분으로 나눈 월별 누적 · 오른쪽은 ${breakdownLabel} 구성 · 변동비율 = 변동비 ÷ 매출`}
+    >
+      <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="min-w-0 flex-1">
+          <ResponsiveContainer width="100%" height={chartH('nature', 585)}>
+            <BarChart data={natureData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+              <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+              <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
+              <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} share />} />
+              {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
+              {NATURE_KEYS.map((k, i) => (
+                <Bar key={k} dataKey={k} stackId="n" fill={natureColor(k)} stroke={CAT_SURFACE} strokeWidth={1}>
+                  {i === NATURE_KEYS.length - 1 && (
+                    <LabelList dataKey="총지출" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
+                  )}
+                </Bar>
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="w-full shrink-0 md:w-[230px]">
+          <ul className="flex flex-col gap-1.5">
+            {natureBreakdown.map((b) => (
+              <li key={b.name} className="flex items-center gap-2 text-[11px]">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{ background: b.color }} aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-foreground" title={b.name}>{b.name}</span>
+                <span className="tabular shrink-0 text-[11px] text-muted-foreground">{won(b.value)}</span>
+                <span className="tabular w-[46px] shrink-0 text-right font-medium text-foreground">{b.pct.toFixed(1)}%</span>
+              </li>
+            ))}
+            {natureLast?.변동비율 != null && (
+              <li className="mt-1 flex items-center justify-between border-t border-border pt-1.5 text-[11px]">
+                <span className="text-muted-foreground">변동비율(매출 대비)</span>
+                <span className="tabular font-medium text-foreground">{natureLast.변동비율}%</span>
+              </li>
+            )}
+          </ul>
+        </div>
+      </div>
+      <ul className="mt-4 flex list-disc flex-col gap-1 pl-4 text-[11px] leading-relaxed text-muted-foreground">
+        {COST_NATURE_NOTES.map((n) => (
+          <li key={n}>{n}</li>
+        ))}
+      </ul>
     </ChartCard>
   );
 
@@ -965,6 +1041,12 @@ export default function Dashboard({
         <div className="flex flex-wrap gap-3">
           <Stat label={`${unitLabel} 매출 (순액)`} value={won(last.revenue)} delta={delta(last.revenue, prev?.revenue)} />
           <Stat label="지출(원가+판관비)" value={won(lastExpense)} delta={delta(lastExpense, prevExpense)} />
+          <Stat label="고정비" value={won(last.fixedCost)} delta={delta(last.fixedCost, prev?.fixedCost)} />
+          <Stat
+            label={`변동비${last.revenue > 0 ? ` (매출의 ${((last.variableCost / last.revenue) * 100).toFixed(1)}%)` : ''}`}
+            value={won(last.variableCost)}
+            delta={delta(last.variableCost, prev?.variableCost)}
+          />
           <Stat label="영업이익(EBIT)" value={won(last.ebit)} delta={delta(last.ebit, prev?.ebit)} />
           <Stat label="당기순이익" value={won(last.net)} delta={delta(last.net, prev?.net)} />
         </div>

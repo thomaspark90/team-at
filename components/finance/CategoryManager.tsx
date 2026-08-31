@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { COST_NATURE_LABEL, describeCostNature, nextCostNature, type CostNature } from '@/lib/finance/costNature';
 
 export interface ManagedCat {
   id: number;
@@ -12,10 +13,14 @@ export interface ManagedCat {
   pinned: boolean;
   sort: number;
   vat_taxable: boolean;
+  cost_nature: CostNature | null; // 고정비/변동비 — null 이면 상위 상속(지표·BEP가 사용)
 }
 
 // 과세/면세 토글을 노출할 타입 (손익에서 순액 대상이 되는 매출·비용)
 const VAT_TYPES = ['revenue', 'cogs', 'sga'];
+// 고정/변동 토글을 노출할 타입 (지출 성격 — 지표 '고정비·변동비'와 손익분기가 읽는다)
+const NATURE_TYPES = ['cogs', 'sga'];
+const CAT_COLS = 'id,type,name,parent_id,active,pinned,sort,vat_taxable,cost_nature';
 
 // 이름으로 동작을 판별하는 시스템 계정 — 이름 변경·삭제 금지(카드/영수증/분할/대체 정산 로직이 깨진다)
 const SYSTEM_NAMES = ['카드대금정산', '영수증분해', '건별분할', '쿠팡대체', '네이버페이대체'];
@@ -50,6 +55,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
     const p = cats.find((x) => x.id === c.parent_id);
     return p ? `${p.name} › ${c.name}` : c.name;
   };
+  const catMap = new Map(cats.map((c) => [c.id, c]));
 
   async function patch(id: number, change: Partial<ManagedCat>) {
     setBusy(id);
@@ -115,10 +121,11 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
         active: c.active,
         pinned: false,
         vat_taxable: c.vat_taxable,
+        cost_nature: c.cost_nature,
         in_pnl: (src as { in_pnl?: boolean } | null)?.in_pnl ?? true,
         sort,
       })
-      .select('id,type,name,parent_id,active,pinned,sort,vat_taxable')
+      .select(CAT_COLS)
       .single();
     if (error) setError(`복제 실패: ${error.message}`);
     else if (data) {
@@ -152,7 +159,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
       .schema('finance')
       .from('categories')
       .insert({ type, name, sort: maxSort + 10 })
-      .select('id,type,name,parent_id,active,pinned,sort,vat_taxable')
+      .select(CAT_COLS)
       .single();
     if (error) setError(error.message);
     else if (data) {
@@ -299,6 +306,22 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                           {c.vat_taxable ? '과세' : '면세'}
                         </button>
                       )}
+                      {NATURE_TYPES.includes(c.type) &&
+                        (() => {
+                          // 자기 값이면 진하게, 상위에서 상속이면 흐리게 '(상위)' 표기, 둘 다 없으면 '미확정'
+                          const d = describeCostNature(c, catMap);
+                          const text = d.nature ? `${COST_NATURE_LABEL[d.nature]}${d.inherited ? ' (상위)' : ''}` : '고정/변동 미확정';
+                          return (
+                            <button
+                              onClick={() => patch(c.id, { cost_nature: nextCostNature(c.cost_nature) })}
+                              disabled={busy === c.id}
+                              title="고정비/변동비 구분 — 지표 '고정비·변동비'와 손익분기(BEP)가 읽어요. 클릭: 미지정 → 고정 → 변동 → 미지정(상위 상속)"
+                              className={`whitespace-nowrap rounded-md border px-3 py-1 text-[11px] ${d.nature && !d.inherited ? 'border-border text-foreground' : 'border-transparent bg-muted text-muted-foreground'}`}
+                            >
+                              {text}
+                            </button>
+                          );
+                        })()}
                       <button
                         onClick={() => patch(c.id, { active: !c.active })}
                         disabled={busy === c.id}

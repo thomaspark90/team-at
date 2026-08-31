@@ -64,7 +64,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
 
   const loadCats = async () =>
     unwrap(
-      await supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable'),
+      await supabase.schema('finance').from('categories').select('id,type,name,parent_id,vat_taxable,cost_nature'),
       '계정과목',
     );
 

@@ -3,6 +3,7 @@
 // 지출(재료비·판관비)은 거래분류(통장·카드)에서, 과세분은 공급가액(÷1.1)으로 순액화해 매출과 기준 통일.
 // 카드대금 인출과 네이버페이·쿠팡 수집분이 둘 다 손익에 실리면 월 단위에서 겹침을 차감한다(cardOffset.ts).
 import { COLLECTED_SOURCES, cardDupOffset } from './cardOffset';
+import { resolveCostNature, type CostNature } from './costNature';
 
 export const VAT_DIVISOR = 1.1;
 
@@ -19,6 +20,7 @@ export interface AggCat {
   name: string;
   parent_id: number | null;
   vat_taxable?: boolean; // 과세 매입/매출이면 순액(÷1.1) 대상. 없으면 과세로 간주(안전 기본값)
+  cost_nature?: CostNature | null; // 고정비/변동비 구분(계정과목 속성). null 이면 상위 상속(costNature.ts)
 }
 export interface AggTx {
   tx_at: string; // ISO
@@ -49,6 +51,10 @@ export interface MonthAgg {
   cardDupOffset: number;
   /** 채널수수료(opts.channelFees 전달 시) — 실입력 우선, 없으면 매출×추정율. EBIT에서 차감 */
   fee: number;
+  /** 고정비/변동비/미확정 — cogs+sga(+미분류·미상)를 계정과목 cost_nature 로 나눈 것. 합 = cogs + sga */
+  fixedCost: number;
+  variableCost: number;
+  undeterminedCost: number; // 미분류·미상·고정/변동 미지정 계정 — 어느 쪽에도 안 섞는다
 }
 
 function periodKey(iso: string, unit: Unit): string {
@@ -88,19 +94,26 @@ export function aggregate(
   const getMo = (key: string): MonthAgg => {
     let mo = m.get(key);
     if (!mo) {
-      mo = { ym: key, revenue: 0, unclassifiedIn: 0, cogs: 0, sga: 0, ebit: 0, nonOp: 0, net: 0, costRatio: null, profitRatio: null, expense: {}, cardDupOffset: 0, fee: 0 };
+      mo = { ym: key, revenue: 0, unclassifiedIn: 0, cogs: 0, sga: 0, ebit: 0, nonOp: 0, net: 0, costRatio: null, profitRatio: null, expense: {}, cardDupOffset: 0, fee: 0, fixedCost: 0, variableCost: 0, undeterminedCost: 0 };
       m.set(key, mo);
     }
     return mo;
   };
+  // 고정/변동/미확정 칸에 더한다(음수=차감). null(미지정·미분류)은 미확정.
+  const addNature = (mo: MonthAgg, nature: CostNature | null, amt: number) => {
+    if (nature === 'fixed') mo.fixedCost += amt;
+    else if (nature === 'variable') mo.variableCost += amt;
+    else mo.undeterminedCost += amt;
+  };
 
   // 카드대금↔수집분 상쇄 재료 — 그 구간 손익에 실린 금액만 모아 뒤에서 겹침을 뺀다(cardOffset.ts 규칙).
-  // 카드대금은 실린 키별로 들어(대개 '재료비') 차감도 같은 키에서 비례로 한다.
-  const cardByPeriod = new Map<string, Map<string, { amt: number; bucket: 'cogs' | 'sga' }>>();
+  // 카드대금은 실린 키별로 들어(대개 '재료비') 차감도 같은 키에서 비례로 한다. 고정/변동 칸도 같이 뺀다.
+  type CardEntry = { amt: number; bucket: 'cogs' | 'sga'; nature: CostNature | null };
+  const cardByPeriod = new Map<string, Map<string, CardEntry>>();
   const collectedByPeriod = new Map<string, number>();
-  const addCard = (key: string, expKey: string, bucket: 'cogs' | 'sga', amt: number) => {
-    const m = cardByPeriod.get(key) ?? new Map<string, { amt: number; bucket: 'cogs' | 'sga' }>();
-    const cur = m.get(expKey) ?? { amt: 0, bucket };
+  const addCard = (key: string, expKey: string, bucket: 'cogs' | 'sga', amt: number, nature: CostNature | null) => {
+    const m = cardByPeriod.get(key) ?? new Map<string, CardEntry>();
+    const cur = m.get(expKey) ?? { amt: 0, bucket, nature };
     cur.amt += amt;
     m.set(expKey, cur);
     cardByPeriod.set(key, m);
@@ -119,9 +132,10 @@ export function aggregate(
       mo.unclassifiedIn += t.amount_in;
       if (t.amount_out) {
         mo.sga += t.amount_out;
+        mo.undeterminedCost += t.amount_out;
         mo.expense[UNCLASSIFIED] = (mo.expense[UNCLASSIFIED] || 0) + t.amount_out;
         expenseKeys.add(UNCLASSIFIED);
-        if (t.is_card_payment) addCard(key, UNCLASSIFIED, 'sga', t.amount_out);
+        if (t.is_card_payment) addCard(key, UNCLASSIFIED, 'sga', t.amount_out, null);
         else if (isCollected) collectedByPeriod.set(key, (collectedByPeriod.get(key) ?? 0) + t.amount_out);
       }
       continue;
@@ -134,9 +148,11 @@ export function aggregate(
       const amt = netAmt(t.amount_out, c) - netAmt(t.amount_in, c);
       mo.cogs += amt;
       const k = nameOf(c);
+      const nature = resolveCostNature(c, catMap);
       mo.expense[k] = (mo.expense[k] || 0) + amt;
       expenseKeys.add(k);
-      if (t.is_card_payment) addCard(key, k, 'cogs', amt);
+      addNature(mo, nature, amt);
+      if (t.is_card_payment) addCard(key, k, 'cogs', amt, nature);
       else if (isCollected) collectedByPeriod.set(key, (collectedByPeriod.get(key) ?? 0) + amt);
     } else if (c.type === 'sga') {
       // 부가세 납부(예수금 정산) — 매출이 공급가액(VAT 제외) 기준이라 지출로 잡으면 이중 차감.
@@ -145,9 +161,11 @@ export function aggregate(
       const amt = netAmt(t.amount_out, c) - netAmt(t.amount_in, c);
       mo.sga += amt;
       const k = nameOf(c);
+      const nature = resolveCostNature(c, catMap);
       mo.expense[k] = (mo.expense[k] || 0) + amt;
       expenseKeys.add(k);
-      if (t.is_card_payment) addCard(key, k, 'sga', amt);
+      addNature(mo, nature, amt);
+      if (t.is_card_payment) addCard(key, k, 'sga', amt, nature);
       else if (isCollected) collectedByPeriod.set(key, (collectedByPeriod.get(key) ?? 0) + amt);
     } else if (c.type === 'non_operating') {
       mo.nonOp += netAmt(t.amount_in, c) - netAmt(t.amount_out, c);
@@ -156,6 +174,7 @@ export function aggregate(
       // 이익이 부풀려 보이지 않게 한다. 과세여부를 몰라 총액 그대로(순액화 안 함).
       const amt = t.amount_out - t.amount_in;
       mo.sga += amt;
+      mo.undeterminedCost += amt;
       mo.expense['미상'] = (mo.expense['미상'] || 0) + amt;
       expenseKeys.add('미상');
     }
@@ -175,6 +194,7 @@ export function aggregate(
         mo.expense[k] = (mo.expense[k] || 0) - cut;
         if (v.bucket === 'cogs') mo.cogs -= cut;
         else mo.sga -= cut;
+        addNature(mo, v.nature, -cut);
         applied += cut;
       }
       mo.cardDupOffset = applied;

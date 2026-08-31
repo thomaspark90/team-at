@@ -25,7 +25,7 @@ export default async function CategoriesPage({
     await supabase
       .schema('finance')
       .from('categories')
-      .select('id,type,name,parent_id,active,pinned,sort,vat_taxable')
+      .select('id,type,name,parent_id,active,pinned,sort,vat_taxable,cost_nature')
       .order('sort', { ascending: true }),
     '계정과목',
   );
