@@ -272,6 +272,35 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
     }
   };
 
+  // 주요 메뉴 판매량 추이 — 이 단위(브랜드·지점)의 품목 행. 화면에서 메뉴를 토글해 겹쳐 본다
+  // (2026-08-31 대표 요청). 스탭밀 전용인 loadMenuQty 와 달리 지점 필터를 걸어 필요한 만큼만 받는다.
+  const loadProductItems = async () => {
+    if (isAll) return [];
+    const rows = await fetchAllRows<{ sale_date: string; product: string; category: string; qty: number; gross: number }>(
+      (from, to) => {
+        let q = supabase
+          .schema('finance')
+          .from('dashboard_pos_items')
+          .select('sale_date,product,category,qty,gross')
+          .eq('brand', unit.brand)
+          .order('sale_date')
+          .order('category')
+          .order('product')
+          .range(from, to);
+        if (unit.store) q = q.eq('store', unit.store);
+        return q;
+      },
+      { page: 20000, label: '메뉴 판매량', missingTableOk: true },
+    ).catch(() => []);
+    return rows.map((r) => ({
+      saleDate: r.sale_date,
+      product: r.product,
+      category: r.category,
+      qty: Number(r.qty),
+      gross: Number(r.gross),
+    }));
+  };
+
   // 미분해 지출 lump — 명세 미연결 카드대금·세부 미수집 대체 출금(dashboard_lumps 안전 뷰).
   // 관리손익의 cardLump·payLump 와 같은 규칙으로 지표 EBIT에서도 차감(2026-08-21 감사 P4-7).
   // 뷰 미마이그레이션 환경이면 빈 배열(그때만 구 동작 = lump 미반영).
@@ -282,7 +311,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
   };
 
   // 5개 테이블이 서로 독립적이라 병렬로 조회 — 예전엔 순차 await라 지표 페이지 로딩이 밀렸다.
-  const [txns, cats, posSales, bankCash, menuItems, loanMarkers, channelFees, lumps, gramItems, weatherImpact] = await Promise.all([
+  const [txns, cats, posSales, bankCash, menuItems, loanMarkers, channelFees, lumps, gramItems, weatherImpact, productItems] = await Promise.all([
     loadTxns(),
     loadCats(),
     loadPosSales(),
@@ -293,6 +322,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
     loadLumps(),
     loadGramItems(),
     loadWeatherImpact(),
+    loadProductItems(),
   ]);
 
   return (
@@ -330,6 +360,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
           menuItems={menuItems}
           gramItems={gramItems}
           weatherImpact={weatherImpact}
+          productItems={productItems}
           loanMarkers={loanMarkers}
           channelFees={channelFees}
           lumps={lumps}

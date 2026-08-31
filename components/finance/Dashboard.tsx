@@ -62,7 +62,7 @@ const CAT_SURFACE = 'var(--chart-surface)';
 const CAT_MAX = 8; // 8색까지, 초과 카테고리는 '기타'로 접음
 
 // 지표 페이지 차트 순서 — 헤더 그립을 드래그해서 바꾸면 이 브라우저에 저장(계정과 무관)
-const DEFAULT_CHART_ORDER = ['bank', 'revenue', 'brunch', 'ebit', 'capex', 'ratio', 'expense', 'nature', 'cost', 'avg', 'yoy', 'rain', 'weather', 'gift', 'menu'] as const;
+const DEFAULT_CHART_ORDER = ['bank', 'revenue', 'brunch', 'ebit', 'capex', 'ratio', 'expense', 'nature', 'cost', 'avg', 'yoy', 'products', 'rain', 'weather', 'gift', 'menu'] as const;
 type ChartId = (typeof DEFAULT_CHART_ORDER)[number];
 const CHART_ORDER_KEY = 'finance-metrics-chart-order-v1';
 
@@ -163,6 +163,7 @@ export default function Dashboard({
   menuItems = [],
   gramItems = [],
   weatherImpact = null,
+  productItems = [],
   loanMarkers = [],
   channelFees = [],
   lumps = [],
@@ -176,6 +177,8 @@ export default function Dashboard({
   bankCash?: { ym: string; brand: string; bank: string; inflow: number; outflow: number; balance: number }[];
   // 스탭밀 상품별 판매량(finance.pos_items) — 메뉴 판매량 추이 차트 전용
   menuItems?: { saleDate: string; category: string; product: string; qty: number }[];
+  // 주요 메뉴 판매량 추이 — 화면에서 메뉴를 켜고 끄며 겹쳐 본다(2026-08-31 대표 요청).
+  productItems?: { saleDate: string; product: string; category: string; qty: number; gross: number }[];
   // 날씨 × 매출 회귀 결과(/api/garden-weather-sales 의 Blob 캐시) — 가든 지점에서만.
   // 값은 '기준 밴드 대비 %'이고 t 는 유의성(|t|≥2 면 통상 유의). 재계산은 여기서 하지 않는다.
   weatherImpact?: {
@@ -244,6 +247,29 @@ export default function Dashboard({
     setOpen: (v: boolean) => setOpenMap((m) => ({ ...m, [id]: v })),
     onNav: (dir: 1 | -1) => navFullRef.current(dir),
   });
+
+  // 주요 메뉴 판매량 — 어떤 메뉴를 켜 뒀는지 이 브라우저에 저장(단위별로 따로)
+  const [pickedMenus, setPickedMenus] = useState<string[] | null>(null);
+  const menuPrefKey = `finance-metrics-menus-${segId}`;
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(menuPrefKey) ?? 'null') as string[] | null;
+      setPickedMenus(saved && Array.isArray(saved) ? saved : null);
+    } catch {
+      setPickedMenus(null);
+    }
+  }, [menuPrefKey]);
+  const toggleMenu = (name: string) =>
+    setPickedMenus((prev) => {
+      const base = prev ?? [];
+      const next = base.includes(name) ? base.filter((x) => x !== name) : [...base, name];
+      try {
+        localStorage.setItem(menuPrefKey, JSON.stringify(next));
+      } catch {
+        /* 저장 실패는 무시 — 화면 동작에는 지장 없다 */
+      }
+      return next;
+    });
 
   // 차트 순서 — 헤더 그립을 드래그해서 바꾸고 이 브라우저에 저장(계정과 무관, localStorage)
   const [order, setOrder] = useState<ChartId[]>([...DEFAULT_CHART_ORDER]);
@@ -456,6 +482,37 @@ export default function Dashboard({
     d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
     return d.toISOString().slice(0, 10);
   };
+  // 주요 메뉴 판매량 — 상품별 기간 시계열(수량). 목록은 총 판매량 상위 12개.
+  const menuSeries = useMemo(() => {
+    if (productItems.length === 0) return { names: [] as string[], data: [] as Record<string, number | string>[] };
+    const total = new Map<string, number>();
+    const byKey = new Map<string, Map<string, number>>(); // 기간 → 상품 → 수량
+    for (const it of productItems) {
+      total.set(it.product, (total.get(it.product) ?? 0) + it.qty);
+      const k = periodKeyOf(it.saleDate);
+      if (!byKey.has(k)) byKey.set(k, new Map());
+      const m = byKey.get(k)!;
+      m.set(it.product, (m.get(it.product) ?? 0) + it.qty);
+    }
+    const names = Array.from(total.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([n]) => n);
+    const data = visMonths
+      .filter((mo) => byKey.has(mo.ym))
+      .map((mo) => {
+        const m = byKey.get(mo.ym)!;
+        const row: Record<string, number | string> = { p: fmtP(mo.ym) };
+        for (const n of names) row[n] = Math.round(m.get(n) ?? 0);
+        return row;
+      });
+    return { names, data };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productItems, visMonths, unit]);
+
+  // 켜진 메뉴 — 저장된 게 없으면 상위 3개를 기본으로 켠다
+  const activeMenus = pickedMenus ?? menuSeries.names.slice(0, 3);
+
   const gramProductName = gramItems[0]?.product ?? '';
   const gramData = useMemo(() => {
     if (gramItems.length === 0) return [];
@@ -778,6 +835,71 @@ export default function Dashboard({
       </ResponsiveContainer>
     </ChartCard>
   );
+
+  // 주요 메뉴 판매량 추이 — 위 칩을 눌러 메뉴를 켜고 끈다. 한 화면에서 겹쳐 봐야
+  // "아메리카노가 줄고 브런치바가 늘었나" 같은 질문에 눈으로 답이 된다(2026-08-31 대표 요청).
+  if (menuSeries.names.length > 0 && menuSeries.data.length > 0) {
+    chartNodes.products = (
+      <ChartCard
+        key="products"
+        id="products"
+        {...fullProps('products')}
+        onReorder={reorderChart}
+        title="주요 메뉴 판매량"
+        subtitle="판매 수량(잔·개) · 총 판매량 상위 12개 메뉴 중 켠 것만 그려요 · 선택은 이 브라우저에 저장돼요"
+      >
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {menuSeries.names.map((n, i) => {
+            const on = activeMenus.includes(n);
+            const color = CAT[menuSeries.names.indexOf(n) % CAT.length];
+            return (
+              <button
+                key={n}
+                onClick={() => toggleMenu(n)}
+                aria-pressed={on}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
+                  on ? 'border-foreground/30 bg-muted text-foreground' : 'border-border text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ background: on ? color : 'var(--chart-cat-other)', opacity: on ? 1 : 0.35 }}
+                  aria-hidden
+                />
+                {n}
+              </button>
+            );
+          })}
+        </div>
+        {activeMenus.length === 0 ? (
+          <p className="py-10 text-center text-[13px] text-muted-foreground">위에서 볼 메뉴를 골라주세요.</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={chartH('products', 520)}>
+            <LineChart data={menuSeries.data} margin={{ top: 16, right: 16, bottom: 8, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+              <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+              <YAxis tick={axisTick} stroke={AXIS} width={48} />
+              <Tooltip content={<ChartTooltip fmt={(v: number) => `${Number(v).toLocaleString()}개`} />} />
+              <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} />
+              {activeMenus
+                .filter((n) => menuSeries.names.includes(n))
+                .map((n) => (
+                  <Line
+                    key={n}
+                    type="monotone"
+                    dataKey={n}
+                    stroke={CAT[menuSeries.names.indexOf(n) % CAT.length]}
+                    strokeWidth={1.5}
+                    dot={{ r: 2 }}
+                    isAnimationActive={false}
+                  />
+                ))}
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </ChartCard>
+    );
+  }
 
   // 그램 상품(브런치바) 추이 — 매출 추이 오른쪽에 나란히(2026-08-31 대표 지시).
   // 막대=매출(공급가액, 매출 추이와 같은 기준), 선=평균 그램(오른쪽 축). 그램 규칙이 있는
