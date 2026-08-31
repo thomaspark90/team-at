@@ -21,6 +21,7 @@ import { aggregate, capexDepreciation, capexByMonth, UNCLASSIFIED, type AggTx, t
 import { COST_NATURE_NOTES, COST_UNDETERMINED_LABEL } from '@/lib/finance/costNature';
 import IncentiveSim from '@/components/finance/IncentiveSim';
 import { bankShort } from '@/lib/finance/cashflow';
+import { gramRuleFor } from '@/lib/finance/gramProducts';
 import { wonNum as won } from '@/lib/finance/format';
 import { useMonthCtx } from './MonthShell';
 
@@ -58,7 +59,7 @@ const CAT_SURFACE = 'var(--chart-surface)';
 const CAT_MAX = 8; // 8색까지, 초과 카테고리는 '기타'로 접음
 
 // 지표 페이지 차트 순서 — 헤더 그립을 드래그해서 바꾸면 이 브라우저에 저장(계정과 무관)
-const DEFAULT_CHART_ORDER = ['bank', 'revenue', 'ebit', 'capex', 'ratio', 'expense', 'nature', 'cost', 'avg', 'yoy', 'gift', 'menu'] as const;
+const DEFAULT_CHART_ORDER = ['bank', 'revenue', 'brunch', 'ebit', 'capex', 'ratio', 'expense', 'nature', 'cost', 'avg', 'yoy', 'gift', 'menu'] as const;
 type ChartId = (typeof DEFAULT_CHART_ORDER)[number];
 const CHART_ORDER_KEY = 'finance-metrics-chart-order-v1';
 
@@ -116,7 +117,7 @@ function ChartTooltip({ active, payload, label, fmt, share }: any) {
             {p.name}
           </span>
           <span className="flex items-baseline gap-2">
-            <span>{fmt ? fmt(p.value) : p.value}</span>
+            <span>{fmt ? fmt(p.value, p.name) : p.value}</span>
             {share && total > 0 && (
               <span className="w-[42px] text-right text-muted-foreground">{((Number(p.value) / total) * 100).toFixed(1)}%</span>
             )}
@@ -157,6 +158,7 @@ export default function Dashboard({
   posSales = [],
   bankCash = [],
   menuItems = [],
+  gramItems = [],
   loanMarkers = [],
   channelFees = [],
   lumps = [],
@@ -170,6 +172,9 @@ export default function Dashboard({
   bankCash?: { ym: string; brand: string; bank: string; inflow: number; outflow: number; balance: number }[];
   // 스탭밀 상품별 판매량(finance.pos_items) — 메뉴 판매량 추이 차트 전용
   menuItems?: { saleDate: string; category: string; product: string; qty: number }[];
+  // 그램 단위 판매 상품(가든 양재천 '브런치바') 일별 행 — 매출 추이 옆 추이 차트 전용(2026-08-31).
+  // supply=공급가액(매출 추이와 같은 기준), listPrice=정가 합(그램 역산 기준, gramProducts.ts).
+  gramItems?: { saleDate: string; product: string; qty: number; supply: number; listPrice: number }[];
   // '대여금' 분류 거래의 (브랜드, 월)별 합계 — 통장 차트 빨간 원 마커. 서버(metrics/page)에서 프리페치.
   loanMarkers?: { brand: string; ym: string; amount: number; label: string }[];
   // 채널수수료 실입력(finance.channel_fees) — EBIT 차감(관리손익과 기준 통일). 없는 달은 1.7% 추정.
@@ -398,12 +403,10 @@ export default function Dashboard({
     const kst = new Date(Date.now() + 9 * 3600_000);
     return `${kst.getUTCFullYear()}-${String(kst.getUTCMonth() + 1).padStart(2, '0')}`;
   }, []);
-  const [showCurrent, setShowCurrent] = useState(false);
-  const visMonths = useMemo(() => {
-    if (unit !== 'month' || showCurrent) return months;
-    const filtered = months.filter((m) => m.ym !== nowYm);
-    return filtered.length > 0 ? filtered : months;
-  }, [months, unit, showCurrent, nowYm]);
+  // 진행월(이번 달)도 그대로 보여준다 — '자료가 올라온 달은 지출이 없어도 지표에 띄우라'는
+  // 대표 지시(2026-08-31). 예전엔 끝점 왜곡을 막으려고 이번 달을 기본 숨김했는데, 월중에 POS를
+  // 올려도 지표에 안 잡혀 "매출이 반영이 안 된다"고 보이는 쪽이 더 큰 문제였다.
+  const visMonths = months;
 
   // 메뉴 판매량 추이(Newbie/Staff/Boss × 매장/포장) — 스탭밀 세그먼트에서만, 월 단위로만 그린다
   // (상품별 리포트가 일자별이라 주 단위 집계까지는 필요 없다고 판단).
@@ -420,12 +423,49 @@ export default function Dashboard({
       byMonth.set(ym, row);
     }
     return Array.from(byMonth.keys())
-      .filter((ym) => showCurrent || ym !== nowYm) // 진행월 숨김(다른 추이 차트와 동일)
       .sort()
       .map((ym) => ({ p: ym.slice(2).replace('-', '.'), ...byMonth.get(ym) }));
-  }, [menuItems, brand, showCurrent, nowYm]);
+  }, [menuItems, brand]);
 
   const fmtP = (key: string) => (unit === 'month' ? key.slice(2).replace('-', '.') : key.slice(5).replace('-', '/'));
+
+  // 그램 상품(브런치바) 추이 — 매출 추이와 같은 기간 축. aggregate.periodKey 와 같은 규칙을 쓴다
+  // (월: YYYY-MM / 주: 그 주 월요일) — 두 차트의 x축이 어긋나면 나란히 둔 의미가 없다.
+  const periodKeyOf = (ymd: string) => {
+    if (unit === 'month') return ymd.slice(0, 7);
+    const d = new Date(ymd.slice(0, 10) + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+    return d.toISOString().slice(0, 10);
+  };
+  const gramProductName = gramItems[0]?.product ?? '';
+  const gramData = useMemo(() => {
+    if (gramItems.length === 0) return [];
+    const byKey = new Map<string, { supply: number; qty: number; grams: number }>();
+    for (const it of gramItems) {
+      const rule = gramRuleFor(brand, store === 'all' ? '' : store, it.product, it.saleDate);
+      const k = periodKeyOf(it.saleDate);
+      const a = byKey.get(k) ?? { supply: 0, qty: 0, grams: 0 };
+      a.supply += it.supply;
+      a.qty += it.qty;
+      if (rule) a.grams += it.listPrice / rule.wonPerGram;
+      byKey.set(k, a);
+    }
+    return visMonths
+      .map((m) => {
+        const a = byKey.get(m.ym);
+        if (!a) return null;
+        return {
+          p: fmtP(m.ym),
+          매출: Math.round(a.supply),
+          '평균 그램': a.qty > 0 && a.grams > 0 ? Math.round(a.grams / a.qty) : null,
+          비중: m.revenue > 0 ? +((a.supply / m.revenue) * 100).toFixed(1) : null,
+          건수: Math.round(a.qty),
+        };
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gramItems, visMonths, unit, brand, store]);
+
 
   const toggle = (
     <div className="flex flex-wrap items-center gap-2">
@@ -445,18 +485,6 @@ export default function Dashboard({
           );
         })}
       </div>
-      {/* 진행월 — 자료가 덜 올라온 이번 달은 기본 숨김(끝점 왜곡 방지), 필요할 때만 켠다 */}
-      {unit === 'month' && (
-        <button
-          onClick={() => setShowCurrent((v) => !v)}
-          className={`rounded-md border px-3 py-1.5 text-[13px] transition-colors ${
-            showCurrent ? 'border-foreground/40 text-foreground' : 'border-border text-muted-foreground hover:text-foreground'
-          }`}
-          title="이번 달은 자료가 덜 올라와 추이 끝점이 왜곡될 수 있어 기본은 숨겨요"
-        >
-          진행월 {showCurrent ? '표시 중' : '숨김'}
-        </button>
-      )}
       {unit === 'week' && (
         <span className="text-[11px] text-muted-foreground">
           주 단위는 현금흐름 관점 — 카드대금이 결제 주에 몰려 보여요. 손익 판단은 월 단위로.
@@ -688,7 +716,7 @@ export default function Dashboard({
     );
   }
 
-  chartNodes.revenue = (
+  const revenueCard = (
     <ChartCard
       key="revenue"
       id="revenue"
@@ -720,6 +748,71 @@ export default function Dashboard({
         </LineChart>
       </ResponsiveContainer>
     </ChartCard>
+  );
+
+  // 그램 상품(브런치바) 추이 — 매출 추이 오른쪽에 나란히(2026-08-31 대표 지시).
+  // 막대=매출(공급가액, 매출 추이와 같은 기준), 선=평균 그램(오른쪽 축). 그램 규칙이 있는
+  // 지점·상품에서만 그린다(gramProducts.ts) — 지금은 가든 양재천 '브런치바'.
+  const brunchCard =
+    gramData.length > 0 ? (
+      <ChartCard
+        key="brunch"
+        id="brunch"
+        {...fullProps('brunch')}
+        onReorder={reorderChart}
+        title={`${gramProductName} 추이`}
+        subtitle="막대=매출(공급가액) · 선=평균 그램(정가 ÷ 그램당 단가) · 라벨=매장 매출 대비 비중"
+      >
+        <ResponsiveContainer width="100%" height={chartH('brunch', 585)}>
+          <ComposedChart data={gramData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+            <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
+            <YAxis yAxisId="left" tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tickFormatter={(v) => `${v}g`}
+              tick={axisTick}
+              stroke={AXIS}
+              width={44}
+              domain={['dataMin - 50', 'dataMax + 50']}
+            />
+            <Tooltip
+              content={
+                <ChartTooltip
+                  fmt={(v: number, name?: string) =>
+                    name === '평균 그램' ? `${Number(v).toLocaleString()}g` : name === '비중' ? `${v}%` : won(Number(v))
+                  }
+                />
+              }
+            />
+            <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} />
+            {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
+            <Bar yAxisId="left" dataKey="매출" fill={CAT[0]} radius={[3, 3, 0, 0]} maxBarSize={46}>
+              <LabelList dataKey="비중" position="top" offset={8} formatter={pctLabel} style={pointLabel} />
+            </Bar>
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="평균 그램"
+              stroke={LINE2}
+              strokeWidth={1.5}
+              dot={{ r: 2, fill: LINE2 }}
+              connectNulls
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    ) : null;
+
+  // 매출 추이 + 브런치바 추이를 한 행(2열)으로 — 브런치바가 없는 단위에선 매출 추이만 전폭.
+  chartNodes.revenue = brunchCard ? (
+    <div key="revenue-row" className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
+      {revenueCard}
+      {brunchCard}
+    </div>
+  ) : (
+    revenueCard
   );
 
   chartNodes.ebit = (
@@ -1035,26 +1128,9 @@ export default function Dashboard({
 
   return (
     <div className="flex flex-col gap-10">
-      {isPast && (
-        <div className="-mb-1 text-[13px] text-muted-foreground">
-          좌측에서 고른 <b className="text-foreground">{focusP}</b> 기준 요약이에요 · 아래 추이 차트는 전체 기간
-        </div>
-      )}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-3">
-          <Stat label={`${unitLabel} 매출 (순액)`} value={won(last.revenue)} delta={delta(last.revenue, prev?.revenue)} />
-          <Stat label="지출(원가+판관비)" value={won(lastExpense)} delta={delta(lastExpense, prevExpense)} />
-          <Stat label="고정비" value={won(last.fixedCost)} delta={delta(last.fixedCost, prev?.fixedCost)} />
-          <Stat
-            label={`변동비${last.revenue > 0 ? ` (매출의 ${((last.variableCost / last.revenue) * 100).toFixed(1)}%)` : ''}`}
-            value={won(last.variableCost)}
-            delta={delta(last.variableCost, prev?.variableCost)}
-          />
-          <Stat label="영업이익(EBIT)" value={won(last.ebit)} delta={delta(last.ebit, prev?.ebit)} />
-          <Stat label="당기순이익" value={won(last.net)} delta={delta(last.net, prev?.net)} />
-        </div>
-        {toggle}
-      </div>
+      {/* 요약 타일(매출·지출·고정비·변동비·EBIT·순이익)과 좌측 연·월 사이드바는 제거했다
+          (2026-08-31 대표 지시) — 월 단위 숫자는 관리손익·월 결산에서 보고, 이 화면은 추이 전용. */}
+      <div className="flex flex-wrap items-center justify-end gap-3">{toggle}</div>
       {visMonths.length > 0 && last.revenue === 0 && (
         <div className="-mt-2 text-[11px] text-muted-foreground">
           이 기간 <b>POS 매출이 없어요</b> — 매출은 <a href="/finance/pnl" className="underline">관리손익</a>에서 토스 매출리포트를 올려야 잡혀요.

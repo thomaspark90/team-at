@@ -7,9 +7,9 @@ import { fetchAllRows } from '@/lib/finance/fetchAll';
 import type { AggTx, AggCat } from '@/lib/finance/aggregate';
 import { monthEndBalance } from '@/lib/finance/cashflow';
 import { UNITS, unitOf } from '@/lib/finance/types';
+import { GRAM_PRODUCTS } from '@/lib/finance/gramProducts';
 import TabNav from '@/components/TabNav';
 import FinanceNav from '@/components/finance/FinanceNav';
-import MonthShell from '@/components/finance/MonthShell';
 import dynamic from 'next/dynamic';
 
 // recharts 포함 차트 번들은 별도 청크로 지연 로드 — 페이지 뼈대가 먼저 그려진다
@@ -196,6 +196,33 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
     return all.filter((r) => r.brand === 'staffmeal').map((r) => ({ saleDate: r.sale_date, category: r.category, product: r.product, qty: Number(r.qty) }));
   };
 
+  // 그램 단위 판매 상품(가든 양재천 '브런치바') 일별 행 — 매출 추이 옆 추이 차트용(2026-08-31).
+  // 단가표(gramProducts.ts)에 이 단위의 규칙이 없으면 조회 자체를 건너뛴다.
+  const loadGramItems = async () => {
+    if (isAll) return [];
+    const store = unit.store ?? '';
+    const products = Array.from(
+      new Set(GRAM_PRODUCTS.filter((r) => r.brand === unit.brand && (r.store === '' || r.store === store)).map((r) => r.product)),
+    );
+    if (products.length === 0) return [];
+    const { data, error } = await supabase
+      .schema('finance')
+      .from('dashboard_pos_item_hours')
+      .select('sale_date,product,qty,supply,list_price')
+      .eq('brand', unit.brand)
+      .eq('store', store)
+      .in('product', products)
+      .limit(20000);
+    if (error) return []; // 뷰 미마이그레이션 환경 — 차트만 빠지고 나머지는 그대로
+    return ((data ?? []) as { sale_date: string; product: string; qty: number; supply: number; list_price: number }[]).map((r) => ({
+      saleDate: r.sale_date,
+      product: r.product,
+      qty: Number(r.qty),
+      supply: Number(r.supply),
+      listPrice: Number(r.list_price),
+    }));
+  };
+
   // 미분해 지출 lump — 명세 미연결 카드대금·세부 미수집 대체 출금(dashboard_lumps 안전 뷰).
   // 관리손익의 cardLump·payLump 와 같은 규칙으로 지표 EBIT에서도 차감(2026-08-21 감사 P4-7).
   // 뷰 미마이그레이션 환경이면 빈 배열(그때만 구 동작 = lump 미반영).
@@ -206,7 +233,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
   };
 
   // 5개 테이블이 서로 독립적이라 병렬로 조회 — 예전엔 순차 await라 지표 페이지 로딩이 밀렸다.
-  const [txns, cats, posSales, bankCash, menuItems, loanMarkers, channelFees, lumps] = await Promise.all([
+  const [txns, cats, posSales, bankCash, menuItems, loanMarkers, channelFees, lumps, gramItems] = await Promise.all([
     loadTxns(),
     loadCats(),
     loadPosSales(),
@@ -215,13 +242,14 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
     loadLoanMarkers(),
     loadChannelFees(),
     loadLumps(),
+    loadGramItems(),
   ]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TabNav />
       <FinanceNav role={role} />
-      <div className="mx-auto max-w-[1680px] px-6 py-8">
+      <div className="w-full px-6 py-8">
         <div className="mb-5 flex items-baseline justify-between">
           <h1 className="m-0 text-[22px] tracking-[-0.5px]">지표{isAll ? ' — 전사 통합' : ''}</h1>
           <span className="flex items-baseline gap-4">
@@ -242,22 +270,21 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
         <p className="mb-5 text-[13px] text-muted-foreground">
           <b>매출은 POS(발생주의)</b>, 지출은 통장·카드 기준이에요. 통장 현금흐름·잔액은 <Link href="/finance/cashflow" className="underline">월별 요약</Link>·<Link href="/finance/flow" className="underline">자금 흐름</Link>에서 봐요.
         </p>
-        {/* 좌측 연·월 사이드바 — 회계 자료 화면과 동일한 셸. 지표는 모든 데이터가 이미 클라이언트에 있어
-            서버 재조회가 필요 없다 → navigate=false(얕은 갱신). 배지 없음(initialTodos={{}}). */}
-        <MonthShell navigate={false} initialTodos={{}}>
-          <Dashboard
-            txns={(txns as AggTx[]) ?? []}
-            cats={(cats as AggCat[]) ?? []}
-            posSales={posSales}
-            bankCash={bankCash}
-            menuItems={menuItems}
-            loanMarkers={loanMarkers}
-            channelFees={channelFees}
-            lumps={lumps}
-            reportUnit={isAll ? { brand: 'all', store: null } : { brand: unit.brand as 'staffmeal' | 'garden', store: unit.store }}
-            showIncentiveSim={['admin', 'classifier'].includes(role)}
-          />
-        </MonthShell>
+        {/* 좌측 연·월 사이드바와 요약 타일은 제거했다(2026-08-31 대표 지시) — 이 화면은 추이 전용이고,
+            달 단위 숫자는 관리손익·월 결산에서 본다. 차트는 항상 전체 기간(진행월 포함). */}
+        <Dashboard
+          txns={(txns as AggTx[]) ?? []}
+          cats={(cats as AggCat[]) ?? []}
+          posSales={posSales}
+          bankCash={bankCash}
+          menuItems={menuItems}
+          gramItems={gramItems}
+          loanMarkers={loanMarkers}
+          channelFees={channelFees}
+          lumps={lumps}
+          reportUnit={isAll ? { brand: 'all', store: null } : { brand: unit.brand as 'staffmeal' | 'garden', store: unit.store }}
+          showIncentiveSim={['admin', 'classifier'].includes(role)}
+        />
       </div>
     </div>
   );
