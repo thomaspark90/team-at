@@ -485,19 +485,24 @@ export default function Dashboard({
   };
   // 주요 메뉴 판매량 — 상품별 기간 시계열(수량). 목록은 총 판매량 상위 12개.
   const menuSeries = useMemo(() => {
-    if (productItems.length === 0) return { names: [] as string[], data: [] as Record<string, number | string>[] };
+    if (productItems.length === 0)
+      return { names: [] as string[], data: [] as Record<string, number | string>[], cat: new Map<string, string>(), total: new Map<string, number>() };
     const total = new Map<string, number>();
+    const cat = new Map<string, string>(); // 상품 → 카테고리(칩 묶음용)
     const byKey = new Map<string, Map<string, number>>(); // 기간 → 상품 → 수량
     for (const it of productItems) {
       total.set(it.product, (total.get(it.product) ?? 0) + it.qty);
+      if (!cat.has(it.product)) cat.set(it.product, it.category || '기타');
       const k = periodKeyOf(it.saleDate);
       if (!byKey.has(k)) byKey.set(k, new Map());
       const m = byKey.get(k)!;
       m.set(it.product, (m.get(it.product) ?? 0) + it.qty);
     }
+    // 판매하는 **모든** 메뉴를 담는다(2026-08-31 대표 요청 — 상위 12개만 보이던 것을 전체로).
+    // 칩이 수십 개가 되므로 화면에선 카테고리로 묶고 스크롤에 넣는다.
     const names = Array.from(total.entries())
+      .filter(([, q]) => q > 0)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 12)
       .map(([n]) => n);
     const data = visMonths
       .filter((mo) => byKey.has(mo.ym))
@@ -507,12 +512,29 @@ export default function Dashboard({
         for (const n of names) row[n] = Math.round(m.get(n) ?? 0);
         return row;
       });
-    return { names, data };
+    return { names, data, cat, total };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productItems, visMonths, unit]);
 
   // 켜진 메뉴 — 저장된 게 없으면 상위 3개를 기본으로 켠다
   const activeMenus = pickedMenus ?? menuSeries.names.slice(0, 3);
+
+  // 칩 묶음 — 카테고리별, 각 그룹 안에서는 판매량 순
+  const menuGroups = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const n of menuSeries.names) {
+      const c = menuSeries.cat.get(n) ?? '기타';
+      if (!m.has(c)) m.set(c, []);
+      m.get(c)!.push(n);
+    }
+    return Array.from(m.entries())
+      .map(([category, items]) => ({
+        category,
+        items,
+        total: items.reduce((s, n) => s + (menuSeries.total.get(n) ?? 0), 0),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [menuSeries]);
 
   const gramProductName = gramItems[0]?.product ?? '';
   const gramData = useMemo(() => {
@@ -847,30 +869,58 @@ export default function Dashboard({
         {...fullProps('products')}
         onReorder={reorderChart}
         title="주요 메뉴 판매량"
-        subtitle="판매 수량(잔·개) · 총 판매량 상위 12개 메뉴 중 켠 것만 그려요 · 선택은 이 브라우저에 저장돼요"
+        subtitle={`판매 수량(잔·개) · 판매하는 메뉴 ${menuSeries.names.length}개 전부 중 켠 것만 그려요 · 카테고리별로 묶었고, 선택은 이 브라우저에 저장돼요`}
       >
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          {menuSeries.names.map((n, i) => {
-            const on = activeMenus.includes(n);
-            const color = CAT[menuSeries.names.indexOf(n) % CAT.length];
-            return (
-              <button
-                key={n}
-                onClick={() => toggleMenu(n, activeMenus)}
-                aria-pressed={on}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
-                  on ? 'border-foreground/30 bg-muted text-foreground' : 'border-border text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: on ? color : 'var(--chart-cat-other)', opacity: on ? 1 : 0.35 }}
-                  aria-hidden
-                />
-                {n}
-              </button>
-            );
-          })}
+        <div className="mb-3">
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px]">
+            <span className="text-muted-foreground">
+              켠 메뉴 <b className="text-foreground tabular-nums">{activeMenus.length}</b> / {menuSeries.names.length}개
+            </span>
+            <button
+              onClick={() => setPickedMenus(menuSeries.names.slice(0, 5))}
+              className="rounded-md border border-border px-2 py-0.5 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              상위 5개만
+            </button>
+            <button
+              onClick={() => setPickedMenus([])}
+              className="rounded-md border border-border px-2 py-0.5 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              모두 끄기
+            </button>
+          </div>
+          {/* 메뉴가 수십 개라 카테고리로 묶고 스크롤에 넣는다 — 한 줄로 깔면 화면이 칩으로 덮인다 */}
+          <div className="max-h-[190px] overflow-y-auto rounded-md border border-border p-2">
+            {menuGroups.map((g) => (
+              <div key={g.category} className="mb-2 last:mb-0">
+                <div className="mb-1 text-[11px] text-muted-foreground">{g.category}</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {g.items.map((n) => {
+                    const on = activeMenus.includes(n);
+                    const color = CAT[Math.max(0, activeMenus.indexOf(n)) % CAT.length];
+                    return (
+                      <button
+                        key={n}
+                        onClick={() => toggleMenu(n, activeMenus)}
+                        aria-pressed={on}
+                        title={`${n} · 총 ${Math.round(menuSeries.total.get(n) ?? 0).toLocaleString()}개`}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
+                          on ? 'border-foreground/30 bg-muted text-foreground' : 'border-border text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <span
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ background: on ? color : 'var(--chart-cat-other)', opacity: on ? 1 : 0.35 }}
+                          aria-hidden
+                        />
+                        {n}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
         {activeMenus.length === 0 ? (
           <p className="py-10 text-center text-[13px] text-muted-foreground">위에서 볼 메뉴를 골라주세요.</p>
@@ -889,7 +939,7 @@ export default function Dashboard({
                     key={n}
                     type="monotone"
                     dataKey={n}
-                    stroke={CAT[menuSeries.names.indexOf(n) % CAT.length]}
+                    stroke={CAT[Math.max(0, activeMenus.indexOf(n)) % CAT.length]}
                     strokeWidth={1.5}
                     dot={{ r: 2 }}
                     isAnimationActive={false}
