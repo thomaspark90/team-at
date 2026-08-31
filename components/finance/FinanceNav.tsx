@@ -19,6 +19,7 @@ const UNIT_TAB_LABEL: Record<Exclude<UnitId, 'personal'>, string> = {
 
 const LEFT = [
   { href: '/finance/metrics', label: '지표' },
+  { href: '/finance/hypothesis', label: '가설' },
   { href: '/finance/pnl', label: '관리손익' },
   { href: '/finance/cashflow', label: '월별 요약' },
   { href: '/finance/flow', label: '자금 흐름' },
