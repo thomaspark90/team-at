@@ -980,7 +980,10 @@ export default function Dashboard({
     );
   }
 
-  if (unit === 'month' && hasGift) {
+  // 식권은 스탭밀 제도 — 가든의 gift 행은 금액권·선불권(상품권)이라 '식권'으로 부르면 오해다.
+  // 가든 세그먼트에선 이 차트를 그리지 않는다(2026-08-31 대표 지시). 전사 통합은 스탭밀 몫이
+  // 실재하므로 유지.
+  if (unit === 'month' && hasGift && brand !== 'garden') {
     chartNodes.gift = (
       <ChartCard
         key="gift"
