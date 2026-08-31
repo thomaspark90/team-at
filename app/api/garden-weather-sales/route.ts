@@ -28,6 +28,7 @@ interface PosRow {
   category: string;
   qty: number | string;
   supply: number | string;
+  gross: number | string; // 실판매금액(VAT 포함) — 일별 매출 표시용
 }
 
 interface SeriesOut {
@@ -83,7 +84,7 @@ export async function GET(req: Request) {
     const { data, error } = await supabase
       .schema('finance')
       .from('pos_sales')
-      .select('sale_date,store,category,qty,supply')
+      .select('sale_date,store,category,qty,supply,gross')
       .eq('brand', 'garden')
       // id 보조 정렬 — sale_date 만으로는 정렬이 유일하지 않아 페이지 경계에서 행이 중복/누락될 수 있다
       .order('sale_date')
@@ -98,7 +99,7 @@ export async function GET(req: Request) {
   }
 
   // (지점 × 일) 집계 + 지점별 카테고리 합계
-  type Daily = { qty: number; supply: number };
+  type Daily = { qty: number; supply: number; gross: number };
   const byStore = new Map<string, Map<string, Daily>>(); // store → date → 합계
   const coffeeYangjae = new Map<string, number>(); // date → COFFEE qty
   // 판교는 카테고리=메뉴명(페이히어) — 커피 메뉴만 선별. qty 가 결제건수라 '커피 포함 결제' 프록시임에 유의
@@ -110,9 +111,10 @@ export async function GET(req: Request) {
     const qty = Number(r.qty) || 0;
     const supply = Number(r.supply) || 0;
     const days = byStore.get(store) ?? new Map<string, Daily>();
-    const d = days.get(r.sale_date) ?? { qty: 0, supply: 0 };
+    const d = days.get(r.sale_date) ?? { qty: 0, supply: 0, gross: 0 };
     d.qty += qty;
     d.supply += supply;
+    d.gross += Number(r.gross) || 0;
     days.set(r.sale_date, d);
     byStore.set(store, days);
     const cats = catTotals.get(store) ?? new Map();
@@ -255,8 +257,28 @@ export async function GET(req: Request) {
   }
   const yangjaeCoffeeCupsByDow = dowSum.map((s, i) => (dowN[i] > 0 ? Math.round(s / dowN[i]) : 0));
 
+  // 일별 시계열 — 지점별 (영업일 × 강수 × 기온 × 매출). 지표의 '강수 × 일 매출' 차트가 쓴다.
+  // 회귀 결과만으론 "비 온 날이 언제, 얼마나 왔는지"가 안 보인다는 요구(2026-08-31 대표).
+  // 금액은 총액(VAT 포함) — 매출 표시 기준(docs/finance-formulas.md).
+  const daily: Record<string, { date: string; rain: number; tmax: number | null; sales: number }[]> = {};
+  for (const [store, daysMap] of Array.from(byStore.entries())) {
+    daily[store] = Array.from(daysMap.entries())
+      .filter(([, d]) => d.supply > 0) // 휴무일 제외
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, d]) => {
+        const w = weather.get(date);
+        return {
+          date,
+          rain: w ? Math.round(w.rainMm * 10) / 10 : 0,
+          tmax: w ? Math.round(w.tmax * 10) / 10 : null,
+          sales: Math.round(d.gross ?? d.supply),
+        };
+      });
+  }
+
   const payload = {
     coverage,
+    daily,
     weatherDays: weather.size,
     series,
     categories,

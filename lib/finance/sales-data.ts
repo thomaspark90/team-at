@@ -7,7 +7,8 @@ export interface SalesRow {
   sale_date: string; // 'YYYY-MM-DD'
   ym: string; // 'YYYY-MM'
   category: string;
-  supply: number;
+  supply: number; // 공급가액(VAT 제외) — 손익 계산용
+  gross?: number; // 실판매금액(VAT 포함) — 매출 표시용(2026-08-31, docs/finance-formulas.md)
   store?: string | null; // 지점 — 스탭밀은 '' (2026-08-08 뷰에도 추가됨)
 }
 
@@ -25,7 +26,7 @@ export async function fetchSalesRows(
   opts: { table: 'pos_sales' | 'dashboard_pos'; brand: string; since: string }
 ): Promise<SalesRow[]> {
   const isTable = opts.table === 'pos_sales';
-  const columns = 'sale_date, ym, category, supply, store';
+  const columns = 'sale_date, ym, category, supply, gross, store';
   const rows: SalesRow[] = [];
   for (let from = 0; ; from += PAGE) {
     // 페이지 경계 중복/누락 방지 — 정렬이 유일해야 안전하다. 테이블은 id 로 보장,

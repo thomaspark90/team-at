@@ -17,7 +17,8 @@ export interface ItemRow {
   product: string;
   option: string;
   qty: number;
-  supply: number;
+  supply: number; // 공급가액 — 손익용
+  gross?: number; // 실판매금액(VAT 포함) — 화면 표시용(2026-08-31)
   store?: string | null;
 }
 
@@ -35,7 +36,7 @@ export async function fetchItemRows(
     const { data, error } = await supabase
       .schema('finance')
       .from('dashboard_pos_items')
-      .select('sale_date, ym, category, product, option, qty, supply, store')
+      .select('sale_date, ym, category, product, option, qty, supply, gross, store')
       .eq('brand', opts.brand)
       .gte('sale_date', opts.since)
       .order('sale_date', { ascending: true })
@@ -156,9 +157,9 @@ function emptySeries(label: string, n: number): PeriodSeries {
 function accumulate(series: PeriodSeries, bucketIdx: number, r: ItemRow) {
   if (bucketIdx < 0) return;
   series.qty[bucketIdx] += Number(r.qty);
-  series.supply[bucketIdx] += Number(r.supply);
+  series.supply[bucketIdx] += Number(r.gross ?? r.supply);
   series.totalQty += Number(r.qty);
-  series.totalSupply += Number(r.supply);
+  series.totalSupply += Number(r.gross ?? r.supply);
 }
 
 /** 상품명 단위 기간별 시계열 — 오픈 이후 전체, 총 판매량 상위 topN 메뉴만. */
@@ -210,7 +211,7 @@ export function buildAmericanoSeries(rows: ItemRow[], gran: Granularity): Americ
     const bi = idx.get(bucketOf(r.sale_date, gran));
     if (bi === undefined) continue;
     totalQty += Number(r.qty);
-    totalSupply += Number(r.supply);
+    totalSupply += Number(r.gross ?? r.supply);
     const temp = tempOf(r.product, r.option);
     const bean = beanOf(r.option);
     if (temp === 'unknown' || bean === '기타') unclassified.add(r.option || '(옵션 없음)');

@@ -55,6 +55,13 @@ export interface MonthAgg {
   fixedCost: number;
   variableCost: number;
   undeterminedCost: number; // 미분류·미상·고정/변동 미지정 계정 — 어느 쪽에도 안 섞는다
+  /**
+   * 총액(VAT 포함) 매출 — **표시 전용**(2026-08-31 대표 확정).
+   * 손익 산식(EBIT·이익률·원가율·손익분기)은 전부 revenue(공급가액)를 쓴다. 화면에서 '매출'을
+   * 보여줄 때만 이 값을 쓴다 — POS 화면(토스 실매출)과 눈으로 대조되는 숫자여야 하기 때문.
+   * gross 를 못 받은 경로(구 뷰 폴백)에서는 revenue 와 같아진다.
+   */
+  revenueGross: number;
 }
 
 function periodKey(iso: string, unit: Unit): string {
@@ -71,7 +78,7 @@ export function aggregate(
   cats: AggCat[],
   unit: Unit = 'month',
   netVat = true,
-  posSales: { saleDate: string; supply: number }[] = [],
+  posSales: { saleDate: string; supply: number; gross?: number }[] = [],
   // 채널수수료 옵션 — 전달 시 EBIT에서 수수료를 뺀다(관리손익과 기준 통일).
   // channelFees: ym→실입력 금액(월 단위에서만 적용). 없는 구간은 매출×rate 추정.
   feeOpts?: { channelFees?: Record<string, number>; rate?: number } | null,
@@ -94,7 +101,7 @@ export function aggregate(
   const getMo = (key: string): MonthAgg => {
     let mo = m.get(key);
     if (!mo) {
-      mo = { ym: key, revenue: 0, unclassifiedIn: 0, cogs: 0, sga: 0, ebit: 0, nonOp: 0, net: 0, costRatio: null, profitRatio: null, expense: {}, cardDupOffset: 0, fee: 0, fixedCost: 0, variableCost: 0, undeterminedCost: 0 };
+      mo = { ym: key, revenue: 0, revenueGross: 0, unclassifiedIn: 0, cogs: 0, sga: 0, ebit: 0, nonOp: 0, net: 0, costRatio: null, profitRatio: null, expense: {}, cardDupOffset: 0, fee: 0, fixedCost: 0, variableCost: 0, undeterminedCost: 0 };
       m.set(key, mo);
     }
     return mo;
@@ -203,7 +210,9 @@ export function aggregate(
 
   // 매출 = POS 공급가액(발생주의). 통장 입금 대신 판매 시점(sale_date) 기준으로 기간 귀속.
   for (const p of posSales) {
-    getMo(periodKey(p.saleDate, unit)).revenue += p.supply;
+    const mo = getMo(periodKey(p.saleDate, unit));
+    mo.revenue += p.supply; // 손익 기준(공급가액)
+    mo.revenueGross += p.gross ?? p.supply; // 표시 기준(VAT 포함) — gross 없으면 순액으로 폴백
   }
 
   const months = Array.from(m.values()).sort((a, b) => a.ym.localeCompare(b.ym));

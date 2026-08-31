@@ -70,18 +70,20 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
       '계정과목',
     );
 
-  // 매출 = POS 공급가액(발생주의). memo-free 뷰(dashboard_pos), 없으면 pos_sales로 폴백.
+  // 매출 = POS(발생주의). 화면 표시는 gross(부가세 포함), 손익 계산은 supply(공급가액) —
+  // 두 값을 함께 싣는다(2026-08-31 대표 확정, docs/finance-formulas.md).
+  // memo-free 뷰(dashboard_pos), 없으면 pos_sales로 폴백(그땐 gross 없이 순액만).
   // category 포함 — 식권 판매 비중 차트('식권판매' 분리)용. 최종 폴백까지 실패하면 던진다 —
   // 예전엔 조용히 매출 0으로 진행돼 지출만 남은 적자 그래프가 무경고로 그려졌다(2026-08-21 감사 B4).
   const loadPosSales = async () => {
-    let rows: { sale_date: string; supply: number; brand?: string | null; store?: string | null; category?: string | null }[];
+    let rows: { sale_date: string; supply: number; gross?: number; brand?: string | null; store?: string | null; category?: string | null }[];
     try {
-      rows = await fetchAll('dashboard_pos', 'sale_date,supply,brand,store,category', ['sale_date', 'brand', 'store', 'category', 'supply']);
+      rows = await fetchAll('dashboard_pos', 'sale_date,supply,gross,brand,store,category', ['sale_date', 'brand', 'store', 'category', 'supply']);
     } catch {
       // 뷰 미마이그레이션 환경 폴백 — pos_sales 원본(식권 union 없음·category 없음)
       rows = await fetchAll('pos_sales', 'sale_date,supply,brand', ['sale_date', 'brand', 'supply']);
     }
-    return rows.map((p) => ({ saleDate: p.sale_date, supply: p.supply, brand: p.brand, store: p.store ?? null, category: p.category ?? null }));
+    return rows.map((p) => ({ saleDate: p.sale_date, supply: p.supply, gross: p.gross ?? p.supply, brand: p.brand, store: p.store ?? null, category: p.category ?? null }));
   };
 
   // 채널수수료 실입력 — 지표 EBIT도 관리손익과 같은 기준(실입력 우선, 없으면 추정율)으로 차감(2026-08-20)
@@ -210,17 +212,18 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
     const { data, error } = await supabase
       .schema('finance')
       .from('dashboard_pos_item_hours')
-      .select('sale_date,product,qty,supply,list_price')
+      .select('sale_date,product,qty,supply,gross,list_price')
       .eq('brand', unit.brand)
       .eq('store', store)
       .in('product', products)
       .limit(20000);
     if (error) return []; // 뷰 미마이그레이션 환경 — 차트만 빠지고 나머지는 그대로
-    return ((data ?? []) as { sale_date: string; product: string; qty: number; supply: number; list_price: number }[]).map((r) => ({
+    return ((data ?? []) as { sale_date: string; product: string; qty: number; supply: number; gross: number; list_price: number }[]).map((r) => ({
       saleDate: r.sale_date,
       product: r.product,
       qty: Number(r.qty),
       supply: Number(r.supply),
+      gross: Number(r.gross ?? r.supply),
       listPrice: Number(r.list_price),
     }));
   };
@@ -249,7 +252,11 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
       const hit = series.find((x) => x.key === key);
       if (!hit?.result) return null;
       const r = hit.result;
+      const daily = ((cached?.payload?.daily ?? {}) as Record<string, { date: string; rain: number; tmax: number | null; sales: number }[]>)[
+        unit.store ?? ''
+      ] ?? [];
       return {
+        daily,
         label: hit.label,
         computedAt: cached.computedAt as string,
         n: r.n,

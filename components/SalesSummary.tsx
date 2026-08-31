@@ -2,7 +2,9 @@ import type { SalesRow } from '@/lib/finance/sales-data';
 import { GIFT_CATEGORY, giftSaleLabel } from '@/lib/finance/types';
 
 // 매출 요약 — POS 발생주의 매출 행(일×카테고리)을 받아 합계 카드·30일 막대·카테고리 요약을 그린다.
-// 스탭밀(/studio/sales)과 가든(/garden/sales)이 공유하는 서버 컴포넌트. 금액은 전부 공급가액(VAT 제외).
+// 스탭밀(/studio/sales)과 가든(/garden/sales)이 공유하는 서버 컴포넌트.
+// 금액은 전부 **부가세 포함 실매출**(POS 화면과 대조되는 숫자) — 손익 계산은 관리손익·지표가
+// 공급가액으로 따로 한다(2026-08-31 대표 확정, docs/finance-formulas.md).
 // POS 원본의 수량(qty)은 페이히어에선 결제 건수라 품목 수량으로 오해되기 쉬워 아예 쓰지 않는다.
 
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
@@ -20,8 +22,9 @@ export default function SalesSummary({ rows, brand }: { rows: SalesRow[]; brand?
   const byDay = new Map<string, number>();
   const byYm = new Map<string, number>();
   for (const r of rows) {
-    byDay.set(r.sale_date, (byDay.get(r.sale_date) ?? 0) + Number(r.supply));
-    byYm.set(r.ym, (byYm.get(r.ym) ?? 0) + Number(r.supply));
+    const amount = Number(r.gross ?? r.supply); // 표시=총액, 폴백=순액(구 뷰)
+    byDay.set(r.sale_date, (byDay.get(r.sale_date) ?? 0) + amount);
+    byYm.set(r.ym, (byYm.get(r.ym) ?? 0) + amount);
   }
 
   const last7Start = new Date(new Date(kstToday).getTime() - 6 * 86_400_000).toISOString().slice(0, 10);
@@ -44,7 +47,7 @@ export default function SalesSummary({ rows, brand }: { rows: SalesRow[]; brand?
   const byCat = new Map<string, number>();
   for (const r of rows) {
     if (r.ym !== latestYm) continue;
-    byCat.set(r.category, (byCat.get(r.category) ?? 0) + Number(r.supply));
+    byCat.set(r.category, (byCat.get(r.category) ?? 0) + Number(r.gross ?? r.supply));
   }
   const cats = Array.from(byCat.entries()).sort((a, b) => b[1] - a[1]);
   const catTotal = cats.reduce((s, [, v]) => s + v, 0);

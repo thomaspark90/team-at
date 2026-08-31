@@ -60,7 +60,7 @@ const CAT_SURFACE = 'var(--chart-surface)';
 const CAT_MAX = 8; // 8색까지, 초과 카테고리는 '기타'로 접음
 
 // 지표 페이지 차트 순서 — 헤더 그립을 드래그해서 바꾸면 이 브라우저에 저장(계정과 무관)
-const DEFAULT_CHART_ORDER = ['bank', 'revenue', 'brunch', 'ebit', 'capex', 'ratio', 'expense', 'nature', 'cost', 'avg', 'yoy', 'weather', 'gift', 'menu'] as const;
+const DEFAULT_CHART_ORDER = ['bank', 'revenue', 'brunch', 'ebit', 'capex', 'ratio', 'expense', 'nature', 'cost', 'avg', 'yoy', 'rain', 'weather', 'gift', 'menu'] as const;
 type ChartId = (typeof DEFAULT_CHART_ORDER)[number];
 const CHART_ORDER_KEY = 'finance-metrics-chart-order-v1';
 
@@ -177,6 +177,8 @@ export default function Dashboard({
   // 날씨 × 매출 회귀 결과(/api/garden-weather-sales 의 Blob 캐시) — 가든 지점에서만.
   // 값은 '기준 밴드 대비 %'이고 t 는 유의성(|t|≥2 면 통상 유의). 재계산은 여기서 하지 않는다.
   weatherImpact?: {
+    /** 일별 (영업일 × 강수 × 기온 × 매출) — '비 온 날 전부'를 보는 차트용 */
+    daily?: { date: string; rain: number; tmax: number | null; sales: number }[];
     label: string;
     computedAt: string;
     n: number;
@@ -189,7 +191,7 @@ export default function Dashboard({
   } | null;
   // 그램 단위 판매 상품(가든 양재천 '브런치바') 일별 행 — 매출 추이 옆 추이 차트 전용(2026-08-31).
   // supply=공급가액(매출 추이와 같은 기준), listPrice=정가 합(그램 역산 기준, gramProducts.ts).
-  gramItems?: { saleDate: string; product: string; qty: number; supply: number; listPrice: number }[];
+  gramItems?: { saleDate: string; product: string; qty: number; supply: number; gross?: number; listPrice: number }[];
   // '대여금' 분류 거래의 (브랜드, 월)별 합계 — 통장 차트 빨간 원 마커. 서버(metrics/page)에서 프리페치.
   loanMarkers?: { brand: string; ym: string; amount: number; label: string }[];
   // 채널수수료 실입력(finance.channel_fees) — EBIT 차감(관리손익과 기준 통일). 없는 달은 1.7% 추정.
@@ -460,7 +462,7 @@ export default function Dashboard({
       const rule = gramRuleFor(brand, store === 'all' ? '' : store, it.product, it.saleDate);
       const k = periodKeyOf(it.saleDate);
       const a = byKey.get(k) ?? { supply: 0, qty: 0, grams: 0 };
-      a.supply += it.supply;
+      a.supply += it.gross ?? it.supply; // 매출 표시는 총액(VAT 포함)
       a.qty += it.qty;
       if (rule) a.grams += it.listPrice / rule.wonPerGram;
       byKey.set(k, a);
@@ -473,7 +475,7 @@ export default function Dashboard({
           p: fmtP(m.ym),
           매출: Math.round(a.supply),
           '평균 그램': a.qty > 0 && a.grams > 0 ? Math.round(a.grams / a.qty) : null,
-          비중: m.revenue > 0 ? +((a.supply / m.revenue) * 100).toFixed(1) : null,
+          비중: m.revenueGross > 0 ? +((a.supply / m.revenueGross) * 100).toFixed(1) : null,
           건수: Math.round(a.qty),
         };
       })
@@ -531,7 +533,11 @@ export default function Dashboard({
   })();
   const last = visMonths[focusIdx];
   const prev = focusIdx > 0 ? visMonths[focusIdx - 1] : null;
-  const avgRev = visMonths.reduce((a, m) => a + m.revenue, 0) / visMonths.length;
+  // 매출 표시는 총액(VAT 포함) — 손익 계산은 전부 revenue(공급가액) 그대로다(2026-08-31 대표 확정).
+  // docs/finance-formulas.md 참조. 두 기준을 한 차트에 섞지 않도록, 총액 축에 그리는 값(평균선·
+  // 손익분기선)은 그 달의 실효 부가세 비율(총액÷순액)로 환산해 올린다.
+  const vatMulOf = (m: MonthAgg) => (m.revenue > 0 ? m.revenueGross / m.revenue : 1);
+  const avgRev = visMonths.reduce((a, m) => a + m.revenueGross, 0) / visMonths.length;
   const isPast = focusIdx < visMonths.length - 1; // 최근이 아닌 과거 달을 보는 중
   const focusP = fmtP(last.ym); // 차트에서 선택 달 위치(강조선)
 
@@ -544,7 +550,13 @@ export default function Dashboard({
     const varRate = (m.variableCost + m.fee) / m.revenue;
     return varRate < 1 ? Math.round(m.fixedCost / (1 - varRate)) : null;
   };
-  const lineData = visMonths.map((m) => ({ p: fmtP(m.ym), 매출: m.revenue, EBIT: m.ebit, 순이익: m.net, 손익분기: bepOf(m) }));
+  const lineData = visMonths.map((m) => ({
+    p: fmtP(m.ym),
+    매출: m.revenueGross, // 표시=총액(POS 화면과 대조되는 숫자)
+    EBIT: m.ebit,
+    순이익: m.net,
+    손익분기: bepOf(m) == null ? null : Math.round((bepOf(m) as number) * vatMulOf(m)), // 총액 축으로 환산
+  }));
   // 고정비·변동비 — 지출(원가+판관비)을 계정과목 고정/변동 구분으로 나눈 월별 스택. 변동비율 = 변동비 ÷ 매출.
   const natureData = visMonths.map((m) => ({
     p: fmtP(m.ym),
@@ -602,11 +614,11 @@ export default function Dashboard({
   // 전년 동월(YoY) — 최근 12개 표시 달 vs 1년 전 같은 달
   const yoyData = useMemo(() => {
     if (unit !== 'month') return [];
-    const revByYm = new Map(months.map((m) => [m.ym, m.revenue]));
+    const revByYm = new Map(months.map((m) => [m.ym, m.revenueGross])); // 매출 표시는 총액
     return visMonths.slice(-12).map((m) => {
       const [y, mm] = m.ym.split('-').map(Number);
       const prevYm = `${y - 1}-${String(mm).padStart(2, '0')}`;
-      return { p: fmtP(m.ym), 올해: m.revenue, 전년: revByYm.get(prevYm) ?? null };
+      return { p: fmtP(m.ym), 올해: m.revenueGross, 전년: revByYm.get(prevYm) ?? null };
     });
   }, [unit, months, visMonths]);
   // 식권 판매 비중 — 선매출(식권) 의존도. 식권판매 ÷ 총매출
@@ -738,7 +750,7 @@ export default function Dashboard({
       {...fullProps('revenue')}
       onReorder={reorderChart}
       title="매출 추이"
-      subtitle="점선=평균 · 빨간 점선=손익분기 매출(고정비 ÷ (1−변동비율) — 계정과목의 고정/변동 구분 기준, 채널수수료는 변동, 미확정 제외)"
+      subtitle="부가세 포함 매출(POS 실매출과 같은 기준) · 점선=평균 · 빨간 점선=손익분기 매출(고정비 ÷ (1−변동비율), 순액 산식을 총액 축으로 환산)"
     >
       <ResponsiveContainer width="100%" height={chartH('revenue', 585)}>
         <LineChart data={lineData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
@@ -776,7 +788,7 @@ export default function Dashboard({
         {...fullProps('brunch')}
         onReorder={reorderChart}
         title={`${gramProductName} 추이`}
-        subtitle="막대=매출(공급가액) · 선=평균 그램(정가 ÷ 그램당 단가) · 라벨=매장 매출 대비 비중"
+        subtitle="막대=매출(부가세 포함) · 선=평균 그램(정가 ÷ 그램당 단가) · 라벨=매장 매출 대비 비중"
       >
         <ResponsiveContainer width="100%" height={chartH('brunch', 585)}>
           <ComposedChart data={gramData} margin={{ top: 40, right: 16, bottom: 4, left: 8 }}>
@@ -1098,6 +1110,69 @@ export default function Dashboard({
       .filter((e) => e.days >= 3) // 관측 3일 미만 밴드는 계수가 튀어 의미가 없다
       .map((e) => ({ p: e.label, 효과: +e.pct.toFixed(1), sig: Math.abs(e.t) >= 2, days: e.days }));
     const computed = weatherImpact.computedAt?.slice(0, 10) ?? '';
+    // 일별 강수 × 매출 — 비 온 날을 하나도 빠뜨리지 않고 보려는 요구(2026-08-31 대표).
+    // 세로 막대=그날 강수량(오른쪽 축, 위로 자랄수록 많이 온 날), 선=그날 매출(왼쪽 축).
+    const rainDaily = (weatherImpact.daily ?? []).map((d) => ({
+      p: d.date.slice(5).replace('-', '/'),
+      강수량: d.rain,
+      매출: d.sales,
+      tmax: d.tmax,
+    }));
+    const rainyDays = rainDaily.filter((d) => d.강수량 >= 1).length;
+    const heavyDays = rainDaily.filter((d) => d.강수량 >= 20).length;
+    const bandLine = weatherImpact.effects
+      .filter((e) => Math.abs(e.t) >= 2 && e.days >= 3)
+      .map((e) => `${e.label} ${e.pct > 0 ? '+' : ''}${e.pct.toFixed(0)}%`)
+      .join(' · ');
+
+    if (rainDaily.length > 0) {
+      chartNodes.rain = (
+        <ChartCard
+          key="rain"
+          id="rain"
+          {...fullProps('rain')}
+          onReorder={reorderChart}
+          title="강수 × 일 매출"
+          subtitle={`영업일 ${rainDaily.length}일 전부 · 비 온 날 ${rainyDays}일(그중 20mm+ 폭우 ${heavyDays}일) · 막대=그날 강수량(오른쪽 축) · 선=그날 매출(부가세 포함)`}
+        >
+          <ResponsiveContainer width="100%" height={chartH('rain', 460)}>
+            <ComposedChart data={rainDaily} margin={{ top: 16, right: 16, bottom: 24, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+              <XAxis dataKey="p" tick={axisTick} stroke={AXIS} interval="preserveStartEnd" minTickGap={24} />
+              <YAxis yAxisId="left" tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                tickFormatter={(v) => `${v}mm`}
+                tick={axisTick}
+                stroke={AXIS}
+                width={48}
+              />
+              <Tooltip
+                content={
+                  <ChartTooltip fmt={(v: number, name?: string) => (name === '강수량' ? `${v}mm` : won(Number(v)))} />
+                }
+              />
+              <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} />
+              <Bar yAxisId="right" dataKey="강수량" maxBarSize={14} radius={[2, 2, 0, 0]}>
+                {rainDaily.map((d, i) => (
+                  // 20mm+ = 매출이 실제로 꺾이는 구간(회귀에서 −30% 안팎) — 진하게 구분
+                  <Cell key={i} fill={d.강수량 >= 20 ? 'hsl(var(--destructive))' : CAT[0]} fillOpacity={d.강수량 >= 20 ? 0.9 : 0.4} />
+                ))}
+              </Bar>
+              <Line yAxisId="left" type="monotone" dataKey="매출" stroke={LINE} strokeWidth={1.5} dot={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
+          {bandLine && (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              회귀로 본 뚜렷한 효과(|t|≥2): <b className="text-foreground">{bandLine}</b> — 기준 {weatherImpact.tempRef}·비
+              1mm 미만. 아래 밴드 차트가 같은 값이에요.
+            </p>
+          )}
+        </ChartCard>
+      );
+    }
+
     chartNodes.weather = (
       <ChartCard
         key="weather"
