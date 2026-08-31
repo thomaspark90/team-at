@@ -815,7 +815,7 @@ export default function Dashboard({
             />
             <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} />
             {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
-            <Bar yAxisId="left" dataKey="매출" fill={CAT[0]} radius={[3, 3, 0, 0]} maxBarSize={46}>
+            <Bar yAxisId="left" dataKey="매출" fill={CAT[0]} radius={[3, 3, 0, 0]} maxBarSize={46} isAnimationActive={false}>
               <LabelList dataKey="비중" position="top" offset={8} formatter={pctLabel} style={pointLabel} />
             </Bar>
             <Line
@@ -1114,12 +1114,14 @@ export default function Dashboard({
     // 세로 막대=그날 강수량(오른쪽 축, 위로 자랄수록 많이 온 날), 선=그날 매출(왼쪽 축).
     const rainDaily = (weatherImpact.daily ?? []).map((d) => ({
       p: d.date.slice(5).replace('-', '/'),
-      강수량: d.rain,
+      강수량: d.rain < 20 ? d.rain : null, // 20mm 미만
+      '폭우 20mm+': d.rain >= 20 ? d.rain : null, // 매출이 실제로 꺾이는 구간(회귀 −30% 안팎)
+      rain: d.rain,
       매출: d.sales,
       tmax: d.tmax,
     }));
-    const rainyDays = rainDaily.filter((d) => d.강수량 >= 1).length;
-    const heavyDays = rainDaily.filter((d) => d.강수량 >= 20).length;
+    const rainyDays = rainDaily.filter((d) => d.rain >= 1).length;
+    const heavyDays = rainDaily.filter((d) => d.rain >= 20).length;
     const bandLine = weatherImpact.effects
       .filter((e) => Math.abs(e.t) >= 2 && e.days >= 3)
       .map((e) => `${e.label} ${e.pct > 0 ? '+' : ''}${e.pct.toFixed(0)}%`)
@@ -1154,13 +1156,23 @@ export default function Dashboard({
                 }
               />
               <Legend wrapperStyle={{ fontSize: 11, color: AXIS }} />
-              <Bar yAxisId="right" dataKey="강수량" maxBarSize={14} radius={[2, 2, 0, 0]}>
-                {rainDaily.map((d, i) => (
-                  // 20mm+ = 매출이 실제로 꺾이는 구간(회귀에서 −30% 안팎) — 진하게 구분
-                  <Cell key={i} fill={d.강수량 >= 20 ? 'hsl(var(--destructive))' : CAT[0]} fillOpacity={d.강수량 >= 20 ? 0.9 : 0.4} />
-                ))}
-              </Bar>
-              <Line yAxisId="left" type="monotone" dataKey="매출" stroke={LINE} strokeWidth={1.5} dot={false} />
+              <Bar yAxisId="right" dataKey="강수량" fill={CAT[0]} fillOpacity={0.45} maxBarSize={14} isAnimationActive={false} />
+              <Bar
+                yAxisId="right"
+                dataKey="폭우 20mm+"
+                fill="hsl(var(--destructive))"
+                maxBarSize={14}
+                isAnimationActive={false}
+              />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="매출"
+                stroke={LINE}
+                strokeWidth={1.5}
+                dot={false}
+                isAnimationActive={false}
+              />
             </ComposedChart>
           </ResponsiveContainer>
           {bandLine && (
@@ -1189,7 +1201,7 @@ export default function Dashboard({
             <YAxis type="category" dataKey="p" tick={axisTick} stroke={AXIS} width={80} />
             <Tooltip content={<ChartTooltip fmt={(v: number) => `${v}%`} />} />
             <ReferenceLine x={0} stroke={REF} />
-            <Bar dataKey="효과" radius={[0, 3, 3, 0]} maxBarSize={22}>
+            <Bar dataKey="효과" radius={[0, 3, 3, 0]} maxBarSize={22} isAnimationActive={false}>
               {wd.map((d, i) => (
                 <Cell
                   key={i}
