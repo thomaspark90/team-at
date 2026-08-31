@@ -191,3 +191,112 @@ export async function fetchWeatherArchive(start: string, end: string): Promise<M
   }
   return map;
 }
+
+// ── 가정 최소 분석: 요일×월 중앙값 대비 지수 (2026-08-31) ──────────────────
+// 회귀(위)는 로그 종속변수라 큰 하락일 하나에 크게 끌려가고, 장마처럼 특정 달에 몰린 조건은
+// 그 달의 부진까지 흡수한다. 실제로 2026-08-31 검증에서 회귀는 폭우 −29%로 봤지만, 같은 달·같은
+// 요일과만 비교하면 −19%였고 폭우 11일 중 2일은 평소와 같았다. 그래서 **판단용 숫자는 이쪽**을 쓴다.
+//   지수 = 그날 매출 ÷ (같은 달·같은 요일 매출의 중앙값)   → 1.00 = 그 요일 평소 수준
+// 계절·요일·성장 추세가 자동으로 빠지고, 남는 건 "같은 달 안에서 그날이 특별했는가"뿐이다.
+// ⚠ 한계: 어떤 조건이 **같은 달의 같은 요일에 몰리면** 중앙값 자체가 내려가 효과가 지워진다
+//   (테스트로 고정). 밴드 지수는 '같은 달·같은 요일에 비교 대상이 있을 때'만 의미가 있다.
+
+export interface DayPoint {
+  date: string;
+  rain: number;
+  tmax: number | null;
+  sales: number;
+}
+
+export interface BandIndex {
+  label: string;
+  n: number;
+  index: number; // 1.00 = 평소
+  pct: number; // (index − 1) × 100
+}
+
+export interface SimpleImpact {
+  rain: BandIndex[];
+  temp: BandIndex[];
+  calendar: BandIndex[];
+  /** 폭우(20mm+)로 잃은 것으로 추정되는 매출 합계와 기간 총매출 대비 비중 */
+  heavyRainLoss: { won: number; pctOfTotal: number; days: number };
+  totalSales: number;
+  days: number;
+}
+
+const median = (a: number[]): number => {
+  const s = [...a].sort((x, y) => x - y);
+  return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+};
+
+/**
+ * @param isHoliday 공휴일 판정(호출부에서 KR_HOLIDAYS 주입 — 이 모듈을 달력에 묶지 않으려고)
+ */
+export function simpleImpact(days: DayPoint[], isHoliday: (ymd: string) => boolean): SimpleImpact | null {
+  const rows = days.filter((d) => d.sales > 0);
+  if (rows.length < 20) return null; // 표본이 너무 적으면 지수가 튄다
+
+  const dow = (d: string) => new Date(`${d}T00:00:00Z`).getUTCDay();
+  const shift = (d: string, n: number) =>
+    new Date(new Date(`${d}T00:00:00Z`).getTime() + n * 86_400_000).toISOString().slice(0, 10);
+
+  const groups = new Map<string, number[]>();
+  for (const r of rows) {
+    const k = `${r.date.slice(0, 7)}|${dow(r.date)}`;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k)!.push(r.sales);
+  }
+  const idx = rows.map((r) => {
+    const m = median(groups.get(`${r.date.slice(0, 7)}|${dow(r.date)}`)!);
+    return { ...r, i: m > 0 ? r.sales / m : 1 };
+  });
+
+  const band = (label: string, test: (r: (typeof idx)[number]) => boolean): BandIndex | null => {
+    const sel = idx.filter(test);
+    if (sel.length < 3) return null; // 3일 미만은 숫자로 안 내놓는다
+    const mean = sel.reduce((s, r) => s + r.i, 0) / sel.length;
+    return { label, n: sel.length, index: +mean.toFixed(3), pct: +((mean - 1) * 100).toFixed(1) };
+  };
+  const keep = (arr: (BandIndex | null)[]) => arr.filter((b): b is BandIndex => b !== null);
+
+  const rainBands = keep([
+    band('비 안 옴(<1mm)', (r) => r.rain < 1),
+    band('비 1–5mm', (r) => r.rain >= 1 && r.rain < 5),
+    band('비 5–20mm', (r) => r.rain >= 5 && r.rain < 20),
+    band('폭우 20mm+', (r) => r.rain >= 20),
+  ]);
+  const tempBands = keep([
+    band('영하', (r) => r.tmax != null && r.tmax < 0),
+    band('0–10°', (r) => r.tmax != null && r.tmax >= 0 && r.tmax < 10),
+    band('10–18°', (r) => r.tmax != null && r.tmax >= 10 && r.tmax < 18),
+    band('18–24°(쾌적)', (r) => r.tmax != null && r.tmax >= 18 && r.tmax < 24),
+    band('24–28°', (r) => r.tmax != null && r.tmax >= 24 && r.tmax < 28),
+    band('28–34°', (r) => r.tmax != null && r.tmax >= 28 && r.tmax < 34),
+    band('폭염 34°+', (r) => r.tmax != null && r.tmax >= 34),
+  ]);
+  const calBands = keep([
+    band('공휴일 당일', (r) => isHoliday(r.date)),
+    band('공휴일 전날', (r) => !isHoliday(r.date) && isHoliday(shift(r.date, 1))),
+    band('공휴일 다음날', (r) => !isHoliday(r.date) && isHoliday(shift(r.date, -1))),
+    band('평범한 날', (r) => !isHoliday(r.date) && !isHoliday(shift(r.date, 1)) && !isHoliday(shift(r.date, -1))),
+  ]);
+
+  // 폭우 손실 = Σ(평소 수준 − 실제). 평소 수준 = 실제 ÷ 지수.
+  const heavy = idx.filter((r) => r.rain >= 20);
+  const lost = heavy.reduce((s, r) => s + (r.i > 0 ? r.sales / r.i - r.sales : 0), 0);
+  const total = idx.reduce((s, r) => s + r.sales, 0);
+
+  return {
+    rain: rainBands,
+    temp: tempBands,
+    calendar: calBands,
+    heavyRainLoss: {
+      won: Math.round(lost),
+      pctOfTotal: total > 0 ? +((lost / total) * 100).toFixed(1) : 0,
+      days: heavy.length,
+    },
+    totalSales: Math.round(total),
+    days: idx.length,
+  };
+}

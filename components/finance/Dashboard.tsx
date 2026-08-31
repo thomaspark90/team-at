@@ -23,6 +23,8 @@ import { COST_NATURE_NOTES, COST_UNDETERMINED_LABEL } from '@/lib/finance/costNa
 import IncentiveSim from '@/components/finance/IncentiveSim';
 import { bankShort } from '@/lib/finance/cashflow';
 import { gramRuleFor } from '@/lib/finance/gramProducts';
+import { simpleImpact } from '@/lib/garden/weatherSales';
+import { isKrHoliday } from '@/lib/garden/krHolidays';
 import { wonNum as won } from '@/lib/finance/format';
 import { useMonthCtx } from './MonthShell';
 
@@ -1185,47 +1187,72 @@ export default function Dashboard({
       );
     }
 
-    chartNodes.weather = (
-      <ChartCard
-        key="weather"
-        id="weather"
-        {...fullProps('weather')}
-        onReorder={reorderChart}
-        title="날씨 영향 — 일 매출"
-        subtitle={`기준 = 기온 ${weatherImpact.tempRef} · 비 1mm 미만인 날. 막대 = 기준 대비 %(요일·공휴일·성장 트렌드 통제) · 진한 막대는 통계적으로 뚜렷(|t|≥2) · 표본 ${weatherImpact.n}일 · R² ${weatherImpact.r2.toFixed(2)} · ${computed} 기준`}
-      >
-        <ResponsiveContainer width="100%" height={chartH('weather', 420)}>
-          <BarChart data={wd} layout="vertical" margin={{ top: 8, right: 56, bottom: 8, left: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
-            <XAxis type="number" tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={AXIS} />
-            <YAxis type="category" dataKey="p" tick={axisTick} stroke={AXIS} width={80} />
-            <Tooltip content={<ChartTooltip fmt={(v: number) => `${v}%`} />} />
-            <ReferenceLine x={0} stroke={REF} />
-            <Bar dataKey="효과" radius={[0, 3, 3, 0]} maxBarSize={22} isAnimationActive={false}>
-              {wd.map((d, i) => (
-                <Cell
-                  key={i}
-                  fill={d.효과 < 0 ? 'hsl(var(--destructive))' : CAT[0]}
-                  fillOpacity={d.sig ? 1 : 0.35}
-                />
-              ))}
-              <LabelList dataKey="효과" position="right" formatter={pctLabel} style={pointLabel} />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          성장 트렌드 {weatherImpact.trendPct > 0 ? '+' : ''}
-          {weatherImpact.trendPct.toFixed(0)}%(기간 처음→끝, 날씨와 별개)
-          {weatherImpact.holidayPct != null &&
-            ` · 공휴일 ${weatherImpact.holidayPct > 0 ? '+' : ''}${weatherImpact.holidayPct.toFixed(0)}%${
-              Math.abs(weatherImpact.holidayT ?? 0) >= 2 ? '' : '(불유의)'
-            }`}
-          {' · 계산은 '}
-          <a href="/garden/weather" className="underline">가든 → 날씨 분석</a>
-          에서 갱신해요.
-        </p>
-      </ChartCard>
-    );
+    // 회귀 밴드 대신 '요일×월 중앙값 대비 지수'를 전면에 둔다(2026-08-31 대표 지시).
+    // 회귀는 로그 모델이라 폭우 −29%처럼 세게 나오는데, 실제로는 −19%이고 폭우일 11일 중 2일은
+    // 평소와 같았다. 화면에서 제일 눈에 띄는 숫자가 실제보다 과장되면 판단이 흔들린다.
+    const imp = simpleImpact(weatherImpact.daily ?? [], isKrHoliday);
+    const impRows = imp
+      ? [...imp.rain, ...imp.temp, ...imp.calendar.filter((b) => b.label !== '평범한 날')].map((b) => ({
+          p: `${b.label} (${b.n}일)`,
+          효과: b.pct,
+          big: Math.abs(b.pct) >= 10, // 10%p 넘는 것만 실무적으로 의미 있다고 본다
+        }))
+      : [];
+
+    if (imp && impRows.length > 0) {
+      chartNodes.weather = (
+        <ChartCard
+          key="weather"
+          id="weather"
+          {...fullProps('weather')}
+          onReorder={reorderChart}
+          title="날씨·달력이 실제로 만든 차이"
+          subtitle={`그날 매출 ÷ 같은 달·같은 요일 매출의 중앙값 — 1.00(=0%)이 평소예요. 계절·요일·성장세가 자동으로 빠져서, 남는 건 '그날이 특별했나'뿐이에요 · 영업일 ${imp.days}일`}
+        >
+          <ResponsiveContainer width="100%" height={chartH('weather', 520)}>
+            <BarChart data={impRows} layout="vertical" margin={{ top: 8, right: 64, bottom: 8, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+              <XAxis type="number" tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={AXIS} />
+              <YAxis type="category" dataKey="p" tick={axisTick} stroke={AXIS} width={130} />
+              <Tooltip content={<ChartTooltip fmt={(v: number) => `${v > 0 ? '+' : ''}${v}%`} />} />
+              <ReferenceLine x={0} stroke={REF} />
+              <Bar dataKey="효과" radius={[0, 3, 3, 0]} maxBarSize={18} isAnimationActive={false}>
+                {impRows.map((d, i) => (
+                  <Cell
+                    key={i}
+                    fill={d.효과 < 0 ? 'hsl(var(--destructive))' : CAT[0]}
+                    fillOpacity={d.big ? 1 : 0.3}
+                  />
+                ))}
+                <LabelList dataKey="효과" position="right" formatter={pctLabel} style={pointLabel} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="mt-2 flex flex-col gap-1 text-[11px] text-muted-foreground">
+            <p className="m-0">
+              <b className="text-foreground">
+                폭우({imp.heavyRainLoss.days}일)로 잃은 매출 ≈ {won(imp.heavyRainLoss.won)} — 기간 총매출의{' '}
+                {imp.heavyRainLoss.pctOfTotal}%
+              </b>
+              . 비의 영향은 여기까지예요 — 20mm 미만 비는 평소와 차이가 없어요.
+            </p>
+            <p className="m-0">
+              진한 막대만 10%p 이상이에요. 관측 3일 미만 구간은 아예 빼고, 같은 달·같은 요일에 비교할 날이 없으면
+              지수가 효과를 흡수하니 <b>일수(괄호)를 같이 보세요</b>.
+            </p>
+            <p className="m-0">
+              참고(회귀 모델): 기준 {weatherImpact.tempRef} 대비{' '}
+              {weatherImpact.effects
+                .filter((e) => Math.abs(e.t) >= 2 && e.days >= 3)
+                .map((e) => `${e.label} ${e.pct > 0 ? '+' : ''}${e.pct.toFixed(0)}%`)
+                .join(' · ') || '유의한 밴드 없음'}{' '}
+              · R² {weatherImpact.r2.toFixed(2)}. 로그 모델이라 큰 하락일에 끌려가 위 지수보다 세게 나와요.
+            </p>
+          </div>
+        </ChartCard>
+      );
+    }
+
   }
 
   if (unit === 'month' && hasGift && brand !== 'garden') {
