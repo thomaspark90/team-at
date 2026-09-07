@@ -69,8 +69,13 @@ export async function POST(req: Request) {
   });
   if (verifyErr) return NextResponse.json({ error: '현재 비밀번호가 맞지 않습니다.' }, { status: 401 });
 
-  const { error } = await svc.auth.admin.updateUserById(user.id, { password: pinToPassword(user.email, newPin) });
+  const newPassword = pinToPassword(user.email, newPin);
+  const { error } = await svc.auth.admin.updateUserById(user.id, { password: newPassword });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // 비밀번호가 바뀌면 Supabase 가 기존 세션을 무효화한다(프로덕션 검증 2026-09-07) —
+  // 새 비밀번호로 다시 로그인해 쿠키를 갈아 끼워야 화면이 로그아웃으로 튕기지 않는다.
+  const { error: reErr } = await session.auth.signInWithPassword({ email: user.email, password: newPassword });
+  if (reErr) return NextResponse.json({ ok: true, relogin: true });
   await svc
     .from('profiles')
     .update({ pin_reset_required: false, failed_attempts: 0, locked_until: null, updated_at: new Date().toISOString() })
