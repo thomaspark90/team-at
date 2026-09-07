@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { PROFILE_COLS, type Profile } from '@/lib/teaching/access';
+import { isOwner } from '@/lib/finance/access';
 import type { StoreId } from '@/lib/types';
 
 // 교육 기능 공용 조회 — API 라우트들이 같은 계산을 반복하지 않게 모아둔다.
@@ -23,6 +24,22 @@ export async function profileMap(svc: SupabaseClient, userIds?: string[]): Promi
   return new Map(((data ?? []) as Profile[]).map((p) => [p.user_id, p]));
 }
 
+/** 표시 이름 해석 — 프로필이 없으면(대표·프로필 미등록 구글 계정) auth 계정을 찾아 '대표' 또는 이메일 앞부분 */
+export function nameResolver(svc: SupabaseClient, profiles: Map<string, Profile>) {
+  const cache = new Map<string, string>();
+  return async (id: string): Promise<string> => {
+    const p = profiles.get(id);
+    if (p) return p.display_name;
+    const hit = cache.get(id);
+    if (hit) return hit;
+    const { data } = await svc.auth.admin.getUserById(id);
+    const email = data?.user?.email ?? '';
+    const name = isOwner(email) ? '대표' : email ? email.split('@')[0] : '이름 없음';
+    cache.set(id, name);
+    return name;
+  };
+}
+
 /** 사용자별·주제별 마지막 참석 기록 — 위시가 '받음'인지 판정하는 근거 */
 export async function lastReceivedMap(
   svc: SupabaseClient,
@@ -40,7 +57,7 @@ export async function lastReceivedMap(
     .from('teaching_sessions')
     .select('id, topic_key, date, store, manager_id, created_at')
     .in('id', sessionIds);
-  const managers = await profileMap(svc, (sessions ?? []).map((s) => s.manager_id as string));
+  const nameOf = nameResolver(svc, await profileMap(svc, (sessions ?? []).map((s) => s.manager_id as string)));
   const byId = new Map((sessions ?? []).map((s) => [s.id as number, s]));
   for (const a of att ?? []) {
     const s = byId.get(a.session_id as number);
@@ -52,7 +69,7 @@ export async function lastReceivedMap(
         sessionId: s.id as number,
         date: s.date as string,
         store: s.store as StoreId,
-        managerName: managers.get(s.manager_id as string)?.display_name ?? '매니저',
+        managerName: await nameOf(s.manager_id as string),
         createdAt: s.created_at as string,
       });
     }

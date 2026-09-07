@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireActor, isActor, canManage, forbid } from '@/lib/teaching/access';
-import { isFulfilled, lastReceivedMap, profileMap } from '@/lib/teaching/queries';
+import { isFulfilled, lastReceivedMap, nameResolver, profileMap } from '@/lib/teaching/queries';
 import { STORES, type StoreId } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -20,6 +20,7 @@ export async function GET(req: Request) {
   const staff = Array.from(profiles.values()).filter((p) => p.role === 'staff' && p.stores.includes(store));
   const staffIds = staff.map((p) => p.user_id);
   const nameOf = (id: string) => profiles.get(id)?.display_name ?? '이름 없음';
+  const anyNameOf = nameResolver(a.svc, profiles); // 매니저 자리에 대표(프로필 없음)가 올 수 있다
 
   const [{ data: wishRows }, { data: noteRows }, received, { data: sessionRows }] = await Promise.all([
     staffIds.length
@@ -66,15 +67,17 @@ export async function GET(req: Request) {
     staff: staff.map((p) => ({ userId: p.user_id, name: p.display_name })),
     topics,
     notes: (noteRows ?? []).map((n) => ({ userId: n.user_id as string, name: nameOf(n.user_id as string), note: n.note as string, updatedAt: n.updated_at as string })),
-    sessions: (sessionRows ?? []).map((s) => ({
-      id: s.id as number,
-      topicKey: s.topic_key as string,
-      date: s.date as string,
-      store: s.store as StoreId,
-      managerId: s.manager_id as string,
-      managerName: nameOf(s.manager_id as string),
-      memo: s.memo as string,
-      attendees: attendeesOf.get(s.id as number) ?? [],
-    })),
+    sessions: await Promise.all(
+      (sessionRows ?? []).map(async (s) => ({
+        id: s.id as number,
+        topicKey: s.topic_key as string,
+        date: s.date as string,
+        store: s.store as StoreId,
+        managerId: s.manager_id as string,
+        managerName: await anyNameOf(s.manager_id as string),
+        memo: s.memo as string,
+        attendees: attendeesOf.get(s.id as number) ?? [],
+      })),
+    ),
   });
 }
