@@ -51,6 +51,7 @@ describe('sectionsForApiPath — API → 섹션 후보', () => {
     expect(sectionsForApiPath('/api/garden-share')).toBeNull();
     expect(sectionsForApiPath('/api/garden-tab-access')).toBeNull();
     expect(sectionsForApiPath('/api/simple-accounts')).toBeNull(); // admin 전용 — 라우트가 역할 확인
+    expect(sectionsForApiPath('/api/simple-signup')).toBeNull(); // PUBLIC_API — 미들웨어 제외
     expect(sectionsForApiPath('/api/account/pin')).toBeNull(); // 본인 계정 — 로그인만 필요
     expect(sectionsForApiPath('/api/notify/prefs')).toBeNull();
     expect(sectionsForApiPath('/api/push/subscribe')).toBeNull();

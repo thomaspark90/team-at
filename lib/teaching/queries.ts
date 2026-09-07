@@ -13,9 +13,9 @@ export interface Received {
   createdAt: string;
 }
 
-/** 프로필 여러 건을 user_id → Profile 맵으로 */
+/** 프로필 여러 건을 user_id → Profile 맵으로 — 승인된(active) 계정만. 가입 대기는 어디에도 안 보인다 */
 export async function profileMap(svc: SupabaseClient, userIds?: string[]): Promise<Map<string, Profile>> {
-  let q = svc.from('profiles').select(PROFILE_COLS);
+  let q = svc.from('profiles').select(PROFILE_COLS).eq('status', 'active');
   if (userIds) {
     if (userIds.length === 0) return new Map();
     q = q.in('user_id', Array.from(new Set(userIds)));

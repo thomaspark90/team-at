@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { NAME_RE, PIN_RE, isSimpleEmail, newInternalEmail, newPin, normalizeName, pinToPassword } from '@/lib/account/simple-login';
+import { NAME_RE, PIN_RE, SIGNUP_NAME_RE, isSimpleEmail, newInternalEmail, newPin, normalizeName, pinToPassword } from '@/lib/account/simple-login';
 import { addDays, fmtMd, isYmd, kstToday } from '@/lib/teaching/kst';
 import { isFulfilled } from '@/lib/teaching/queries';
 import { TEACHING_TOPIC_KEYS } from '@/lib/teaching/topics';
@@ -24,6 +24,13 @@ describe('간편 로그인 — 입력 규칙', () => {
     expect(NAME_RE.test('')).toBe(false);
     expect(NAME_RE.test('이름이너무길어서열두자를넘어요')).toBe(false);
     expect(normalizeName('  박  연재 ')).toBe('박 연재');
+  });
+
+  it('자가 가입 이름은 성 포함 한글 정확히 3글자', () => {
+    expect(SIGNUP_NAME_RE.test('박연재')).toBe(true);
+    expect(SIGNUP_NAME_RE.test('박연')).toBe(false);
+    expect(SIGNUP_NAME_RE.test('박연재(판교)')).toBe(false);
+    expect(SIGNUP_NAME_RE.test('Kim')).toBe(false);
   });
 
   it('내부 이메일은 팀 도메인이라 미들웨어 허용을 통과하고, 판별도 된다', () => {

@@ -22,11 +22,14 @@ export async function POST(req: Request) {
 
   const { data: profile } = await svc
     .from('profiles')
-    .select('user_id, display_name, simple_login, pin_reset_required, failed_attempts, locked_until')
+    .select('user_id, display_name, simple_login, pin_reset_required, failed_attempts, locked_until, status')
     .eq('display_name', name)
     .eq('simple_login', true)
     .maybeSingle();
   if (!profile) return FAIL();
+  if (profile.status === 'pending') {
+    return NextResponse.json({ error: '가입 신청이 아직 승인되지 않았어요. 대표가 역할·지점을 지정하면 로그인할 수 있습니다.' }, { status: 403 });
+  }
 
   if (profile.locked_until && new Date(profile.locked_until).getTime() > Date.now()) {
     const left = Math.ceil((new Date(profile.locked_until).getTime() - Date.now()) / 60_000);

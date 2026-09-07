@@ -12,7 +12,8 @@ export const maxDuration = 15;
 // GET: 프로필 전체(간편 계정 + 프로필만 있는 구글 계정)
 // POST { name, role, stores }: 계정 발급 — 내부 이메일 auth 계정 + 프로필 + 기본 권한(가든 섹션·교육 탭).
 //   응답의 pin 은 이때 한 번만 보여준다(저장하지 않음). 첫 로그인 때 본인이 바꿔야 한다.
-// PATCH { userId, name?, role?, stores?, resetPin? }: 프로필 수정 / 비밀번호 초기화(새 pin 응답, 잠금 해제).
+// PATCH { userId, name?, role?, stores?, resetPin?, approve? }: 프로필 수정 / 비밀번호 초기화(새 pin 응답, 잠금 해제)
+//   / approve: true — 가입 신청(status=pending) 승인. 역할·지점을 함께 보내야 한다.
 // DELETE { userId }: 간편 계정 삭제(auth 계정·프로필·요청·기록 cascade + 권한 행). 구글 계정 프로필은 프로필만 삭제.
 
 const STORE_IDS = STORES.map((s) => s.id);
@@ -43,7 +44,8 @@ export async function GET() {
   if ('error' in g) return g.error;
   const { data, error } = await g.svc
     .from('profiles')
-    .select('user_id, display_name, role, stores, simple_login, pin_reset_required, locked_until, created_at')
+    .select('user_id, display_name, role, stores, simple_login, pin_reset_required, locked_until, status, created_at')
+    .order('status') // active 먼저, pending 뒤 — 화면은 status 로 나눠 보여준다
     .order('role', { ascending: false })
     .order('display_name');
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -109,12 +111,19 @@ export async function PATCH(req: Request) {
   if (!userId) return NextResponse.json({ error: 'userId 가 필요합니다.' }, { status: 400 });
   const { data: profile } = await g.svc
     .from('profiles')
-    .select('user_id, display_name, simple_login')
+    .select('user_id, display_name, simple_login, status')
     .eq('user_id', userId)
     .maybeSingle();
   if (!profile) return NextResponse.json({ error: '프로필을 찾을 수 없습니다.' }, { status: 404 });
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (body?.approve === true) {
+    if (profile.status !== 'pending') return NextResponse.json({ error: '승인 대기 상태가 아닙니다.' }, { status: 400 });
+    if (!parseRole(body?.role) || !parseStores(body?.stores)) {
+      return NextResponse.json({ error: '승인하려면 역할과 지점을 지정하세요.' }, { status: 400 });
+    }
+    patch.status = 'active';
+  }
   if (body?.name !== undefined) {
     const name = normalizeName(body.name);
     if (!NAME_RE.test(name)) return NextResponse.json({ error: '이름은 한글·영문·숫자 1~12자입니다.' }, { status: 400 });

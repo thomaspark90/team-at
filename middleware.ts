@@ -30,6 +30,7 @@ const PUBLIC_API = [
   '/api/cron/review-classify', // Vercel 크론 — CRON_SECRET Bearer 로 자체 인증
   '/api/cron/teaching-reminder', // Vercel 크론 — CRON_SECRET Bearer 로 자체 인증
   '/api/simple-login', // 간편 로그인(이름+6자리) — 세션이 아직 없다. 계정 잠금은 라우트가 처리
+  '/api/simple-signup', // 간편 계정 가입 신청(승인 대기 생성) — 세션 없음. 상한·이름 규칙은 라우트가 처리
   '/api/kakao-notify/queue', // 원두 발주 카톡 전송기(맥 로컬) — 토큰(x-kakao-token) 자체 인증
 ];
 
