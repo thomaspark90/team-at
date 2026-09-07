@@ -18,6 +18,8 @@ export const GARDEN_TAB_GROUPS: GardenTab[][] = [
     { key: 'weather', href: '/garden/weather', label: '날씨 분석', desc: '기온·강수 밴드별 판매 효과 리포트' },
   ],
   [
+    // 매니저 교육 — 스탭 위시리스트·매니저 출근 일정·교육 기록. 간편 계정 발급 시 기본 허용 탭(2026-09-07)
+    { key: 'teaching', href: '/garden/teaching', label: '교육', desc: '배우고 싶은 주제 · 매니저 출근 일정 · 교육 기록' },
     { key: 'reviews', href: '/garden/reviews', label: '네이버 리뷰', desc: '리뷰 확인 · 답글 초안 작성' },
     { key: 'words', href: '/garden/words', label: '제철 단어', desc: '고객 제출 단어 검수' },
     { key: 'settings', href: '/garden/settings', label: '설정', desc: '드롭다운 명단 · 알림 · 요청 보내기' },

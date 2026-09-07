@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { isAllowedUser } from '@/lib/finance/access';
 import LoginButton from '@/components/LoginButton';
+import SimpleLoginForm from '@/components/SimpleLoginForm';
 
 export default async function LandingPage({ searchParams }: { searchParams: { denied?: string } }) {
   const supabase = await createClient();
@@ -38,6 +39,13 @@ export default async function LandingPage({ searchParams }: { searchParams: { de
             @team-at.space 팀 구글 계정으로 로그인하세요
           </p>
         )}
+        {/* 간편 계정(스탭·매니저) — 대표가 설정에서 발급한 이름 + 숫자 6자리 */}
+        <div className="my-8 flex w-full items-center gap-3 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
+          <span className="h-px flex-1 bg-border" />
+          스탭 · 매니저
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <SimpleLoginForm />
         <a href="/install" className="mt-8 text-[11px] text-muted-foreground underline hover:text-foreground">
           휴대폰·PC에 앱 설치하는 방법
         </a>

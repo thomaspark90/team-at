@@ -38,6 +38,7 @@ describe('sectionsForApiPath — API → 섹션 후보', () => {
     expect(sectionsForApiPath('/api/staffmeals')).toEqual(['studio']);
     expect(sectionsForApiPath('/api/staffmeal-todos')).toEqual(['studio']);
     expect(sectionsForApiPath('/api/garden-todos')).toEqual(['garden']);
+    expect(sectionsForApiPath('/api/garden-teaching/board')).toEqual(['garden']);
     expect(sectionsForApiPath('/api/purchases')).toEqual(['garden']);
   });
 
@@ -49,6 +50,8 @@ describe('sectionsForApiPath — API → 섹션 후보', () => {
     expect(sectionsForApiPath('/api/garden-board')).toBeNull(); // scope 별 판정은 라우트가 직접
     expect(sectionsForApiPath('/api/garden-share')).toBeNull();
     expect(sectionsForApiPath('/api/garden-tab-access')).toBeNull();
+    expect(sectionsForApiPath('/api/simple-accounts')).toBeNull(); // admin 전용 — 라우트가 역할 확인
+    expect(sectionsForApiPath('/api/account/pin')).toBeNull(); // 본인 계정 — 로그인만 필요
     expect(sectionsForApiPath('/api/notify/prefs')).toBeNull();
     expect(sectionsForApiPath('/api/push/subscribe')).toBeNull();
     expect(sectionsForApiPath('/api/log')).toBeNull();

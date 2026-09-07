@@ -10,7 +10,7 @@ import { STUDIO_TABS, tabForPath as studioTabForPath } from '@/lib/studio/tabs';
 //  2) /api/*     : 로그인 + 팀 도메인 (라우트마다 개별 확인하던 것을 여기서 일괄 강제)
 // 이렇게 두지 않으면 페이지는 막혀도 API 를 직접 호출해 같은 데이터를 가져갈 수 있다.
 
-const PROTECTED = ['/dashboard', '/studio', '/garden', '/finance', '/settings'];
+const PROTECTED = ['/dashboard', '/studio', '/garden', '/finance', '/settings', '/account'];
 
 // 세션 쿠키 없이 호출되는 API — 각 라우트가 토큰/서명으로 자체 인증한다.
 // (외부 수집기·Blob 완료 웹훅·공개 단어 페이지)
@@ -28,6 +28,8 @@ const PUBLIC_API = [
   '/api/cron/ingest-health', // Vercel 크론 — CRON_SECRET Bearer 로 자체 인증
   '/api/cron/weather-briefing', // Vercel 크론 — CRON_SECRET Bearer 로 자체 인증
   '/api/cron/review-classify', // Vercel 크론 — CRON_SECRET Bearer 로 자체 인증
+  '/api/cron/teaching-reminder', // Vercel 크론 — CRON_SECRET Bearer 로 자체 인증
+  '/api/simple-login', // 간편 로그인(이름+6자리) — 세션이 아직 없다. 계정 잠금은 라우트가 처리
   '/api/kakao-notify/queue', // 원두 발주 카톡 전송기(맥 로컬) — 토큰(x-kakao-token) 자체 인증
 ];
 

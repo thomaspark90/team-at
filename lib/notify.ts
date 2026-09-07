@@ -79,16 +79,33 @@ async function sendPushTo(
   emails: string[],
   payload: { title: string; body: string; url: string }
 ) {
+  if (emails.length === 0) return;
+  await sendPushWhere(supabase, { email: emails }, payload);
+}
+
+// 계정 ID 기준 푸시 — 간편 계정(내부 이메일)은 메일함이 없어 이메일 알림 없이 푸시만 보낸다.
+// 교육 출근 전날 알림(cron/teaching-reminder)에서 사용.
+export async function sendPushToUsers(
+  supabase: SupabaseClient,
+  userIds: string[],
+  payload: { title: string; body: string; url: string }
+) {
+  if (userIds.length === 0) return;
+  await sendPushWhere(supabase, { user_id: userIds }, payload);
+}
+
+async function sendPushWhere(
+  supabase: SupabaseClient,
+  by: { email: string[] } | { user_id: string[] },
+  payload: { title: string; body: string; url: string }
+) {
   const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const priv = process.env.VAPID_PRIVATE_KEY;
-  if (!pub || !priv || emails.length === 0) return;
+  if (!pub || !priv) return;
   webpush.setVapidDetails(`mailto:${OWNER_EMAIL}`, pub, priv);
 
-  const { data: subs } = await supabase
-    .schema('finance')
-    .from('push_subscriptions')
-    .select('id,endpoint,p256dh,auth')
-    .in('email', emails);
+  const q = supabase.schema('finance').from('push_subscriptions').select('id,endpoint,p256dh,auth');
+  const { data: subs } = 'email' in by ? await q.in('email', by.email) : await q.in('user_id', by.user_id);
   if (!subs?.length) return;
 
   const body = JSON.stringify(payload);
