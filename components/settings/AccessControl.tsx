@@ -6,7 +6,16 @@ import { STUDIO_TABS, STUDIO_TAB_KEYS } from '@/lib/studio/tabs';
 import { SECTIONS, SECTION_KEYS } from '@/lib/access/sections';
 import { TEAM_DOMAIN } from '@/lib/finance/access';
 
-type UserRow = { id: string; email: string; tabs: string[] | null; sections: string[] | null; studioTabs: string[] | null };
+type UserRow = {
+  id: string;
+  email: string;
+  name?: string | null; // 프로필 표시 이름(간편 계정·프로필 등록 계정)
+  simpleLogin?: boolean;
+  profileRole?: string | null;
+  tabs: string[] | null;
+  sections: string[] | null;
+  studioTabs: string[] | null;
+};
 type Kind = 'tabs' | 'sections' | 'studioTabs';
 
 // 페이지 접근 권한 — 사용자별로 상위 섹션과 가든 하위 탭을 토글로 켜고 끈다. (admin 전용, /settings)
@@ -291,8 +300,16 @@ export default function AccessControl() {
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
               >
                 <span style={{ minWidth: 0 }}>
-                  <span className="block text-[13px] font-medium text-foreground">{u.email}</span>
+                  <span className="block text-[13px] font-medium text-foreground">
+                    {u.name ?? u.email}
+                    {u.simpleLogin && (
+                      <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                        간편 계정 · {u.profileRole === 'manager' ? '매니저' : '스탭'}
+                      </span>
+                    )}
+                  </span>
                   <span className="block text-[11px] text-muted-foreground" style={{ marginTop: 2 }}>
+                    {u.name && !u.simpleLogin && `${u.email} · `}
                     {summary(u)}
                     {externalBadge(u.email)}
                     {busyId === u.id && ' · 저장 중…'}

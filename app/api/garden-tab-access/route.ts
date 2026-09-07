@@ -83,16 +83,25 @@ export async function GET(req: Request) {
     ),
   );
 
+  // 간편 계정(acct-…@)은 내부 이메일이라 이름을 붙여야 누구인지 알 수 있다
+  const { data: profileRows } = await svc.from('profiles').select('user_id, display_name, role, simple_login');
+  const profileOf = new Map(
+    ((profileRows ?? []) as { user_id: string; display_name: string; role: string; simple_login: boolean }[]).map((p) => [p.user_id, p]),
+  );
+
   const users = usersData.users
     .filter((u) => !!u.email && !isOwner(u.email)) // OWNER 는 항상 전체라 목록에서 제외
     .map((u) => ({
       id: u.id,
       email: u.email!,
+      name: profileOf.get(u.id)?.display_name ?? null,
+      simpleLogin: profileOf.get(u.id)?.simple_login ?? false,
+      profileRole: profileOf.get(u.id)?.role ?? null,
       tabs: accessMap.get(u.id)?.tabs ?? null,
       sections: accessMap.get(u.id)?.sections ?? null,
       studioTabs: accessMap.get(u.id)?.studio_tabs ?? null,
     }))
-    .sort((a, b) => a.email.localeCompare(b.email));
+    .sort((a, b) => (a.name ?? a.email).localeCompare(b.name ?? b.email, 'ko'));
 
   // 외부(비 @team-at.space) 이메일 허용 목록 — 로그인 차단/허용 표시와 허용 해제 UI 용
   const { data: allowRows } = await svc.from('allowed_emails').select('email');
