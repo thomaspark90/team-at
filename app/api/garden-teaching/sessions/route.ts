@@ -23,9 +23,9 @@ export async function POST(req: Request) {
   if (!STORES.some((s) => s.id === store)) return NextResponse.json({ error: '지점을 선택하세요.' }, { status: 400 });
   if (attendeeIds.length === 0) return NextResponse.json({ error: '참석한 스탭을 한 명 이상 고르세요.' }, { status: 400 });
 
-  // 참석자는 실제 스탭 프로필만
-  const { data: staff } = await a.svc.from('profiles').select('user_id').in('user_id', attendeeIds).eq('role', 'staff');
-  const validIds = (staff ?? []).map((p) => p.user_id as string);
+  // 참석자는 스탭급(교육 운영 권한 없는 역할) 프로필만
+  const { data: staff } = await a.svc.from('profiles').select('user_id, role').in('user_id', attendeeIds).eq('status', 'active');
+  const validIds = (staff ?? []).filter((p) => !a.manageKeys.has(p.role as string)).map((p) => p.user_id as string);
   if (validIds.length === 0) return NextResponse.json({ error: '참석자가 스탭 계정이 아닙니다.' }, { status: 400 });
 
   // 대표가 기록하면 매니저 자리에 대표 계정이 들어간다(이름은 '대표'로 표시)

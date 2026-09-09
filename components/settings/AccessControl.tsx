@@ -12,6 +12,7 @@ type UserRow = {
   name?: string | null; // 프로필 표시 이름(간편 계정·프로필 등록 계정)
   simpleLogin?: boolean;
   profileRole?: string | null;
+  profileRoleLabel?: string | null;
   tabs: string[] | null;
   sections: string[] | null;
   studioTabs: string[] | null;
@@ -304,7 +305,7 @@ export default function AccessControl() {
                     {u.name ?? u.email}
                     {u.simpleLogin && (
                       <span className="ml-2 text-[11px] font-normal text-muted-foreground">
-                        간편 계정 · {u.profileRole === 'manager' ? '매니저' : '스탭'}
+                        간편 계정 · {u.profileRoleLabel ?? u.profileRole}
                       </span>
                     )}
                   </span>

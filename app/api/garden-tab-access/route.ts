@@ -84,7 +84,11 @@ export async function GET(req: Request) {
   );
 
   // 간편 계정(acct-…@)은 내부 이메일이라 이름을 붙여야 누구인지 알 수 있다
-  const { data: profileRows } = await svc.from('profiles').select('user_id, display_name, role, simple_login');
+  const [{ data: profileRows }, { data: roleRows }] = await Promise.all([
+    svc.from('profiles').select('user_id, display_name, role, simple_login'),
+    svc.from('profile_roles').select('key, label'),
+  ]);
+  const roleLabel = new Map(((roleRows ?? []) as { key: string; label: string }[]).map((r) => [r.key, r.label]));
   const profileOf = new Map(
     ((profileRows ?? []) as { user_id: string; display_name: string; role: string; simple_login: boolean }[]).map((p) => [p.user_id, p]),
   );
@@ -97,6 +101,7 @@ export async function GET(req: Request) {
       name: profileOf.get(u.id)?.display_name ?? null,
       simpleLogin: profileOf.get(u.id)?.simple_login ?? false,
       profileRole: profileOf.get(u.id)?.role ?? null,
+      profileRoleLabel: roleLabel.get(profileOf.get(u.id)?.role ?? '') ?? null,
       tabs: accessMap.get(u.id)?.tabs ?? null,
       sections: accessMap.get(u.id)?.sections ?? null,
       studioTabs: accessMap.get(u.id)?.studio_tabs ?? null,

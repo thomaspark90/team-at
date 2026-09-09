@@ -22,8 +22,8 @@ export async function POST(req: Request) {
   if (a.role === 'admin' && body?.managerId) {
     managerId = String(body.managerId);
     const { data: p } = await a.svc.from('profiles').select('role').eq('user_id', managerId).maybeSingle();
-    if (p?.role !== 'manager') return NextResponse.json({ error: '매니저 계정이 아닙니다.' }, { status: 400 });
-  } else if (a.role !== 'manager') {
+    if (!p || !a.manageKeys.has(p.role as string)) return NextResponse.json({ error: '교육 운영 권한이 있는 계정이 아닙니다.' }, { status: 400 });
+  } else if (a.role === 'admin') {
     return NextResponse.json({ error: '일정을 넣을 매니저를 선택하세요.' }, { status: 400 });
   }
 

@@ -4,6 +4,7 @@ import { serviceClient } from '@/lib/supabase/service';
 import { resolveRole, isOwner } from '@/lib/finance/access';
 import { NAME_RE, newInternalEmail, newPin, normalizeName, pinToPassword } from '@/lib/account/simple-login';
 import { STORES, type StoreId } from '@/lib/types';
+import { loadRoles } from '@/lib/account/roles';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
@@ -37,7 +38,13 @@ const parseStores = (v: unknown): StoreId[] | null => {
   const out = v.map(String).filter((s): s is StoreId => (STORE_IDS as string[]).includes(s));
   return out.length ? Array.from(new Set(out)) : null;
 };
-const parseRole = (v: unknown): 'staff' | 'manager' | null => (v === 'staff' || v === 'manager' ? v : null);
+// 역할은 finance.profile_roles 에 있는 키만 — 대표가 설정에서 추가한 역할 포함
+const parseRole = async (svc: import('@supabase/supabase-js').SupabaseClient, v: unknown): Promise<string | null> => {
+  const key = String(v ?? '');
+  if (!key) return null;
+  const roles = await loadRoles(svc);
+  return roles.some((r) => r.key === key) ? key : null;
+};
 
 export async function GET() {
   const g = await requireAdmin();
@@ -49,7 +56,7 @@ export async function GET() {
     .order('role', { ascending: false })
     .order('display_name');
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ profiles: data ?? [] });
+  return NextResponse.json({ profiles: data ?? [], roles: await loadRoles(g.svc) });
 }
 
 export async function POST(req: Request) {
@@ -57,7 +64,7 @@ export async function POST(req: Request) {
   if ('error' in g) return g.error;
   const body = await req.json().catch(() => ({}));
   const name = normalizeName(body?.name);
-  const role = parseRole(body?.role);
+  const role = await parseRole(g.svc, body?.role);
   const stores = parseStores(body?.stores);
   if (!NAME_RE.test(name)) return NextResponse.json({ error: '이름은 한글·영문·숫자 1~12자입니다.' }, { status: 400 });
   if (!role || !stores) return NextResponse.json({ error: '역할과 지점을 선택하세요.' }, { status: 400 });
@@ -119,7 +126,7 @@ export async function PATCH(req: Request) {
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (body?.approve === true) {
     if (profile.status !== 'pending') return NextResponse.json({ error: '승인 대기 상태가 아닙니다.' }, { status: 400 });
-    if (!parseRole(body?.role) || !parseStores(body?.stores)) {
+    if (!(await parseRole(g.svc, body?.role)) || !parseStores(body?.stores)) {
       return NextResponse.json({ error: '승인하려면 역할과 지점을 지정하세요.' }, { status: 400 });
     }
     patch.status = 'active';
@@ -134,7 +141,7 @@ export async function PATCH(req: Request) {
     patch.display_name = name;
   }
   if (body?.role !== undefined) {
-    const role = parseRole(body.role);
+    const role = await parseRole(g.svc, body.role);
     if (!role) return NextResponse.json({ error: '역할이 올바르지 않습니다.' }, { status: 400 });
     patch.role = role;
   }

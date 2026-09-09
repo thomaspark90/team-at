@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireActor, isActor, canManage } from '@/lib/teaching/access';
+import { requireActor, isActor, canManage, isManagerProfile } from '@/lib/teaching/access';
 import { isFulfilled, lastReceivedMap, profileMap, upcomingShifts } from '@/lib/teaching/queries';
 import { addDays, kstToday } from '@/lib/teaching/kst';
 
@@ -35,10 +35,10 @@ export async function GET() {
 
   const myStores = a.profile?.stores ?? [];
   const visibleShifts =
-    a.role === 'staff' && myStores.length ? shifts.filter((s) => myStores.includes(s.store)) : shifts;
+    !canManage(a) && myStores.length ? shifts.filter((s) => myStores.includes(s.store)) : shifts;
 
   const managers = Array.from(profiles.values())
-    .filter((p) => p.role === 'manager')
+    .filter((p) => isManagerProfile(a, p))
     .map((p) => ({ userId: p.user_id, name: p.display_name, stores: p.stores }));
 
   return NextResponse.json({
@@ -46,7 +46,13 @@ export async function GET() {
     userId: a.userId,
     role: a.role,
     profile: a.profile
-      ? { name: a.profile.display_name, stores: a.profile.stores, simpleLogin: a.profile.simple_login, pinResetRequired: a.profile.pin_reset_required }
+      ? {
+          name: a.profile.display_name,
+          stores: a.profile.stores,
+          roleLabel: a.roles.find((r) => r.key === a.profile!.role)?.label ?? a.profile.role,
+          simpleLogin: a.profile.simple_login,
+          pinResetRequired: a.profile.pin_reset_required,
+        }
       : null,
     canManage: canManage(a),
     wishes,

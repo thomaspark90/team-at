@@ -9,8 +9,8 @@ export type Shift = { id: number; managerId: string; managerName: string; date: 
 export type TeachingMe = {
   today: string;
   userId: string;
-  role: 'admin' | 'manager' | 'staff';
-  profile: { name: string; stores: StoreId[]; simpleLogin: boolean; pinResetRequired: boolean } | null;
+  role: 'admin' | string; // profile_roles.key 또는 admin
+  profile: { name: string; stores: StoreId[]; roleLabel: string; simpleLogin: boolean; pinResetRequired: boolean } | null;
   canManage: boolean;
   wishes: { topicKey: string; requestedAt: string; received: Received | null }[];
   receivedAll: ({ topicKey: string } & Received)[];

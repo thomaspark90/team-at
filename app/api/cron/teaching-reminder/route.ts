@@ -4,6 +4,7 @@ import { sendPushToUsers } from '@/lib/notify';
 import { profileMap, upcomingShifts } from '@/lib/teaching/queries';
 import { addDays, fmtMd, kstToday } from '@/lib/teaching/kst';
 import { STORES } from '@/lib/types';
+import { loadRoles, manageRoleKeys } from '@/lib/account/roles';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -23,8 +24,9 @@ export async function GET(req: Request) {
   const shifts = await upcomingShifts(svc, tomorrow, tomorrow);
   if (shifts.length === 0) return NextResponse.json({ ok: true, date: tomorrow, sent: 0, skipped: '내일 출근 일정 없음' });
 
-  const profiles = await profileMap(svc);
-  const staff = Array.from(profiles.values()).filter((p) => p.role === 'staff');
+  const [profiles, roles] = await Promise.all([profileMap(svc), loadRoles(svc)]);
+  const manageKeys = manageRoleKeys(roles);
+  const staff = Array.from(profiles.values()).filter((p) => !manageKeys.has(p.role));
   const storeLabel = (id: string) => STORES.find((s) => s.id === id)?.label ?? id;
 
   let sent = 0;

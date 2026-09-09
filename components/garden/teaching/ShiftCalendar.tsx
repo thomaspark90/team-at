@@ -55,7 +55,7 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
       <div>
         <h1 className="text-[22px] font-medium">교육</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          {isAdmin ? '매니저 출근 일정과 지점별 교육 요청을 관리합니다.' : `${me.profile?.name} 매니저 — 출근 일정을 등록하면 그날 지점 스탭에게 전날 저녁 알림이 갑니다.`}
+          {isAdmin ? '매니저 출근 일정과 지점별 교육 요청을 관리합니다.' : `${me.profile?.name} ${me.profile?.roleLabel ?? '매니저'} — 출근 일정을 등록하면 그날 지점 스탭에게 전날 저녁 알림이 갑니다.`}
         </p>
       </div>
 

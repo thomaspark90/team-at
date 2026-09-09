@@ -10,8 +10,13 @@
 - 발급 기본 권한: 가든 섹션 + 교육 탭(`garden_tab_access`). 넓히려면 페이지 접근 권한에서 토글.
 - 삭제: 설정 › 간편 계정 › 삭제 — auth 계정과 프로필·요청·일정·기록이 함께 지워진다.
 
+## 역할 (`finance.profile_roles`, 2026-09-09)
+- 설정 › 간편 계정 › **역할 관리**에서 대표가 추가·이름 변경·삭제. 기본 역할 스탭(`staff`)·매니저(`manager`)는 삭제 불가, 사용 중인 역할도 삭제 불가.
+- 역할의 의미는 **교육 운영(can_manage)** 하나뿐: 켜짐 → 매니저 화면(출근 일정·집계·교육함 기록), 꺼짐 → 스탭 화면(위시리스트)·참석자 후보·전날 알림 대상.
+- 코드는 역할 키를 직접 비교하지 않는다(`lib/teaching/access.ts` Actor.manage / manageKeys). 새 역할을 만들어도 코드 수정 불필요.
+
 ## 교육 탭 (`/garden/teaching`)
-- 역할은 `finance.profiles.role`(staff/manager). 대표(OWNER)·finance admin 은 항상 관리 화면.
+- 역할은 `finance.profiles.role` → `profile_roles.key`. 대표(OWNER)·finance admin 은 항상 관리 화면.
 - 구글 팀 계정이 처음 열면 이름·지점 등록(스탭). 매니저로 올리려면 설정 › 간편 계정에서 역할 변경.
 - 주제 목록은 `lib/teaching/topics.ts` 상수 — key 는 저장 키라 바꾸지 말고, 뺄 땐 `retired: true`.
 - '받음' 판정: 위시 `requested_at` 이후에 참석한 교육 기록(`teaching_sessions` + attendees)이 있으면 받음. 재요청은 `requested_at` 갱신.
