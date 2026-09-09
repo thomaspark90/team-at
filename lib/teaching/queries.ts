@@ -87,6 +87,11 @@ export interface ShiftTrainee {
   openTopics: string[]; // 아직 못 받은 위시 주제 키 — 티칭 스태프가 뭘 준비할지 보는 근거
 }
 
+export interface ShiftSlot {
+  hour: number; // 9 = 09:00 칸
+  note: string;
+}
+
 export interface ShiftRow {
   id: number;
   managerId: string;
@@ -96,6 +101,7 @@ export interface ShiftRow {
   startTime: string | null; // 'HH:MM:SS'
   endTime: string | null;
   trainees: ShiftTrainee[];
+  slots: ShiftSlot[]; // 시간 칸 메모(대표 입력), hour 오름차순
 }
 
 /** 오늘(KST) 이후 일정 — 매니저 이름·시간·교육 대상(열린 요청 주제) 포함 */
@@ -111,9 +117,18 @@ export async function upcomingShifts(svc: SupabaseClient, fromYmd: string, toYmd
   const { data } = await q;
   const rows = data ?? [];
   const shiftIds = rows.map((s) => s.id as number);
-  const { data: tr } = shiftIds.length
-    ? await svc.from('teaching_shift_trainees').select('shift_id, user_id').in('shift_id', shiftIds)
-    : { data: [] as { shift_id: number; user_id: string }[] };
+  const [{ data: tr }, { data: slotRows }] = shiftIds.length
+    ? await Promise.all([
+        svc.from('teaching_shift_trainees').select('shift_id, user_id').in('shift_id', shiftIds),
+        svc.from('teaching_shift_slots').select('shift_id, hour, note').in('shift_id', shiftIds).order('hour'),
+      ])
+    : [{ data: [] as { shift_id: number; user_id: string }[] }, { data: [] as { shift_id: number; hour: number; note: string }[] }];
+  const slotsOf = new Map<number, ShiftSlot[]>();
+  for (const r of slotRows ?? []) {
+    const list = slotsOf.get(r.shift_id as number) ?? [];
+    list.push({ hour: r.hour as number, note: r.note as string });
+    slotsOf.set(r.shift_id as number, list);
+  }
   const traineeIds = Array.from(new Set((tr ?? []).map((t) => t.user_id as string)));
   const [profiles, received, { data: wishRows }] = await Promise.all([
     profileMap(svc, [...rows.map((s) => s.manager_id as string), ...traineeIds]),
@@ -146,5 +161,6 @@ export async function upcomingShifts(svc: SupabaseClient, fromYmd: string, toYmd
     startTime: (s.start_time as string | null) ?? null,
     endTime: (s.end_time as string | null) ?? null,
     trainees: (traineesOf.get(s.id as number) ?? []).sort((x, y) => x.name.localeCompare(y.name, 'ko')),
+    slots: slotsOf.get(s.id as number) ?? [],
   }));
 }

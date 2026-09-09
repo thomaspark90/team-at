@@ -5,6 +5,7 @@ import type { StoreId } from '@/lib/types';
 export type Received = { sessionId: number; date: string; store: StoreId; managerName: string; createdAt: string };
 
 export type ShiftTrainee = { userId: string; name: string; openTopics: string[] };
+export type ShiftSlot = { hour: number; note: string }; // 9 = 09:00 칸
 export type Shift = {
   id: number;
   managerId: string;
@@ -14,6 +15,7 @@ export type Shift = {
   startTime: string | null; // 'HH:MM:SS'
   endTime: string | null;
   trainees: ShiftTrainee[];
+  slots: ShiftSlot[];
 };
 
 export type TeachingMe = {

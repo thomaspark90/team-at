@@ -5,12 +5,12 @@ import { fmtMd, fmtRange } from '@/lib/teaching/kst';
 import { STORES, type StoreId } from '@/lib/types';
 import { api, type Shift, type TeachingMe } from './types';
 import TeachingPushToggle from './TeachingPushToggle';
-import ShiftTimeline from './ShiftTimeline';
+import ShiftSchedule from './ShiftSchedule';
 
 // 티칭 일정 — 날짜·시간·지점·티칭 스태프·교육 대상 스탭.
 //  · 대표(admin): 여기서 등록·삭제. 같은 사람·같은 날 다시 넣으면 지점·시간·대상이 통째로 바뀐다.
 //  · 티칭 스태프(운영 권한 역할): 자기 일정만 읽는다 — "몇 일(요일) 몇 시 어느 지점에서 누구를" (2026-09-09 대표 결정: 입력은 대표만).
-//  · 일정 목록은 06:00~20:00 타임라인(ShiftTimeline) — 막대 아래 대상 스탭이 아직 못 받은 요청 주제가 붙어 뭘 준비할지 바로 보인다.
+//  · 일정 목록은 세로 시간표(ShiftSchedule) — 시작~종료를 한 시간 칸으로 나열, 대표가 칸마다 세부 내용을 적고 티칭 스태프는 읽는다(2026-09-09).
 //  · 전날 20시 교육 대상(지정 없으면 지점 스탭 전원)과 티칭 스태프 본인에게 푸시가 나간다.
 
 const storeLabel = (id: string) => STORES.find((s) => s.id === id)?.label ?? id;
@@ -105,7 +105,7 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
         </p>
       )}
 
-      <ShiftTimeline shifts={mine} today={me.today} isAdmin={isAdmin} onRemove={remove} />
+      <ShiftSchedule shifts={mine} today={me.today} isAdmin={isAdmin} onRemove={remove} onSlotSaved={onChange} />
 
       {isAdmin && (
         <div className="space-y-4">
