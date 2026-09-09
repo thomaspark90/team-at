@@ -30,7 +30,6 @@ const UNITS = [
 ];
 
 const won = (n: number) => '₩' + Math.round(n).toLocaleString('ko-KR');
-const GREEN = 'hsl(var(--number-colored))';
 const fmtYm = (ym: string) => {
   const [y, mo] = ym.split('-');
   return `${y}년 ${Number(mo)}월`;
@@ -165,9 +164,9 @@ function Overview({ o }: { o: OverviewData }) {
         <>
           {/* 요약 카드 */}
           <div className="flex flex-wrap gap-3">
-            <SummaryCard label="총 유입" value={won(o.totalRevenue)} color={GREEN} />
-            <SummaryCard label="총 유출" value={won(o.totalExpense)} color="hsl(var(--foreground))" />
-            <SummaryCard label="순증감 (현금)" value={won(o.surplus)} color={o.surplus >= 0 ? GREEN : 'hsl(var(--destructive))'} />
+            <SummaryCard label="총 유입" value={won(o.totalRevenue)} />
+            <SummaryCard label="총 유출" value={won(o.totalExpense)} />
+            <SummaryCard label="순증감 (현금)" value={won(o.surplus)} negative={o.surplus < 0} />
           </div>
           <p className="-mt-5 text-caption text-muted-foreground">
             통장 입출금 기준(현금)이에요. 발생주의 영업이익·원가율은 <Link href="/finance/pnl" className="underline">관리손익</Link>에서 봐요.
@@ -217,13 +216,12 @@ function Overview({ o }: { o: OverviewData }) {
   );
 }
 
-function SummaryCard({ label, value, color }: { label: string; value: string; color: string }) {
+// 숫자는 검정, 음수만 destructive(2026-09-10, 규칙 '색은 상태에만') — 유입/유출은 라벨이 말해준다
+function SummaryCard({ label, value, negative = false }: { label: string; value: string; negative?: boolean }) {
   return (
-    <div className="min-w-[160px] flex-[1_1_auto] rounded-md bg-muted/40 p-[16px_18px]">
+    <div className="ta-panel min-w-[160px] flex-[1_1_auto]">
       <div className="mb-1.5 text-caption uppercase tracking-[0.04em] text-muted-foreground">{label}</div>
-      <div className="tabular text-display" style={{ color }}>
-        {value}
-      </div>
+      <div className={`tabular text-display ${negative ? 'text-destructive' : 'text-foreground'}`}>{value}</div>
     </div>
   );
 }

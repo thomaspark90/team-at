@@ -873,8 +873,8 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   // 레시피 미설정 원두 카드 — 대시보드(unset)와 필터 레시피 탭 양쪽에서 노출.
   // 발주 직후 레시피 페이지에서도 바로 설정을 유도하기 위함.
   const unsetCard = unsetBeans.length > 0 && (
-    <div className="min-w-0">
-      <p className="ta-label">레시피 미설정 원두 — 새 발주</p>
+    <div className="ta-panel min-w-0">
+      <p className="mb-3 text-body font-medium">레시피 미설정 원두 <span className="font-normal text-muted-foreground">새 발주</span></p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {unsetBeans.map((rec) => (
           <div key={rec.id} style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -912,9 +912,9 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   // '판매가 설정' 탭(saleprice) 담당이라 여기서는 건수·원두명만 보여주고 링크로 유도한다.
   const unpriced = purchases.filter((r) => r.chosenPrice == null);
   const unpricedCard = unpriced.length > 0 && (
-    <div className="min-w-0">
+    <div className="ta-panel min-w-0">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <p className="ta-label" style={{ margin: 0 }}>판매가 미책정 — {unpriced.length}건</p>
+        <p className="text-body font-medium" style={{ margin: 0 }}>판매가 미책정 <span className="font-normal text-muted-foreground tabular">{unpriced.length}건</span></p>
         <span
           className="text-caption text-muted-foreground"
           style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}

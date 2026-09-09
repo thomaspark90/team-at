@@ -340,9 +340,10 @@ function Metric({
   // 미분류가 크면 지표(재료율·인건비율…)가 실제보다 좋게 보이는 착시 → 확신 신호(양호) 대신 '잠정'으로 낮춤
   const showSig = sig && !uncertain;
   return (
-    <div className="rounded-md bg-muted/40 p-4">
+    <div className="ta-panel">
       <div className="text-caption uppercase tracking-[0.06em] text-muted-foreground">{label}</div>
-      <div className={`mt-1 text-display tabular ${showSig ? sig.cls : 'text-foreground'}`}>{value}</div>
+      {/* 숫자는 검정 — 상태는 아래 점 하나로만(2026-09-10, 규칙 '색은 상태에만') */}
+      <div className="mt-1 text-display tabular text-foreground">{value}</div>
       <div className="mt-0.5 flex items-center gap-1.5 text-caption text-muted-foreground">
         {showSig && <span className={sig.cls}>● {sig.label}</span>}
         {uncertain && <span className="text-amber-600 dark:text-amber-500">● 미분류 있어 잠정</span>}

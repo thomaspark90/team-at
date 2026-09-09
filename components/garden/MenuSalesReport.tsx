@@ -86,7 +86,7 @@ export default function MenuSalesReport({ americano, menus }: { americano: Ameri
                   <p className="m-0 text-body text-muted-foreground">
                     {c.label} {c.s && <span className="text-caption">({share}%)</span>}
                   </p>
-                  <p className="m-0 mt-1 text-display" style={{ color: 'hsl(var(--number-colored))' }}>
+                  <p className="m-0 mt-1 text-display text-foreground">
                     {cnt(qty)}건
                   </p>
                   <p className="m-0 mt-0.5 text-caption text-muted-foreground">{won(supply)}</p>

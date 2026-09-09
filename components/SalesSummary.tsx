@@ -66,7 +66,7 @@ export default function SalesSummary({ rows, brand }: { rows: SalesRow[]; brand?
         {summary.map((s) => (
           <section key={s.label} className="rounded-2xl bg-muted/40 p-5">
             <p className="m-0 text-body text-muted-foreground">{s.label} <span className="text-caption">({s.sub})</span></p>
-            <p className="m-0 mt-1 text-display" style={{ color: 'hsl(var(--number-colored))' }}>
+            <p className="m-0 mt-1 text-display text-foreground">
               {won(s.value)}
             </p>
           </section>

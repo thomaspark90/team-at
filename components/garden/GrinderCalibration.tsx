@@ -71,13 +71,15 @@ export default function GrinderCalibration({
   const SAMPLE_DIALS = [5.5, 6, 6.5, 7, 7.5];
 
   return (
-    <div className="min-w-0">
+    <div className="ta-panel min-w-0">
+      {/* 패널 한 줄로 접힘 — 위 패널들과 같은 문법(2026-09-10) */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="mb-3 block text-body text-muted-foreground hover:text-foreground"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: open ? undefined : 0 }}
+        className="flex w-full items-center justify-between gap-3 text-left text-body"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: open ? 12 : 0 }}
       >
-        그라인더 캘리브레이션 (EK43 지점 연동) {open ? '▴' : '▾'}
+        <span className="font-medium text-foreground">그라인더 캘리브레이션 <span className="font-normal text-muted-foreground">EK43 지점 연동</span></span>
+        <span className="text-foreground">{open ? '접기' : '열기 ›'}</span>
       </button>
 
       {open && (
