@@ -84,7 +84,8 @@ export const isFulfilled = (requestedAt: string, r: Received | undefined) =>
 export interface ShiftTrainee {
   userId: string;
   name: string;
-  openTopics: string[]; // 아직 못 받은 위시 주제 키 — 티칭 스태프가 뭘 준비할지 보는 근거
+  openTopics: string[]; // 우선순위 먼저
+  priorities: Record<string, number>; // topicKey → 1|2|3
 }
 
 export interface ShiftSlot {
@@ -134,14 +135,15 @@ export async function upcomingShifts(svc: SupabaseClient, fromYmd: string, toYmd
     profileMap(svc, [...rows.map((s) => s.manager_id as string), ...traineeIds]),
     lastReceivedMap(svc, traineeIds),
     traineeIds.length
-      ? svc.from('teaching_wishes').select('user_id, topic_key, requested_at').in('user_id', traineeIds)
-      : Promise.resolve({ data: [] as { user_id: string; topic_key: string; requested_at: string }[] }),
+      ? svc.from('teaching_wishes').select('user_id, topic_key, requested_at, priority').in('user_id', traineeIds)
+      : Promise.resolve({ data: [] as { user_id: string; topic_key: string; requested_at: string; priority: number | null }[] }),
   ]);
-  const openTopicsOf = new Map<string, string[]>();
+  // 열린 요청 — 우선순위(1·2·3) 먼저, 나머지는 요청순
+  const openTopicsOf = new Map<string, { key: string; priority: number | null }[]>();
   for (const w of wishRows ?? []) {
     if (isFulfilled(w.requested_at as string, received.get(`${w.user_id}:${w.topic_key}`))) continue;
     const list = openTopicsOf.get(w.user_id as string) ?? [];
-    list.push(w.topic_key as string);
+    list.push({ key: w.topic_key as string, priority: (w.priority as number | null) ?? null });
     openTopicsOf.set(w.user_id as string, list);
   }
   const traineesOf = new Map<number, ShiftTrainee[]>();
@@ -149,7 +151,13 @@ export async function upcomingShifts(svc: SupabaseClient, fromYmd: string, toYmd
     const p = profiles.get(t.user_id as string);
     if (!p) continue; // 승인 취소·삭제된 계정은 조용히 제외
     const list = traineesOf.get(t.shift_id as number) ?? [];
-    list.push({ userId: p.user_id, name: p.display_name, openTopics: openTopicsOf.get(p.user_id) ?? [] });
+    const open = (openTopicsOf.get(p.user_id) ?? []).sort((x, y) => (x.priority ?? 9) - (y.priority ?? 9));
+    list.push({
+      userId: p.user_id,
+      name: p.display_name,
+      openTopics: open.map((o) => o.key),
+      priorities: Object.fromEntries(open.filter((o) => o.priority).map((o) => [o.key, o.priority as number])),
+    });
     traineesOf.set(t.shift_id as number, list);
   }
   return rows.map((s) => ({

@@ -15,6 +15,12 @@
 - 역할의 의미는 **교육 운영(can_manage)** 하나뿐: 켜짐 → 매니저 화면(출근 일정·집계·교육함 기록), 꺼짐 → 스탭 화면(위시리스트)·참석자 후보·전날 알림 대상.
 - 코드는 역할 키를 직접 비교하지 않는다(`lib/teaching/access.ts` Actor.manage / manageKeys). 새 역할을 만들어도 코드 수정 불필요.
 
+## 지점 근무자 명부 (2026-09-09)
+- 교육 탭(운영 권한) › **지점 근무자**: 이름·지점만으로 등록 → `profiles.roster_only=true`(auth 계정은 내부 이메일로 생성, 비밀번호는 아무도 모름). 즉시 교육 대상 선택지·지점 집계에 포함.
+- **세부 정보 편집**: 대표가 설문(탈리) 결과를 대신 옮긴다 — 배우고 싶은 것 체크 + ①②③ 순위(`teaching_wishes.priority`) + 메모(`teaching_notes`). 일정 카드에 교육 대상별로 "이름 · ①주제 · ②주제 …"로 보인다.
+- 본인 로그인이 필요해지면 설정 › 간편 계정 › **로그인 열기(비밀번호 발급)** → `simple_login=true, roster_only=false`.
+- 명부 등록 계정 삭제는 명부에서(가입·발급 계정은 설정에서). API: `/api/garden-teaching/staff`.
+
 ## 교육 탭 (`/garden/teaching`)
 - 역할은 `finance.profiles.role` → `profile_roles.key`. 대표(OWNER)·finance admin 은 항상 관리 화면.
 - 구글 팀 계정이 처음 열면 이름·지점 등록(스탭). 매니저로 올리려면 설정 › 간편 계정에서 역할 변경.

@@ -15,6 +15,7 @@ type ProfileRow = {
   role: string;
   stores: StoreId[];
   simple_login: boolean;
+  roster_only?: boolean;
   pin_reset_required: boolean;
   locked_until: string | null;
   status: 'pending' | 'active';
@@ -266,7 +267,9 @@ export default function SimpleAccounts() {
                     <td className="px-3 py-2">{roleSelect(r.role, (v) => setRoleOf(r, v))}</td>
                     <td className="px-3 py-2">{storeToggles(r.stores, (id) => toggleStore(r, id))}</td>
                     <td className="px-3 py-2 text-muted-foreground">
-                      {!r.simple_login ? (
+                      {r.roster_only ? (
+                        '명부 등록 · 로그인 없음'
+                      ) : !r.simple_login ? (
                         '구글 계정'
                       ) : locked ? (
                         <span className="text-amber-600">잠김</span>
@@ -277,9 +280,9 @@ export default function SimpleAccounts() {
                       )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-right">
-                      {r.simple_login && (
+                      {(r.simple_login || r.roster_only) && (
                         <button className="mr-3 text-caption underline underline-offset-2" disabled={busy} onClick={() => resetPin(r)}>
-                          비밀번호 초기화
+                          {r.roster_only ? '로그인 열기 (비밀번호 발급)' : '비밀번호 초기화'}
                         </button>
                       )}
                       <button className="text-caption text-muted-foreground underline underline-offset-2" disabled={busy} onClick={() => remove(r)}>

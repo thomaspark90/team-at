@@ -24,8 +24,8 @@ export async function GET(req: Request) {
 
   const [{ data: wishRows }, { data: noteRows }, received, { data: sessionRows }] = await Promise.all([
     staffIds.length
-      ? a.svc.from('teaching_wishes').select('user_id, topic_key, requested_at').in('user_id', staffIds)
-      : Promise.resolve({ data: [] as { user_id: string; topic_key: string; requested_at: string }[] }),
+      ? a.svc.from('teaching_wishes').select('user_id, topic_key, requested_at, priority').in('user_id', staffIds)
+      : Promise.resolve({ data: [] as { user_id: string; topic_key: string; requested_at: string; priority: number | null }[] }),
     staffIds.length
       ? a.svc.from('teaching_notes').select('user_id, note, updated_at').in('user_id', staffIds).neq('note', '')
       : Promise.resolve({ data: [] as { user_id: string; note: string; updated_at: string }[] }),
@@ -39,16 +39,17 @@ export async function GET(req: Request) {
       .limit(30),
   ]);
 
-  const byTopic = new Map<string, { userId: string; name: string; requestedAt: string }[]>();
+  const byTopic = new Map<string, { userId: string; name: string; requestedAt: string; priority: number | null }[]>();
   for (const w of wishRows ?? []) {
     if (isFulfilled(w.requested_at as string, received.get(`${w.user_id}:${w.topic_key}`))) continue;
     const list = byTopic.get(w.topic_key as string) ?? [];
-    list.push({ userId: w.user_id as string, name: nameOf(w.user_id as string), requestedAt: w.requested_at as string });
+    list.push({ userId: w.user_id as string, name: nameOf(w.user_id as string), requestedAt: w.requested_at as string, priority: (w.priority as number | null) ?? null });
     byTopic.set(w.topic_key as string, list);
   }
+  // 우선순위(1·2·3)가 붙은 사람이 먼저, 그다음 요청순
   const topics = Array.from(byTopic.entries()).map(([topicKey, wanters]) => ({
     topicKey,
-    wanters: wanters.sort((x, y) => x.requestedAt.localeCompare(y.requestedAt)),
+    wanters: wanters.sort((x, y) => (x.priority ?? 9) - (y.priority ?? 9) || x.requestedAt.localeCompare(y.requestedAt)),
   }));
 
   const sessionIds = (sessionRows ?? []).map((s) => s.id as number);

@@ -102,7 +102,30 @@ export default function ShiftSchedule({
                 </button>
               )}
             </div>
-            {topics.length > 0 && <p className="text-caption text-muted-foreground">배우고 싶어 하는 것 · {topics.join(' · ')}</p>}
+            {/* 교육 대상별 세부 — 이름: ①②③ 순위 주제 먼저, 나머지 흐리게 (명부에서 대표가 적은 정보) */}
+            {s.trainees.some((t) => t.openTopics.length > 0) ? (
+              <ul className="space-y-0.5 text-caption">
+                {s.trainees.map((t) => (
+                  <li key={t.userId}>
+                    <span className="text-foreground">{t.name}</span>
+                    <span className="text-muted-foreground"> · </span>
+                    {t.openTopics.length === 0 ? (
+                      <span className="text-muted-foreground">배우고 싶은 것 미입력</span>
+                    ) : (
+                      t.openTopics.map((k, j) => (
+                        <span key={k}>
+                          {j > 0 && <span className="text-muted-foreground"> · </span>}
+                          {t.priorities[k] && <span className="mr-0.5 text-foreground">{['①', '②', '③'][t.priorities[k] - 1]}</span>}
+                          <span className={t.priorities[k] ? 'text-foreground' : 'text-muted-foreground'}>{topicLabel(k)}</span>
+                        </span>
+                      ))
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              topics.length > 0 && <p className="text-caption text-muted-foreground">배우고 싶어 하는 것 · {topics.join(' · ')}</p>
+            )}
 
             {/* 시간 칸 — 세로 */}
             {hours.length > 0 && (

@@ -52,7 +52,7 @@ export async function GET() {
   if ('error' in g) return g.error;
   const { data, error } = await g.svc
     .from('profiles')
-    .select('user_id, display_name, role, stores, simple_login, pin_reset_required, locked_until, status, created_at, contact_email')
+    .select('user_id, display_name, role, stores, simple_login, roster_only, pin_reset_required, locked_until, status, created_at, contact_email')
     .order('status') // active 먼저, pending 뒤 — 화면은 status 로 나눠 보여준다
     .order('role', { ascending: false })
     .order('display_name');
@@ -119,7 +119,7 @@ export async function PATCH(req: Request) {
   if (!userId) return NextResponse.json({ error: 'userId 가 필요합니다.' }, { status: 400 });
   const { data: profile } = await g.svc
     .from('profiles')
-    .select('user_id, display_name, simple_login, status, contact_email')
+    .select('user_id, display_name, simple_login, roster_only, status, contact_email')
     .eq('user_id', userId)
     .maybeSingle();
   if (!profile) return NextResponse.json({ error: '프로필을 찾을 수 없습니다.' }, { status: 404 });
@@ -154,7 +154,12 @@ export async function PATCH(req: Request) {
 
   let pin: string | undefined;
   if (body?.resetPin === true) {
-    if (!profile.simple_login) return NextResponse.json({ error: '간편 계정만 초기화할 수 있습니다.' }, { status: 400 });
+    // 명부 등록 계정(로그인 없음)은 여기서 '로그인 열기' — 비밀번호를 발급하며 간편 계정으로 전환
+    if (!profile.simple_login && !profile.roster_only) return NextResponse.json({ error: '간편 계정만 초기화할 수 있습니다.' }, { status: 400 });
+    if (profile.roster_only) {
+      patch.simple_login = true;
+      patch.roster_only = false;
+    }
     const { data: authUser } = await g.svc.auth.admin.getUserById(userId);
     const email = authUser?.user?.email;
     if (!email) return NextResponse.json({ error: '계정을 찾을 수 없습니다.' }, { status: 404 });

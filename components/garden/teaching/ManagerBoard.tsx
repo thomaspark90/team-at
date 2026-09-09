@@ -146,7 +146,15 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
                               교육함
                             </button>
                           </div>
-                          <p className="text-body text-muted-foreground">{wanters.map((w) => w.name).join(' · ')}</p>
+                                                    <p className="text-body text-muted-foreground">
+                            {wanters.map((w, i) => (
+                              <span key={w.userId}>
+                                {i > 0 && ' · '}
+                                {w.priority && <span className="mr-0.5 text-foreground">{['①', '②', '③'][w.priority - 1]}</span>}
+                                {w.name}
+                              </span>
+                            ))}
+                          </p>
                           {draft?.topicKey === t.key && (
                             <div className="space-y-4 rounded-md bg-muted/40 p-4">
                               <div className="flex flex-wrap items-end gap-3">

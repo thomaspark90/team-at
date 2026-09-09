@@ -4,7 +4,19 @@ import type { StoreId } from '@/lib/types';
 
 export type Received = { sessionId: number; date: string; store: StoreId; managerName: string; createdAt: string };
 
-export type ShiftTrainee = { userId: string; name: string; openTopics: string[] };
+export type ShiftTrainee = { userId: string; name: string; openTopics: string[]; priorities: Record<string, number> };
+
+// 지점 근무자 명부(/api/garden-teaching/staff) — 운영 권한 전용
+export type StaffDetail = {
+  userId: string;
+  name: string;
+  stores: StoreId[];
+  rosterOnly: boolean; // 명부만(로그인 없음)
+  simpleLogin: boolean;
+  contactEmail: string | null;
+  wishes: { topicKey: string; priority: number | null; received: boolean }[];
+  note: string;
+};
 export type ShiftSlot = { hour: number; note: string }; // 9 = 09:00 칸
 export type Shift = {
   id: number;
@@ -35,7 +47,7 @@ export type TeachingMe = {
 export type Board = {
   store: StoreId;
   staff: { userId: string; name: string }[];
-  topics: { topicKey: string; wanters: { userId: string; name: string; requestedAt: string }[] }[];
+  topics: { topicKey: string; wanters: { userId: string; name: string; requestedAt: string; priority: number | null }[] }[];
   notes: { userId: string; name: string; note: string; updatedAt: string }[];
   sessions: {
     id: number;
