@@ -2,15 +2,15 @@
 
 import { useState } from 'react';
 import { fmtMd, fmtRange } from '@/lib/teaching/kst';
-import { topicLabel } from '@/lib/teaching/topics';
 import { STORES, type StoreId } from '@/lib/types';
 import { api, type Shift, type TeachingMe } from './types';
 import TeachingPushToggle from './TeachingPushToggle';
+import ShiftTimeline from './ShiftTimeline';
 
 // 티칭 일정 — 날짜·시간·지점·티칭 스태프·교육 대상 스탭.
 //  · 대표(admin): 여기서 등록·삭제. 같은 사람·같은 날 다시 넣으면 지점·시간·대상이 통째로 바뀐다.
 //  · 티칭 스태프(운영 권한 역할): 자기 일정만 읽는다 — "몇 일(요일) 몇 시 어느 지점에서 누구를" (2026-09-09 대표 결정: 입력은 대표만).
-//  · 교육 대상 이름 아래엔 그 스탭이 아직 못 받은 요청 주제가 붙어 뭘 준비할지 바로 보인다.
+//  · 일정 목록은 06:00~20:00 타임라인(ShiftTimeline) — 막대 아래 대상 스탭이 아직 못 받은 요청 주제가 붙어 뭘 준비할지 바로 보인다.
 //  · 전날 20시 교육 대상(지정 없으면 지점 스탭 전원)과 티칭 스태프 본인에게 푸시가 나간다.
 
 const storeLabel = (id: string) => STORES.find((s) => s.id === id)?.label ?? id;
@@ -105,38 +105,7 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
         </p>
       )}
 
-      {mine.length > 0 && (
-        <ul className="divide-y divide-border">
-          {mine.map((s) => (
-            <li key={s.id} className="flex flex-wrap items-start gap-x-4 gap-y-2 py-3 text-[13px]">
-              <span className={`w-[150px] shrink-0 tabular ${s.date === me.today ? 'text-emerald-600' : ''}`}>{when(s)}</span>
-              <span className="w-[44px] shrink-0 text-muted-foreground">{STORES.find((x) => x.id === s.store)?.short}</span>
-              {isAdmin && <span className="w-[60px] shrink-0 text-muted-foreground">{s.managerName}</span>}
-              <div className="min-w-0 flex-1">
-                {s.trainees.length === 0 ? (
-                  <span className="text-muted-foreground">교육 대상 지정 없음{!isAdmin && ' — 그 지점 스탭 요청을 아래에서 보세요'}</span>
-                ) : (
-                  <ul className="space-y-1">
-                    {s.trainees.map((t) => (
-                      <li key={t.userId}>
-                        <span>{t.name}</span>
-                        {t.openTopics.length > 0 && (
-                          <span className="text-muted-foreground"> · {t.openTopics.map(topicLabel).join(' · ')}</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              {isAdmin && (
-                <button className="text-[11px] text-muted-foreground underline underline-offset-2" onClick={() => remove(s.id)}>
-                  삭제
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      <ShiftTimeline shifts={mine} today={me.today} isAdmin={isAdmin} onRemove={remove} />
 
       {isAdmin && (
         <div className="space-y-4">
