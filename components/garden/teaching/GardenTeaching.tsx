@@ -50,8 +50,8 @@ export default function GardenTeaching() {
         {/* 지점 근무자 명부 — 로그인 없이 등록, 교육 대상 선택지·세부 정보(배우고 싶은 것·순위·메모)의 원천 */}
         <StaffRoster me={me} onChange={load} />
         <ManagerBoard me={me} />
-        {/* 스탭 설문(탈리) 결과 — 앱 계정 없이 걷은 티칭 니즈, 정적 기록 */}
-        <SurveyResults />
+        {/* 스탭 설문(탈리) 결과 — 웹훅으로 자동 적재·명부 반영. 수동 반영 뒤엔 명부·집계도 다시 읽는다 */}
+        <SurveyResults onApplied={load} />
       </div>
     );
   }

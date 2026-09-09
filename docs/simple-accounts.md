@@ -32,6 +32,12 @@
 - **받음 연결**: 다룬 주제마다 `teaching_sessions`(+attendee) 생성, id 는 `session_ids` 에 보관 → 코멘트 수정·삭제 시 갈아 끼움. 집계 '최근 교육 기록'에도 뜬다.
 - 운영 권한 계정은 지난 2주 일정을 '지난 2주 일정 펼치기'로 열어 교육 뒤에 코멘트를 남긴다. 명부의 인원별 카드에 최근 코멘트 5건이 누적 표시된다.
 
+## 탈리 설문 자동 반영 (2026-09-10)
+- 탈리 폼 Integrations › Webhooks: URL `https://team-at-apps.vercel.app/api/garden-teaching/survey/ingest`, Signing secret = Vercel `TALLY_WEBHOOK_SECRET`(`.env.local` 에도 동일값). 헤더 `tally-signature`(base64 HMAC-SHA256)로 검증, 불일치는 401.
+- 적재: `finance.teaching_survey_responses`(submission_id 멱등). 파서 `lib/teaching/survey-parse.ts`(폼 라벨 '이름' / '1.' 체크박스 / '2-1.'~'2-3.' 드롭다운 / '3.' 장문 기준 — 라벨을 바꾸면 tests/teaching-survey.test.ts 부터 깨진다). 지점은 `STORE_SURVEYS[store].formId` 로 판정.
+- 자동 반영 `lib/teaching/survey-apply.ts`: 같은 이름의 활성 스탭 프로필에 위시(응답 주제 전체)·①②③·메모(설문 날짜+직접 추가+자유 서술) 덮어쓰기, 없으면 명부(roster_only) 신규 등록. 운영 권한 이름과 겹치면 반영 안 함(응답은 남고 화면에 '명부에 반영' 버튼).
+- 교육 탭 '설문 결과'는 이 테이블을 읽는다(`/api/garden-teaching/survey`). 정적 상수 `survey-results.ts` 는 삭제.
+
 ## 교육 탭 (`/garden/teaching`)
 - 역할은 `finance.profiles.role` → `profile_roles.key`. 대표(OWNER)·finance admin 은 항상 관리 화면.
 - 구글 팀 계정이 처음 열면 이름·지점 등록(스탭). 매니저로 올리려면 설정 › 간편 계정에서 역할 변경.

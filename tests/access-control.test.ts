@@ -52,6 +52,7 @@ describe('sectionsForApiPath — API → 섹션 후보', () => {
     expect(sectionsForApiPath('/api/garden-tab-access')).toBeNull();
     expect(sectionsForApiPath('/api/simple-accounts')).toBeNull(); // admin 전용 — 라우트가 역할 확인
     expect(sectionsForApiPath('/api/simple-signup')).toBeNull(); // PUBLIC_API — 미들웨어 제외
+    // 탈리 웹훅은 PUBLIC_API 라 여기 도달하지 않는다 — 접두사상 garden 이지만 서명으로 자체 인증
     expect(sectionsForApiPath('/api/account/pin')).toBeNull(); // 본인 계정 — 로그인만 필요
     expect(sectionsForApiPath('/api/notify/prefs')).toBeNull();
     expect(sectionsForApiPath('/api/push/subscribe')).toBeNull();
