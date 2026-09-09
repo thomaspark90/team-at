@@ -9,6 +9,7 @@ import { STORE_SURVEYS } from '@/lib/teaching/survey';
 
 // 매니저 집계 보드 — 지점을 고르면 그 지점 스탭들의 열린 요청(실명)·자유 서술·최근 교육 기록.
 // 주제 옆 '교육함'을 누르면 참석 스탭·날짜·메모를 적어 기록한다 → 그 스탭의 요청이 '받음'으로 바뀐다.
+// 시안 A(2026-09-09): 섹션 제목·빈 상태 문장 대신 '요청 N | 기록 N' 탭으로 접고 건수만 보인다.
 
 type Draft = { topicKey: string; date: string; attendees: Set<string>; memo: string };
 
@@ -17,6 +18,7 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
   const myNext = me.shifts.find((s) => me.role === 'admin' || s.managerId === me.userId);
   const [store, setStore] = useState<StoreId>(myNext?.store ?? me.profile?.stores[0] ?? 'pangyo');
   const [board, setBoard] = useState<Board | null>(null);
+  const [tab, setTab] = useState<'wish' | 'log'>('wish');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -77,18 +79,31 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
   const openTotal = board?.topics.reduce((n, t) => n + t.wanters.length, 0) ?? 0;
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex rounded-md border border-border p-1">
-          {STORES.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setStore(s.id)}
-              className={`rounded-sm px-4 py-1.5 text-body ${store === s.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-            >
-              {s.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-md border border-border p-1">
+            {STORES.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setStore(s.id)}
+                className={`rounded-sm px-4 py-1.5 text-body ${store === s.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex rounded-md border border-border p-1">
+            {([['wish', `요청 ${openTotal}`], ['log', `기록 ${board?.sessions.length ?? 0}`]] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`rounded-sm px-4 py-1.5 text-body tabular ${tab === key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-muted-foreground">
           {/* 지점별 스탭 설문(탈리) — 앱 계정 없이 걷은 요청은 여기서 본다 */}
@@ -102,11 +117,7 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
               {STORE_SURVEYS[store]!.label} ↗
             </a>
           )}
-          {board && (
-            <span className="tabular">
-              스탭 {board.staff.length}명 · 열린 요청 {openTotal}건
-            </span>
-          )}
+          {board && <span className="tabular">스탭 {board.staff.length}명</span>}
         </div>
       </div>
 
@@ -115,9 +126,9 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
         <p className="text-body text-muted-foreground">불러오는 중…</p>
       ) : (
         <>
+          {tab === 'wish' && (
           <section className="space-y-8">
-            <h2 className="text-title">스탭들이 배우고 싶은 것</h2>
-            {openTotal === 0 && <p className="text-body text-muted-foreground">열린 요청이 없어요. 스탭이 고르면 여기에 실명과 함께 뜹니다.</p>}
+            {openTotal === 0 && <p className="text-body text-muted-foreground">없음</p>}
             <div className="grid gap-x-10 gap-y-10 sm:grid-cols-2">
               {TEACHING_CATEGORIES.map((cat) => {
                 const rows = cat.topics.map((t) => ({ t, wanters: wantersOf(t.key) })).filter((r) => r.wanters.length > 0);
@@ -184,10 +195,11 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
               })}
             </div>
           </section>
+          )}
 
-          {board.notes.length > 0 && (
+          {tab === 'wish' && board.notes.length > 0 && (
             <section className="space-y-4">
-              <h2 className="text-title">이런 것도 배우고 싶어요</h2>
+              <span className="ta-label">이런 것도 배우고 싶어요</span>
               <ul className="space-y-3">
                 {board.notes.map((n) => (
                   <li key={n.userId} className="text-body">
@@ -198,10 +210,10 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
             </section>
           )}
 
+          {tab === 'log' && (
           <section className="space-y-4">
-            <h2 className="text-title">최근 교육 기록</h2>
             {board.sessions.length === 0 ? (
-              <p className="text-body text-muted-foreground">아직 기록이 없어요.</p>
+              <p className="text-body text-muted-foreground">없음</p>
             ) : (
               <table className="w-full text-left">
                 <thead>
@@ -235,6 +247,7 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
               </table>
             )}
           </section>
+          )}
         </>
       )}
     </div>

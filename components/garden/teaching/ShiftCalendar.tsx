@@ -1,15 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { fmtMd, fmtRange } from '@/lib/teaching/kst';
 import { STORES, type StoreId } from '@/lib/types';
-import { api, type Shift, type TeachingMe } from './types';
+import { api, type TeachingMe } from './types';
 import TeachingPushToggle from './TeachingPushToggle';
 import ShiftSchedule from './ShiftSchedule';
 
 // 티칭 일정 — 날짜·시간·지점·티칭 스태프·교육 대상 스탭.
 //  · 대표(admin): 여기서 등록·삭제. 같은 사람·같은 날 다시 넣으면 지점·시간·대상이 통째로 바뀐다.
 //  · 티칭 스태프(운영 권한 역할): 자기 일정만 읽는다 — "몇 일(요일) 몇 시 어느 지점에서 누구를" (2026-09-09 대표 결정: 입력은 대표만).
+//  · 화면은 시안 A '접어두기'(2026-09-09 대표 선택): 보이는 건 시간표 하나. 설명문·"다음 일정" 문장 없이
+//    첫 블록(=다음 일정)을 초록으로 강조하고, 입력 폼은 '+ 일정'을 눌러야 같은 자리에 펼쳐진다. 알림은 종 아이콘 하나.
 //  · 일정 목록은 세로 시간표(ShiftSchedule) — 시작~종료를 한 시간 칸으로 나열, 대표가 칸마다 세부 내용을 적고 티칭 스태프는 읽는다(2026-09-09).
 //  · 전날 20시 교육 대상(지정 없으면 지점 스탭 전원)과 티칭 스태프 본인에게 푸시가 나간다.
 
@@ -17,6 +18,7 @@ const storeLabel = (id: string) => STORES.find((s) => s.id === id)?.label ?? id;
 
 export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChange: () => void }) {
   const isAdmin = me.role === 'admin';
+  const [open, setOpen] = useState(false);
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -28,7 +30,6 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
 
   // 티칭 스태프는 자기 일정만, 대표는 전체. 응답은 날짜·시간순이라 첫 항목이 다음 일정
   const mine = isAdmin ? me.shifts : me.shifts.filter((s) => s.managerId === me.userId);
-  const next = mine[0];
   const storeStaff = me.staff.filter((p) => p.stores.includes(store));
 
   const changeStore = (id: StoreId) => {
@@ -59,7 +60,10 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
         }),
       });
       setDate('');
+      setStartTime('');
+      setEndTime('');
       setTrainees(new Set());
+      setOpen(false); // 저장되면 폼은 다시 접힌다 — 시간표에 바로 뜨는 게 확인이다
       onChange();
     } catch (e) {
       setError(e instanceof Error ? e.message : '저장하지 못했습니다.');
@@ -78,37 +82,22 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
     }
   };
 
-  const when = (s: Shift) => [fmtMd(s.date), fmtRange(s.startTime, s.endTime)].filter(Boolean).join(' ');
-
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-display font-medium">교육</h1>
-        <p className="mt-1 text-body text-muted-foreground">
-          {isAdmin
-            ? '티칭 일정(날짜·시간·지점·교육 대상)과 지점별 교육 요청을 관리합니다.'
-            : `${me.profile?.name} ${me.profile?.roleLabel ?? '매니저'} — 아래는 대표가 잡아둔 내 티칭 일정입니다. 교육 대상 아래 주제가 그 스탭이 배우고 싶어 하는 것이에요.`}
-        </p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-display">교육</h1>
+        <div className="flex items-center gap-2">
+          <TeachingPushToggle compact />
+          {isAdmin && (
+            <button className={open ? 'ta-btn' : 'ta-btn-primary'} onClick={() => setOpen((v) => !v)}>
+              {open ? '닫기' : '+ 일정'}
+            </button>
+          )}
+        </div>
       </div>
 
-      {next ? (
-        <p className="text-title">
-          다음 {isAdmin ? '일정' : '출근'} <span className="tabular">{when(next)}</span> {storeLabel(next.store)}
-          {isAdmin && <span className="text-muted-foreground"> · {next.managerName}</span>}
-          {next.trainees.length > 0 && (
-            <span className="text-muted-foreground"> · {next.trainees.map((t) => t.name).join(', ')}</span>
-          )}
-        </p>
-      ) : (
-        <p className="text-body text-muted-foreground">
-          {isAdmin ? '등록된 일정이 없어요. 아래에서 추가하세요.' : '아직 잡힌 일정이 없어요. 대표가 등록하면 여기에 뜹니다.'}
-        </p>
-      )}
-
-      <ShiftSchedule shifts={mine} today={me.today} isAdmin={isAdmin} onRemove={remove} onSlotSaved={onChange} />
-
-      {isAdmin && (
-        <div className="space-y-4">
+      {isAdmin && open && (
+        <div className="space-y-4 rounded-md bg-muted/40 p-4">
           <div className="flex flex-wrap items-end gap-3">
             <label className="block">
               <span className="ta-label">티칭 스태프</span>
@@ -141,9 +130,9 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
             </label>
           </div>
           <div>
-            <span className="ta-label">교육 대상 ({storeLabel(store)} 스탭)</span>
+            <span className="ta-label">교육 대상 · {storeLabel(store)}</span>
             {storeStaff.length === 0 ? (
-              <p className="text-body text-muted-foreground">이 지점에 승인된 스탭이 없어요. 비워 두면 지점 스탭 전원에게 알림이 갑니다.</p>
+              <p className="text-caption text-muted-foreground">승인된 스탭 없음 — 지점 전원에게 알림</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {storeStaff.map((p) => {
@@ -164,15 +153,19 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button className="ta-btn-primary" disabled={busy || !date || !managerId} onClick={add}>
-              {busy ? '저장 중…' : '일정 추가'}
+              {busy ? '저장 중…' : '저장'}
             </button>
             {error && <span className="ta-error text-body">{error}</span>}
           </div>
         </div>
       )}
-      {!isAdmin && error && <p className="ta-error text-body">{error}</p>}
 
-      <TeachingPushToggle />
+      {mine.length === 0 ? (
+        <p className="text-body text-muted-foreground">{isAdmin ? '잡힌 일정 없음' : '잡힌 일정 없음 — 대표가 등록하면 여기에 뜹니다'}</p>
+      ) : (
+        <ShiftSchedule shifts={mine} today={me.today} isAdmin={isAdmin} onRemove={remove} onSlotSaved={onChange} />
+      )}
+      {!open && error && <p className="ta-error text-body">{error}</p>}
     </div>
   );
 }

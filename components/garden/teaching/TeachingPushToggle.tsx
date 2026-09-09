@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 
 // 교육 탭용 웹 푸시 켜기 — 매니저 출근 전날 20시 알림을 받으려면 기기에서 한 번 허용해야 한다.
 // 송금·원두 알림(NotifySettings)과 같은 구독 테이블을 쓰므로 여기서 켜면 그쪽 알림도 함께 온다.
+//  · compact: 종 아이콘 하나(시안 A, 매니저·대표 화면). 상태는 점 색(초록=켜짐, 앰버=차단)과 title 툴팁으로만 말한다.
+//  · 기본: 문장형(스탭 화면).
 
 function urlBase64ToUint8Array(base64: string) {
   const padding = '='.repeat((4 - (base64.length % 4)) % 4);
@@ -14,7 +16,7 @@ function urlBase64ToUint8Array(base64: string) {
 
 type Status = 'checking' | 'unsupported' | 'ios-browser' | 'off' | 'on' | 'busy' | 'denied';
 
-export default function TeachingPushToggle() {
+export default function TeachingPushToggle({ compact = false }: { compact?: boolean }) {
   const [status, setStatus] = useState<Status>('checking');
   const [error, setError] = useState('');
 
@@ -76,6 +78,37 @@ export default function TeachingPushToggle() {
   };
 
   if (status === 'checking') return null;
+
+  if (compact) {
+    const hint: Record<Status, string> = {
+      checking: '',
+      on: '출근 전날 20시 알림 켜짐 — 누르면 끕니다',
+      off: '출근 전날 20시 알림 — 누르면 이 기기에서 켭니다',
+      busy: '처리 중…',
+      denied: '브라우저에서 알림이 차단돼 있어요 — 사이트 설정에서 허용해 주세요',
+      'ios-browser': '아이폰은 홈 화면에 추가한 앱에서만 알림을 켤 수 있어요',
+      unsupported: '이 브라우저는 알림을 지원하지 않아요',
+    };
+    const clickable = status === 'on' || status === 'off';
+    const dot = status === 'on' ? 'bg-emerald-600' : status === 'denied' ? 'bg-amber-600' : '';
+    return (
+      <button
+        type="button"
+        className={`ta-btn relative h-9 w-9 px-0 ${clickable ? '' : 'cursor-default opacity-60 hover:bg-background'}`}
+        title={error || hint[status]}
+        aria-label={hint[status]}
+        disabled={!clickable}
+        onClick={status === 'on' ? disable : enable}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+        </svg>
+        {dot && <span className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${dot}`} />}
+      </button>
+    );
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-body">
       <span className="text-muted-foreground">매니저 출근 전날 저녁 알림</span>

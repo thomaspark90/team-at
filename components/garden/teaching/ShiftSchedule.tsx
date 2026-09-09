@@ -10,7 +10,7 @@ import { api, type Shift } from './types';
 // 시작~종료를 한 시간 칸으로 세로 나열. 대표는 칸 안에 바로 적고(blur/Enter 저장), 티칭 스태프는 읽기만.
 //  · 시간 미정 일정은 칸 없이 '시간 미정'만. 시작만 있으면 시작~20:00, 종료만 있으면 06:00~종료.
 //  · 헤더의 요청 주제 줄 = 교육 대상 스탭이 아직 못 받은 위시(뭘 준비할지).
-//  · 장식색 없음(DESIGN_SYSTEM §1) — 오늘 날짜만 emerald.
+//  · 장식색 없음(DESIGN_SYSTEM §1) — 첫 블록(=다음 일정)과 오늘 날짜만 emerald(시안 A: '다음 일정' 문장을 이 강조가 대신한다).
 
 const DEFAULT_START = 6;
 const DEFAULT_END = 20;
@@ -80,18 +80,18 @@ export default function ShiftSchedule({
 
   return (
     <ul className="space-y-10">
-      {shifts.map((s) => {
+      {shifts.map((s, i) => {
         const hours = hoursOf(s);
         const noteOf = (h: number) => s.slots.find((x) => x.hour === h)?.note ?? '';
         const names = s.trainees.map((t) => t.name).join(', ');
         const topics = Array.from(new Set(s.trainees.flatMap((t) => t.openTopics))).map(topicLabel);
-        const isToday = s.date === today;
+        const isNext = i === 0 || s.date === today;
 
         return (
           <li key={s.id} className="space-y-3">
             {/* 헤더: 날짜(요일) · 지점 · 시간 · 스태프 → 대상 */}
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className={`text-title tabular ${isToday ? 'text-emerald-600' : ''}`}>{fmtMd(s.date)}</span>
+              <span className={`text-title tabular ${isNext ? 'text-emerald-600' : ''}`}>{fmtMd(s.date)}</span>
               <span className="text-body text-muted-foreground">{storeShort(s.store)}</span>
               <span className="text-body tabular">{fmtRange(s.startTime, s.endTime) || '시간 미정'}</span>
               {isAdmin && <span className="text-body text-muted-foreground">{s.managerName}</span>}
@@ -105,9 +105,7 @@ export default function ShiftSchedule({
             {topics.length > 0 && <p className="text-caption text-muted-foreground">배우고 싶어 하는 것 · {topics.join(' · ')}</p>}
 
             {/* 시간 칸 — 세로 */}
-            {hours.length === 0 ? (
-              <p className="text-caption text-muted-foreground">시간을 넣으면 한 시간 칸이 여기에 세로로 나열됩니다.</p>
-            ) : (
+            {hours.length > 0 && (
               <ol className="divide-y divide-dashed divide-border border-y border-border">
                 {hours.map((h) => {
                   const note = noteOf(h);
