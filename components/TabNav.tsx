@@ -38,8 +38,6 @@ export default function TabNav() {
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
-  // 회계·리포트 화면에서는 하위 내비(max-w-1680)와 좌우 끝을 맞춘다
-  const wide = pathname?.startsWith('/finance') || pathname?.startsWith('/dashboard');
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -50,7 +48,7 @@ export default function TabNav() {
   return (
     // sticky + 반투명 블러(2026-09-09 소프트 UI): 전역 바 44px 한 줄, 아래 로컬 내비는 그림자로 구분. 모바일 패널(absolute)의 기준이기도 하다
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/85 backdrop-blur">
-      <div className={`mx-auto flex h-11 items-center justify-between gap-2 px-4 sm:gap-6 sm:px-6 ${wide ? 'max-w-[1680px]' : 'max-w-[1100px]'}`}>
+      <div className="mx-auto flex h-11 max-w-[1400px] items-center justify-between gap-2 px-4 sm:gap-6 sm:px-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-team-at.png" alt="TEAM at" className="h-6 w-auto shrink-0 dark:invert" />
 

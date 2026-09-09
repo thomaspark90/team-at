@@ -54,7 +54,7 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
 
   if (scoped) {
     return (
-      <LocalNav width="max-w-[1680px]">
+      <LocalNav>
         <NavLink {...link('/finance/classify', '지출 자료 분류')} />
         <NavMenu label="송금" items={TRANSFER} />
       </LocalNav>
@@ -62,13 +62,13 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
   }
   if (isPersonal) {
     return (
-      <LocalNav width="max-w-[1680px]" lead={lead}>
+      <LocalNav lead={lead}>
         <NavLink {...link('/finance/classify', '개인 지출 분류')} />
       </LocalNav>
     );
   }
   return (
-    <LocalNav width="max-w-[1680px]" lead={lead}>
+    <LocalNav lead={lead}>
       <NavLink {...link('/dashboard', '회계 홈')} />
       {isStaff && <NavLink {...link(`/finance/upload/${u}`, '자료 입력')} />}
       {isStaff && <NavMenu label="전처리" items={PREP} />}

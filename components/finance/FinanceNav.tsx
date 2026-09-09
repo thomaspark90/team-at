@@ -49,7 +49,6 @@ export default function FinanceNav({ role }: { role: string | null }) {
 
   return (
     <LocalNav
-      width="max-w-[1680px]"
       lead={
         <SegmentControl
           ariaLabel="리포트 매장"

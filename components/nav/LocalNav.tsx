@@ -10,7 +10,7 @@ export default function LocalNav({
   lead,
   trail,
   children,
-  width = 'max-w-[1100px]',
+  width = 'max-w-[1400px]', // PageShell default 와 동일 — 좌우 끝 정렬
 }: {
   lead?: React.ReactNode;
   trail?: React.ReactNode;
