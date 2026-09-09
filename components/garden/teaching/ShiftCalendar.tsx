@@ -97,7 +97,7 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
       </div>
 
       {isAdmin && open && (
-        <div className="space-y-4 rounded-md bg-muted/40 p-4">
+        <div className="ta-panel space-y-4">
           <div className="flex flex-wrap items-end gap-3">
             <label className="block">
               <span className="ta-label">티칭 스태프</span>

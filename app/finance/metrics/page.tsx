@@ -10,7 +10,7 @@ import { UNITS, unitOf } from '@/lib/finance/types';
 import { GRAM_PRODUCTS } from '@/lib/finance/gramProducts';
 import { get as getBlob } from '@vercel/blob';
 import { WEATHER_SALES_CACHE_PATH } from '@/lib/garden/weatherSales';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import FinanceNav from '@/components/finance/FinanceNav';
 import dynamic from 'next/dynamic';
 
@@ -326,49 +326,45 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
   ]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <FinanceNav role={role} />
-      <div className="w-full px-6 py-8">
-        <div className="mb-5 flex items-baseline justify-between">
-          <h1 className="m-0 text-display tracking-[-0.5px]">지표{isAll ? ' — 전사 통합' : ''}</h1>
-          <span className="flex items-baseline gap-4">
-            {isAll ? (
-              <Link href="/finance/metrics" className="text-body text-muted-foreground transition-colors hover:text-foreground">
-                ← 매장별 보기
-              </Link>
-            ) : (
-              <Link href="/finance/metrics?unit=all" className="text-body text-muted-foreground transition-colors hover:text-foreground">
-                전사 통합 →
-              </Link>
-            )}
-            <Link href="/finance" className="text-body text-muted-foreground transition-colors hover:text-foreground">
-              ← 업로드로
+    <PageShell nav={<FinanceNav role={role} />} width="wide">
+      <div className="mb-5 flex items-baseline justify-between">
+        <h1 className="m-0 text-display">지표{isAll ? ' — 전사 통합' : ''}</h1>
+        <span className="flex items-baseline gap-4">
+          {isAll ? (
+            <Link href="/finance/metrics" className="text-body text-muted-foreground transition-colors hover:text-foreground">
+              ← 매장별 보기
             </Link>
-          </span>
-        </div>
-        <p className="mb-5 text-body text-muted-foreground">
-          <b>매출은 POS(발생주의)</b>, 지출은 통장·카드 기준이에요. 통장 현금흐름·잔액은 <Link href="/finance/cashflow" className="underline">월별 요약</Link>·<Link href="/finance/flow" className="underline">자금 흐름</Link>에서 봐요.
-        </p>
-        {/* 좌측 연·월 사이드바와 요약 타일은 제거했다(2026-08-31 대표 지시) — 이 화면은 추이 전용이고,
-            달 단위 숫자는 관리손익·월 결산에서 본다. 차트는 항상 전체 기간(진행월 포함). */}
-        <Dashboard
-          txns={(txns as AggTx[]) ?? []}
-          cats={(cats as AggCat[]) ?? []}
-          posSales={posSales}
-          bankCash={bankCash}
-          menuItems={menuItems}
-          gramItems={gramItems}
-          weatherImpact={weatherImpact}
-          productItems={productItems}
-          loanMarkers={loanMarkers}
-          channelFees={channelFees}
-          lumps={lumps}
-          reportUnit={isAll ? { brand: 'all', store: null } : { brand: unit.brand as 'staffmeal' | 'garden', store: unit.store }}
-          showIncentiveSim={['admin', 'classifier'].includes(role)}
-        />
+          ) : (
+            <Link href="/finance/metrics?unit=all" className="text-body text-muted-foreground transition-colors hover:text-foreground">
+              전사 통합 →
+            </Link>
+          )}
+          <Link href="/finance" className="text-body text-muted-foreground transition-colors hover:text-foreground">
+            ← 업로드로
+          </Link>
+        </span>
       </div>
-    </div>
+      <p className="mb-5 text-body text-muted-foreground">
+        <b>매출은 POS(발생주의)</b>, 지출은 통장·카드 기준이에요. 통장 현금흐름·잔액은 <Link href="/finance/cashflow" className="underline">월별 요약</Link>·<Link href="/finance/flow" className="underline">자금 흐름</Link>에서 봐요.
+      </p>
+      {/* 좌측 연·월 사이드바와 요약 타일은 제거했다(2026-08-31 대표 지시) — 이 화면은 추이 전용이고,
+          달 단위 숫자는 관리손익·월 결산에서 본다. 차트는 항상 전체 기간(진행월 포함). */}
+      <Dashboard
+        txns={(txns as AggTx[]) ?? []}
+        cats={(cats as AggCat[]) ?? []}
+        posSales={posSales}
+        bankCash={bankCash}
+        menuItems={menuItems}
+        gramItems={gramItems}
+        weatherImpact={weatherImpact}
+        productItems={productItems}
+        loanMarkers={loanMarkers}
+        channelFees={channelFees}
+        lumps={lumps}
+        reportUnit={isAll ? { brand: 'all', store: null } : { brand: unit.brand as 'staffmeal' | 'garden', store: unit.store }}
+        showIncentiveSim={['admin', 'classifier'].includes(role)}
+      />
+    </PageShell>
   );
 }
 

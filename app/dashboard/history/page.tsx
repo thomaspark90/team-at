@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMember } from '@/lib/finance/access';
 import { fallbackRecipients } from '@/lib/notify';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import AccountingNav from '@/components/AccountingNav';
 import TransferPanel from '@/components/finance/TransferPanel';
 import VendorBook from '@/components/finance/VendorBook';
@@ -33,28 +33,24 @@ export default async function TransferManagePage() {
   const isNotifyRecipient = recipients.includes((user.email ?? '').toLowerCase());
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <AccountingNav role={role} scoped={!!brandScope} />
-      <div className="mx-auto max-w-[1120px] divide-y divide-border px-4 py-6 sm:px-6 sm:py-8">
-        {(role === 'admin' || isNotifyRecipient) && (
-          <div className="pb-[54px]">
-            <div className={`grid gap-x-4 gap-y-8 ${role === 'admin' && isNotifyRecipient ? 'sm:grid-cols-2' : ''}`}>
-              {role === 'admin' && <NotifyRecipients initial={recipientList} />}
-              {isNotifyRecipient && <NotifySettings />}
-            </div>
+    <PageShell nav={<AccountingNav role={role} scoped={!!brandScope} />} divide>
+      {(role === 'admin' || isNotifyRecipient) && (
+        <div className="pb-[54px]">
+          <div className={`grid gap-x-4 gap-y-8 ${role === 'admin' && isNotifyRecipient ? 'sm:grid-cols-2' : ''}`}>
+            {role === 'admin' && <NotifyRecipients initial={recipientList} />}
+            {isNotifyRecipient && <NotifySettings />}
           </div>
-        )}
-        {['admin', 'classifier'].includes(role ?? '') && (
-          <div className="py-[54px]">
-            <VendorBook />
-          </div>
-        )}
-        <div className="pt-[54px]">
-          <TransferPanel role={role} email={user.email ?? ''} mode="history" />
         </div>
+      )}
+      {['admin', 'classifier'].includes(role ?? '') && (
+        <div className="py-[54px]">
+          <VendorBook />
+        </div>
+      )}
+      <div className="pt-[54px]">
+        <TransferPanel role={role} email={user.email ?? ''} mode="history" />
       </div>
-    </div>
+    </PageShell>
   );
 }
 

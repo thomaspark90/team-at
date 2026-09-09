@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMemberStamped } from '@/lib/access/stamp';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import AccountingNav from '@/components/AccountingNav';
 import { unitOf, UNITS } from '@/lib/finance/types';
 import { buildExpensePrep, type ExpenseGrain, type ExpenseTx } from '@/lib/finance/prepExpense';
@@ -109,20 +109,12 @@ export default async function PrepExpensePage({
   const bucketLabel = (b: string) => (grain === 'week' ? `${b.slice(5).replace('-', '/')}~` : b);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <AccountingNav role={role} />
-      <div className="mx-auto max-w-[1680px] px-6 py-8">
-        <div className="mb-1 flex items-baseline justify-between">
-          <h1 className="m-0 text-display tracking-[-0.5px]">전처리1 — 지출 총합</h1>
-          <Link
-            href={`/finance/raw?unit=${unit.id}`}
-            className="text-body text-muted-foreground transition-colors hover:text-foreground"
-          >
-            ← 로우데이터
-          </Link>
-        </div>
-        <p className="mb-5 max-w-[880px] text-body text-muted-foreground">
+    <PageShell
+      nav={<AccountingNav role={role} />}
+      width="wide"
+      title="전처리1 — 지출 총합"
+      subtitle={
+        <>
           <b>{unit.label}</b> 지출을 소스별로 모은 표예요.{' '}
           {isMonth ? (
             <>
@@ -136,144 +128,152 @@ export default async function PrepExpensePage({
               분류하면 덩어리가 사용일별로 풀리면서 이 겹침이 사라져요.
             </>
           )}
-        </p>
-
-        {unit.store && unassigned.count > 0 && (
-          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
-            ⚠️ 가든 공용(지점 미지정) 거래 {unassigned.count}건이 이 지점 운영 기간({unassigned.sinceYm}~)에
-            있어요 — 지정 전까지 어느 지점 표에도 안 잡혀요. 분류 화면에서 지점을 지정해 주세요.
-          </div>
-        )}
-        {/* 기간 단위 토글 */}
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex overflow-hidden rounded-md border border-border">
-            {GRAINS.map((g) => (
-              <Link
-                key={g.key}
-                href={`/finance/prep/expense?unit=${unit.id}&grain=${g.key}`}
-                aria-current={g.key === grain ? 'page' : undefined}
-                className={`px-3 py-1.5 text-body transition-colors ${
-                  g.key === grain ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {g.label}
-              </Link>
-            ))}
-          </div>
-          <span className="text-caption text-muted-foreground">
-            {isMonth ? '비용 기준 — 카드대금에서 수집분을 뺀 값' : '현금흐름 기준 — 나간 돈 그대로'}
-            {allBuckets.length > buckets.length && ` · 최근 ${buckets.length}개 구간`}
-          </span>
+        </>
+      }
+      actions={
+        <Link
+          href={`/finance/raw?unit=${unit.id}`}
+          className="text-body text-muted-foreground transition-colors hover:text-foreground"
+        >
+          ← 로우데이터
+        </Link>
+      }
+    >
+      {unit.store && unassigned.count > 0 && (
+        <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
+          ⚠️ 가든 공용(지점 미지정) 거래 {unassigned.count}건이 이 지점 운영 기간({unassigned.sinceYm}~)에
+          있어요 — 지정 전까지 어느 지점 표에도 안 잡혀요. 분류 화면에서 지점을 지정해 주세요.
         </div>
+      )}
+      {/* 기간 단위 토글 */}
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex overflow-hidden rounded-md border border-border">
+          {GRAINS.map((g) => (
+            <Link
+              key={g.key}
+              href={`/finance/prep/expense?unit=${unit.id}&grain=${g.key}`}
+              aria-current={g.key === grain ? 'page' : undefined}
+              className={`px-3 py-1.5 text-body transition-colors ${
+                g.key === grain ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {g.label}
+            </Link>
+          ))}
+        </div>
+        <span className="text-caption text-muted-foreground">
+          {isMonth ? '비용 기준 — 카드대금에서 수집분을 뺀 값' : '현금흐름 기준 — 나간 돈 그대로'}
+          {allBuckets.length > buckets.length && ` · 최근 ${buckets.length}개 구간`}
+        </span>
+      </div>
 
-        {warnings.length > 0 && (
-          <ul className="mb-5 flex list-none flex-col gap-1 rounded-md border border-border bg-card/40 p-3 text-caption text-muted-foreground">
-            {warnings
-              .filter((w) => buckets.includes(w.bucket))
-              .map((w) => (
-                <li key={`${w.bucket}-${w.message}`}>
-                  <b className="tabular-nums text-foreground">{w.bucket}</b> — {w.message}
-                </li>
-              ))}
-          </ul>
-        )}
+      {warnings.length > 0 && (
+        <ul className="mb-5 flex list-none flex-col gap-1 rounded-md border border-border bg-card/40 p-3 text-caption text-muted-foreground">
+          {warnings
+            .filter((w) => buckets.includes(w.bucket))
+            .map((w) => (
+              <li key={`${w.bucket}-${w.message}`}>
+                <b className="tabular-nums text-foreground">{w.bucket}</b> — {w.message}
+              </li>
+            ))}
+        </ul>
+      )}
 
-        <div className="overflow-auto rounded-md border border-border">
-          <table className="w-max min-w-full border-collapse text-body">
-            <thead className="sticky top-0 z-10 bg-card">
-              <tr className="border-b border-border text-muted-foreground">
-                <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">기간</th>
+      <div className="overflow-auto rounded-md border border-border">
+        <table className="w-max min-w-full border-collapse text-body">
+          <thead className="sticky top-0 z-10 bg-card">
+            <tr className="border-b border-border text-muted-foreground">
+              <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">기간</th>
+              {rows.map((r) => {
+                const isTotal = r.kind === 'total';
+                const isMutedCol = r.kind === 'deduction' || r.kind === 'derived' || r.kind === 'note';
+                return (
+                  <th
+                    key={r.key}
+                    title={r.hint}
+                    className={`whitespace-nowrap px-3 py-2 text-right font-normal ${
+                      isTotal ? 'border-l-2 border-l-border font-medium text-foreground' : ''
+                    } ${isMutedCol ? 'text-muted-foreground/70' : ''}`}
+                  >
+                    {r.label}
+                    {r.hint && <span className="ml-1 text-muted-foreground/50">ⓘ</span>}
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {buckets.map((b) => (
+              <tr key={b} className="border-b border-border/50 last:border-0">
+                <td
+                  className="sticky left-0 z-10 whitespace-nowrap bg-background px-3 py-1.5 tabular-nums"
+                  title={warnByBucket.get(b)}
+                >
+                  {warnByBucket.has(b) && <span title={warnByBucket.get(b)}>⚠ </span>}
+                  {bucketLabel(b)}
+                </td>
                 {rows.map((r) => {
                   const isTotal = r.kind === 'total';
-                  const isMutedCol = r.kind === 'deduction' || r.kind === 'derived' || r.kind === 'note';
+                  const isNote = r.kind === 'note';
+                  const isDeduction = r.kind === 'deduction';
+                  const amount = r.amounts[b] ?? 0;
+                  // 미분류·미상 금액은 분류 화면으로 가는 문 — 셀을 누르면 해당 건들이
+                  // 필터된 상태로 열려 바로 분류할 수 있다. 분류 화면은 월 단위라:
+                  //   월·일 뷰 → 그 달로 필터. 주 뷰 → 주가 두 달에 걸치면 시작월 필터가
+                  //   일부 건을 숨기므로(실측 13건·20.9M) 달 필터 없이 전체 미분류로 연다.
+                  const classifyYm = grain === 'week' ? null : isMonth ? b : b.slice(0, 7);
+                  const ymParam = classifyYm ? `&ym=${classifyYm}` : '&ym=all';
+                  const classifyHref =
+                    r.key === 'unclassified' && amount > 0
+                      ? `/finance/classify?unit=${unit.id}${ymParam}&unclassified=1`
+                      : r.key === 'misang' && amount !== 0
+                        ? `/finance/classify?unit=${unit.id}${ymParam}&type=excluded&cat=${encodeURIComponent('미상')}`
+                        : null;
                   return (
-                    <th
+                    <td
                       key={r.key}
-                      title={r.hint}
-                      className={`whitespace-nowrap px-3 py-2 text-right font-normal ${
-                        isTotal ? 'border-l-2 border-l-border font-medium text-foreground' : ''
-                      } ${isMutedCol ? 'text-muted-foreground/70' : ''}`}
+                      className={`whitespace-nowrap px-3 py-1.5 text-right tabular-nums ${
+                        isTotal ? 'border-l-2 border-l-border font-medium' : ''
+                      } ${isDeduction || isNote ? 'text-muted-foreground' : ''}`}
                     >
-                      {r.label}
-                      {r.hint && <span className="ml-1 text-muted-foreground/50">ⓘ</span>}
-                    </th>
+                      {classifyHref ? (
+                        <Link
+                          href={classifyHref}
+                          className="underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground"
+                          title="누르면 이 달 해당 건들이 분류 화면에 필터된 상태로 열려요"
+                        >
+                          {won(amount)}
+                        </Link>
+                      ) : isDeduction && amount ? (
+                        `−${won(amount)}`
+                      ) : (
+                        won(amount)
+                      )}
+                    </td>
                   );
                 })}
               </tr>
-            </thead>
-            <tbody>
-              {buckets.map((b) => (
-                <tr key={b} className="border-b border-border/50 last:border-0">
-                  <td
-                    className="sticky left-0 z-10 whitespace-nowrap bg-background px-3 py-1.5 tabular-nums"
-                    title={warnByBucket.get(b)}
-                  >
-                    {warnByBucket.has(b) && <span title={warnByBucket.get(b)}>⚠ </span>}
-                    {bucketLabel(b)}
-                  </td>
-                  {rows.map((r) => {
-                    const isTotal = r.kind === 'total';
-                    const isNote = r.kind === 'note';
-                    const isDeduction = r.kind === 'deduction';
-                    const amount = r.amounts[b] ?? 0;
-                    // 미분류·미상 금액은 분류 화면으로 가는 문 — 셀을 누르면 해당 건들이
-                    // 필터된 상태로 열려 바로 분류할 수 있다. 분류 화면은 월 단위라:
-                    //   월·일 뷰 → 그 달로 필터. 주 뷰 → 주가 두 달에 걸치면 시작월 필터가
-                    //   일부 건을 숨기므로(실측 13건·20.9M) 달 필터 없이 전체 미분류로 연다.
-                    const classifyYm = grain === 'week' ? null : isMonth ? b : b.slice(0, 7);
-                    const ymParam = classifyYm ? `&ym=${classifyYm}` : '&ym=all';
-                    const classifyHref =
-                      r.key === 'unclassified' && amount > 0
-                        ? `/finance/classify?unit=${unit.id}${ymParam}&unclassified=1`
-                        : r.key === 'misang' && amount !== 0
-                          ? `/finance/classify?unit=${unit.id}${ymParam}&type=excluded&cat=${encodeURIComponent('미상')}`
-                          : null;
-                    return (
-                      <td
-                        key={r.key}
-                        className={`whitespace-nowrap px-3 py-1.5 text-right tabular-nums ${
-                          isTotal ? 'border-l-2 border-l-border font-medium' : ''
-                        } ${isDeduction || isNote ? 'text-muted-foreground' : ''}`}
-                      >
-                        {classifyHref ? (
-                          <Link
-                            href={classifyHref}
-                            className="underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground"
-                            title="누르면 이 달 해당 건들이 분류 화면에 필터된 상태로 열려요"
-                          >
-                            {won(amount)}
-                          </Link>
-                        ) : isDeduction && amount ? (
-                          `−${won(amount)}`
-                        ) : (
-                          won(amount)
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="mt-4 flex flex-col gap-1 text-caption text-muted-foreground">
-          {rows
-            .filter((r) => r.hint)
-            .map((r) => (
-              <p key={r.key} className="m-0">
-                <b className="text-foreground">{r.label}</b> — {r.hint}
-              </p>
             ))}
-          {isMonth && (
-            <p className="m-0 mt-2">
-              카드 결제일과 실제 사용일 사이에 시차가 있어요 — 6월에 쓴 걸 7월에 결제하면 월별 차감이 조금씩
-              어긋나요. 달 하나만 보지 말고 몇 달을 함께 보는 게 정확해요.
-            </p>
-          )}
-        </div>
+          </tbody>
+        </table>
       </div>
-    </div>
+
+      <div className="mt-4 flex flex-col gap-1 text-caption text-muted-foreground">
+        {rows
+          .filter((r) => r.hint)
+          .map((r) => (
+            <p key={r.key} className="m-0">
+              <b className="text-foreground">{r.label}</b> — {r.hint}
+            </p>
+          ))}
+        {isMonth && (
+          <p className="m-0 mt-2">
+            카드 결제일과 실제 사용일 사이에 시차가 있어요 — 6월에 쓴 걸 7월에 결제하면 월별 차감이 조금씩
+            어긋나요. 달 하나만 보지 말고 몇 달을 함께 보는 게 정확해요.
+          </p>
+        )}
+      </div>
+    </PageShell>
   );
 }
 

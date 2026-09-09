@@ -5,7 +5,7 @@ import type { StoryData } from '@/lib/types';
 import MenuEditor from '@/components/MenuEditor';
 import StoryPreview from '@/components/StoryPreview';
 import DownloadButton from '@/components/DownloadButton';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import StudioNav from '@/components/StudioNav';
 
 const DEFAULT_STORY: StoryData = {
@@ -41,59 +41,54 @@ export default function StudioMenuPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <StudioNav />
-
-      <div className="mx-auto max-w-[1100px] px-6 py-8">
-        <div
-          className="grid items-start gap-x-6 gap-y-12"
-          style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))' }}
-        >
-          {/* 왼쪽: 입력 */}
-          <div className="flex min-w-0 flex-col gap-10">
-            <div className="rounded-md bg-muted/40 p-6">
-              <p className="ta-label">Date</p>
-              <input
-                type="text"
-                value={story.date}
-                onChange={(e) => setStory((s) => ({ ...s, date: e.target.value }))}
-                className="ta-input w-[140px]"
-                placeholder="예: 5/12"
-              />
-              <p className="mt-2 text-caption text-muted-foreground">배지에 표시될 날짜</p>
-            </div>
-
-            <div className="rounded-md bg-muted/40 p-6">
-              <p className="ta-label">Menu</p>
-              <MenuEditor story={story} onChange={setStory} />
-            </div>
+    <PageShell nav={<StudioNav />}>
+      <div
+        className="grid items-start gap-x-6 gap-y-12"
+        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))' }}
+      >
+        {/* 왼쪽: 입력 */}
+        <div className="flex min-w-0 flex-col gap-10">
+          <div className="rounded-md bg-muted/40 p-6">
+            <p className="ta-label">Date</p>
+            <input
+              type="text"
+              value={story.date}
+              onChange={(e) => setStory((s) => ({ ...s, date: e.target.value }))}
+              className="ta-input w-[140px]"
+              placeholder="예: 5/12"
+            />
+            <p className="mt-2 text-caption text-muted-foreground">배지에 표시될 날짜</p>
           </div>
 
-          {/* 오른쪽: 미리보기 + 다운로드 */}
-          <div className="sticky top-6 flex min-w-0 flex-col gap-10">
-            <div className="min-w-0 rounded-md bg-muted/40 p-6">
-              <p className="ta-label">Preview</p>
-              <div ref={previewBoxRef} className="w-full">
-                <div
-                  className="mx-auto overflow-hidden"
-                  style={{ width: 360 * previewScale, height: 640 * previewScale }}
-                >
-                  <div style={{ width: 360, height: 640, transform: `scale(${previewScale})`, transformOrigin: 'top left' }}>
-                    <StoryPreview ref={previewRef} story={story} />
-                  </div>
+          <div className="rounded-md bg-muted/40 p-6">
+            <p className="ta-label">Menu</p>
+            <MenuEditor story={story} onChange={setStory} />
+          </div>
+        </div>
+
+        {/* 오른쪽: 미리보기 + 다운로드 */}
+        <div className="sticky top-6 flex min-w-0 flex-col gap-10">
+          <div className="min-w-0 rounded-md bg-muted/40 p-6">
+            <p className="ta-label">Preview</p>
+            <div ref={previewBoxRef} className="w-full">
+              <div
+                className="mx-auto overflow-hidden"
+                style={{ width: 360 * previewScale, height: 640 * previewScale }}
+              >
+                <div style={{ width: 360, height: 640, transform: `scale(${previewScale})`, transformOrigin: 'top left' }}>
+                  <StoryPreview ref={previewRef} story={story} />
                 </div>
               </div>
             </div>
-
-            <DownloadButton previewRef={previewRef} story={story} />
-
-            <p className="-mt-5 text-center text-caption text-muted-foreground">
-              다운로드 후 인스타그램 앱에서 스토리로 업로드하세요
-            </p>
           </div>
+
+          <DownloadButton previewRef={previewRef} story={story} />
+
+          <p className="-mt-5 text-center text-caption text-muted-foreground">
+            다운로드 후 인스타그램 앱에서 스토리로 업로드하세요
+          </p>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

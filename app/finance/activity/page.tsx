@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { isOwner } from '@/lib/finance/access';
 import { resolveRoleStamped } from '@/lib/access/stamp';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import FinanceNav from '@/components/finance/FinanceNav';
 import ActivityLog, { type ActivityRow } from '@/components/finance/ActivityLog';
 
@@ -23,13 +23,9 @@ export default async function ActivityPage() {
     .limit(1000);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <FinanceNav role={role} />
-      <div className="mx-auto max-w-[860px] px-4 py-6 sm:px-6 sm:py-8">
-        <ActivityLog rows={(data ?? []) as ActivityRow[]} />
-      </div>
-    </div>
+    <PageShell nav={<FinanceNav role={role} />}>
+      <ActivityLog rows={(data ?? []) as ActivityRow[]} />
+    </PageShell>
   );
 }
 

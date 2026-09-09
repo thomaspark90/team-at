@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMemberStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import AccountingNav from '@/components/AccountingNav';
 import ClassifyPanel, { type TxRow, type Cat, type SplitRule } from '@/components/finance/ClassifyPanel';
 import MonthShell from '@/components/finance/MonthShell';
@@ -129,50 +129,49 @@ export default async function ClassifyPage({
   const settingsHref = `/finance/categories?from=${encodeURIComponent(selfHref)}`;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <AccountingNav role={role} scoped={!!brandScope} />
-      <div className="mx-auto max-w-[1600px] px-6 py-8">
-        <div className="mb-4 flex items-baseline justify-between">
-          <h1 className="m-0 text-display tracking-[-0.5px]">지출 자료 분류</h1>
-          <div className="flex gap-4">
-            <Link href="/finance/uploads" className="text-body text-muted-foreground transition-colors hover:text-foreground">
-              자료 이력 →
+    <PageShell
+      nav={<AccountingNav role={role} scoped={!!brandScope} />}
+      width="wide"
+      title="지출 자료 분류"
+      actions={
+        <>
+          <Link href="/finance/uploads" className="text-body text-muted-foreground transition-colors hover:text-foreground">
+            자료 이력 →
+          </Link>
+          {role === 'admin' && (
+            <Link href={settingsHref} className="text-body text-muted-foreground transition-colors hover:text-foreground">
+              설정(계정과목) →
             </Link>
-            {role === 'admin' && (
-              <Link href={settingsHref} className="text-body text-muted-foreground transition-colors hover:text-foreground">
-                설정(계정과목) →
-              </Link>
-            )}
-          </div>
-        </div>
-        {/* 좌측 연·월 사이드바 — 달을 고르면 URL(?ym=)로 이동해 그 달 거래만 서버에서 다시 조회.
-            navigate 필수: 예전엔 클라 상태만 바꿔 서버가 그 달을 다시 안 불러 오래된 달이 비어 보였다(2026-08-03). */}
-        <MonthShell brand={shellBrand} store={unit?.store ?? undefined} initialTodos={initialTodos} badgeKind="uncl" navigate yearSelectable>
-          <ClassifyPanel
-            txns={(txns as TxRow[]) ?? []}
-            cats={(cats as Cat[]) ?? []}
-            userId={user.id}
-            confirmed={confirmed}
-            rules={rules}
-            splitRules={splitRules}
-            storeRules={storeRules}
-            merchantHints={merchantHints}
-            lockedBrand={brandScope}
-            fixedUnit={unit ? { brand: unit.brand, store: unit.store } : null}
-            initialFilter={{
-              ym: searchParams.ym,
-              type: searchParams.type,
-              cat: searchParams.cat,
-              unclassified: searchParams.unclassified === '1',
-              source: searchParams.source,
-              brand: presetBrand,
-              store: presetStore,
-            }}
-          />
-        </MonthShell>
-      </div>
-    </div>
+          )}
+        </>
+      }
+    >
+      {/* 좌측 연·월 사이드바 — 달을 고르면 URL(?ym=)로 이동해 그 달 거래만 서버에서 다시 조회.
+          navigate 필수: 예전엔 클라 상태만 바꿔 서버가 그 달을 다시 안 불러 오래된 달이 비어 보였다(2026-08-03). */}
+      <MonthShell brand={shellBrand} store={unit?.store ?? undefined} initialTodos={initialTodos} badgeKind="uncl" navigate yearSelectable>
+        <ClassifyPanel
+          txns={(txns as TxRow[]) ?? []}
+          cats={(cats as Cat[]) ?? []}
+          userId={user.id}
+          confirmed={confirmed}
+          rules={rules}
+          splitRules={splitRules}
+          storeRules={storeRules}
+          merchantHints={merchantHints}
+          lockedBrand={brandScope}
+          fixedUnit={unit ? { brand: unit.brand, store: unit.store } : null}
+          initialFilter={{
+            ym: searchParams.ym,
+            type: searchParams.type,
+            cat: searchParams.cat,
+            unclassified: searchParams.unclassified === '1',
+            source: searchParams.source,
+            brand: presetBrand,
+            store: presetStore,
+          }}
+        />
+      </MonthShell>
+    </PageShell>
   );
 }
 

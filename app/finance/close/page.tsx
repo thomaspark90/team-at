@@ -4,7 +4,7 @@ import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { canConfirm } from '@/lib/finance/access';
 import { resolveMemberStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import AccountingNav from '@/components/AccountingNav';
 import MonthlyCloseManager, { type MonthRow } from '@/components/finance/MonthlyCloseManager';
 import MonthShell from '@/components/finance/MonthShell';
@@ -236,44 +236,45 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
   const initialTodos = await computeBoardTodos(supabase, unit.brand).catch(() => undefined);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <AccountingNav role={role} />
-      {/* 폭 제한 없음 — 손익 요약 열이 많아 화면을 100% 쓴다(2026-08-21 대표 요청) */}
-      <div className="w-full px-6 py-8">
-        <div className="mb-4 flex items-baseline justify-between">
-          <h1 className="m-0 text-display tracking-[-0.5px]">월 결산</h1>
-          <Link href="/finance" className="text-body text-muted-foreground transition-colors hover:text-foreground">
-            ← 재무 홈
-          </Link>
-        </div>
-        <p className="mb-5 mt-0 text-body leading-[1.6] text-muted-foreground">
+    // 폭 제한 없음 — 손익 요약 열이 많아 화면을 100% 쓴다(2026-08-21 대표 요청) → PageShell wide
+    <PageShell
+      nav={<AccountingNav role={role} />}
+      width="wide"
+      title="월 결산"
+      subtitle={
+        <>
           <b>{unit.label}</b>의 월 결산이에요 — 확정하면 입력이 잠기고 그 시점 집계가 결산값으로 저장돼요. 결산 후 분류를 고치면 '결산 확인'에서 차이가 보여요. 미분류
           {unit.store ? '와 지점 미지정 가든 거래' : ''}가 0건인 달만 확정할 수 있고, 확정하면 그 달·그 단위의 지출 자료 분류가
           잠겨요. {allowConfirm ? '' : '(확정 권한은 관리자에게 요청하세요.)'}
-        </p>
-        {/* 지점 뷰의 손익 요약이 조용히 빼는 '지점 미지정' 거래 — 경고 배너(2026-08-22 감사 D12).
-            아래 확정 표에는 달별 건수가 있지만, 손익 요약(지출·통장 열)에도 빠져 있음을 여기서 알린다. */}
-        {unit.store && totalUnassigned > 0 && (
-          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
-            ⚠️ 지점이 지정되지 않은 가든 거래 {totalUnassigned}건이 아래 손익 요약에서 빠져 있어요. 분류 화면에서
-            지점을 지정해 주세요(해당 달은 지정 완료 전까지 확정할 수 없어요).
-          </div>
-        )}
-        {/* personal 은 위에서 리다이렉트되므로 여기 unit 은 항상 사업 단위.
-            좌측 연·월 사이드바 — 달을 고르면 표에서 그 달 행을 하이라이트·스크롤(2026-08-03) */}
-        <MonthShell brand={unit.brand} initialTodos={initialTodos}>
-          <ClosePnlSummary rows={pnlRows} unitId={unit.id} />
-          <MonthlyCloseManager
-            key={unit.id}
-            months={months}
-            canConfirm={allowConfirm}
-            unit={unit.id as 'staffmeal' | 'yangjae' | 'pangyo'}
-            brand={unit.brand as 'staffmeal' | 'garden'}
-          />
-        </MonthShell>
-      </div>
-    </div>
+        </>
+      }
+      actions={
+        <Link href="/finance" className="text-body text-muted-foreground transition-colors hover:text-foreground">
+          ← 재무 홈
+        </Link>
+      }
+    >
+      {/* 지점 뷰의 손익 요약이 조용히 빼는 '지점 미지정' 거래 — 경고 배너(2026-08-22 감사 D12).
+          아래 확정 표에는 달별 건수가 있지만, 손익 요약(지출·통장 열)에도 빠져 있음을 여기서 알린다. */}
+      {unit.store && totalUnassigned > 0 && (
+        <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
+          ⚠️ 지점이 지정되지 않은 가든 거래 {totalUnassigned}건이 아래 손익 요약에서 빠져 있어요. 분류 화면에서
+          지점을 지정해 주세요(해당 달은 지정 완료 전까지 확정할 수 없어요).
+        </div>
+      )}
+      {/* personal 은 위에서 리다이렉트되므로 여기 unit 은 항상 사업 단위.
+          좌측 연·월 사이드바 — 달을 고르면 표에서 그 달 행을 하이라이트·스크롤(2026-08-03) */}
+      <MonthShell brand={unit.brand} initialTodos={initialTodos}>
+        <ClosePnlSummary rows={pnlRows} unitId={unit.id} />
+        <MonthlyCloseManager
+          key={unit.id}
+          months={months}
+          canConfirm={allowConfirm}
+          unit={unit.id as 'staffmeal' | 'yangjae' | 'pangyo'}
+          brand={unit.brand as 'staffmeal' | 'garden'}
+        />
+      </MonthShell>
+    </PageShell>
   );
 }
 

@@ -5,7 +5,7 @@ import { resolveRoleStamped } from '@/lib/access/stamp';
 import { benchmark, prevYm, CHANNEL_FEE_RATE, type Signal } from '@/lib/finance/pnl';
 import { loadPnlPos, computePnlMonth, type BrandSeg, type PnlPosRowS } from '@/lib/finance/pnlMonth';
 import { UNITS, unitOf, storeLabel, type Store } from '@/lib/finance/types';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import FinanceNav from '@/components/finance/FinanceNav';
 import MonthShell from '@/components/finance/MonthShell';
 import { computeBoardTodos } from '@/lib/finance/boardTodos';
@@ -54,52 +54,52 @@ export default async function PnlPage({
   const yms = Array.from(new Set(pos.map((p) => p.ym))).sort((a, b) => b.localeCompare(a));
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <FinanceNav role={role} />
-      <div className="mx-auto max-w-[1600px] px-6 py-8">
-        <div className="mb-1.5 flex items-baseline justify-between">
-          <h1 className="m-0 text-display tracking-[-0.5px]">관리손익</h1>
-          <Link href="/finance" className="text-body text-muted-foreground transition-colors hover:text-foreground">
-            ← 재무 홈
-          </Link>
-        </div>
-        <p className="mb-10 text-body text-muted-foreground">
+    <PageShell
+      nav={<FinanceNav role={role} />}
+      width="wide"
+      title="관리손익"
+      subtitle={
+        <>
           POS 매출(발생주의·공급가액)에 매입기준 재료비·인건비를 맞춰 본 손익이에요. 통장 입출금 기준은 <Link href="/finance/cashflow" className="underline">월별 요약</Link>·<Link href="/finance/flow" className="underline">자금 흐름</Link>에서 봐요.
+        </>
+      }
+      actions={
+        <Link href="/finance" className="text-body text-muted-foreground transition-colors hover:text-foreground">
+          ← 재무 홈
+        </Link>
+      }
+    >
+      {/* 좌측 연·월 사이드바 — 달 선택 시 ?ym= 내비게이션으로 서버가 그 달 손익을 다시 계산(2026-08-03) */}
+      <MonthShell brand={seg} initialTodos={initialTodos} navigate>
+      {store && (
+        <p className="mb-10 text-caption text-muted-foreground">
+          지점 손익은 근사치예요 — 기말재고·채널수수료는 지점 매출비율로 안분해요.
         </p>
+      )}
 
-        {/* 좌측 연·월 사이드바 — 달 선택 시 ?ym= 내비게이션으로 서버가 그 달 손익을 다시 계산(2026-08-03) */}
-        <MonthShell brand={seg} initialTodos={initialTodos} navigate>
-        {store && (
-          <p className="mb-10 text-caption text-muted-foreground">
-            지점 손익은 근사치예요 — 기말재고·채널수수료는 지점 매출비율로 안분해요.
+      {yms.length === 0 ? (
+        <div className="flex flex-col items-center gap-4 py-10 text-center">
+          <div className="text-display">🧾</div>
+          <p className="m-0 text-body text-muted-foreground">
+            먼저 {unitLabelFor(seg, store)} POS 매출리포트를 올려주세요.
           </p>
-        )}
-
-        {yms.length === 0 ? (
-          <div className="flex flex-col items-center gap-4 py-10 text-center">
-            <div className="text-display">🧾</div>
-            <p className="m-0 text-body text-muted-foreground">
-              먼저 {unitLabelFor(seg, store)} POS 매출리포트를 올려주세요.
-            </p>
-            <PnlUpload />
-          </div>
-        ) : (
-          <PnlBody
-            pos={pos}
-            yms={yms}
-            selectedYm={
-              // 사이드바로 POS 없는 달도 볼 수 있게 형식만 검증 — 그 달은 매출 0 + 지출만 표시
-              searchParams.ym && /^\d{4}-\d{2}$/.test(searchParams.ym) ? searchParams.ym : yms[0]
-            }
-            seg={seg}
-            store={store}
-            supabase={supabase}
-          />
-        )}
-        </MonthShell>
-      </div>
-    </div>
+          <PnlUpload />
+        </div>
+      ) : (
+        <PnlBody
+          pos={pos}
+          yms={yms}
+          selectedYm={
+            // 사이드바로 POS 없는 달도 볼 수 있게 형식만 검증 — 그 달은 매출 0 + 지출만 표시
+            searchParams.ym && /^\d{4}-\d{2}$/.test(searchParams.ym) ? searchParams.ym : yms[0]
+          }
+          seg={seg}
+          store={store}
+          supabase={supabase}
+        />
+      )}
+      </MonthShell>
+    </PageShell>
   );
 }
 

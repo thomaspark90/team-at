@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveRoleStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import AccountingNav from '@/components/AccountingNav';
 import CategoryManager, { type ManagedCat } from '@/components/finance/CategoryManager';
 import BrandBankSettings, { type BrandBankRow } from '@/components/finance/BrandBankSettings';
@@ -34,41 +34,38 @@ export default async function CategoriesPage({
   const { data: bankRows } = await supabase.schema('finance').from('brand_settings').select('brand,banks');
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <AccountingNav role={role} />
-      <div className="mx-auto max-w-[1120px] px-6 py-8">
-        <div className="mb-4 flex items-baseline justify-between">
-          <h1 className="m-0 text-display tracking-[-0.5px]">설정</h1>
-          {/* 분류 화면에서 넘어왔으면(from) 그 화면(단위·월 그대로)으로 복귀. 내부 경로만 허용(오픈 리다이렉트 방지). */}
-          <Link
-            href={searchParams.from?.startsWith('/finance/') ? searchParams.from : '/finance/classify'}
-            className="text-body text-muted-foreground transition-colors hover:text-foreground"
-          >
-            ← 재무로
-          </Link>
-        </div>
+    <PageShell
+      nav={<AccountingNav role={role} />}
+      title="설정"
+      actions={
+        // 분류 화면에서 넘어왔으면(from) 그 화면(단위·월 그대로)으로 복귀. 내부 경로만 허용(오픈 리다이렉트 방지).
+        <Link
+          href={searchParams.from?.startsWith('/finance/') ? searchParams.from : '/finance/classify'}
+          className="text-body text-muted-foreground transition-colors hover:text-foreground"
+        >
+          ← 재무로
+        </Link>
+      }
+    >
+      <div className="flex flex-col gap-10">
+        <section>
+          <h2 className="mb-2 text-title tracking-[-0.3px] text-foreground">브랜드별 사용 은행</h2>
+          <BrandBankSettings initial={(bankRows as BrandBankRow[]) ?? []} />
+        </section>
 
-        <div className="flex flex-col gap-10">
-          <section>
-            <h2 className="mb-2 text-title tracking-[-0.3px] text-foreground">브랜드별 사용 은행</h2>
-            <BrandBankSettings initial={(bankRows as BrandBankRow[]) ?? []} />
-          </section>
+        <section>
+          <h2 className="mb-2 text-title tracking-[-0.3px] text-foreground">계정과목</h2>
+          <CategoryManager initial={(data as ManagedCat[]) ?? []} />
+        </section>
 
-          <section>
-            <h2 className="mb-2 text-title tracking-[-0.3px] text-foreground">계정과목</h2>
-            <CategoryManager initial={(data as ManagedCat[]) ?? []} />
-          </section>
-
-          <section>
-            <h2 className="mb-2 text-title tracking-[-0.3px] text-foreground">학습된 분류 규칙</h2>
-            <RulesManager
-              catNames={Object.fromEntries(((data as ManagedCat[]) ?? []).map((c) => [c.id, c.name]))}
-            />
-          </section>
-        </div>
+        <section>
+          <h2 className="mb-2 text-title tracking-[-0.3px] text-foreground">학습된 분류 규칙</h2>
+          <RulesManager
+            catNames={Object.fromEntries(((data as ManagedCat[]) ?? []).map((c) => [c.id, c.name]))}
+          />
+        </section>
       </div>
-    </div>
+    </PageShell>
   );
 }
 

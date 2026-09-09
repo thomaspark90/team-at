@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import GardenNav from '@/components/garden/GardenNav';
 import GrindMeasurementUpload from '@/components/garden/GrindMeasurementUpload';
 import GrinderAlignmentLog from '@/components/garden/GrinderAlignmentLog';
@@ -14,10 +14,8 @@ const GrindCalibrationCharts = dynamic(() => import('@/components/garden/GrindCa
 
 export default function GardenCalibrationPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <GardenNav />
-      <div className="mx-auto max-w-[1100px] px-6 py-8" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <PageShell nav={<GardenNav />} width="wide">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         {/* 페이지 제목은 내비 활성 탭이 이미 알려줘서 생략(2026-08-09) */}
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <a href="/garden/calibration/report" className="text-body underline text-muted-foreground hover:text-foreground">
@@ -34,6 +32,6 @@ export default function GardenCalibrationPage() {
         {/* 이전 자료 + 신규 측정 시각화 */}
         <GrindCalibrationCharts />
       </div>
-    </div>
+    </PageShell>
   );
 }

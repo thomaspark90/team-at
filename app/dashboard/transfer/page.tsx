@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMember } from '@/lib/finance/access';
 import { fallbackRecipients } from '@/lib/notify';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import AccountingNav from '@/components/AccountingNav';
 import TransferPanel from '@/components/finance/TransferPanel';
 import NotifySettings from '@/components/NotifySettings';
@@ -28,10 +28,8 @@ export default async function TransferRequestPage() {
   const isNotifyRecipient = recipients.includes((user.email ?? '').toLowerCase());
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <AccountingNav role={role} scoped={!!brandScope} />
-      <div className="mx-auto flex max-w-[1120px] flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
+    <PageShell nav={<AccountingNav role={role} scoped={!!brandScope} />}>
+      <div className="flex flex-col gap-4">
         <TransferPanel role={role} email={user.email ?? ''} mode="dashboard" />
         {!isNotifyRecipient && (
           <div id="notify-optin" className="scroll-mt-20">
@@ -39,7 +37,7 @@ export default async function TransferRequestPage() {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }
 

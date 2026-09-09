@@ -90,7 +90,9 @@ const iconOf = (code: number) => {
   return <span aria-hidden>≡</span>; // 안개 등
 };
 
-export default function WeatherStrip() {
+// compact: 제목 아래 한 줄(오늘·내일)만 — '2주 예보 ›'를 누르면 이 자리에서 전체 스트립이 펼쳐진다(2026-09-09 소프트 UI 4단계).
+export default function WeatherStrip({ compact = false }: { compact?: boolean }) {
+  const [expanded, setExpanded] = useState(!compact);
   const [days, setDays] = useState<ForecastDay[] | null>(null);
   const [hours, setHours] = useState<Map<string, HourPoint[]>>(new Map());
   const [pm25, setPm25] = useState<Map<string, number>>(new Map());
@@ -153,6 +155,48 @@ export default function WeatherStrip() {
   const comments = visible ? buildWeatherComments(visible) : [];
   const tomorrow = visible ? buildTomorrowForecast(visible, cupsByDow) : null;
 
+  if (compact && !expanded) {
+    const today = visible?.find((d) => d.ymd === todayYmd) ?? visible?.[0];
+    const next = visible?.find((d) => d.ymd > todayYmd);
+    const pmToday = today ? pm25.get(today.ymd) : undefined;
+    const brief = (d: ForecastDay) => (
+      <span className="inline-flex items-center gap-1.5">
+        {iconOf(d.code)}
+        <span>{wmoLabel(d.code)}</span>
+        <span className="tabular">
+          <span className="text-foreground">{Math.round(d.tMax)}°</span>/{Math.round(d.tMin)}°
+        </span>
+        {d.rainMm >= 1 && <span className="tabular">비 {d.rainMm.toFixed(0)}mm</span>}
+      </span>
+    );
+    return (
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body text-muted-foreground">
+        {!visible ? (
+          <span>날씨 불러오는 중…</span>
+        ) : (
+          <>
+            {today && <span className="inline-flex items-center gap-1.5">오늘 {brief(today)}</span>}
+            {next && <span className="inline-flex items-center gap-1.5">· 내일 {brief(next)}</span>}
+            {pmToday != null && pmToday >= PM25_BAD && (
+              <span className="text-amber-600">· 미세 {pmToday >= PM25_VERY_BAD ? '매우 나쁨' : '나쁨'} {Math.round(pmToday)}</span>
+            )}
+          </>
+        )}
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="underline underline-offset-2 hover:text-foreground"
+          style={{ background: 'none', border: 0, padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer' }}
+        >
+          2주 예보 ›
+        </button>
+        <Link href="/garden/weather" className="underline underline-offset-2 hover:text-foreground">
+          판매 분석 ›
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <section>
       {/* 날씨 이펙트 애니메이션 — 이 컴포넌트 전용이라 globals 대신 여기 둔다 */}
@@ -209,6 +253,18 @@ export default function WeatherStrip() {
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 16 }}>
         <p className="ta-label" style={{ marginBottom: 0 }}>2주 날씨 — 판교·양재천</p>
         <span className="text-caption text-muted-foreground/70">
+          {compact && (
+            <>
+              <button
+                onClick={() => setExpanded(false)}
+                className="underline underline-offset-2 hover:text-foreground"
+                style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer' }}
+              >
+                접기
+              </button>
+              {' · '}
+            </>
+          )}
           Open-Meteo · 10일 이후는 경향 참고용 ·{' '}
           {(comments.length > 0 || tomorrow) && (
             <>

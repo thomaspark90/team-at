@@ -50,13 +50,15 @@ function Card({ card }: { card: BoardCard }) {
   const t = typeOf(card.type);
   return (
     <div
-      className="rounded-lg border bg-background"
+      className="rounded-md bg-background shadow-soft-sm"
       style={{
         padding: '11px 12px',
         display: 'flex',
         flexDirection: 'column',
         gap: 8,
-        borderColor: card.mine ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
+        // 내 카드만 얇은 아웃라인(레이아웃 영향 없음) — 보더 대신 그림자로 면을 만드는 소프트 UI 규칙
+        outline: card.mine ? '1px solid hsl(var(--foreground))' : undefined,
+        outlineOffset: -1,
       }}
     >
       <span className="text-caption text-muted-foreground" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -148,6 +150,8 @@ function Card({ card }: { card: BoardCard }) {
 export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) {
   const [cards, setCards] = useState<BoardCard[] | null>(null);
   const [filter, setFilter] = useState<'all' | 'mine' | BoardType>('all');
+  // 팀 전체 보드는 접힌 한 줄로 시작 — 첫 화면은 '내 차례'만(2026-09-09 소프트 UI 4단계)
+  const [teamOpen, setTeamOpen] = useState(false);
 
   const load = useCallback(() => {
     fetch(`/api/garden-board?scope=${scope}`, { cache: 'no-store' })
@@ -184,10 +188,12 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
     return <p className="text-body text-muted-foreground">작업 보드를 불러오는 중…</p>;
   }
 
+  const colCount = (id: string) => (cards ?? []).filter((c) => c.column === id).length;
+
   return (
-    <div className="divide-y divide-border">
-      {/* 내 차례 — 들어오자마자 자기 일이 먼저 보이게 */}
-      <div className="min-w-0 pb-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div className="space-y-6">
+      {/* 내 차례 — 주 패널. 들어오자마자 자기 일이 먼저 보이게. 검은 버튼은 첫 행 하나, 나머지는 텍스트 › */}
+      <div className="ta-panel min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           <span className="text-title font-medium text-foreground">내 차례</span>
           <span
@@ -202,12 +208,11 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
             지금 내 차례인 일은 없어요. 아래 보드에서 팀 전체 진행 상황을 볼 수 있습니다.
           </p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {mineCards.map((c) => (
+          <div className="divide-y divide-border" style={{ display: 'flex', flexDirection: 'column' }}>
+            {mineCards.map((c, i) => (
               <div
                 key={c.id}
-                className="rounded-lg bg-muted/40"
-                style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 0' }}
               >
                 {dot(typeOf(c.type).color)}
                 <span className="text-body font-medium text-foreground">{c.title}</span>
@@ -216,20 +221,43 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
                   {c.meta[0] ? ` · ${c.meta[0].text}` : ''}
                 </span>
                 <span style={{ flex: 1 }} />
-                <Link
-                  href={c.href}
-                  className="ta-btn-primary"
-                  style={{ height: 28, paddingLeft: 12, paddingRight: 12, fontSize: 13, display: 'inline-flex', alignItems: 'center' }}
-                >
-                  {c.actionLabel}
-                </Link>
+                {i === 0 ? (
+                  <Link
+                    href={c.href}
+                    className="ta-btn-primary"
+                    style={{ height: 28, paddingLeft: 12, paddingRight: 12, fontSize: 13, display: 'inline-flex', alignItems: 'center' }}
+                  >
+                    {c.actionLabel}
+                  </Link>
+                ) : (
+                  <Link href={c.href} className="whitespace-nowrap text-body text-foreground hover:underline">
+                    {c.actionLabel} ›
+                  </Link>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <div className="pt-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+      {/* 팀 전체 — 접힌 한 줄. 펼치면 필터 + 3열 보드 */}
+      <div className="ta-panel" style={{ display: 'flex', flexDirection: 'column', gap: teamOpen ? 24 : 0 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+        <span className="text-body font-medium text-foreground">팀 전체</span>
+        <span className="text-caption text-muted-foreground tabular">
+          {BOARD_COLUMNS.map((col) => `${col.label} ${colCount(col.id)}`).join(' · ')}
+        </span>
+        <span style={{ flex: 1 }} />
+        <button
+          type="button"
+          onClick={() => setTeamOpen((v) => !v)}
+          className="text-body text-foreground hover:underline"
+          style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer' }}
+        >
+          {teamOpen ? '접기' : '보드 ›'}
+        </button>
+      </div>
+      {teamOpen && (<>
       {/* 필터 */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button onClick={() => setFilter('all')} className={chip(filter === 'all')}>
@@ -276,6 +304,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
           );
         })}
       </div>
+      </>)}
       </div>
     </div>
   );

@@ -116,7 +116,7 @@ function SlotTrainees({
             type="button"
             disabled={busy}
             onClick={() => toggle(p.userId)}
-            className={`rounded-md border px-2 py-0.5 text-caption ${on ? 'border-foreground bg-primary text-primary-foreground' : 'border-border text-muted-foreground hover:text-foreground'}`}
+            className={`rounded-md px-2 py-0.5 text-caption shadow-soft-sm transition-colors ${on ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`}
           >
             {p.name}
           </button>
@@ -156,7 +156,7 @@ export default function ShiftSchedule({
         const isNext = i === 0 || s.date === today;
 
         return (
-          <li key={s.id} className="space-y-3">
+          <li key={s.id} className="ta-panel space-y-3">
             {/* 헤더: 날짜(요일) · 지점 · 시간 · 스태프 → 대상 */}
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className={`text-title tabular ${isNext ? 'text-emerald-600' : ''}`}>{fmtMd(s.date)}</span>
@@ -197,7 +197,7 @@ export default function ShiftSchedule({
 
             {/* 시간 칸 — 세로 */}
             {hours.length > 0 && (
-              <ol className="divide-y divide-dashed divide-border border-y border-border">
+              <ol className="divide-y divide-border">
                 {hours.map((h) => {
                   const note = noteOf(h);
                   const slotTrainees = slotOf(h)?.trainees ?? [];

@@ -1,6 +1,6 @@
 'use client';
 
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import GardenNav from '@/components/garden/GardenNav';
 import dynamic from 'next/dynamic';
 
@@ -19,27 +19,22 @@ const GrindCalibrationReportLive = dynamic(
 
 export default function GrindCalibrationReportPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <GardenNav />
-      <div className="mx-auto max-w-[1100px] px-6 py-8">
-        <h1 className="text-display font-medium" style={{ marginBottom: 4 }}>
-          EK43 지점 캘리브레이션 리포트 — 양재천 vs 판교
-        </h1>
-        <p className="text-body text-muted-foreground" style={{ marginTop: 0, marginBottom: 20 }}>
-          최근 얼라인 이후 측정을 자동 반영 · 문의는 대표에게
-        </p>
-        <GrindCalibrationReportLive />
+    <PageShell
+      nav={<GardenNav />}
+      width="wide"
+      title="EK43 지점 캘리브레이션 리포트 — 양재천 vs 판교"
+      subtitle="최근 얼라인 이후 측정을 자동 반영 · 문의는 대표에게"
+    >
+      <GrindCalibrationReportLive />
 
-        <h2 className="text-title font-medium" style={{ marginTop: 40, marginBottom: 4 }}>
-          아카이브 — 2026-07-16 기준선 리포트
-        </h2>
-        <p className="text-body text-muted-foreground" style={{ marginTop: 0, marginBottom: 20 }}>
-          판교 재정렬(2026-08-07) 이전 측정 기록입니다. 왜 다이얼을 그대로 옮기면 안 되는지 보여주는
-          교육 자료로 남겨두며, 현행 수치는 위 섹션이 기준입니다.
-        </p>
-        <GrindCalibrationReport />
-      </div>
-    </div>
+      <h2 className="text-title font-medium" style={{ marginTop: 40, marginBottom: 4 }}>
+        아카이브 — 2026-07-16 기준선 리포트
+      </h2>
+      <p className="text-body text-muted-foreground" style={{ marginTop: 0, marginBottom: 20 }}>
+        판교 재정렬(2026-08-07) 이전 측정 기록입니다. 왜 다이얼을 그대로 옮기면 안 되는지 보여주는
+        교육 자료로 남겨두며, 현행 수치는 위 섹션이 기준입니다.
+      </p>
+      <GrindCalibrationReport />
+    </PageShell>
   );
 }

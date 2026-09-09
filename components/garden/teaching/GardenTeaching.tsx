@@ -43,22 +43,15 @@ export default function GardenTeaching() {
   if (!me.profile && me.role !== 'admin') return <ProfileSetup onDone={load} />;
 
   if (me.canManage) {
+    // 섹션은 구분선 없이 간격으로만(소프트 UI, 2026-09-09) — 일정 블록은 각각 패널
     return (
-      <div className="divide-y divide-border">
-        <div className="pb-[54px]">
-          <ShiftCalendar me={me} onChange={load} />
-        </div>
+      <div className="space-y-14">
+        <ShiftCalendar me={me} onChange={load} />
         {/* 지점 근무자 명부 — 로그인 없이 등록, 교육 대상 선택지·세부 정보(배우고 싶은 것·순위·메모)의 원천 */}
-        <div className="py-[54px]">
-          <StaffRoster me={me} onChange={load} />
-        </div>
-        <div className="py-[54px]">
-          <ManagerBoard me={me} />
-        </div>
+        <StaffRoster me={me} onChange={load} />
+        <ManagerBoard me={me} />
         {/* 스탭 설문(탈리) 결과 — 앱 계정 없이 걷은 티칭 니즈, 정적 기록 */}
-        <div className="pt-[54px]">
-          <SurveyResults />
-        </div>
+        <SurveyResults />
       </div>
     );
   }

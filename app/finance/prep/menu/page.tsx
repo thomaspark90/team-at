@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMemberStamped } from '@/lib/access/stamp';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import AccountingNav from '@/components/AccountingNav';
 import { giftSaleLabel, unitOf, UNITS } from '@/lib/finance/types';
 import type { ExpenseGrain } from '@/lib/finance/prepExpense';
@@ -257,97 +257,97 @@ export default async function PrepMenuPage({
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <AccountingNav role={role} />
-      <div className="mx-auto max-w-[1680px] px-6 py-8">
-        <div className="mb-1 flex items-baseline justify-between">
-          <h1 className="m-0 text-display tracking-[-0.5px]">전처리4 — 메뉴별 판매</h1>
-          <Link
-            href={`/finance/prep/revenue?unit=${unit.id}&grain=${grain}`}
-            className="text-body text-muted-foreground transition-colors hover:text-foreground"
-          >
-            ← 전처리3 매출 총합
-          </Link>
-        </div>
-        <p className="mb-5 max-w-[880px] text-body text-muted-foreground">
+    <PageShell
+      nav={<AccountingNav role={role} />}
+      width="wide"
+      title="전처리4 — 메뉴별 판매"
+      subtitle={
+        <>
           <b>{unit.label}</b>의 품목 리포트(pos_items)를 메뉴 축으로 펼친 표예요. 요약은 매장/포장·사이즈·
           한/영 표기를 <b>메뉴 하나로 묶고</b>(Staff·Newbie…), 상세는 상품 원문 그대로예요.
           매출 뷰의 <b>정합 차이</b> 열이 0이 아니면 품목 리포트와 POS 총액(전처리3 정본)이 어긋난 거예요.
-        </p>
-
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <div className="flex overflow-hidden rounded-md border border-border">
-            {GRAINS.map((g) => (
-              <Link
-                key={g.key}
-                href={href({ grain: g.key })}
-                aria-current={g.key === grain ? 'page' : undefined}
-                className={`px-3 py-1.5 text-body transition-colors ${
-                  g.key === grain ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {g.label}
-              </Link>
-            ))}
-          </div>
-          <div className="flex overflow-hidden rounded-md border border-border">
-            {METRICS.map((m) => (
-              <Link
-                key={m.key}
-                href={href({ metric: m.key })}
-                aria-current={m.key === metric ? 'page' : undefined}
-                className={`px-3 py-1.5 text-body transition-colors ${
-                  m.key === metric ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {m.label}
-              </Link>
-            ))}
-          </div>
-          <span className="text-caption text-muted-foreground">
-            {metric === 'gross' ? '부가세 포함 총액' : '판매 수량'}
-            {allBuckets.length > buckets.length && ` · 최근 ${buckets.length}개 구간`}
-          </span>
+        </>
+      }
+      actions={
+        <Link
+          href={`/finance/prep/revenue?unit=${unit.id}&grain=${grain}`}
+          className="text-body text-muted-foreground transition-colors hover:text-foreground"
+        >
+          ← 전처리3 매출 총합
+        </Link>
+      }
+    >
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="flex overflow-hidden rounded-md border border-border">
+          {GRAINS.map((g) => (
+            <Link
+              key={g.key}
+              href={href({ grain: g.key })}
+              aria-current={g.key === grain ? 'page' : undefined}
+              className={`px-3 py-1.5 text-body transition-colors ${
+                g.key === grain ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {g.label}
+            </Link>
+          ))}
         </div>
-
-        <h2 className="mb-2 mt-2 text-title font-medium">메뉴 요약</h2>
-        <div className="mb-8">{renderTable(summaryShown)}</div>
-
-        <h2 className="mb-2 text-title font-medium">상품별 상세</h2>
-        {renderTable(detailShown)}
-        <MenuPrefsPanel
-          unit={unit.id}
-          products={allProducts}
-          visible={visiblePref ?? allProducts.filter((p) => !hidden.has(p))}
-          sort={sortPref}
-          merges={merges}
-        />
-
-        <div className="mt-4 flex flex-col gap-1 text-caption text-muted-foreground">
-          {summary
-            .filter((c) => c.hint)
-            .map((c) => (
-              <p key={c.key} className="m-0">
-                <b className="text-foreground">{c.label}</b> — {c.hint}
-              </p>
-            ))}
-          <p className="m-0 mt-2">
-            {giftLabel}(선수금)는 품목 리포트와 POS 매출 양쪽에서 제외돼 있어요 — <b>쓴</b> 날은 결제금액이
-            0원으로 찍혀서 이중으로 잡히지 않아요.
-          </p>
-          {unit.brand === 'staffmeal' && (
-            <p className="m-0 mt-1">
-              <b className="text-foreground">배달 표기 규칙(2026-08-20)</b> — 배달앱 판매는 매장·포장과 가격
-              체계가 다르고 세트 구분이 없어서 <b>Staff (배달)</b>·<b>Newbie (배달)</b>·<b>Boss (배달)</b>로
-              별도 표기해요(구 표기 &lsquo;STAFF (Medium)&rsquo;·&lsquo;뉴비 (NEWBIE) (Small)&rsquo;·
-              &lsquo;보스 (BOSS) (Large)&rsquo; 등을 병합). &lsquo;staff포장&rsquo;(2025-05-31 하루 임시 등록,
-              76개)은 Staff (기본 / 포장)에 병합돼 있어요.
-            </p>
-          )}
+        <div className="flex overflow-hidden rounded-md border border-border">
+          {METRICS.map((m) => (
+            <Link
+              key={m.key}
+              href={href({ metric: m.key })}
+              aria-current={m.key === metric ? 'page' : undefined}
+              className={`px-3 py-1.5 text-body transition-colors ${
+                m.key === metric ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {m.label}
+            </Link>
+          ))}
         </div>
+        <span className="text-caption text-muted-foreground">
+          {metric === 'gross' ? '부가세 포함 총액' : '판매 수량'}
+          {allBuckets.length > buckets.length && ` · 최근 ${buckets.length}개 구간`}
+        </span>
       </div>
-    </div>
+
+      <h2 className="mb-2 mt-2 text-title font-medium">메뉴 요약</h2>
+      <div className="mb-8">{renderTable(summaryShown)}</div>
+
+      <h2 className="mb-2 text-title font-medium">상품별 상세</h2>
+      {renderTable(detailShown)}
+      <MenuPrefsPanel
+        unit={unit.id}
+        products={allProducts}
+        visible={visiblePref ?? allProducts.filter((p) => !hidden.has(p))}
+        sort={sortPref}
+        merges={merges}
+      />
+
+      <div className="mt-4 flex flex-col gap-1 text-caption text-muted-foreground">
+        {summary
+          .filter((c) => c.hint)
+          .map((c) => (
+            <p key={c.key} className="m-0">
+              <b className="text-foreground">{c.label}</b> — {c.hint}
+            </p>
+          ))}
+        <p className="m-0 mt-2">
+          {giftLabel}(선수금)는 품목 리포트와 POS 매출 양쪽에서 제외돼 있어요 — <b>쓴</b> 날은 결제금액이
+          0원으로 찍혀서 이중으로 잡히지 않아요.
+        </p>
+        {unit.brand === 'staffmeal' && (
+          <p className="m-0 mt-1">
+            <b className="text-foreground">배달 표기 규칙(2026-08-20)</b> — 배달앱 판매는 매장·포장과 가격
+            체계가 다르고 세트 구분이 없어서 <b>Staff (배달)</b>·<b>Newbie (배달)</b>·<b>Boss (배달)</b>로
+            별도 표기해요(구 표기 &lsquo;STAFF (Medium)&rsquo;·&lsquo;뉴비 (NEWBIE) (Small)&rsquo;·
+            &lsquo;보스 (BOSS) (Large)&rsquo; 등을 병합). &lsquo;staff포장&rsquo;(2025-05-31 하루 임시 등록,
+            76개)은 Staff (기본 / 포장)에 병합돼 있어요.
+          </p>
+        )}
+      </div>
+    </PageShell>
   );
 }
 

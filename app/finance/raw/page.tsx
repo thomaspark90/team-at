@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMemberStamped } from '@/lib/access/stamp';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import AccountingNav from '@/components/AccountingNav';
 import RawTable from '@/components/finance/RawTable';
 import { unitOf, UNITS } from '@/lib/finance/types';
@@ -82,123 +82,123 @@ export default async function RawPage({ searchParams }: { searchParams: Record<s
   const activeHalf = halves.find((h) => h.from === query.from && h.to === query.to)?.label ?? null;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <AccountingNav role={role} />
-      <div className="mx-auto max-w-[1680px] px-6 py-8">
-        <div className="mb-1 flex items-baseline justify-between">
-          <h1 className="m-0 text-display tracking-[-0.5px]">로우데이터</h1>
-          <Link
-            href="/finance/originals"
-            className="text-body text-muted-foreground transition-colors hover:text-foreground"
-          >
-            원본 자료함 →
-          </Link>
-        </div>
-        <p className="mb-5 text-body text-muted-foreground">
+    <PageShell
+      nav={<AccountingNav role={role} />}
+      width="wide"
+      title="로우데이터"
+      subtitle={
+        <>
           <b>{unit.label}</b> 자료의 원본 행이에요 — 파서가 파일에서 읽은 그대로, 부호 변환·분류·중복제거를
           거치기 전 상태예요. 행 번호는 원본 파일에서의 위치라 엑셀과 나란히 두고 대조할 수 있어요.
           컬럼 제목을 누르면 정렬되고, 그 아래 칸에 입력하면 그 열로 걸러져요.
-        </p>
-
-        {/* 출처 탭 + 월 단축 */}
-        <div className="mb-3 flex flex-wrap items-center gap-3">
+        </>
+      }
+      actions={
+        <Link
+          href="/finance/originals"
+          className="text-body text-muted-foreground transition-colors hover:text-foreground"
+        >
+          원본 자료함 →
+        </Link>
+      }
+    >
+      {/* 출처 탭 + 월 단축 */}
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <div className="flex overflow-hidden rounded-md border border-border">
+          {RAW_SOURCES.map((s) => (
+            <Link
+              key={s.key}
+              href={href({ source: s.key })}
+              aria-current={s.key === query.source ? 'page' : undefined}
+              className={`px-3 py-1.5 text-body transition-colors ${
+                s.key === query.source
+                  ? 'bg-foreground text-background'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {s.label}
+            </Link>
+          ))}
+        </div>
+        {/* 계좌 칩 — 계좌가 2개 이상인 단위(가든 양재: 신한+우리)에서만. 표·소계·CSV 전부 이 필터를 따른다(2026-08-23) */}
+        {issuers.length >= 2 && (
           <div className="flex overflow-hidden rounded-md border border-border">
-            {RAW_SOURCES.map((s) => (
+            <Link
+              href={href({ issuer: null })}
+              aria-current={!query.issuer ? 'page' : undefined}
+              className={`px-3 py-1.5 text-body transition-colors ${
+                !query.issuer ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              전체 계좌
+            </Link>
+            {issuers.map((iss) => (
               <Link
-                key={s.key}
-                href={href({ source: s.key })}
-                aria-current={s.key === query.source ? 'page' : undefined}
+                key={iss}
+                href={href({ issuer: iss })}
+                aria-current={query.issuer === iss ? 'page' : undefined}
                 className={`px-3 py-1.5 text-body transition-colors ${
-                  s.key === query.source
-                    ? 'bg-foreground text-background'
-                    : 'text-muted-foreground hover:text-foreground'
+                  query.issuer === iss ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {s.label}
+                {bankShort(iss)}
               </Link>
             ))}
           </div>
-          {/* 계좌 칩 — 계좌가 2개 이상인 단위(가든 양재: 신한+우리)에서만. 표·소계·CSV 전부 이 필터를 따른다(2026-08-23) */}
-          {issuers.length >= 2 && (
-            <div className="flex overflow-hidden rounded-md border border-border">
+        )}
+        {halves.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Link
+              href={href({})}
+              aria-current={!activeHalf && !query.from ? 'page' : undefined}
+              className={`rounded-md border px-2.5 py-1 text-caption transition-colors ${
+                !activeHalf && !query.from
+                  ? 'border-foreground bg-foreground text-background'
+                  : 'border-border text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              전체
+            </Link>
+            {halves.map((h) => (
               <Link
-                href={href({ issuer: null })}
-                aria-current={!query.issuer ? 'page' : undefined}
-                className={`px-3 py-1.5 text-body transition-colors ${
-                  !query.issuer ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                전체 계좌
-              </Link>
-              {issuers.map((iss) => (
-                <Link
-                  key={iss}
-                  href={href({ issuer: iss })}
-                  aria-current={query.issuer === iss ? 'page' : undefined}
-                  className={`px-3 py-1.5 text-body transition-colors ${
-                    query.issuer === iss ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {bankShort(iss)}
-                </Link>
-              ))}
-            </div>
-          )}
-          {halves.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Link
-                href={href({})}
-                aria-current={!activeHalf && !query.from ? 'page' : undefined}
-                className={`rounded-md border px-2.5 py-1 text-caption transition-colors ${
-                  !activeHalf && !query.from
+                key={h.label}
+                href={href({ from: h.from, to: h.to })}
+                aria-current={h.label === activeHalf ? 'page' : undefined}
+                className={`rounded-md border px-2.5 py-1 text-caption tabular-nums transition-colors ${
+                  h.label === activeHalf
                     ? 'border-foreground bg-foreground text-background'
                     : 'border-border text-muted-foreground hover:text-foreground'
                 }`}
               >
-                전체
+                {h.label}
               </Link>
-              {halves.map((h) => (
-                <Link
-                  key={h.label}
-                  href={href({ from: h.from, to: h.to })}
-                  aria-current={h.label === activeHalf ? 'page' : undefined}
-                  className={`rounded-md border px-2.5 py-1 text-caption tabular-nums transition-colors ${
-                    h.label === activeHalf
-                      ? 'border-foreground bg-foreground text-background'
-                      : 'border-border text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {h.label}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* 배치 목록 — 같은 파일을 두 번 올렸는지가 여기서 드러난다 */}
-        {batches.length > 0 && (
-          <div className="mb-4 flex flex-wrap gap-2 text-caption text-muted-foreground">
-            {batches.map((b) => (
-              <span key={b.id} className="rounded-md border border-border px-2 py-1">
-                {b.filename ?? `${b.issuer ?? b.source} 수집`}
-                <span className="ml-1.5 tabular-nums opacity-60">
-                  {b.row_count.toLocaleString()}행 · {b.ingested_at.slice(0, 10)}
-                </span>
-              </span>
             ))}
           </div>
         )}
-
-        <RawTable
-          query={query}
-          columns={columns}
-          initialRows={rows}
-          initialHasMore={rows.length === 200}
-          categoryNames={categoryNames}
-        />
       </div>
-    </div>
+
+      {/* 배치 목록 — 같은 파일을 두 번 올렸는지가 여기서 드러난다 */}
+      {batches.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2 text-caption text-muted-foreground">
+          {batches.map((b) => (
+            <span key={b.id} className="rounded-md border border-border px-2 py-1">
+              {b.filename ?? `${b.issuer ?? b.source} 수집`}
+              <span className="ml-1.5 tabular-nums opacity-60">
+                {b.row_count.toLocaleString()}행 · {b.ingested_at.slice(0, 10)}
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <RawTable
+        query={query}
+        columns={columns}
+        initialRows={rows}
+        initialHasMore={rows.length === 200}
+        categoryNames={categoryNames}
+      />
+    </PageShell>
   );
 }
 

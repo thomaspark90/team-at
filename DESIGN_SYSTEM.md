@@ -92,6 +92,10 @@ CSS 변수 → Tailwind 유틸(`bg-*`, `text-*`, `border-*`)로 노출. 다크 �
 
 세그먼트 토글: `.ta-seg` 계열(위)로 통일 — 이전의 `border p-1 + bg-primary 활성` 패턴은 새로 쓰지 않는다.
 
+**페이지 셸(2026-09-09, 3단계)**: 모든 화면은 `components/PageShell.tsx` 로 감싼다 — 전역 바 + 로컬 내비(`nav`) + 본문 컨테이너 + 제목 줄(`title`/`subtitle`/`actions`). 폭은 셋뿐: `default` 980 · `wide` 1400(넓은 표·차트) · `narrow` 640(단일 폼). 페이지에서 `max-w-[…]` 를 직접 쓰지 않는다. 예외: `/garden/beancard`(A4 인쇄 레이아웃), 로그인·설치·공유 링크 화면. 제목 줄의 검은 버튼은 화면당 하나(`actions`), 나머지 행동은 텍스트 + ›.
+
+**화면 구성(2026-09-09, 4단계)**: 주 패널(`.ta-panel`) 하나가 위, 보조 패널은 2열 또는 접힌 한 줄(`… ›`). 참고 정보(날씨 등)는 부제 자리 한 줄로, 상세는 눌러야 펼쳐진다. 섹션 사이 `divide-y` 대신 `space-y-12/14`. 적용 완료: 회계 홈·가든 작업 보드·교육. 나머지 화면은 셸만 적용된 상태 — 손댈 때 같은 문법으로.
+
 **내비게이션(2026-09-09)**: 전역 `TabNav` 44px 한 줄(sticky·반투명 블러·헤어라인) + 섹션별 로컬 내비 한 줄(`components/nav/LocalNav.tsx`, 아래로 `shadow-soft-sm`). 로컬 내비 안은 `NavLink`(단일)·`NavMenu`(묶음 드롭다운)·`SegmentControl`(브랜드·지점)만 쓴다. 바를 더 쌓지 않는다 — 항목이 넘치면 묶음으로 접는다. 가든 묶음 구성은 `lib/garden/tabs.ts` `GARDEN_NAV`.
 
 ---

@@ -4,7 +4,7 @@ import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMemberStamped } from '@/lib/access/stamp';
 import { unitOf } from '@/lib/finance/types';
 import { getBrandBanks } from '@/lib/finance/brandBanks';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import AccountingNav from '@/components/AccountingNav';
 import PnlUpload from '@/components/finance/PnlUpload';
 import CardReconcile from '@/components/finance/CardReconcile';
@@ -46,82 +46,78 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
   ]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <AccountingNav role={role} scoped={!!brandScope} />
-      <div className="mx-auto max-w-[1600px] px-6 py-8">
-        <div className="flex flex-col gap-12">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-caption uppercase tracking-[0.06em] text-muted-foreground">자료 입력</div>
-              <h1 className="m-0 text-display tracking-[-0.5px]">{unit.label}</h1>
-              <p className="mt-1 text-body text-muted-foreground">
-                {unit.store ? (
-                  <>
-                    {unit.id === 'yangjae' && <>POS 매출은 이 지점으로 바로 들어가요. </>}
-                    통장·신한카드는 <b>가든 공용</b>이라 올린 뒤{' '}
-                    <Link href={`/finance/classify?unit=${unit.id}`} className="underline">지출 자료 분류</Link>에서 지점을
-                    지정하거나 건별 분할로 나눠요.
-                  </>
-                ) : (
-                  <>
-                    이 페이지에서 올리는 모든 자료는 <b>스탭밀</b> 회계로 들어가요. 분류는{' '}
-                    <Link href="/finance/classify?unit=staffmeal" className="underline">지출 자료 분류</Link>에서 해요.
-                  </>
-                )}
-              </p>
-            </div>
+    <PageShell nav={<AccountingNav role={role} scoped={!!brandScope} />} width="wide">
+      <div className="flex flex-col gap-12">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-caption uppercase tracking-[0.06em] text-muted-foreground">자료 입력</div>
+            <h1 className="m-0 text-display">{unit.label}</h1>
+            <p className="mt-1 text-body text-muted-foreground">
+              {unit.store ? (
+                <>
+                  {unit.id === 'yangjae' && <>POS 매출은 이 지점으로 바로 들어가요. </>}
+                  통장·신한카드는 <b>가든 공용</b>이라 올린 뒤{' '}
+                  <Link href={`/finance/classify?unit=${unit.id}`} className="underline">지출 자료 분류</Link>에서 지점을
+                  지정하거나 건별 분할로 나눠요.
+                </>
+              ) : (
+                <>
+                  이 페이지에서 올리는 모든 자료는 <b>스탭밀</b> 회계로 들어가요. 분류는{' '}
+                  <Link href="/finance/classify?unit=staffmeal" className="underline">지출 자료 분류</Link>에서 해요.
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* 좌측 고정 연·월 사이드바(MonthShell) — POS 매출부터 하단 업로더까지 전부 오른쪽 열로 */}
+        <MonthShell brand={unit.brand} store={store} initialTodos={initialTodos}>
+          <div className="divide-y divide-border">
+          {/* 0) 전체 자료 현황 매트릭스 — 연·월 × 자료 종류 미입력 한눈 조망(2026-08-02 대표 지시) */}
+          <div className="pb-[54px]">
+            <StatusMatrix brand={unit.brand} unitId={unit.id} store={store} initialData={initialMatrix} />
           </div>
 
-          {/* 좌측 고정 연·월 사이드바(MonthShell) — POS 매출부터 하단 업로더까지 전부 오른쪽 열로 */}
-          <MonthShell brand={unit.brand} store={store} initialTodos={initialTodos}>
-            <div className="divide-y divide-border">
-            {/* 0) 전체 자료 현황 매트릭스 — 연·월 × 자료 종류 미입력 한눈 조망(2026-08-02 대표 지시) */}
-            <div className="pb-[54px]">
-              <StatusMatrix brand={unit.brand} unitId={unit.id} store={store} initialData={initialMatrix} />
-            </div>
+          {/* 0-1) 잔액 연속성 감사 — 소급 업로드 후 빠진 구간(누락 파일) 최종 점검(2026-08-03) */}
+          <div className="py-[54px]">
+            <ContinuityAudit brand={unit.brand} />
+          </div>
 
-            {/* 0-1) 잔액 연속성 감사 — 소급 업로드 후 빠진 구간(누락 파일) 최종 점검(2026-08-03) */}
-            <div className="py-[54px]">
-              <ContinuityAudit brand={unit.brand} />
-            </div>
-
-            {/* 1) POS 매출 — 지점 단위 귀속 (#pos: 월별 보드의 POS 칸에서 앵커 이동).
-                판교점은 POS 없음 — 페이히어는 가든 회계와 무관(2026-08-17 대표 지시). */}
-            {unit.id !== 'pangyo' && (
-              <div id="pos" className="flex flex-col gap-6 scroll-mt-4 py-[54px]">
-                <div>
-                  <h2 className="m-0 text-title font-medium text-foreground">POS 매출</h2>
-                  <p className="mt-1 text-body text-muted-foreground">
-                    {unit.id === 'yangjae' ? '토스 매출리포트(비번 0000)' : '페이히어 매출 리포트'} 엑셀 — {unit.label} 매출로
-                    저장돼요.
-                  </p>
-                </div>
-                <PnlUpload fixedUnitKey={posUnitKey} />
+          {/* 1) POS 매출 — 지점 단위 귀속 (#pos: 월별 보드의 POS 칸에서 앵커 이동).
+              판교점은 POS 없음 — 페이히어는 가든 회계와 무관(2026-08-17 대표 지시). */}
+          {unit.id !== 'pangyo' && (
+            <div id="pos" className="flex flex-col gap-6 scroll-mt-4 py-[54px]">
+              <div>
+                <h2 className="m-0 text-title font-medium text-foreground">POS 매출</h2>
+                <p className="mt-1 text-body text-muted-foreground">
+                  {unit.id === 'yangjae' ? '토스 매출리포트(비번 0000)' : '페이히어 매출 리포트'} 엑셀 — {unit.label} 매출로
+                  저장돼요.
+                </p>
               </div>
-            )}
-
-            {/* 1-1) 신한카드 이용내역 · 정산 연결 (#card: 월별 보드의 '주지출 카드' 칸에서 앵커 이동) —
-                통장의 카드대금 인출 건과 1:1 연결해야 그 인출이 손익에서 세부 지출로 대체된다.
-                미연결이면 관리손익에 '카드 지출(미분해)'로 남는다(2026-08-17 복원, PRD prd-card-statement.md). */}
-            {unit.brand !== 'personal' && (
-              <div id="card" className="scroll-mt-4 py-[54px]">
-                <CardReconcile brand={unit.brand} />
-              </div>
-            )}
-
-            {/* 2) 월별 회계자료 업로드 보드 — 은행·카드 엑셀 슬롯 (대시보드에서 이관, 2026-08-01).
-                은행 거래내역은 스탭밀·가든 모두 엑셀로 올리므로, 이 그리드가 유일한 업로드 경로다.
-                (은행 PDF 폼·신한카드 정산·쿠팡 영수증 세분화는 2026-08-01 제거 — 그리드와 중복.
-                 필요 시 컴포넌트는 코드에 남아 있으니 되살릴 수 있음: UploadPanel/CardReconcile/ReceiptEnrich) */}
-            <div className="pt-[54px]">
-              <AccountingBoards fixedBrand={unit.brand} unitId={unit.id} mode="upload" banks={banks} />
+              <PnlUpload fixedUnitKey={posUnitKey} />
             </div>
+          )}
+
+          {/* 1-1) 신한카드 이용내역 · 정산 연결 (#card: 월별 보드의 '주지출 카드' 칸에서 앵커 이동) —
+              통장의 카드대금 인출 건과 1:1 연결해야 그 인출이 손익에서 세부 지출로 대체된다.
+              미연결이면 관리손익에 '카드 지출(미분해)'로 남는다(2026-08-17 복원, PRD prd-card-statement.md). */}
+          {unit.brand !== 'personal' && (
+            <div id="card" className="scroll-mt-4 py-[54px]">
+              <CardReconcile brand={unit.brand} />
             </div>
-          </MonthShell>
-        </div>
+          )}
+
+          {/* 2) 월별 회계자료 업로드 보드 — 은행·카드 엑셀 슬롯 (대시보드에서 이관, 2026-08-01).
+              은행 거래내역은 스탭밀·가든 모두 엑셀로 올리므로, 이 그리드가 유일한 업로드 경로다.
+              (은행 PDF 폼·신한카드 정산·쿠팡 영수증 세분화는 2026-08-01 제거 — 그리드와 중복.
+               필요 시 컴포넌트는 코드에 남아 있으니 되살릴 수 있음: UploadPanel/CardReconcile/ReceiptEnrich) */}
+          <div className="pt-[54px]">
+            <AccountingBoards fixedBrand={unit.brand} unitId={unit.id} mode="upload" banks={banks} />
+          </div>
+          </div>
+        </MonthShell>
       </div>
-    </div>
+    </PageShell>
   );
 }
 

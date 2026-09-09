@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMemberStamped } from '@/lib/access/stamp';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import AccountingNav from '@/components/AccountingNav';
 import { unitOf, UNITS } from '@/lib/finance/types';
 import type { ExpenseGrain, ExpenseTx } from '@/lib/finance/prepExpense';
@@ -130,20 +130,12 @@ export default async function PrepRevenuePage({
   const bucketLabel = (b: string) => (grain === 'week' ? `${b.slice(5).replace('-', '/')}~` : b);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <AccountingNav role={role} />
-      <div className="mx-auto max-w-[1680px] px-6 py-8">
-        <div className="mb-1 flex items-baseline justify-between">
-          <h1 className="m-0 text-display tracking-[-0.5px]">전처리3 — 매출 총합</h1>
-          <Link
-            href={`/finance/prep/expense-detail?unit=${unit.id}&grain=${grain}`}
-            className="text-body text-muted-foreground transition-colors hover:text-foreground"
-          >
-            ← 전처리2 지출 세분화
-          </Link>
-        </div>
-        <p className="mb-5 max-w-[880px] text-body text-muted-foreground">
+    <PageShell
+      nav={<AccountingNav role={role} />}
+      width="wide"
+      title="전처리3 — 매출 총합"
+      subtitle={
+        <>
           매출 평가의 정본은 <b>POS 매출(발생주의 — 판매한 날 기준)</b>이에요. 관리손익도 이 기준이고요.
           이 표의 통장 입금 축은 매출 인식이 아니라 <b>회수 검증</b>이에요 —{' '}
           {unit.brand === 'garden' ? (
@@ -160,125 +152,133 @@ export default async function PrepRevenuePage({
               들어오고 있나&rdquo;를 봐요.
             </>
           )}
-        </p>
-
-        {unit.store && unassigned.count > 0 && (
-          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
-            ⚠️ 가든 공용(지점 미지정) 거래 {unassigned.count}건이 이 지점 운영 기간({unassigned.sinceYm}~)에
-            있어요 — 지정 전까지 어느 지점 표에도 안 잡혀요. 분류 화면에서 지점을 지정해 주세요.
-          </div>
-        )}
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex overflow-hidden rounded-md border border-border">
-            {GRAINS.map((g) => (
-              <Link
-                key={g.key}
-                href={`/finance/prep/revenue?unit=${unit.id}&grain=${g.key}`}
-                aria-current={g.key === grain ? 'page' : undefined}
-                className={`px-3 py-1.5 text-body transition-colors ${
-                  g.key === grain ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {g.label}
-              </Link>
-            ))}
-          </div>
-          <span className="text-caption text-muted-foreground">
-            {isMonth
-              ? '월 기준 — 보정 정산률 90~105% 밖이면 ⚠ (최신 1~2개월은 정산 대기라 판정 보류)'
-              : '일·주는 정산 시차로 어긋나는 게 정상이라 경고를 걸지 않아요'}
-            {allBuckets.length > buckets.length && ` · 최근 ${buckets.length}개 구간`}
-          </span>
+        </>
+      }
+      actions={
+        <Link
+          href={`/finance/prep/expense-detail?unit=${unit.id}&grain=${grain}`}
+          className="text-body text-muted-foreground transition-colors hover:text-foreground"
+        >
+          ← 전처리2 지출 세분화
+        </Link>
+      }
+    >
+      {unit.store && unassigned.count > 0 && (
+        <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
+          ⚠️ 가든 공용(지점 미지정) 거래 {unassigned.count}건이 이 지점 운영 기간({unassigned.sinceYm}~)에
+          있어요 — 지정 전까지 어느 지점 표에도 안 잡혀요. 분류 화면에서 지점을 지정해 주세요.
         </div>
-
-        {warnings.length > 0 && (
-          <ul className="mb-5 flex list-none flex-col gap-1 rounded-md border border-border bg-card/40 p-3 text-caption text-muted-foreground">
-            {warnings
-              .filter((w) => buckets.includes(w.bucket))
-              .map((w) => (
-                <li key={`${w.bucket}-${w.message}`}>
-                  <b className="tabular-nums text-foreground">{w.bucket}</b> — {w.message}
-                </li>
-              ))}
-          </ul>
-        )}
-
-        <div className="overflow-auto rounded-md border border-border">
-          <table className="w-max min-w-full border-collapse text-body">
-            <thead className="sticky top-0 z-10 bg-card">
-              <tr className="border-b border-border text-muted-foreground">
-                <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">기간</th>
-                {columns.map((c) => (
-                  <th
-                    key={c.key}
-                    title={c.hint}
-                    className={`whitespace-nowrap px-3 py-2 text-right font-normal ${
-                      c.kind === 'total' ? 'border-l-2 border-l-border font-medium text-foreground' : ''
-                    } ${c.kind === 'derived' || c.kind === 'note' ? 'text-muted-foreground/70' : ''}`}
-                  >
-                    {c.label}
-                    {c.hint && <span className="ml-1 text-muted-foreground/50">ⓘ</span>}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {buckets.map((b) => (
-                <tr key={b} className="border-b border-border/50 last:border-0">
-                  <td
-                    className="sticky left-0 z-10 whitespace-nowrap bg-background px-3 py-1.5 tabular-nums"
-                    title={warnByBucket.get(b)}
-                  >
-                    {warnByBucket.has(b) && <span title={warnByBucket.get(b)}>⚠ </span>}
-                    {bucketLabel(b)}
-                  </td>
-                  {columns.map((c) => {
-                    const amount = c.amounts[b] ?? 0;
-                    const classifyYm = grain === 'week' ? 'all' : isMonth ? b : b.slice(0, 7);
-                    const href =
-                      c.kind === 'income' && amount !== 0 && c.cat
-                        ? `/finance/classify?unit=${unit.id}&ym=${classifyYm}&type=revenue&cat=${encodeURIComponent(c.cat)}`
-                        : null;
-                    const display =
-                      c.key === 'rate' || c.key === 'rate_adj' ? (amount ? `${amount.toLocaleString()}%` : '') : won(amount);
-                    return (
-                      <td
-                        key={c.key}
-                        className={`whitespace-nowrap px-3 py-1.5 text-right tabular-nums ${
-                          c.kind === 'total' ? 'border-l-2 border-l-border font-medium' : ''
-                        } ${c.kind === 'derived' || c.kind === 'note' ? 'text-muted-foreground' : ''}`}
-                      >
-                        {href ? (
-                          <Link
-                            href={href}
-                            className="underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground"
-                            title="누르면 해당 입금 건들이 분류 화면에 필터된 상태로 열려요"
-                          >
-                            {display}
-                          </Link>
-                        ) : (
-                          display
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      )}
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex overflow-hidden rounded-md border border-border">
+          {GRAINS.map((g) => (
+            <Link
+              key={g.key}
+              href={`/finance/prep/revenue?unit=${unit.id}&grain=${g.key}`}
+              aria-current={g.key === grain ? 'page' : undefined}
+              className={`px-3 py-1.5 text-body transition-colors ${
+                g.key === grain ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {g.label}
+            </Link>
+          ))}
         </div>
-
-        <div className="mt-4 flex flex-col gap-1 text-caption text-muted-foreground">
-          {columns
-            .filter((c) => c.hint)
-            .map((c) => (
-              <p key={c.key} className="m-0">
-                <b className="text-foreground">{c.label}</b> — {c.hint}
-              </p>
-            ))}
-        </div>
+        <span className="text-caption text-muted-foreground">
+          {isMonth
+            ? '월 기준 — 보정 정산률 90~105% 밖이면 ⚠ (최신 1~2개월은 정산 대기라 판정 보류)'
+            : '일·주는 정산 시차로 어긋나는 게 정상이라 경고를 걸지 않아요'}
+          {allBuckets.length > buckets.length && ` · 최근 ${buckets.length}개 구간`}
+        </span>
       </div>
-    </div>
+
+      {warnings.length > 0 && (
+        <ul className="mb-5 flex list-none flex-col gap-1 rounded-md border border-border bg-card/40 p-3 text-caption text-muted-foreground">
+          {warnings
+            .filter((w) => buckets.includes(w.bucket))
+            .map((w) => (
+              <li key={`${w.bucket}-${w.message}`}>
+                <b className="tabular-nums text-foreground">{w.bucket}</b> — {w.message}
+              </li>
+            ))}
+        </ul>
+      )}
+
+      <div className="overflow-auto rounded-md border border-border">
+        <table className="w-max min-w-full border-collapse text-body">
+          <thead className="sticky top-0 z-10 bg-card">
+            <tr className="border-b border-border text-muted-foreground">
+              <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">기간</th>
+              {columns.map((c) => (
+                <th
+                  key={c.key}
+                  title={c.hint}
+                  className={`whitespace-nowrap px-3 py-2 text-right font-normal ${
+                    c.kind === 'total' ? 'border-l-2 border-l-border font-medium text-foreground' : ''
+                  } ${c.kind === 'derived' || c.kind === 'note' ? 'text-muted-foreground/70' : ''}`}
+                >
+                  {c.label}
+                  {c.hint && <span className="ml-1 text-muted-foreground/50">ⓘ</span>}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {buckets.map((b) => (
+              <tr key={b} className="border-b border-border/50 last:border-0">
+                <td
+                  className="sticky left-0 z-10 whitespace-nowrap bg-background px-3 py-1.5 tabular-nums"
+                  title={warnByBucket.get(b)}
+                >
+                  {warnByBucket.has(b) && <span title={warnByBucket.get(b)}>⚠ </span>}
+                  {bucketLabel(b)}
+                </td>
+                {columns.map((c) => {
+                  const amount = c.amounts[b] ?? 0;
+                  const classifyYm = grain === 'week' ? 'all' : isMonth ? b : b.slice(0, 7);
+                  const href =
+                    c.kind === 'income' && amount !== 0 && c.cat
+                      ? `/finance/classify?unit=${unit.id}&ym=${classifyYm}&type=revenue&cat=${encodeURIComponent(c.cat)}`
+                      : null;
+                  const display =
+                    c.key === 'rate' || c.key === 'rate_adj' ? (amount ? `${amount.toLocaleString()}%` : '') : won(amount);
+                  return (
+                    <td
+                      key={c.key}
+                      className={`whitespace-nowrap px-3 py-1.5 text-right tabular-nums ${
+                        c.kind === 'total' ? 'border-l-2 border-l-border font-medium' : ''
+                      } ${c.kind === 'derived' || c.kind === 'note' ? 'text-muted-foreground' : ''}`}
+                    >
+                      {href ? (
+                        <Link
+                          href={href}
+                          className="underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground"
+                          title="누르면 해당 입금 건들이 분류 화면에 필터된 상태로 열려요"
+                        >
+                          {display}
+                        </Link>
+                      ) : (
+                        display
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-1 text-caption text-muted-foreground">
+        {columns
+          .filter((c) => c.hint)
+          .map((c) => (
+            <p key={c.key} className="m-0">
+              <b className="text-foreground">{c.label}</b> — {c.hint}
+            </p>
+          ))}
+      </div>
+    </PageShell>
   );
 }
 

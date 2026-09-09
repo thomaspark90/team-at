@@ -19,7 +19,7 @@ import {
   type HypothesisCard,
   type Verdict,
 } from '@/lib/finance/hypotheses';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import FinanceNav from '@/components/finance/FinanceNav';
 
 // 가설 — 현장 체감·통념을 우리 데이터로 검증하는 화면(2026-08-31 신설).
@@ -135,84 +135,83 @@ export default async function HypothesisPage({ searchParams }: { searchParams: {
   const counts = cards.reduce<Record<string, number>>((m, c) => ({ ...m, [c.verdict]: (m[c.verdict] ?? 0) + 1 }), {});
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <FinanceNav role={role} />
-      <div className="mx-auto max-w-[1100px] px-6 py-8">
-        <div className="mb-1 flex items-baseline justify-between">
-          <h1 className="m-0 text-display tracking-[-0.5px]">가설</h1>
-          <Link href={`/finance/metrics?unit=${unit.id}`} className="text-body text-muted-foreground transition-colors hover:text-foreground">
-            지표로 →
-          </Link>
-        </div>
-        <p className="mb-5 max-w-[820px] text-body text-muted-foreground">
+    <PageShell
+      nav={<FinanceNav role={role} />}
+      title="가설"
+      subtitle={
+        <>
           <b>{unit.label}</b> — 현장에서 “이럴 것이다”라고 믿는 것을 우리 데이터로 확인하는 곳이에요. 결론은
           사람이 적지 않고 <b>매번 숫자에서 다시 만들어요</b> — 자료가 쌓이면 판정이 바뀝니다. 그래서 카드마다
           <b> 한계</b>를 같이 적어요.
           {weather?.computedAt && <> 날씨 계산 기준일 {weather.computedAt.slice(0, 10)}.</>}
-        </p>
-
-        {cards.length === 0 ? (
-          <div className="rounded-md border border-border bg-muted/40 px-4 py-6 text-body text-muted-foreground">
-            이 단위에는 아직 검증할 자료가 없어요. 가든 지점은 <Link href="/garden/weather" className="underline">날씨 분석</Link>을
-            한 번 열어 계산을 돌리면 카드가 생겨요.
-          </div>
-        ) : (
-          <>
-            <div className="mb-6 flex flex-wrap gap-x-6 gap-y-2 rounded-md bg-muted/40 px-4 py-3 text-body">
-              {(['refuted', 'confirmed', 'mixed', 'insufficient'] as Verdict[])
-                .filter((v) => counts[v])
-                .map((v) => (
-                  <span key={v}>
-                    {VERDICT_LABEL[v]} <b className="tabular-nums">{counts[v]}</b>건
-                  </span>
-                ))}
-              <span className="text-muted-foreground">체감이 데이터와 어긋난 게 {counts.refuted ?? 0}건이에요.</span>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              {cards.map((c) => (
-                <section key={c.id} className="rounded-md border border-border p-5">
-                  <div className="mb-2 flex flex-wrap items-center gap-3">
-                    <span className={`rounded-full px-2.5 py-0.5 text-caption ${BADGE[c.verdict]}`}>{VERDICT_LABEL[c.verdict]}</span>
-                    <h2 className="m-0 text-title font-medium">“{c.claim}”</h2>
-                    <span className="text-caption text-muted-foreground">{c.origin}</span>
-                  </div>
-                  <p className="m-0 mb-4 text-body">{c.headline}</p>
-                  <div className="mb-4 overflow-hidden rounded-md border border-border">
-                    <table className="w-full border-collapse text-body">
-                      <tbody>
-                        {c.numbers.map((n) => (
-                          <tr key={n.label} className="border-b border-border/50 last:border-0">
-                            <td className="px-3 py-1.5 text-muted-foreground">{n.label}</td>
-                            <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{n.value}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="flex flex-col gap-1.5 text-caption">
-                    {c.rule && (
-                      <p className="m-0">
-                        <b className="text-foreground">그래서 </b>
-                        <span className="text-muted-foreground">{c.rule}</span>
-                      </p>
-                    )}
-                    {c.limit && (
-                      <p className="m-0">
-                        <b className="text-foreground">한계 </b>
-                        <span className="text-muted-foreground">{c.limit}</span>
-                      </p>
-                    )}
-                    <p className="m-0 text-muted-foreground/70">방법 — {c.method}</p>
-                  </div>
-                </section>
+        </>
+      }
+      actions={
+        <Link href={`/finance/metrics?unit=${unit.id}`} className="text-body text-muted-foreground transition-colors hover:text-foreground">
+          지표로 →
+        </Link>
+      }
+    >
+      {cards.length === 0 ? (
+        <div className="rounded-md border border-border bg-muted/40 px-4 py-6 text-body text-muted-foreground">
+          이 단위에는 아직 검증할 자료가 없어요. 가든 지점은 <Link href="/garden/weather" className="underline">날씨 분석</Link>을
+          한 번 열어 계산을 돌리면 카드가 생겨요.
+        </div>
+      ) : (
+        <>
+          <div className="mb-6 flex flex-wrap gap-x-6 gap-y-2 rounded-md bg-muted/40 px-4 py-3 text-body">
+            {(['refuted', 'confirmed', 'mixed', 'insufficient'] as Verdict[])
+              .filter((v) => counts[v])
+              .map((v) => (
+                <span key={v}>
+                  {VERDICT_LABEL[v]} <b className="tabular-nums">{counts[v]}</b>건
+                </span>
               ))}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+            <span className="text-muted-foreground">체감이 데이터와 어긋난 게 {counts.refuted ?? 0}건이에요.</span>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            {cards.map((c) => (
+              <section key={c.id} className="rounded-md border border-border p-5">
+                <div className="mb-2 flex flex-wrap items-center gap-3">
+                  <span className={`rounded-full px-2.5 py-0.5 text-caption ${BADGE[c.verdict]}`}>{VERDICT_LABEL[c.verdict]}</span>
+                  <h2 className="m-0 text-title font-medium">“{c.claim}”</h2>
+                  <span className="text-caption text-muted-foreground">{c.origin}</span>
+                </div>
+                <p className="m-0 mb-4 text-body">{c.headline}</p>
+                <div className="mb-4 overflow-hidden rounded-md border border-border">
+                  <table className="w-full border-collapse text-body">
+                    <tbody>
+                      {c.numbers.map((n) => (
+                        <tr key={n.label} className="border-b border-border/50 last:border-0">
+                          <td className="px-3 py-1.5 text-muted-foreground">{n.label}</td>
+                          <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums">{n.value}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex flex-col gap-1.5 text-caption">
+                  {c.rule && (
+                    <p className="m-0">
+                      <b className="text-foreground">그래서 </b>
+                      <span className="text-muted-foreground">{c.rule}</span>
+                    </p>
+                  )}
+                  {c.limit && (
+                    <p className="m-0">
+                      <b className="text-foreground">한계 </b>
+                      <span className="text-muted-foreground">{c.limit}</span>
+                    </p>
+                  )}
+                  <p className="m-0 text-muted-foreground/70">방법 — {c.method}</p>
+                </div>
+              </section>
+            ))}
+          </div>
+        </>
+      )}
+    </PageShell>
   );
 }
 

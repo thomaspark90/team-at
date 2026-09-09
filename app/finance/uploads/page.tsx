@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { createClient, getSessionUser } from '@/lib/supabase/server';
 import { resolveMemberStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import AccountingNav from '@/components/AccountingNav';
 import UploadHistory, { type UploadRow } from '@/components/finance/UploadHistory';
 import { unitOf } from '@/lib/finance/types';
@@ -59,23 +59,23 @@ export default async function UploadsPage({ searchParams }: { searchParams: { un
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <AccountingNav role={role} />
-      <div className="mx-auto max-w-[1120px] px-6 py-8">
-        <div className="mb-1 flex items-baseline justify-between">
-          <h1 className="m-0 text-display tracking-[-0.5px]">자료 이력</h1>
-          <Link href="/finance/classify" className="text-body text-muted-foreground transition-colors hover:text-foreground">
-            ← 지출 자료 분류
-          </Link>
-        </div>
-        <p className="mb-5 text-body text-muted-foreground">
+    <PageShell
+      nav={<AccountingNav role={role} />}
+      title="자료 이력"
+      subtitle={
+        <>
           {unit ? <b>{unit.label}</b> : '전체'} 자료 이력이에요 — 단위는 상단에서 선택해요.
           {unit?.store && ' 통장·카드는 가든 공용 자료라 양재천·판교에 같이 보여요.'}
-        </p>
-        <UploadHistory uploads={list} />
-      </div>
-    </div>
+        </>
+      }
+      actions={
+        <Link href="/finance/classify" className="text-body text-muted-foreground transition-colors hover:text-foreground">
+          ← 지출 자료 분류
+        </Link>
+      }
+    >
+      <UploadHistory uploads={list} />
+    </PageShell>
   );
 }
 

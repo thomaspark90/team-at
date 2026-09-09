@@ -1,6 +1,6 @@
 'use client';
 
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import StudioNav from '@/components/StudioNav';
 import WorkBoard from '@/components/garden/WorkBoard';
 
@@ -8,12 +8,8 @@ import WorkBoard from '@/components/garden/WorkBoard';
 // 가든 일은 /garden 보드에 따로 뜬다.
 export default function StudioHomePage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <StudioNav />
-      <div className="mx-auto max-w-[1100px] px-6 py-8">
-        <WorkBoard scope="staffmeal" />
-      </div>
-    </div>
+    <PageShell nav={<StudioNav />}>
+      <WorkBoard scope="staffmeal" />
+    </PageShell>
   );
 }

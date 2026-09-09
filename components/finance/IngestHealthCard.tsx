@@ -29,8 +29,39 @@ const DOT: Record<Status, string> = {
 
 const LABEL: Record<Status, string> = { ok: '정상', late: '지연', failed: '실패', none: '기록 없음' };
 
-export default function IngestHealthCard({ health, infra }: { health: IngestHealth[]; infra?: InfraHealth | null }) {
+// compact: 회계 홈 보조 패널용 한 줄 — 점 + 이름 나열, 아래에 마지막 수신·이상 개수(2026-09-09 소프트 UI 4단계)
+export default function IngestHealthCard({ health, infra, compact = false }: { health: IngestHealth[]; infra?: InfraHealth | null; compact?: boolean }) {
   const byKey = new Map(health.map((h) => [h.pipeline, h]));
+  if (compact) {
+    const rows = PIPELINES.map(({ key, label }) => {
+      const h = byKey.get(key) ?? { pipeline: key };
+      return { key, label, ...judgeIngest(h), last: h.lastSuccessAt };
+    });
+    const bad = rows.filter((r) => r.status !== 'ok').length + (infra && !infra.blob.ok ? 1 : 0);
+    const latest = rows.map((r) => r.last).filter(Boolean).sort().at(-1);
+    return (
+      <div className="ta-panel">
+        <div className="text-body font-medium">자동 수집</div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-body text-muted-foreground">
+          {infra && (
+            <span className="inline-flex items-center gap-1.5">
+              <span aria-hidden style={{ width: 7, height: 7, borderRadius: 99, background: infra.blob.ok ? DOT.ok : DOT.failed }} />
+              저장소
+            </span>
+          )}
+          {rows.map((r) => (
+            <span key={r.key} className="inline-flex items-center gap-1.5" title={r.note}>
+              <span aria-hidden style={{ width: 7, height: 7, borderRadius: 99, background: DOT[r.status] }} />
+              {r.label}
+            </span>
+          ))}
+        </div>
+        <p className="mt-2 text-caption text-muted-foreground">
+          마지막 수신 {ago(latest)} · {bad === 0 ? '전부 정상' : `확인 필요 ${bad}`}
+        </p>
+      </div>
+    );
+  }
   return (
     <section>
       <h2 className="m-0 text-title font-medium">자동 수집 상태</h2>

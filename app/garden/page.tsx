@@ -1,34 +1,24 @@
 'use client';
 
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import GardenNav from '@/components/garden/GardenNav';
 import GardenDashboard from '@/components/garden/GardenDashboard';
 import GardenOps from '@/components/garden/GardenOps';
 import WeatherStrip from '@/components/garden/WeatherStrip';
 import WorkBoard from '@/components/garden/WorkBoard';
 
-// 가든 대시보드 — 팀 작업 보드가 첫 화면. 들어오면 '내 차례'가 먼저 보이고,
-// 그 아래 보드에서 팀 전체의 진행 단계를 본다. 세부 작업 화면(레시피 설정·캘리브레이션)은
-// 카드의 버튼으로 이동하고, 기존 운영 섹션은 보드 아래에 그대로 둔다.
+// 가든 작업 보드 — 2026-09-09 소프트 UI 4단계: 행동이 위, 참고는 한 줄.
+//  · 제목 아래 날씨는 오늘·내일 한 줄(WeatherStrip compact) — 2주 예보는 눌러야 펼쳐진다.
+//  · 내 차례가 주 패널로 맨 위, 팀 전체 보드는 접힌 한 줄(WorkBoard 안에서 처리).
+//  · 그 아래 미설정 원두·그라인더 캘리브레이션은 그대로, 구분선 없이 간격으로만 나눈다.
 export default function GardenPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <GardenNav />
-      <div className="mx-auto max-w-[1100px] divide-y divide-border px-6 py-8">
-        <div className="pb-[54px]">
-          <WeatherStrip />
-        </div>
-        <div className="py-[54px]">
-          <WorkBoard />
-        </div>
-        <div className="py-[54px]">
-          <GardenDashboard section="unset" />
-        </div>
-        <div className="pt-[54px]">
-          <GardenOps />
-        </div>
+    <PageShell nav={<GardenNav />} title="작업 보드" subtitle={<WeatherStrip compact />}>
+      <div className="space-y-12">
+        <WorkBoard />
+        <GardenDashboard section="unset" />
+        <GardenOps />
       </div>
-    </div>
+    </PageShell>
   );
 }

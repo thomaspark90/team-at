@@ -5,7 +5,7 @@ import { resolveMemberStamped } from '@/lib/access/stamp';
 import { unwrap } from '@/lib/finance/db';
 import { buildSankey, type SankTx, type SankCat } from '@/lib/finance/sankey';
 import { fetchAllRows } from '@/lib/finance/fetchAll';
-import TabNav from '@/components/TabNav';
+import PageShell from '@/components/PageShell';
 import AccountingNav from '@/components/AccountingNav';
 import NaverpayConfig from '@/components/finance/NaverpayConfig';
 import RequestAccessButton from '@/components/finance/RequestAccessButton';
@@ -136,23 +136,19 @@ export default async function FinancePage({ searchParams }: { searchParams: { br
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <TabNav />
-      <AccountingNav role={role} />
-      <div className="mx-auto max-w-[1120px] px-6 py-8">
-        {isStaff && overview ? (
-          <div className="flex flex-col gap-8">
-            <BrandSegments basePath="/finance" seg={seg} />
-            <Overview o={overview} />
-            {/* 자료 입력 카드·빠른 이동 링크는 상단 내비(단위 필·회계/리포트 탭)와 완전히 겹쳐 삭제(2026-08-09) —
-                이 화면은 이제 재무 요약·해야 할 일 확인 + 네이버페이 설정 전용. */}
-            <NaverpayConfig />
-          </div>
-        ) : (
-          <NoAccess email={user.email ?? ''} />
-        )}
-      </div>
-    </div>
+    <PageShell nav={<AccountingNav role={role} />}>
+      {isStaff && overview ? (
+        <div className="flex flex-col gap-8">
+          <BrandSegments basePath="/finance" seg={seg} />
+          <Overview o={overview} />
+          {/* 자료 입력 카드·빠른 이동 링크는 상단 내비(단위 필·회계/리포트 탭)와 완전히 겹쳐 삭제(2026-08-09) —
+              이 화면은 이제 재무 요약·해야 할 일 확인 + 네이버페이 설정 전용. */}
+          <NaverpayConfig />
+        </div>
+      ) : (
+        <NoAccess email={user.email ?? ''} />
+      )}
+    </PageShell>
   );
 }
 
@@ -161,7 +157,7 @@ function Overview({ o }: { o: OverviewData }) {
   return (
     <section className="flex flex-col gap-8">
       <div className="flex items-baseline justify-between">
-        <h1 className="m-0 text-display tracking-[-0.5px]">회계 현황</h1>
+        <h1 className="m-0 text-display">회계 현황</h1>
         {hasData && <span className="text-body text-muted-foreground">{fmtYm(o.latest)} 기준</span>}
       </div>
 
