@@ -29,7 +29,11 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
   const [error, setError] = useState('');
 
   // 티칭 스태프는 자기 일정만, 대표는 전체. 응답은 날짜·시간순이라 첫 항목이 다음 일정
-  const mine = isAdmin ? me.shifts : me.shifts.filter((s) => s.managerId === me.userId);
+  const all = isAdmin ? me.shifts : me.shifts.filter((s) => s.managerId === me.userId);
+  // 지난 2주 일정은 접어 두고 — 교육 뒤 코멘트를 남기러 들어올 때만 펼친다
+  const mine = all.filter((s) => s.date >= me.today);
+  const past = all.filter((s) => s.date < me.today).reverse();
+  const [showPast, setShowPast] = useState(false);
   const storeStaff = me.staff.filter((p) => p.stores.includes(store));
 
   const changeStore = (id: StoreId) => {
@@ -166,6 +170,17 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
         <ShiftSchedule shifts={mine} today={me.today} isAdmin={isAdmin} staff={me.staff} onRemove={remove} onSlotSaved={onChange} />
       )}
       {!open && error && <p className="ta-error text-body">{error}</p>}
+
+      {past.length > 0 && (
+        <div className="space-y-4">
+          <button className="text-caption text-muted-foreground underline underline-offset-2" onClick={() => setShowPast((v) => !v)}>
+            지난 2주 일정 {past.length}건 {showPast ? '접기' : '펼치기 — 교육 코멘트 남기기'}
+          </button>
+          {showPast && (
+            <ShiftSchedule shifts={past} today={me.today} isAdmin={isAdmin} staff={me.staff} highlightNext={false} onRemove={remove} onSlotSaved={onChange} />
+          )}
+        </div>
+      )}
     </div>
   );
 }

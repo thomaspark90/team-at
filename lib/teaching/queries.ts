@@ -88,10 +88,22 @@ export interface ShiftTrainee {
   priorities: Record<string, number>; // topicKey → 1|2|3
 }
 
+export interface SlotComment {
+  userId: string; // 참여 스탭
+  name: string;
+  authorId: string;
+  authorName: string;
+  level: number | null; // 1 처음 접함 · 2 연습 필요 · 3 혼자 가능
+  topics: string[]; // 다룬 주제 키
+  comment: string;
+  updatedAt: string;
+}
+
 export interface ShiftSlot {
   hour: number; // 9 = 09:00 칸
   note: string;
   trainees: { userId: string; name: string }[]; // 이 시간에 참여할 스탭(대표 지정)
+  comments: SlotComment[]; // 교육 코멘트(티칭 스태프 작성) — 열람 권한 없으면 라우트가 비운다
 }
 
 export interface ShiftRow {
@@ -119,31 +131,35 @@ export async function upcomingShifts(svc: SupabaseClient, fromYmd: string, toYmd
   const { data } = await q;
   const rows = data ?? [];
   const shiftIds = rows.map((s) => s.id as number);
-  const [{ data: tr }, { data: slotRows }, { data: slotTr }] = shiftIds.length
+  type CommentRow = { shift_id: number; hour: number; user_id: string; author_id: string; level: number | null; topics: string[]; comment: string; updated_at: string };
+  const [{ data: tr }, { data: slotRows }, { data: slotTr }, { data: commentRows }] = shiftIds.length
     ? await Promise.all([
         svc.from('teaching_shift_trainees').select('shift_id, user_id').in('shift_id', shiftIds),
         svc.from('teaching_shift_slots').select('shift_id, hour, note').in('shift_id', shiftIds).order('hour'),
         svc.from('teaching_shift_slot_trainees').select('shift_id, hour, user_id').in('shift_id', shiftIds),
+        svc.from('teaching_slot_comments').select('shift_id, hour, user_id, author_id, level, topics, comment, updated_at').in('shift_id', shiftIds),
       ])
     : [
         { data: [] as { shift_id: number; user_id: string }[] },
         { data: [] as { shift_id: number; hour: number; note: string }[] },
         { data: [] as { shift_id: number; hour: number; user_id: string }[] },
+        { data: [] as CommentRow[] },
       ];
   // 시간 칸 = 메모 칸 ∪ 인원 칸 (메모 없이 인원만 있는 시간도 칸으로 나온다)
   const slotKey = (sid: number, h: number) => `${sid}:${h}`;
   const slotMap = new Map<string, ShiftSlot & { shiftId: number }>();
   for (const r of slotRows ?? []) {
-    slotMap.set(slotKey(r.shift_id as number, r.hour as number), { shiftId: r.shift_id as number, hour: r.hour as number, note: r.note as string, trainees: [] });
+    slotMap.set(slotKey(r.shift_id as number, r.hour as number), { shiftId: r.shift_id as number, hour: r.hour as number, note: r.note as string, trainees: [], comments: [] });
   }
-  for (const r of slotTr ?? []) {
+  for (const r of [...(slotTr ?? []), ...((commentRows ?? []) as CommentRow[])]) {
     const k = slotKey(r.shift_id as number, r.hour as number);
-    if (!slotMap.has(k)) slotMap.set(k, { shiftId: r.shift_id as number, hour: r.hour as number, note: '', trainees: [] });
+    if (!slotMap.has(k)) slotMap.set(k, { shiftId: r.shift_id as number, hour: r.hour as number, note: '', trainees: [], comments: [] });
   }
   // 일정의 교육 대상 = 일정 단위 지정 ∪ 시간 칸 지정 (세부 정보·전날 알림·헤더가 모두 이 합집합을 쓴다)
   const traineeIds = Array.from(new Set([...(tr ?? []).map((t) => t.user_id as string), ...(slotTr ?? []).map((t) => t.user_id as string)]));
+  const authorIds = Array.from(new Set(((commentRows ?? []) as CommentRow[]).map((c) => c.author_id)));
   const [profiles, received, { data: wishRows }] = await Promise.all([
-    profileMap(svc, [...rows.map((s) => s.manager_id as string), ...traineeIds]),
+    profileMap(svc, [...rows.map((s) => s.manager_id as string), ...traineeIds, ...authorIds]),
     lastReceivedMap(svc, traineeIds),
     traineeIds.length
       ? svc.from('teaching_wishes').select('user_id, topic_key, requested_at, priority').in('user_id', traineeIds)
@@ -163,10 +179,25 @@ export async function upcomingShifts(svc: SupabaseClient, fromYmd: string, toYmd
     if (!p) continue;
     slotMap.get(slotKey(r.shift_id as number, r.hour as number))?.trainees.push({ userId: p.user_id, name: p.display_name });
   }
+  const authorNameOf = nameResolver(svc, profiles);
+  for (const c of (commentRows ?? []) as CommentRow[]) {
+    const slot = slotMap.get(slotKey(c.shift_id, c.hour));
+    if (!slot) continue;
+    slot.comments.push({
+      userId: c.user_id,
+      name: profiles.get(c.user_id)?.display_name ?? '이름 없음',
+      authorId: c.author_id,
+      authorName: await authorNameOf(c.author_id),
+      level: c.level ?? null,
+      topics: c.topics ?? [],
+      comment: c.comment ?? '',
+      updatedAt: c.updated_at,
+    });
+  }
   const slotsOf = new Map<number, ShiftSlot[]>();
   Array.from(slotMap.values()).forEach((v) => {
     const list = slotsOf.get(v.shiftId) ?? [];
-    list.push({ hour: v.hour, note: v.note, trainees: v.trainees.sort((x, y) => x.name.localeCompare(y.name, 'ko')) });
+    list.push({ hour: v.hour, note: v.note, trainees: v.trainees.sort((x, y) => x.name.localeCompare(y.name, 'ko')), comments: v.comments });
     slotsOf.set(v.shiftId, list);
   });
   Array.from(slotsOf.values()).forEach((list) => list.sort((x, y) => x.hour - y.hour));

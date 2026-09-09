@@ -21,6 +21,7 @@ export interface Profile {
   stores: StoreId[];
   simple_login: boolean;
   pin_reset_required: boolean;
+  can_view_comments?: boolean; // 교육 코멘트 열람(대표 지정)
 }
 
 export interface Actor {
@@ -35,7 +36,7 @@ export interface Actor {
   session: SupabaseClient;
 }
 
-export const PROFILE_COLS = 'user_id, display_name, role, stores, simple_login, pin_reset_required';
+export const PROFILE_COLS = 'user_id, display_name, role, stores, simple_login, pin_reset_required, can_view_comments';
 
 /** 로그인 + 가든 교육 탭 권한 + 프로필 역할까지 한 번에. 실패 시 NextResponse 를 돌려준다. */
 export async function requireActor(): Promise<Actor | NextResponse> {
@@ -74,6 +75,8 @@ export async function requireActor(): Promise<Actor | NextResponse> {
 export const isActor = (x: Actor | NextResponse): x is Actor => !(x instanceof NextResponse);
 
 export const canManage = (a: Actor) => a.manage;
+/** 교육 코멘트 열람 — 대표·설정에서 지정된 계정. (작성자 본인 일정은 조회부에서 따로 허용) */
+export const canViewComments = (a: Actor) => a.role === 'admin' || !!a.profile?.can_view_comments;
 /** 다른 프로필이 매니저급인지 — 역할 키 대신 can_manage 로 판정 */
 export const isManagerProfile = (a: Actor, p: Profile) => a.manageKeys.has(p.role);
 export const forbid = (msg = '매니저·대표만 할 수 있습니다.') => NextResponse.json({ error: msg }, { status: 403 });

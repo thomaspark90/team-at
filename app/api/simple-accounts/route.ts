@@ -52,7 +52,7 @@ export async function GET() {
   if ('error' in g) return g.error;
   const { data, error } = await g.svc
     .from('profiles')
-    .select('user_id, display_name, role, stores, simple_login, roster_only, pin_reset_required, locked_until, status, created_at, contact_email')
+    .select('user_id, display_name, role, stores, simple_login, roster_only, pin_reset_required, locked_until, status, created_at, contact_email, can_view_comments')
     .order('status') // active 먼저, pending 뒤 — 화면은 status 로 나눠 보여준다
     .order('role', { ascending: false })
     .order('display_name');
@@ -151,6 +151,8 @@ export async function PATCH(req: Request) {
     if (!stores) return NextResponse.json({ error: '지점을 하나 이상 선택하세요.' }, { status: 400 });
     patch.stores = stores;
   }
+  // 교육 코멘트 열람 권한 — 대표가 계정별로 지정
+  if (body?.canViewComments !== undefined) patch.can_view_comments = body.canViewComments === true;
 
   let pin: string | undefined;
   if (body?.resetPin === true) {

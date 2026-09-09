@@ -227,6 +227,19 @@ export default function StaffRoster({ me, onChange }: { me: TeachingMe; onChange
                       </p>
                     )}
                     {p.note && <p className="text-muted-foreground">메모 · {p.note}</p>}
+                    {p.recentComments.length > 0 && (
+                      <ul className="space-y-0.5 pt-1 text-caption">
+                        {p.recentComments.map((c, i) => (
+                          <li key={i}>
+                            <span className="tabular text-muted-foreground">{c.date.slice(5).replace('-', '/')} {String(c.hour).padStart(2, '0')}:00</span>{' '}
+                            {c.level && <span className="rounded-md bg-muted px-1.5">{['처음 접함', '연습 필요', '혼자 가능'][c.level - 1]}</span>}{' '}
+                            {c.topics.length > 0 && <span className="text-muted-foreground">{c.topics.map(topicLabel).join(' · ')} · </span>}
+                            {c.comment}
+                            <span className="text-muted-foreground"> — {c.authorName}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 )}
 

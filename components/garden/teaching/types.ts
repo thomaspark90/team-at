@@ -16,8 +16,19 @@ export type StaffDetail = {
   contactEmail: string | null;
   wishes: { topicKey: string; priority: number | null; received: boolean }[];
   note: string;
+  recentComments: { date: string; hour: number; authorName: string; level: number | null; topics: string[]; comment: string }[];
 };
-export type ShiftSlot = { hour: number; note: string; trainees: { userId: string; name: string }[] }; // 9 = 09:00 칸
+export type SlotComment = {
+  userId: string;
+  name: string;
+  authorId: string;
+  authorName: string;
+  level: number | null; // 1 처음 접함 · 2 연습 필요 · 3 혼자 가능
+  topics: string[];
+  comment: string;
+  updatedAt: string;
+};
+export type ShiftSlot = { hour: number; note: string; trainees: { userId: string; name: string }[]; comments: SlotComment[] }; // 9 = 09:00 칸
 export type Shift = {
   id: number;
   managerId: string;
@@ -28,6 +39,8 @@ export type Shift = {
   endTime: string | null;
   trainees: ShiftTrainee[];
   slots: ShiftSlot[];
+  commentsVisible: boolean; // 대표·지정 계정·자기 일정의 티칭 스태프
+  canComment: boolean; // 대표·자기 일정의 티칭 스태프
 };
 
 export type TeachingMe = {
@@ -36,6 +49,7 @@ export type TeachingMe = {
   role: 'admin' | string; // profile_roles.key 또는 admin
   profile: { name: string; stores: StoreId[]; roleLabel: string; simpleLogin: boolean; pinResetRequired: boolean } | null;
   canManage: boolean;
+  canViewComments: boolean;
   wishes: { topicKey: string; requestedAt: string; received: Received | null }[];
   receivedAll: ({ topicKey: string } & Received)[];
   note: string;

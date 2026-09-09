@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireActor, isActor, canManage, isManagerProfile } from '@/lib/teaching/access';
+import { requireActor, isActor, canManage, canViewComments, isManagerProfile } from '@/lib/teaching/access';
 import { isFulfilled, lastReceivedMap, profileMap, upcomingShifts } from '@/lib/teaching/queries';
 import { addDays, kstToday } from '@/lib/teaching/kst';
 
@@ -16,7 +16,8 @@ export async function GET() {
     a.svc.from('teaching_wishes').select('topic_key, requested_at').eq('user_id', a.userId),
     a.svc.from('teaching_notes').select('note, updated_at').eq('user_id', a.userId).maybeSingle(),
     lastReceivedMap(a.svc, [a.userId]),
-    upcomingShifts(a.svc, today, addDays(today, 42)),
+    // 지난 2주까지 — 티칭 스태프가 교육 뒤에 코멘트를 남길 수 있게(운영 권한만 과거를 본다)
+    upcomingShifts(a.svc, canManage(a) ? addDays(today, -14) : today, addDays(today, 42)),
     profileMap(a.svc),
   ]);
 
@@ -34,8 +35,20 @@ export async function GET() {
     .map(([k, r]) => ({ topicKey: k.slice(a.userId.length + 1), ...r }));
 
   const myStores = a.profile?.stores ?? [];
-  const visibleShifts =
+  const storeFiltered =
     !canManage(a) && myStores.length ? shifts.filter((s) => myStores.includes(s.store)) : shifts;
+  // 교육 코멘트 열람: 대표·지정 계정은 전부, 티칭 스태프는 자기 일정만. 그 외엔 코멘트를 비운다.
+  const viewAll = canViewComments(a);
+  const visibleShifts = storeFiltered.map((s) => {
+    const canSee = viewAll || (canManage(a) && s.managerId === a.userId);
+    const canWrite = a.role === 'admin' || (canManage(a) && s.managerId === a.userId);
+    return {
+      ...s,
+      commentsVisible: canSee,
+      canComment: canWrite,
+      slots: canSee ? s.slots : s.slots.map((sl) => ({ ...sl, comments: [] })),
+    };
+  });
 
   const managers = Array.from(profiles.values())
     .filter((p) => isManagerProfile(a, p))
@@ -61,6 +74,7 @@ export async function GET() {
         }
       : null,
     canManage: canManage(a),
+    canViewComments: viewAll,
     wishes,
     receivedAll,
     note: (noteRow?.note as string | undefined) ?? '',

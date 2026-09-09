@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { requireActor, isActor, canManage, forbid } from '@/lib/teaching/access';
-import { lastReceivedMap, isFulfilled } from '@/lib/teaching/queries';
+import { requireActor, isActor, canManage, canViewComments, forbid } from '@/lib/teaching/access';
+import { lastReceivedMap, isFulfilled, profileMap, nameResolver } from '@/lib/teaching/queries';
 import { TEACHING_TOPIC_KEYS } from '@/lib/teaching/topics';
 import { NAME_RE, newInternalEmail, normalizeName, pinToPassword, newPin } from '@/lib/account/simple-login';
 import { STORES, type StoreId } from '@/lib/types';
@@ -60,6 +60,34 @@ export async function GET(req: Request) {
   }
   const noteOf = new Map((noteRows ?? []).map((n) => [n.user_id as string, n.note as string]));
 
+  // 최근 교육 코멘트(사람별 최근 5건) — 열람 권한(대표·지정 계정)이 있을 때만. 티칭 스태프는 자기가 쓴 것만.
+  type RC = { user_id: string; shift_id: number; hour: number; author_id: string; level: number | null; topics: string[]; comment: string; updated_at: string };
+  const recentOf = new Map<string, { date: string; hour: number; authorName: string; level: number | null; topics: string[]; comment: string }[]>();
+  if (ids.length) {
+    let cq = a.svc
+      .from('teaching_slot_comments')
+      .select('user_id, shift_id, hour, author_id, level, topics, comment, updated_at')
+      .in('user_id', ids)
+      .order('updated_at', { ascending: false })
+      .limit(200);
+    if (!canViewComments(a)) cq = cq.eq('author_id', a.userId);
+    const { data: cRows } = await cq;
+    const shiftIds = Array.from(new Set(((cRows ?? []) as RC[]).map((c) => c.shift_id)));
+    const { data: shiftRows } = shiftIds.length
+      ? await a.svc.from('teaching_shifts').select('id, date').in('id', shiftIds)
+      : { data: [] as { id: number; date: string }[] };
+    const dateOf = new Map((shiftRows ?? []).map((r) => [r.id as number, r.date as string]));
+    const authorIds = Array.from(new Set(((cRows ?? []) as RC[]).map((c) => c.author_id)));
+    const authors = await profileMap(a.svc, authorIds);
+    const nameOf = nameResolver(a.svc, authors);
+    for (const c of (cRows ?? []) as RC[]) {
+      const list = recentOf.get(c.user_id) ?? [];
+      if (list.length >= 5) continue;
+      list.push({ date: dateOf.get(c.shift_id) ?? '', hour: c.hour, authorName: await nameOf(c.author_id), level: c.level, topics: c.topics ?? [], comment: c.comment });
+      recentOf.set(c.user_id, list);
+    }
+  }
+
   const staff = staffRows
     .map((p) => ({
       userId: p.user_id as string,
@@ -70,6 +98,7 @@ export async function GET(req: Request) {
       contactEmail: (p.contact_email as string | null) ?? null,
       wishes: (wishesOf.get(p.user_id as string) ?? []).sort((x, y) => (x.priority ?? 9) - (y.priority ?? 9)),
       note: noteOf.get(p.user_id as string) ?? '',
+      recentComments: recentOf.get(p.user_id as string) ?? [],
     }))
     .sort((x, y) => x.name.localeCompare(y.name, 'ko'));
   return NextResponse.json({ staff });

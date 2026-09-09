@@ -16,6 +16,7 @@ type ProfileRow = {
   stores: StoreId[];
   simple_login: boolean;
   roster_only?: boolean;
+  can_view_comments?: boolean;
   pin_reset_required: boolean;
   locked_until: string | null;
   status: 'pending' | 'active';
@@ -175,6 +176,7 @@ export default function SimpleAccounts() {
         <p className="text-body text-muted-foreground">
           스탭·매니저는 구글 계정 대신 <b>이름 + 숫자 6자리</b>로 로그인합니다. 로그인 화면에서 본인이 가입 신청하면 아래
           승인 대기에 뜨고, 여기서 직접 발급할 수도 있어요. 기본 권한은 가든 섹션의 교육 탭이고 더 넓힐 땐 아래 페이지 접근 권한에서 조정하세요.
+          <b>코멘트 열람</b>을 켜면 모든 일정의 교육 코멘트를 볼 수 있어요(티칭 스태프는 자기 일정 코멘트는 항상 봅니다).
         </p>
       </div>
 
@@ -254,6 +256,7 @@ export default function SimpleAccounts() {
                 <th className="px-3 py-2">이름</th>
                 <th className="px-3 py-2">역할</th>
                 <th className="px-3 py-2">지점</th>
+                <th className="px-3 py-2">코멘트 열람</th>
                 <th className="px-3 py-2">상태</th>
                 <th className="px-3 py-2" />
               </tr>
@@ -266,6 +269,16 @@ export default function SimpleAccounts() {
                     <td className="px-3 py-2">{r.display_name}</td>
                     <td className="px-3 py-2">{roleSelect(r.role, (v) => setRoleOf(r, v))}</td>
                     <td className="px-3 py-2">{storeToggles(r.stores, (id) => toggleStore(r, id))}</td>
+                    <td className="px-3 py-2">
+                      {/* 교육 코멘트 열람 — 대표가 지정. 티칭 스태프는 자기 일정 코멘트는 항상 본다 */}
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-[hsl(var(--foreground))]"
+                        checked={!!r.can_view_comments}
+                        disabled={busy}
+                        onChange={(e) => void run(() => accounts('PATCH', { userId: r.user_id, canViewComments: e.target.checked }).then(() => {}))}
+                      />
+                    </td>
                     <td className="px-3 py-2 text-muted-foreground">
                       {r.roster_only ? (
                         '명부 등록 · 로그인 없음'

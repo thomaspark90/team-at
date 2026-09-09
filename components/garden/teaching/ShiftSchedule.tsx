@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { fmtMd, fmtRange } from '@/lib/teaching/kst';
 import { STORES } from '@/lib/types';
-import { api, type Shift, type TeachingMe } from './types';
+import { api, type Shift, type SlotComment, type TeachingMe } from './types';
+import { TEACHING_CATEGORIES, topicLabel } from '@/lib/teaching/topics';
 
 // 티칭 일정 세로 시간표 — 일정 하나가 한 블록: 날짜(요일)·지점·시간·티칭 스태프·교육 대상 헤더 아래
 // 시작~종료를 한 시간 칸으로 세로 나열. 대표는 칸 안에 바로 적고(blur/Enter 저장), 티칭 스태프는 읽기만.
@@ -126,11 +127,183 @@ function SlotTrainees({
   );
 }
 
+const LEVELS: { value: number; label: string }[] = [
+  { value: 1, label: '처음 접함' },
+  { value: 2, label: '연습 필요' },
+  { value: 3, label: '혼자 가능' },
+];
+const levelLabel = (v: number | null) => LEVELS.find((l) => l.value === v)?.label ?? '';
+
+// 교육 코멘트 — 시간 칸의 참여 인원 한 명에 대한 진행 단계·다룬 주제·코멘트.
+// 쓰기: 대표·그 일정의 티칭 스태프. 읽기: 대표·지정 계정·작성자. (2026-09-09 대표 지시)
+function SlotCommentRow({
+  shiftId,
+  hour,
+  trainee,
+  existing,
+  openTopics,
+  canWrite,
+  onSaved,
+}: {
+  shiftId: number;
+  hour: number;
+  trainee: { userId: string; name: string };
+  existing?: SlotComment;
+  openTopics: string[]; // 이 스탭이 아직 못 받은 주제 — 다룬 주제 후보로 먼저 보여준다
+  canWrite: boolean;
+  onSaved: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [level, setLevel] = useState<number | null>(existing?.level ?? null);
+  const [topics, setTopics] = useState<Set<string>>(new Set(existing?.topics ?? []));
+  const [comment, setComment] = useState(existing?.comment ?? '');
+  const [showAll, setShowAll] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setLevel(existing?.level ?? null);
+    setTopics(new Set(existing?.topics ?? []));
+    setComment(existing?.comment ?? '');
+  }, [existing]);
+
+  const save = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await api('/api/garden-teaching/shifts/comments', {
+        method: 'PUT',
+        body: JSON.stringify({ shiftId, hour, userId: trainee.userId, level, topics: Array.from(topics), comment }),
+      });
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '저장하지 못했습니다.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await api('/api/garden-teaching/shifts/comments', { method: 'DELETE', body: JSON.stringify({ shiftId, hour, userId: trainee.userId }) });
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '지우지 못했습니다.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const candidateKeys = showAll
+    ? TEACHING_CATEGORIES.flatMap((c) => c.topics.filter((t) => !t.retired).map((t) => t.key))
+    : Array.from(new Set([...openTopics, ...Array.from(topics)]));
+
+  if (!editing) {
+    return (
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-caption">
+        <span className="text-foreground">{trainee.name}</span>
+        {existing ? (
+          <>
+            {existing.level && <span className="rounded-md bg-muted px-1.5 text-foreground">{levelLabel(existing.level)}</span>}
+            {existing.topics.length > 0 && <span className="text-muted-foreground">{existing.topics.map(topicLabel).join(' · ')}</span>}
+            {existing.comment && <span className="text-foreground">{existing.comment}</span>}
+            <span className="text-muted-foreground">— {existing.authorName}</span>
+          </>
+        ) : (
+          <span className="text-muted-foreground">코멘트 없음</span>
+        )}
+        {canWrite && (
+          <button className="underline underline-offset-2" onClick={() => setEditing(true)}>
+            {existing ? '수정' : '코멘트'}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-md bg-muted/40 p-3">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-caption">
+        <span className="text-body text-foreground">{trainee.name}</span>
+        <span className="flex items-center gap-1">
+          {LEVELS.map((l) => (
+            <button
+              key={l.value}
+              type="button"
+              onClick={() => setLevel(level === l.value ? null : l.value)}
+              className={`rounded-md border px-2 py-0.5 ${level === l.value ? 'border-foreground bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </span>
+      </div>
+      <div className="space-y-1">
+        <span className="ta-label" style={{ marginBottom: 4 }}>
+          다룬 주제 <span className="normal-case tracking-normal">(체크하면 이 사람의 요청이 '받음'으로 바뀝니다)</span>
+        </span>
+        <div className="flex flex-wrap gap-1">
+          {candidateKeys.map((k) => {
+            const on = topics.has(k);
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() =>
+                  setTopics((cur) => {
+                    const n = new Set(cur);
+                    if (n.has(k)) n.delete(k);
+                    else n.add(k);
+                    return n;
+                  })
+                }
+                className={`rounded-md border px-2 py-0.5 text-caption ${on ? 'border-foreground bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}
+              >
+                {topicLabel(k)}
+              </button>
+            );
+          })}
+          {!showAll && (
+            <button type="button" className="px-1 text-caption text-muted-foreground underline underline-offset-2" onClick={() => setShowAll(true)}>
+              다른 주제…
+            </button>
+          )}
+        </div>
+      </div>
+      <textarea
+        className="ta-input h-20 w-full py-2"
+        placeholder="어떻게 받았는지 · 어디까지 됐는지 · 다음엔 어떻게 이어갈지"
+        value={comment}
+        maxLength={1000}
+        onChange={(e) => setComment(e.target.value)}
+      />
+      <div className="flex flex-wrap items-center gap-3">
+        <button className="ta-btn-primary h-8" disabled={busy} onClick={save}>
+          {busy ? '저장 중…' : '저장'}
+        </button>
+        <button className="ta-btn h-8" disabled={busy} onClick={() => setEditing(false)}>
+          취소
+        </button>
+        {existing && (
+          <button className="text-caption text-muted-foreground underline underline-offset-2" disabled={busy} onClick={remove}>
+            코멘트 삭제
+          </button>
+        )}
+        {error && <span className="ta-error text-caption">{error}</span>}
+      </div>
+    </div>
+  );
+}
+
 export default function ShiftSchedule({
   shifts,
   today,
   isAdmin,
   staff = [],
+  highlightNext = true,
   onRemove,
   onSlotSaved,
 }: {
@@ -138,6 +311,7 @@ export default function ShiftSchedule({
   today: string;
   isAdmin: boolean;
   staff?: TeachingMe['staff']; // 시간 칸 참여 인원 후보(지점으로 걸러 씀) — 대표 화면에서만 채워진다
+  highlightNext?: boolean; // 지난 일정 목록에선 끔
   onRemove?: (id: number) => void;
   onSlotSaved: () => void;
 }) {
@@ -151,7 +325,8 @@ export default function ShiftSchedule({
         const noteOf = (h: number) => slotOf(h)?.note ?? '';
         const candidates = staff.filter((p) => p.stores.includes(s.store)).map((p) => ({ userId: p.userId, name: p.name }));
         const names = s.trainees.map((t) => t.name).join(', ');
-        const isNext = i === 0 || s.date === today;
+        const isNext = highlightNext && (i === 0 || s.date === today);
+        const openTopicsOf = (userId: string) => s.trainees.find((t) => t.userId === userId)?.openTopics ?? [];
 
         return (
           <li key={s.id} className="ta-panel space-y-3">
@@ -183,6 +358,28 @@ export default function ShiftSchedule({
                         <span className={`min-w-0 flex-1 ${note ? '' : 'text-muted-foreground/60'}`}>{note || '—'}</span>
                       )}
                       <SlotTrainees shiftId={s.id} hour={h} selected={slotTrainees} candidates={candidates} isAdmin={isAdmin} onSaved={onSlotSaved} />
+                      {/* 교육 코멘트 — 이 시간 참여 인원(칸 지정, 없으면 일정 지정)마다 한 줄 */}
+                      {(s.commentsVisible || s.canComment) && (() => {
+                        const people = slotTrainees.length ? slotTrainees : s.trainees.map((t) => ({ userId: t.userId, name: t.name }));
+                        const comments = slotOf(h)?.comments ?? [];
+                        if (people.length === 0 && comments.length === 0) return null;
+                        return (
+                          <div className="basis-full space-y-1 pl-[68px]">
+                            {people.map((t) => (
+                              <SlotCommentRow
+                                key={t.userId}
+                                shiftId={s.id}
+                                hour={h}
+                                trainee={t}
+                                existing={comments.find((c) => c.userId === t.userId)}
+                                openTopics={openTopicsOf(t.userId)}
+                                canWrite={s.canComment}
+                                onSaved={onSlotSaved}
+                              />
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </li>
                   );
                 })}
