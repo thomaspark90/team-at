@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { TEACHING_CATEGORIES } from '@/lib/teaching/topics';
-import { fmtMd } from '@/lib/teaching/kst';
+import { fmtMd, fmtRange } from '@/lib/teaching/kst';
 import { STORES } from '@/lib/types';
 import { api, type TeachingMe } from './types';
 import TeachingPushToggle from './TeachingPushToggle';
@@ -87,12 +87,17 @@ export default function StaffWishlist({ me, onChange }: { me: TeachingMe; onChan
           <p className="text-[13px] text-muted-foreground">아직 등록된 일정이 없어요.</p>
         ) : (
           <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[13px]">
-            {me.shifts.slice(0, 8).map((s) => (
-              <li key={s.id} className="tabular">
-                <span className={s.date === me.today ? 'text-emerald-600' : ''}>{fmtMd(s.date)}</span>{' '}
-                <span className="text-muted-foreground">{storeLabel(s.store)}</span> {s.managerName}
-              </li>
-            ))}
+            {me.shifts.slice(0, 8).map((s) => {
+              const mine = s.trainees.some((t) => t.userId === me.userId);
+              return (
+                <li key={s.id} className="tabular">
+                  <span className={s.date === me.today ? 'text-emerald-600' : ''}>{fmtMd(s.date)}</span>{' '}
+                  {fmtRange(s.startTime, s.endTime) && <span>{fmtRange(s.startTime, s.endTime)} </span>}
+                  <span className="text-muted-foreground">{storeLabel(s.store)}</span> {s.managerName}
+                  {mine && <span className="ml-1 text-[11px] text-emerald-600">내 교육</span>}
+                </li>
+              );
+            })}
           </ul>
         )}
         <TeachingPushToggle />

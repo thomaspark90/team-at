@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { serviceClient } from '@/lib/supabase/service';
 import { MAX_PENDING, PIN_RE, SIGNUP_NAME_RE, newInternalEmail, normalizeName, pinToPassword } from '@/lib/account/simple-login';
+import { CONTACT_EMAIL_RE, normalizeContactEmail, notifySignupRequest } from '@/lib/account/signup-notify';
 
 export const runtime = 'nodejs';
 
-// 간편 계정 가입 신청 — { name(한글 3글자), pin(6자리) }. 세션 없이 호출(PUBLIC_API).
+// 간편 계정 가입 신청 — { name(한글 3글자), pin(6자리), email?(연락용, 선택) }. 세션 없이 호출(PUBLIC_API).
 // 계정은 만들되 status='pending' 이라 로그인은 막힌다. 대표가 /settings 에서 역할·지점을 지정해 승인하면 열린다.
 // 도배 방어: 이름 정확히 3글자 + 고유, 승인 대기 상한(MAX_PENDING).
 export async function POST(req: Request) {
@@ -13,6 +14,11 @@ export async function POST(req: Request) {
   const pin = String(body?.pin ?? '');
   if (!SIGNUP_NAME_RE.test(name)) return NextResponse.json({ error: '이름은 성을 포함한 한글 3글자로 적어주세요.' }, { status: 400 });
   if (!PIN_RE.test(pin)) return NextResponse.json({ error: '비밀번호는 숫자 6자리입니다.' }, { status: 400 });
+  // 연락용 이메일(선택) — 승인 알림 수신처. 여기서는 저장만 하고 메일은 승인 때만 보낸다(열린 엔드포인트라 임의 주소 발송 금지).
+  const contactEmail = normalizeContactEmail(body?.email);
+  if (contactEmail && !CONTACT_EMAIL_RE.test(contactEmail)) {
+    return NextResponse.json({ error: '이메일 형식이 올바르지 않아요. 비워 두셔도 됩니다.' }, { status: 400 });
+  }
   if (/^(\d)\1{5}$/.test(pin) || pin === '123456' || pin === '654321') {
     return NextResponse.json({ error: '너무 단순한 비밀번호입니다. 다른 숫자로 정해주세요.' }, { status: 400 });
   }
@@ -60,6 +66,7 @@ export async function POST(req: Request) {
     pin_reset_required: false, // 본인이 정한 비밀번호
     status: 'pending',
     created_by: 'self-signup',
+    contact_email: contactEmail || null,
   });
   if (profErr) {
     await svc.auth.admin.deleteUser(userId);
@@ -70,6 +77,9 @@ export async function POST(req: Request) {
   await svc
     .from('garden_tab_access')
     .upsert({ user_id: userId, email, sections: ['garden'], tabs: ['teaching'], updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+
+  // 담당자에게 알림 — 실패해도 신청은 이미 접수된 상태이므로 막지 않는다
+  await notifySignupRequest(svc, name, contactEmail || null).catch((e) => console.error('signup notify 실패:', e));
 
   return NextResponse.json({ ok: true, name });
 }

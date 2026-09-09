@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     .maybeSingle();
   if (!profile) return FAIL();
   if (profile.status === 'pending') {
-    return NextResponse.json({ error: '가입 신청이 아직 승인되지 않았어요. 대표가 역할·지점을 지정하면 로그인할 수 있습니다.' }, { status: 403 });
+    return NextResponse.json({ error: '가입 신청이 아직 승인되지 않았어요. 담당자가 역할·지점을 지정하면 로그인할 수 있습니다.' }, { status: 403 });
   }
 
   if (profile.locked_until && new Date(profile.locked_until).getTime() > Date.now()) {

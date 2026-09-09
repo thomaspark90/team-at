@@ -5,6 +5,7 @@ import { resolveRole, isOwner } from '@/lib/finance/access';
 import { NAME_RE, newInternalEmail, newPin, normalizeName, pinToPassword } from '@/lib/account/simple-login';
 import { STORES, type StoreId } from '@/lib/types';
 import { loadRoles } from '@/lib/account/roles';
+import { notifySignupApproved } from '@/lib/account/signup-notify';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
@@ -51,7 +52,7 @@ export async function GET() {
   if ('error' in g) return g.error;
   const { data, error } = await g.svc
     .from('profiles')
-    .select('user_id, display_name, role, stores, simple_login, pin_reset_required, locked_until, status, created_at')
+    .select('user_id, display_name, role, stores, simple_login, pin_reset_required, locked_until, status, created_at, contact_email')
     .order('status') // active 먼저, pending 뒤 — 화면은 status 로 나눠 보여준다
     .order('role', { ascending: false })
     .order('display_name');
@@ -118,7 +119,7 @@ export async function PATCH(req: Request) {
   if (!userId) return NextResponse.json({ error: 'userId 가 필요합니다.' }, { status: 400 });
   const { data: profile } = await g.svc
     .from('profiles')
-    .select('user_id, display_name, simple_login, status')
+    .select('user_id, display_name, simple_login, status, contact_email')
     .eq('user_id', userId)
     .maybeSingle();
   if (!profile) return NextResponse.json({ error: '프로필을 찾을 수 없습니다.' }, { status: 404 });
@@ -167,6 +168,19 @@ export async function PATCH(req: Request) {
 
   const { error } = await g.svc.from('profiles').update(patch).eq('user_id', userId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // 승인 완료 → 신청자가 적은 연락 이메일로 안내(없으면 스킵). 실패해도 승인은 이미 끝난 상태.
+  if (patch.status === 'active') {
+    const roles = await loadRoles(g.svc);
+    const roleKey = String(patch.role ?? '');
+    const storeIds = (patch.stores as StoreId[] | undefined) ?? [];
+    await notifySignupApproved(g.svc, {
+      name: String(patch.display_name ?? profile.display_name),
+      contactEmail: profile.contact_email,
+      roleLabel: roles.find((r) => r.key === roleKey)?.label ?? roleKey,
+      storeLabels: storeIds.map((id) => STORES.find((s) => s.id === id)?.short ?? id),
+    }).catch((e) => console.error('signup approved notify 실패:', e));
+  }
   return NextResponse.json({ ok: true, pin });
 }
 

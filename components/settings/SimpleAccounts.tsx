@@ -19,6 +19,7 @@ type ProfileRow = {
   locked_until: string | null;
   status: 'pending' | 'active';
   created_at: string;
+  contact_email: string | null;
 };
 
 type Draft = { role: string; stores: StoreId[] };
@@ -194,7 +195,7 @@ export default function SimpleAccounts() {
             <h3 className="text-[15px]">
               승인 대기 <span className="text-[11px] text-muted-foreground tabular">{pending.length}명</span>
             </h3>
-            <p className="text-[13px] text-muted-foreground">본인이 로그인 화면에서 신청한 계정입니다. 역할·지점을 지정해 승인하면 바로 로그인할 수 있어요.</p>
+            <p className="text-[13px] text-muted-foreground">본인이 로그인 화면에서 신청한 계정입니다. 역할·지점을 지정해 승인하면 바로 로그인할 수 있고, 이메일을 적었으면 승인 안내 메일이 갑니다.</p>
           </div>
           <ul className="space-y-3">
             {pending.map((r) => {
@@ -205,6 +206,7 @@ export default function SimpleAccounts() {
                   <span className="text-[11px] text-muted-foreground">
                     {new Date(r.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })} 신청
                   </span>
+                  <span className="text-[11px] text-muted-foreground">{r.contact_email ?? '이메일 미기재'}</span>
                   {roleSelect(d.role, (v) => setDraft(r, { role: v }))}
                   {storeToggles(d.stores, (id) => setDraft(r, { stores: d.stores.includes(id) ? d.stores.filter((x) => x !== id) : [...d.stores, id] }))}
                   <button className="ta-btn-primary h-8" disabled={busy || d.stores.length === 0} onClick={() => approve(r)}>

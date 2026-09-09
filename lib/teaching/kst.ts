@@ -18,3 +18,10 @@ export const dowOf = (ymd: string) => DOW[new Date(ymd + 'T00:00:00Z').getUTCDay
 export const fmtMd = (ymd: string) => `${Number(ymd.slice(5, 7))}/${Number(ymd.slice(8, 10))}(${dowOf(ymd)})`;
 
 export const isYmd = (s: unknown): s is string => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+
+/** 'HH:MM:SS' | 'HH:MM' → 'HH:MM' */
+export const fmtHm = (t: string | null | undefined) => (t ? t.slice(0, 5) : '');
+/** '14:00~16:00' / '14:00~' / '' */
+export const fmtRange = (start: string | null | undefined, end: string | null | undefined) =>
+  start || end ? `${fmtHm(start)}~${fmtHm(end)}` : '';
+export const isHm = (s: unknown): s is string => typeof s === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(s);

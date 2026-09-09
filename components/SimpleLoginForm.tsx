@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 // 간편 로그인 — 이름 + 숫자 6자리. 스탭·매니저용.
 //  · 로그인: 로그인 API 가 세션 쿠키를 심으면 그대로 이동(첫 로그인은 비밀번호 변경 화면으로).
-//  · 가입 신청: 이름(성 포함 3글자) + 본인이 정한 6자리. 대표가 설정에서 역할·지점을 지정해 승인해야 로그인이 열린다.
+//  · 가입 신청: 이름(성 포함 3글자) + 본인이 정한 6자리 + 연락 이메일(선택, 승인 알림용). 담당자가 설정에서 역할·지점을 지정해 승인해야 로그인이 열린다.
 
 const pinField = (value: string, set: (v: string) => void, placeholder: string, autoComplete: string) => (
   <input
@@ -26,6 +26,7 @@ export default function SimpleLoginForm() {
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
@@ -47,7 +48,7 @@ export default function SimpleLoginForm() {
       const res = await fetch(mode === 'login' ? '/api/simple-login' : '/api/simple-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, pin }),
+        body: JSON.stringify(mode === 'login' ? { name, pin } : { name, pin, email: email.trim() }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.error || '요청에 실패했습니다.');
@@ -56,10 +57,15 @@ export default function SimpleLoginForm() {
         router.refresh();
         return;
       }
-      setDone(`${body.name}님, 가입 신청이 접수됐어요. 대표가 역할·지점을 지정하면 로그인할 수 있습니다.`);
+      setDone(
+        `${body.name}님, 가입 신청이 접수됐어요. 담당자가 역할·지점을 지정하면 로그인할 수 있습니다.${
+          email.trim() ? ' 승인되면 적어주신 이메일로 알려드릴게요.' : ''
+        }`
+      );
       setMode('login');
       setPin('');
       setConfirm('');
+      setEmail('');
     } catch (err) {
       setError(err instanceof Error ? err.message : '요청에 실패했습니다.');
     } finally {
@@ -97,6 +103,16 @@ export default function SimpleLoginForm() {
           />
           {pinField(pin, setPin, '비밀번호 — 숫자 6자리', 'new-password')}
           {pinField(confirm, setConfirm, '비밀번호 확인', 'new-password')}
+          <input
+            className="ta-input w-full"
+            placeholder="이메일 (선택 — 승인되면 알려드려요)"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            value={email}
+            maxLength={120}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
       )}
       <button type="submit" className="ta-btn w-full" disabled={busy || !ready}>

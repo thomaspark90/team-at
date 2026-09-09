@@ -5,7 +5,7 @@ import { addDays, kstToday } from '@/lib/teaching/kst';
 
 export const runtime = 'nodejs';
 
-// 교육 탭 진입 데이터 — 역할·프로필·내 위시(받음 여부)·자유 서술·다가오는 출근 일정·매니저 명단.
+// 교육 탭 진입 데이터 — 역할·프로필·내 위시(받음 여부)·자유 서술·다가오는 티칭 일정(시간·교육 대상)·매니저·스탭 명단.
 // 화면 하나가 역할에 따라 갈리므로(스탭/매니저·대표) 필요한 걸 한 번에 내려준다.
 export async function GET() {
   const a = await requireActor();
@@ -40,6 +40,12 @@ export async function GET() {
   const managers = Array.from(profiles.values())
     .filter((p) => isManagerProfile(a, p))
     .map((p) => ({ userId: p.user_id, name: p.display_name, stores: p.stores }));
+  // 교육 대상 선택지 — 운영 권한 있는 계정에게만(스탭에겐 다른 스탭 명단을 내려주지 않는다)
+  const staff = canManage(a)
+    ? Array.from(profiles.values())
+        .filter((p) => !isManagerProfile(a, p))
+        .map((p) => ({ userId: p.user_id, name: p.display_name, stores: p.stores }))
+    : [];
 
   return NextResponse.json({
     today,
@@ -60,5 +66,6 @@ export async function GET() {
     note: (noteRow?.note as string | undefined) ?? '',
     shifts: visibleShifts,
     managers,
+    staff,
   });
 }

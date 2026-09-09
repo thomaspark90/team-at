@@ -4,7 +4,17 @@ import type { StoreId } from '@/lib/types';
 
 export type Received = { sessionId: number; date: string; store: StoreId; managerName: string; createdAt: string };
 
-export type Shift = { id: number; managerId: string; managerName: string; date: string; store: StoreId };
+export type ShiftTrainee = { userId: string; name: string; openTopics: string[] };
+export type Shift = {
+  id: number;
+  managerId: string;
+  managerName: string;
+  date: string;
+  store: StoreId;
+  startTime: string | null; // 'HH:MM:SS'
+  endTime: string | null;
+  trainees: ShiftTrainee[];
+};
 
 export type TeachingMe = {
   today: string;
@@ -17,6 +27,7 @@ export type TeachingMe = {
   note: string;
   shifts: Shift[];
   managers: { userId: string; name: string; stores: StoreId[] }[];
+  staff: { userId: string; name: string; stores: StoreId[] }[]; // 운영 권한 있을 때만 채워짐
 };
 
 export type Board = {

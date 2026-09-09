@@ -81,22 +81,70 @@ export async function lastReceivedMap(
 export const isFulfilled = (requestedAt: string, r: Received | undefined) =>
   !!r && new Date(r.createdAt) >= new Date(requestedAt);
 
-/** 오늘(KST) 이후 일정 — 매니저 이름 포함 */
-export async function upcomingShifts(svc: SupabaseClient, fromYmd: string, toYmd: string, store?: StoreId) {
+export interface ShiftTrainee {
+  userId: string;
+  name: string;
+  openTopics: string[]; // 아직 못 받은 위시 주제 키 — 티칭 스태프가 뭘 준비할지 보는 근거
+}
+
+export interface ShiftRow {
+  id: number;
+  managerId: string;
+  managerName: string;
+  date: string;
+  store: StoreId;
+  startTime: string | null; // 'HH:MM:SS'
+  endTime: string | null;
+  trainees: ShiftTrainee[];
+}
+
+/** 오늘(KST) 이후 일정 — 매니저 이름·시간·교육 대상(열린 요청 주제) 포함 */
+export async function upcomingShifts(svc: SupabaseClient, fromYmd: string, toYmd: string, store?: StoreId): Promise<ShiftRow[]> {
   let q = svc
     .from('teaching_shifts')
-    .select('id, manager_id, date, store, created_by')
+    .select('id, manager_id, date, store, start_time, end_time, created_by')
     .gte('date', fromYmd)
     .lte('date', toYmd)
-    .order('date');
+    .order('date')
+    .order('start_time', { nullsFirst: true });
   if (store) q = q.eq('store', store);
   const { data } = await q;
-  const managers = await profileMap(svc, (data ?? []).map((s) => s.manager_id as string));
-  return (data ?? []).map((s) => ({
+  const rows = data ?? [];
+  const shiftIds = rows.map((s) => s.id as number);
+  const { data: tr } = shiftIds.length
+    ? await svc.from('teaching_shift_trainees').select('shift_id, user_id').in('shift_id', shiftIds)
+    : { data: [] as { shift_id: number; user_id: string }[] };
+  const traineeIds = Array.from(new Set((tr ?? []).map((t) => t.user_id as string)));
+  const [profiles, received, { data: wishRows }] = await Promise.all([
+    profileMap(svc, [...rows.map((s) => s.manager_id as string), ...traineeIds]),
+    lastReceivedMap(svc, traineeIds),
+    traineeIds.length
+      ? svc.from('teaching_wishes').select('user_id, topic_key, requested_at').in('user_id', traineeIds)
+      : Promise.resolve({ data: [] as { user_id: string; topic_key: string; requested_at: string }[] }),
+  ]);
+  const openTopicsOf = new Map<string, string[]>();
+  for (const w of wishRows ?? []) {
+    if (isFulfilled(w.requested_at as string, received.get(`${w.user_id}:${w.topic_key}`))) continue;
+    const list = openTopicsOf.get(w.user_id as string) ?? [];
+    list.push(w.topic_key as string);
+    openTopicsOf.set(w.user_id as string, list);
+  }
+  const traineesOf = new Map<number, ShiftTrainee[]>();
+  for (const t of tr ?? []) {
+    const p = profiles.get(t.user_id as string);
+    if (!p) continue; // 승인 취소·삭제된 계정은 조용히 제외
+    const list = traineesOf.get(t.shift_id as number) ?? [];
+    list.push({ userId: p.user_id, name: p.display_name, openTopics: openTopicsOf.get(p.user_id) ?? [] });
+    traineesOf.set(t.shift_id as number, list);
+  }
+  return rows.map((s) => ({
     id: s.id as number,
     managerId: s.manager_id as string,
-    managerName: managers.get(s.manager_id as string)?.display_name ?? '매니저',
+    managerName: profiles.get(s.manager_id as string)?.display_name ?? '매니저',
     date: s.date as string,
     store: s.store as StoreId,
+    startTime: (s.start_time as string | null) ?? null,
+    endTime: (s.end_time as string | null) ?? null,
+    trainees: (traineesOf.get(s.id as number) ?? []).sort((x, y) => x.name.localeCompare(y.name, 'ko')),
   }));
 }
