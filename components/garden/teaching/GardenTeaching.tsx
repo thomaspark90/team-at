@@ -8,6 +8,7 @@ import StaffWishlist from './StaffWishlist';
 import ManagerBoard from './ManagerBoard';
 import ShiftCalendar from './ShiftCalendar';
 import StaffRoster from './StaffRoster';
+import SurveyResults from './SurveyResults';
 
 // 교육 탭 — 역할에 따라 화면이 갈린다.
 //  · 프로필 없는 구글 계정: 이름·지점 등록(스탭으로 시작)
@@ -51,8 +52,12 @@ export default function GardenTeaching() {
         <div className="py-[54px]">
           <StaffRoster me={me} onChange={load} />
         </div>
-        <div className="pt-[54px]">
+        <div className="py-[54px]">
           <ManagerBoard me={me} />
+        </div>
+        {/* 스탭 설문(탈리) 결과 — 앱 계정 없이 걷은 티칭 니즈, 정적 기록 */}
+        <div className="pt-[54px]">
+          <SurveyResults />
         </div>
       </div>
     );
