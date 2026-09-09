@@ -5,6 +5,7 @@ import { TEACHING_CATEGORIES, topicLabel } from '@/lib/teaching/topics';
 import { fmtMd } from '@/lib/teaching/kst';
 import { STORES, type StoreId } from '@/lib/types';
 import { api, type Board, type TeachingMe } from './types';
+import { STORE_SURVEYS } from '@/lib/teaching/survey';
 
 // 매니저 집계 보드 — 지점을 고르면 그 지점 스탭들의 열린 요청(실명)·자유 서술·최근 교육 기록.
 // 주제 옆 '교육함'을 누르면 참석 스탭·날짜·메모를 적어 기록한다 → 그 스탭의 요청이 '받음'으로 바뀐다.
@@ -89,11 +90,24 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
             </button>
           ))}
         </div>
-        {board && (
-          <span className="text-[11px] text-muted-foreground tabular">
-            스탭 {board.staff.length}명 · 열린 요청 {openTotal}건
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+          {/* 지점별 스탭 설문(탈리) — 앱 계정 없이 걷은 요청은 여기서 본다 */}
+          {STORE_SURVEYS[store] && (
+            <a
+              href={STORE_SURVEYS[store]!.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-foreground underline underline-offset-2"
+            >
+              {STORE_SURVEYS[store]!.label} ↗
+            </a>
+          )}
+          {board && (
+            <span className="tabular">
+              스탭 {board.staff.length}명 · 열린 요청 {openTotal}건
+            </span>
+          )}
+        </div>
       </div>
 
       {error && <p className="ta-error text-[13px]">{error}</p>}
