@@ -208,7 +208,7 @@ export default function WeatherStrip() {
       `}</style>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 16 }}>
         <p className="ta-label" style={{ marginBottom: 0 }}>2주 날씨 — 판교·양재천</p>
-        <span className="text-[11px] text-muted-foreground/70">
+        <span className="text-caption text-muted-foreground/70">
           Open-Meteo · 10일 이후는 경향 참고용 ·{' '}
           {(comments.length > 0 || tomorrow) && (
             <>
@@ -230,12 +230,12 @@ export default function WeatherStrip() {
       {showNotes && (comments.length > 0 || tomorrow) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 16 }}>
           {comments.map((c) => (
-            <p key={c} className="m-0 text-[13px] text-foreground">
+            <p key={c} className="m-0 text-body text-foreground">
               <span className="text-muted-foreground">▸</span> {c}
             </p>
           ))}
           {tomorrow && (
-            <p className="m-0 text-[13px] text-muted-foreground">
+            <p className="m-0 text-body text-muted-foreground">
               <span>▸</span> {tomorrow}
             </p>
           )}
@@ -316,7 +316,7 @@ export default function WeatherStrip() {
               )}
               <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span
-                  className={`text-[11px] ${dayOff || today ? 'font-medium' : ''} ${
+                  className={`text-caption ${dayOff || today ? 'font-medium' : ''} ${
                     holiday || dow === 0
                       ? 'ws-day-red'
                       : dow === 6
@@ -328,19 +328,19 @@ export default function WeatherStrip() {
                 >
                   {today ? '오늘' : `${Number(m)}/${Number(dd)} (${DOW[dow]}${holiday ? '·휴' : ''})`}
                 </span>
-                <span className="text-[13px] text-foreground" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span className="text-body text-foreground" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   {iconOf(day.code)}
                   <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
                 </span>
-                <span className="tabular text-[13px]">
+                <span className="tabular text-body">
                   <span className="text-foreground">{Math.round(day.tMax)}°</span>
                   <span className="text-muted-foreground"> / {Math.round(day.tMin)}°</span>
                 </span>
-                <span className="tabular text-[11px] text-muted-foreground" style={{ whiteSpace: 'nowrap' }}>
+                <span className="tabular text-caption text-muted-foreground" style={{ whiteSpace: 'nowrap' }}>
                   체감 {Math.round(day.feelMax)}°
                 </span>
                 <span
-                  className={`tabular text-[11px] ${rainy ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
+                  className={`tabular text-caption ${rainy ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
                   style={{ whiteSpace: 'nowrap' }}
                   title="강수량 · 영업시간(11–20시) 최대 강수확률"
                 >
@@ -348,13 +348,13 @@ export default function WeatherStrip() {
                   {day.rainProb != null && ` · ${day.rainProb}%`}
                 </span>
                 {humidWind && (
-                  <span className="tabular text-[11px] text-muted-foreground/70" style={{ whiteSpace: 'nowrap' }}>
+                  <span className="tabular text-caption text-muted-foreground/70" style={{ whiteSpace: 'nowrap' }}>
                     {humidWind}
                   </span>
                 )}
                 {pm != null && pm >= PM25_BAD && (
                   <span
-                    className="tabular text-[11px] font-medium"
+                    className="tabular text-caption font-medium"
                     style={{ whiteSpace: 'nowrap', color: pm >= PM25_VERY_BAD ? 'hsl(var(--destructive))' : 'hsl(25 85% 45%)' }}
                     title="영업시간(11–20시) 최대 PM2.5"
                   >
@@ -375,7 +375,7 @@ export default function WeatherStrip() {
             <button
               type="button"
               onClick={() => setSelected(null)}
-              className="text-[11px] text-muted-foreground hover:text-foreground"
+              className="text-caption text-muted-foreground hover:text-foreground"
               style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer' }}
             >
               닫기 ✕
@@ -390,7 +390,7 @@ export default function WeatherStrip() {
                   title={`${p.hour}시 · ${Math.round(p.temp)}° · 비 ${p.prob}%${p.mm >= 0.1 ? ` ${p.mm.toFixed(1)}mm` : ''}`}
                   style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, minWidth: 34, flexShrink: 0 }}
                 >
-                  <span className="tabular text-[11px] text-foreground">{Math.round(p.temp)}°</span>
+                  <span className="tabular text-caption text-foreground">{Math.round(p.temp)}°</span>
                   <div style={{ position: 'relative', width: 14, height: 44, background: 'hsl(var(--muted))', borderRadius: 2, overflow: 'hidden' }}>
                     <span
                       style={{
@@ -403,14 +403,14 @@ export default function WeatherStrip() {
                       }}
                     />
                   </div>
-                  <span className={`tabular text-[11px] ${p.prob >= 40 ? 'text-foreground' : 'text-muted-foreground/70'}`}>
+                  <span className={`tabular text-caption ${p.prob >= 40 ? 'text-foreground' : 'text-muted-foreground/70'}`}>
                     {p.prob}
                   </span>
-                  <span className="tabular text-[11px] text-muted-foreground">{p.hour}시</span>
+                  <span className="tabular text-caption text-muted-foreground">{p.hour}시</span>
                 </div>
               ))}
           </div>
-          <p className="m-0 mt-2 text-[11px] text-muted-foreground/70">막대 = 강수확률(%) · 8–21시 · 회색 영역이 100%</p>
+          <p className="m-0 mt-2 text-caption text-muted-foreground/70">막대 = 강수확률(%) · 8–21시 · 회색 영역이 100%</p>
         </div>
       )}
     </section>

@@ -50,7 +50,7 @@ export default function ShiftTimeline({
           {HOURS.filter((h) => (h - AXIS_START) % LABEL_EVERY === 0).map((h) => (
             <span
               key={h}
-              className="absolute top-0 -translate-x-1/2 text-[11px] tabular text-muted-foreground"
+              className="absolute top-0 -translate-x-1/2 text-caption tabular text-muted-foreground"
               style={{ left: `${pct(h)}%` }}
             >
               {String(h).padStart(2, '0')}:00
@@ -76,9 +76,9 @@ export default function ShiftTimeline({
           return (
             <li key={s.id} className={`grid ${cols} py-3`}>
               {/* 날짜 · 지점 */}
-              <div className="pr-3 text-[13px]">
+              <div className="pr-3 text-body">
                 <p className={`tabular ${isToday ? 'text-emerald-600' : ''}`}>{fmtMd(s.date)}</p>
-                <p className="text-[11px] text-muted-foreground">{storeShort(s.store)}</p>
+                <p className="text-caption text-muted-foreground">{storeShort(s.store)}</p>
               </div>
 
               {/* 축 + 막대 */}
@@ -101,14 +101,14 @@ export default function ShiftTimeline({
                     {start !== null && <span className="absolute -left-px -top-[3px] h-2 w-2 rounded-full bg-foreground" />}
                     {end !== null && <span className="absolute -right-px -top-[3px] h-2 w-2 rounded-full bg-foreground" />}
                   </div>
-                  <div className="whitespace-nowrap bg-gradient-to-b from-muted/90 to-transparent px-2 pb-2 pt-1.5 text-[13px]">
+                  <div className="whitespace-nowrap bg-gradient-to-b from-muted/90 to-transparent px-2 pb-2 pt-1.5 text-body">
                     <p>
                       <span className="tabular">{undecided ? '시간 미정' : fmtRange(s.startTime, s.endTime)}</span>
                       {isAdmin && <span className="text-muted-foreground"> · {s.managerName}</span>}
                       <span className="text-muted-foreground"> → {names || '지점 스탭 전원'}</span>
                     </p>
                     {topics.length > 0 && (
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">{topics.join(' · ')}</p>
+                      <p className="mt-0.5 text-caption text-muted-foreground">{topics.join(' · ')}</p>
                     )}
                   </div>
                 </div>
@@ -117,7 +117,7 @@ export default function ShiftTimeline({
               {isAdmin && onRemove && (
                 <div className="flex items-start justify-end">
                   <button
-                    className="text-[11px] text-muted-foreground underline underline-offset-2"
+                    className="text-caption text-muted-foreground underline underline-offset-2"
                     onClick={() => onRemove(s.id)}
                   >
                     삭제

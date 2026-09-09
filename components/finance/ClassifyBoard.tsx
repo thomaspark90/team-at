@@ -58,16 +58,16 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
   return (
     <section>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="m-0 text-[15px] font-medium">
+        <h2 className="m-0 text-title font-medium">
           지출 자료 분류
           {status && totalRows > 0 && (
-            <span className={`ml-2 text-[11px] font-normal ${totalUncl === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+            <span className={`ml-2 text-caption font-normal ${totalUncl === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
               {totalUncl === 0 ? '모두 분류됨' : `미분류 ${totalUncl}건`}
             </span>
           )}
         </h2>
       </div>
-      <p className="mt-1 text-[13px] text-muted-foreground">
+      <p className="mt-1 text-body text-muted-foreground">
         올린 자료의 거래마다 계정을 지정하는 작업이에요. 칸을 누르면 그 출처의 미분류만 모아서 열려요.
         미분류가 0이 되면 월 확정을 할 수 있어요.
       </p>
@@ -78,27 +78,27 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
           // 자료 없음 → 중립, 미분류 있음 → 할 일(점선), 모두 분류 → 완료(✓)
           if (!status) {
             return (
-              <div key={t.key} className="rounded-xl bg-muted/40 px-3.5 py-2.5 text-[13px] text-muted-foreground">
-                {t.label} <span className="text-[11px]">— 확인 중…</span>
+              <div key={t.key} className="rounded-xl bg-muted/40 px-3.5 py-2.5 text-body text-muted-foreground">
+                {t.label} <span className="text-caption">— 확인 중…</span>
               </div>
             );
           }
           if (!s || s.total === 0) {
             return (
               <div key={t.key} className="rounded-xl bg-muted/40 px-3.5 py-2.5 opacity-50">
-                <span className="text-[13px]">{t.label}</span>
-                <span className="ml-2 text-[11px] text-muted-foreground">자료 없음</span>
+                <span className="text-body">{t.label}</span>
+                <span className="ml-2 text-caption text-muted-foreground">자료 없음</span>
               </div>
             );
           }
           if (s.unclassified === 0) {
             return (
               <div key={t.key} className="flex items-center justify-between gap-2 rounded-xl bg-muted/40 px-3.5 py-2.5 opacity-70">
-                <span className="flex items-center gap-2 text-[13px]">
+                <span className="flex items-center gap-2 text-body">
                   <span className="text-emerald-600">✓</span>
                   <span className="text-muted-foreground line-through">{t.label}</span>
                 </span>
-                <span className="text-[11px] text-muted-foreground">{s.total}건 완료</span>
+                <span className="text-caption text-muted-foreground">{s.total}건 완료</span>
               </div>
             );
           }
@@ -114,10 +114,10 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
               href={`/finance/classify?ym=${ym}&source=${t.key}&unclassified=1`}
               className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 transition-colors hover:border-foreground/40"
             >
-              <span className="text-[13px] font-medium">{t.label}</span>
-              <span className="text-right text-[11px]">
+              <span className="text-body font-medium">{t.label}</span>
+              <span className="text-right text-caption">
                 <span className="font-medium text-amber-600">미분류 {s.unclassified}건</span>
-                <span className="block text-[11px] text-muted-foreground">{detail}</span>
+                <span className="block text-caption text-muted-foreground">{detail}</span>
               </span>
             </Link>
           );
@@ -127,7 +127,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
       {/* 마지막 단계 — 월 확정 */}
       {status && (
         <div className={`mt-6 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-3.5 py-2.5 ${confirmed ? 'opacity-70' : ''}`}>
-          <span className="flex items-center gap-2 text-[13px]">
+          <span className="flex items-center gap-2 text-body">
             <span className={confirmed ? 'text-emerald-600' : 'text-muted-foreground'}>{confirmed ? '✓' : '•'}</span>
             <span className={confirmed ? 'text-muted-foreground line-through' : ''}>
               {confirmed
@@ -142,7 +142,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
           {!confirmed && totalRows > 0 && (
             <Link
               href={allClassified ? '/finance/close' : `/finance/classify?ym=${ym}&unclassified=1`}
-              className={`rounded-lg px-3 py-1.5 text-[13px] font-medium ${allClassified ? 'bg-foreground text-background' : 'border border-border text-muted-foreground hover:text-foreground'}`}
+              className={`rounded-lg px-3 py-1.5 text-body font-medium ${allClassified ? 'bg-foreground text-background' : 'border border-border text-muted-foreground hover:text-foreground'}`}
             >
               {allClassified ? '월 확정하러 가기 →' : '분류하러 가기 →'}
             </Link>
@@ -150,7 +150,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
         </div>
       )}
 
-      {error && <p className="mt-6 text-[13px] text-destructive">{error}</p>}
+      {error && <p className="mt-6 text-body text-destructive">{error}</p>}
     </section>
   );
 }

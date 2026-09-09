@@ -76,8 +76,8 @@ export default function GrinderAlignmentLog() {
     // 카드 해체(2026-08-08) — 페이지 최상위 섹션은 박스 없이
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-        <span className="text-[15px] font-medium text-foreground">그라인더 얼라인먼트 기록</span>
-        <span className="text-[11px] text-muted-foreground">버 정렬·제로포인트를 본 날 — 이 날짜 이전 측정은 차트에서 흐리게 구분됩니다</span>
+        <span className="text-title font-medium text-foreground">그라인더 얼라인먼트 기록</span>
+        <span className="text-caption text-muted-foreground">버 정렬·제로포인트를 본 날 — 이 날짜 이전 측정은 차트에서 흐리게 구분됩니다</span>
       </div>
 
       {/* 지점별 마지막 얼라인 날짜 */}
@@ -87,13 +87,13 @@ export default function GrinderAlignmentLog() {
           const checked = latestInspectionDate(events, s.id);
           return (
             <div key={s.id} className="bg-muted/40" style={{ borderRadius: 6, padding: '10px 14px' }}>
-              <div className="text-[11px] text-muted-foreground">{s.label} 마지막 얼라인먼트</div>
-              <div className="tabular text-[15px] text-foreground" style={{ marginTop: 2 }}>
+              <div className="text-caption text-muted-foreground">{s.label} 마지막 얼라인먼트</div>
+              <div className="tabular text-title text-foreground" style={{ marginTop: 2 }}>
                 {last ?? '기록 없음'}
-                {last === today() && <span className="text-[11px] text-muted-foreground"> (오늘)</span>}
+                {last === today() && <span className="text-caption text-muted-foreground"> (오늘)</span>}
               </div>
               {checked && checked !== last && (
-                <div className="text-[11px] text-muted-foreground" style={{ marginTop: 2 }}>점검 {checked} 이상 없음</div>
+                <div className="text-caption text-muted-foreground" style={{ marginTop: 2 }}>점검 {checked} 이상 없음</div>
               )}
             </div>
           );
@@ -134,30 +134,30 @@ export default function GrinderAlignmentLog() {
           {saving ? '저장 중…' : kind === 'check' ? '점검 기록' : '얼라인 기록'}
         </button>
       </div>
-      {error && <p className="ta-error text-[13px]" style={{ margin: 0 }}>{error}</p>}
+      {error && <p className="ta-error text-body" style={{ margin: 0 }}>{error}</p>}
 
       {/* 이력 */}
       {history.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {visible.map((e) => (
             <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span className="tabular text-[13px] text-foreground" style={{ minWidth: 90 }}>{e.date}</span>
-              <span className="text-[13px] text-muted-foreground" style={{ minWidth: 56 }}>
+              <span className="tabular text-body text-foreground" style={{ minWidth: 90 }}>{e.date}</span>
+              <span className="text-body text-muted-foreground" style={{ minWidth: 56 }}>
                 {STORES.find((s) => s.id === e.store)?.label ?? e.store}
               </span>
               {e.kind === 'check' && (
-                <span className="text-[11px] text-muted-foreground" style={{ border: '1px solid hsl(var(--border))', borderRadius: 4, padding: '1px 6px' }}>
+                <span className="text-caption text-muted-foreground" style={{ border: '1px solid hsl(var(--border))', borderRadius: 4, padding: '1px 6px' }}>
                   점검
                 </span>
               )}
-              {e.memo && <span className="text-[13px] text-muted-foreground" style={{ flex: 1 }}>{e.memo}</span>}
+              {e.memo && <span className="text-body text-muted-foreground" style={{ flex: 1 }}>{e.memo}</span>}
               <button onClick={() => remove(e.id)} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 6, margin: -6 }} title="기록 삭제" aria-label="기록 삭제">
                 ×
               </button>
             </div>
           ))}
           {history.length > 4 && (
-            <button onClick={() => setShowAll((v) => !v)} className="text-[11px] text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', alignSelf: 'flex-start', padding: 0 }}>
+            <button onClick={() => setShowAll((v) => !v)} className="text-caption text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', alignSelf: 'flex-start', padding: 0 }}>
               {showAll ? '접기' : `이력 전체 보기 (${history.length}건)`}
             </button>
           )}

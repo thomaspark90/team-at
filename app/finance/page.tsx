@@ -161,8 +161,8 @@ function Overview({ o }: { o: OverviewData }) {
   return (
     <section className="flex flex-col gap-8">
       <div className="flex items-baseline justify-between">
-        <h1 className="m-0 text-[22px] tracking-[-0.5px]">회계 현황</h1>
-        {hasData && <span className="text-[13px] text-muted-foreground">{fmtYm(o.latest)} 기준</span>}
+        <h1 className="m-0 text-display tracking-[-0.5px]">회계 현황</h1>
+        {hasData && <span className="text-body text-muted-foreground">{fmtYm(o.latest)} 기준</span>}
       </div>
 
       {hasData ? (
@@ -173,13 +173,13 @@ function Overview({ o }: { o: OverviewData }) {
             <SummaryCard label="총 유출" value={won(o.totalExpense)} color="hsl(var(--foreground))" />
             <SummaryCard label="순증감 (현금)" value={won(o.surplus)} color={o.surplus >= 0 ? GREEN : 'hsl(var(--destructive))'} />
           </div>
-          <p className="-mt-5 text-[11px] text-muted-foreground">
+          <p className="-mt-5 text-caption text-muted-foreground">
             통장 입출금 기준(현금)이에요. 발생주의 영업이익·원가율은 <Link href="/finance/pnl" className="underline">관리손익</Link>에서 봐요.
           </p>
 
           {/* 해야 할 일 */}
           <div className="flex flex-col gap-6">
-            <div className="text-[11px] uppercase tracking-[0.06em] text-muted-foreground">해야 할 일</div>
+            <div className="text-caption uppercase tracking-[0.06em] text-muted-foreground">해야 할 일</div>
             <TodoRow
               done={o.unclassifiedTotal === 0}
               text={o.unclassifiedTotal === 0 ? '미분류 없음 — 모두 분류됐어요' : `미분류 ${o.unclassifiedTotal}건`}
@@ -213,7 +213,7 @@ function Overview({ o }: { o: OverviewData }) {
           </div>
         </>
       ) : (
-        <div className="rounded-md bg-muted/40 p-6 text-[13px] text-muted-foreground">
+        <div className="rounded-md bg-muted/40 p-6 text-body text-muted-foreground">
           아직 거래가 없어요. 아래에서 은행 거래내역을 올리면 여기 현황이 채워져요.
         </div>
       )}
@@ -224,8 +224,8 @@ function Overview({ o }: { o: OverviewData }) {
 function SummaryCard({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="min-w-[160px] flex-[1_1_auto] rounded-md bg-muted/40 p-[16px_18px]">
-      <div className="mb-1.5 text-[11px] uppercase tracking-[0.04em] text-muted-foreground">{label}</div>
-      <div className="tabular text-[22px]" style={{ color }}>
+      <div className="mb-1.5 text-caption uppercase tracking-[0.04em] text-muted-foreground">{label}</div>
+      <div className="tabular text-display" style={{ color }}>
         {value}
       </div>
     </div>
@@ -235,11 +235,11 @@ function SummaryCard({ label, value, color }: { label: string; value: string; co
 function TodoRow({ done, text, href, cta }: { done: boolean; text: string; href: string; cta: string }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-6 first:border-t-0 first:pt-0">
-      <span className="flex items-center gap-2 text-[13px]">
+      <span className="flex items-center gap-2 text-body">
         <span className={done ? 'text-positive' : 'text-muted-foreground'}>{done ? '✓' : '•'}</span>
         <span className={done ? 'text-muted-foreground' : 'text-foreground'}>{text}</span>
       </span>
-      <Link href={href} className="ta-btn h-8 px-3 text-[13px]">
+      <Link href={href} className="ta-btn h-8 px-3 text-body">
         {cta} →
       </Link>
     </div>
@@ -249,14 +249,14 @@ function TodoRow({ done, text, href, cta }: { done: boolean; text: string; href:
 function NoAccess({ email }: { email: string }) {
   return (
     <div className="mx-auto mt-[60px] max-w-[480px] text-center">
-      <div className="mb-3 text-[32px]">🔒</div>
-      <h2 className="mb-2 mt-0 text-[15px]">회계·재무 접근 권한이 없어요</h2>
-      <p className="m-0 text-[13px] leading-[1.6] text-muted-foreground">
+      <div className="mb-3 text-display">🔒</div>
+      <h2 className="mb-2 mt-0 text-title">회계·재무 접근 권한이 없어요</h2>
+      <p className="m-0 text-body leading-[1.6] text-muted-foreground">
         회계·재무 데이터는 관리자 승인이 필요해요.
         <br />
         아래 계정으로 <b>대표에게 권한을 요청</b>하세요.
       </p>
-      <div className="mt-4 break-all rounded-md bg-muted px-3.5 py-2.5 font-mono text-[13px] text-foreground">
+      <div className="mt-4 break-all rounded-md bg-muted px-3.5 py-2.5 font-mono text-body text-foreground">
         {email}
       </div>
       <RequestAccessButton />

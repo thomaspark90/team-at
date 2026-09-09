@@ -140,18 +140,18 @@ export default async function CashflowPage({ searchParams }: { searchParams: { u
       <FinanceNav role={role} />
       <div className="mx-auto max-w-[1680px] px-6 py-8">
         <div className="mb-1.5 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">월별 요약</h1>
-          <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+          <h1 className="m-0 text-display tracking-[-0.5px]">월별 요약</h1>
+          <Link href="/finance" className="text-body text-muted-foreground transition-colors hover:text-foreground">
             ← 업로드로
           </Link>
         </div>
-        <p className="mb-4 mt-0 max-w-[880px] text-[13px] text-muted-foreground">
+        <p className="mb-4 mt-0 max-w-[880px] text-body text-muted-foreground">
           <b>{unit.label}</b>의 통장 입출금·월말 잔액을 <b>전처리3 매출</b>·<b>전처리1 지출</b>과 나란히
           대사해요. 통장과 전처리 숫자가 다른 건 대부분 식권 정산 시차·매출 외 입금·비용 외 출금(대여금
           등) 때문이고, 그 차이를 열로 드러내요 — 값은 전처리 화면과 같은 계산이라 항상 일치해요.
         </p>
         {unit.store && unassignedCount > 0 && (
-          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
             ⚠️ 지점이 지정되지 않은 가든 통장 거래 {unassignedCount}건이 이 지점 요약에서 빠져 있어요. 분류
             화면에서 지점을 지정해 주세요.
           </div>
@@ -160,7 +160,7 @@ export default async function CashflowPage({ searchParams }: { searchParams: { u
         <CashflowReconTable recon={recon} unitId={unit.id} />
 
         <details className="mt-8">
-          <summary className="cursor-pointer text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+          <summary className="cursor-pointer text-body text-muted-foreground transition-colors hover:text-foreground">
             은행별 상세 (월별 입금·출금·잔액)
           </summary>
           <div className="mt-4">

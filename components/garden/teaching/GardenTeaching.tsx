@@ -35,8 +35,8 @@ export default function GardenTeaching() {
     if (me?.profile?.pinResetRequired) router.replace('/account/pin');
   }, [me, router]);
 
-  if (error) return <p className="ta-error text-[13px]">{error}</p>;
-  if (!me) return <p className="text-[13px] text-muted-foreground">불러오는 중…</p>;
+  if (error) return <p className="ta-error text-body">{error}</p>;
+  if (!me) return <p className="text-body text-muted-foreground">불러오는 중…</p>;
 
   if (!me.profile && me.role !== 'admin') return <ProfileSetup onDone={load} />;
 

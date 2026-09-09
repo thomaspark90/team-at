@@ -53,8 +53,8 @@ export default function TopicAssignees({
   return (
     <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       <div>
-        <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>{title}</p>
-        <p className="text-[13px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
+        <p className="text-title font-medium text-foreground" style={{ margin: 0 }}>{title}</p>
+        <p className="text-body text-muted-foreground" style={{ margin: '2px 0 0' }}>
           {intro ??
             '아래 내 수신 채널에서 받을 방법을 켜고, 항목별 담당자에서 각 알림을 누가 받을지 지정합니다. 담당자로 지정돼도 본인이 푸시를 켜야 기기 알림이 옵니다.'}
         </p>
@@ -70,18 +70,18 @@ export default function TopicAssignees({
         {topicsOfScope(scope).map((t) => (
           <div key={t.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-              <span className="text-[13px] font-medium text-foreground">{t.label}</span>
-              <span className="text-[11px] text-muted-foreground">{t.desc}</span>
+              <span className="text-body font-medium text-foreground">{t.label}</span>
+              <span className="text-caption text-muted-foreground">{t.desc}</span>
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
               {map[t.id].map((email) => (
-                <span key={email} className="rounded-full border border-border text-[11px] text-foreground" style={chip}>
+                <span key={email} className="rounded-full border border-border text-caption text-foreground" style={chip}>
                   {email.split('@')[0]}
                   <button
                     onClick={() => save(t.id, map[t.id].filter((e) => e !== email))}
                     disabled={busy}
                     className="text-muted-foreground hover:text-foreground"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, fontSize: 11 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, fontSize: 12 }}
                     title={`${email} 제거`}
                   >
                     ×
@@ -100,7 +100,7 @@ export default function TopicAssignees({
           </div>
         ))}
       </div>
-      {error && <p className="text-[13px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{error}</p>}
+      {error && <p className="text-body" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{error}</p>}
     </div>
   );
 }

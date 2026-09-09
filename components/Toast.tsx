@@ -35,7 +35,7 @@ export function Toaster() {
         <div
           key={t.id}
           role="status"
-          className={`max-w-full rounded-lg px-4 py-2.5 text-[13px] shadow-lg ${
+          className={`max-w-full rounded-lg px-4 py-2.5 text-body shadow-lg ${
             t.type === 'error' ? 'bg-destructive text-white' : 'bg-foreground text-background'
           }`}
         >

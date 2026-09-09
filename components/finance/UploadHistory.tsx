@@ -63,21 +63,21 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
   if (uploads.length === 0) {
     return (
       <div className="mx-auto my-[60px] max-w-[460px] text-center text-muted-foreground">
-        <div className="mb-3 text-[32px]">🗂️</div>
-        <h2 className="mb-2 text-[15px] text-foreground">아직 올린 자료가 없어요</h2>
-        <p className="text-[13px]">지출 자료 분류의 자료 보충에서 신한카드·쿠팡 자료를 올려보세요.</p>
+        <div className="mb-3 text-display">🗂️</div>
+        <h2 className="mb-2 text-title text-foreground">아직 올린 자료가 없어요</h2>
+        <p className="text-body">지출 자료 분류의 자료 보충에서 신한카드·쿠팡 자료를 올려보세요.</p>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-6">
-      {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
+      {error && <div className="text-body text-destructive">⚠️ {error}</div>}
       <div className="overflow-hidden rounded-md border border-border bg-background">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] border-collapse text-[13px]">
+          <table className="w-full min-w-[760px] border-collapse text-body">
             <thead>
-              <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+              <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
                 <Th>브랜드</Th>
                 <Th>구분</Th>
                 <Th>업로드</Th>
@@ -92,7 +92,7 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
               {uploads.map((u) => (
                 <tr key={u.id} className="border-t border-border hover:bg-accent">
                   <Td muted={u.brand !== 'staffmeal'}>{u.brand === 'staffmeal' ? '스탭밀' : '가든'}</Td>
-                  <Td>{kind(u)}{u.id < 0 && <span className="ml-1.5 text-[11px] text-muted-foreground">(이전 방식)</span>}</Td>
+                  <Td>{kind(u)}{u.id < 0 && <span className="ml-1.5 text-caption text-muted-foreground">(이전 방식)</span>}</Td>
                   <Td mono muted={u.id < 0}>{u.id < 0 ? '기록 없음' : fmt(u.uploaded_at)}</Td>
                   <Td mono muted>
                     {u.period_start ? `${fmt(u.period_start)} ~ ${fmt(u.period_end)}` : '—'}
@@ -108,7 +108,7 @@ export default function UploadHistory({ uploads }: { uploads: UploadRow[] }) {
                     <button
                       onClick={() => del(u)}
                       disabled={busy === u.id}
-                      className="ta-btn h-7 px-3 text-[13px] text-destructive"
+                      className="ta-btn h-7 px-3 text-body text-destructive"
                     >
                       {busy === u.id ? '삭제 중…' : '삭제'}
                     </button>
@@ -128,6 +128,6 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
 }
 function Td({ children, right, mono, muted }: { children: React.ReactNode; right?: boolean; mono?: boolean; muted?: boolean }) {
   return (
-    <td className={`whitespace-nowrap px-3 py-2 text-[13px] ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''} ${muted ? 'text-muted-foreground' : 'text-foreground'}`}>{children}</td>
+    <td className={`whitespace-nowrap px-3 py-2 text-body ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''} ${muted ? 'text-muted-foreground' : 'text-foreground'}`}>{children}</td>
   );
 }

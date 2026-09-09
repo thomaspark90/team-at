@@ -142,7 +142,7 @@ export default function GardenSalePrice() {
   return (
     <div style={{ width: '100%', minWidth: 0 }}>
       {error && (
-        <p className="ta-error text-[13px]" style={{ margin: '0 0 16px' }}>
+        <p className="ta-error text-body" style={{ margin: '0 0 16px' }}>
           {error}
         </p>
       )}
@@ -152,9 +152,9 @@ export default function GardenSalePrice() {
       <div className="min-w-0 pb-[54px]">
         <p className="ta-label">판매가 미책정</p>
         {!loaded ? (
-          <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>불러오는 중…</p>
+          <p className="text-body text-muted-foreground" style={{ margin: 0 }}>불러오는 중…</p>
         ) : unpriced.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+          <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
             책정을 기다리는 발주 기록이 없어요. 발주가 저장되면 여기에 나타납니다.
           </p>
         ) : (
@@ -192,10 +192,10 @@ export default function GardenSalePrice() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
             {pricedGroups.map((group) => (
               <div key={group[0].id}>
-                <p className="text-[13px] text-foreground mb-3">
+                <p className="text-body text-foreground mb-3">
                   {group[0].bean}
                   {group[0].roastery && (
-                    <span className="text-[11px] text-muted-foreground"> · {group[0].roastery}</span>
+                    <span className="text-caption text-muted-foreground"> · {group[0].roastery}</span>
                   )}
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -224,7 +224,7 @@ export default function GardenSalePrice() {
                         </button>
                       </div>
                       {rec.priceReview && (
-                        <p className="text-[11px]" style={{ margin: '4px 0 0', color: 'hsl(0 72% 45%)' }}>
+                        <p className="text-caption" style={{ margin: '4px 0 0', color: 'hsl(0 72% 45%)' }}>
                           ⚠ 레시피 담당자가 재검토를 요청했어요 · {fmtDate(rec.priceReview.at)}
                           {rec.priceReview.note ? ` · ${rec.priceReview.note}` : ''}
                         </p>
@@ -278,11 +278,11 @@ function RecordPricer({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
       {!compact && (
         <div>
-          <p className="text-[13px] text-foreground" style={{ margin: 0 }}>
+          <p className="text-body text-foreground" style={{ margin: 0 }}>
             {rec.bean}
-            {rec.roastery && <span className="text-[11px] text-muted-foreground"> · {rec.roastery}</span>}
+            {rec.roastery && <span className="text-caption text-muted-foreground"> · {rec.roastery}</span>}
           </p>
-          <p className="text-[11px] text-muted-foreground tabular" style={{ margin: '2px 0 0' }}>
+          <p className="text-caption text-muted-foreground tabular" style={{ margin: '2px 0 0' }}>
             {fmtDate(rec.createdAt)}
             {(rec.staffName || rec.createdBy) && ` · ${rec.staffName ? `${rec.staffName}님 발주` : rec.createdBy!.split('@')[0]}`}
             {` · 매입 ${won(rec.purchasePrice)}`}
@@ -324,7 +324,7 @@ function RecordPricer({
           ))}
         </div>
       </div>
-      <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>
+      <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
         강조 칸 = 권장 구간(배수 {s.minMult}~{s.maxMult}) · 배수를 클릭해 책정 판매가를 고르세요
       </p>
 

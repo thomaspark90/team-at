@@ -51,14 +51,14 @@ export default function ActivityLog({ rows }: { rows: ActivityRow[] }) {
   }
 
   const selectCls =
-    'rounded-lg border border-border bg-background px-2.5 py-1.5 text-[13px] text-foreground outline-none';
+    'rounded-lg border border-border bg-background px-2.5 py-1.5 text-body text-foreground outline-none';
 
   return (
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="m-0 text-[15px] font-medium">활동 로그</h2>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
+          <h2 className="m-0 text-title font-medium">활동 로그</h2>
+          <p className="mt-0.5 text-body text-muted-foreground">
             누가 어떤 기능을 썼는지 기록이에요. 최근 1,000건까지 표시돼요.
           </p>
         </div>
@@ -89,17 +89,17 @@ export default function ActivityLog({ rows }: { rows: ActivityRow[] }) {
       </div>
 
       <div className="mt-8 flex flex-col gap-2">
-        {visible.length === 0 && <p className="text-[13px] text-muted-foreground">기록이 없어요.</p>}
+        {visible.length === 0 && <p className="text-body text-muted-foreground">기록이 없어요.</p>}
         {days.map(([k, list]) => (
           <div key={k}>
-            <h3 className="mb-1.5 mt-6 border-b border-border pb-1 text-[13px] font-medium first:mt-0">
+            <h3 className="mb-1.5 mt-6 border-b border-border pb-1 text-body font-medium first:mt-0">
               {fmtDay(list[0].created_at)}
               <span className="ml-2 font-normal text-muted-foreground">{list.length}건</span>
             </h3>
             {list.map((r) => (
-              <div key={r.id} className="flex items-baseline gap-3 rounded-lg px-2 py-1.5 text-[13px] odd:bg-background/60">
-                <span className="w-[76px] shrink-0 font-mono text-[11px] text-muted-foreground">{fmtTime(r.created_at)}</span>
-                <span className="w-[90px] shrink-0 truncate text-[11px] text-muted-foreground">{r.email.split('@')[0]}</span>
+              <div key={r.id} className="flex items-baseline gap-3 rounded-lg px-2 py-1.5 text-body odd:bg-background/60">
+                <span className="w-[76px] shrink-0 font-mono text-caption text-muted-foreground">{fmtTime(r.created_at)}</span>
+                <span className="w-[90px] shrink-0 truncate text-caption text-muted-foreground">{r.email.split('@')[0]}</span>
                 <span className="shrink-0 font-medium">{r.action}</span>
                 {r.detail && <span className="min-w-0 truncate text-muted-foreground">{r.detail}</span>}
               </div>

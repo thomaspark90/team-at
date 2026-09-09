@@ -88,22 +88,22 @@ export default function OriginalsHistory({ rows }: { rows: OriginalRow[] }) {
   if (rows.length === 0) {
     return (
       <div className="mx-auto my-[60px] max-w-[460px] text-center text-muted-foreground">
-        <div className="mb-3 text-[32px]">🗄️</div>
-        <h2 className="mb-2 text-[15px] text-foreground">아직 보관된 원본이 없어요</h2>
-        <p className="text-[13px]">이 개선 이후 올린 자료부터 원본이 여기 쌓여요.</p>
+        <div className="mb-3 text-display">🗄️</div>
+        <h2 className="mb-2 text-title text-foreground">아직 보관된 원본이 없어요</h2>
+        <p className="text-body">이 개선 이후 올린 자료부터 원본이 여기 쌓여요.</p>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-6">
-      {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
-      {notice && <div className="text-[13px] text-muted-foreground">✓ {notice}</div>}
+      {error && <div className="text-body text-destructive">⚠️ {error}</div>}
+      {notice && <div className="text-body text-muted-foreground">✓ {notice}</div>}
       <div className="overflow-hidden rounded-md border border-border bg-background">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[880px] border-collapse text-[13px]">
+          <table className="w-full min-w-[880px] border-collapse text-body">
             <thead>
-              <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+              <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
                 <Th>구분</Th>
                 <Th>파일명</Th>
                 <Th>자료월</Th>
@@ -121,7 +121,7 @@ export default function OriginalsHistory({ rows }: { rows: OriginalRow[] }) {
                 <tr key={r.id} className="border-t border-border hover:bg-accent">
                   <Td>
                     {areaLabel(r.area)}
-                    {r.note && <span className="ml-1.5 text-[11px] text-muted-foreground">({r.note})</span>}
+                    {r.note && <span className="ml-1.5 text-caption text-muted-foreground">({r.note})</span>}
                   </Td>
                   <Td muted title={r.filename}>{r.filename}</Td>
                   <Td mono muted>{r.ym ?? '—'}</Td>
@@ -132,21 +132,21 @@ export default function OriginalsHistory({ rows }: { rows: OriginalRow[] }) {
                   <Td mono muted>{fmtAt(r.uploaded_at)}</Td>
                   <Td right mono muted>{fmtSize(r.size)}</Td>
                   <Td right>
-                    <a href={`/api/finance/originals/${r.id}`} target="_blank" rel="noreferrer" className="ta-btn h-7 px-3 text-[13px]">
+                    <a href={`/api/finance/originals/${r.id}`} target="_blank" rel="noreferrer" className="ta-btn h-7 px-3 text-body">
                       보기
                     </a>
                   </Td>
                   <Td right>
                     {canReprocess(r.area) ? (
-                      <button onClick={() => reprocess(r)} disabled={busy === r.id} className="ta-btn h-7 px-3 text-[13px]">
+                      <button onClick={() => reprocess(r)} disabled={busy === r.id} className="ta-btn h-7 px-3 text-body">
                         {busy === r.id ? '처리 중…' : '재처리'}
                       </button>
                     ) : (
-                      <span className="text-[11px] text-muted-foreground">—</span>
+                      <span className="text-caption text-muted-foreground">—</span>
                     )}
                   </Td>
                   <Td right>
-                    <button onClick={() => remove(r)} disabled={busy === r.id} className="ta-btn h-7 px-3 text-[13px] text-destructive">
+                    <button onClick={() => remove(r)} disabled={busy === r.id} className="ta-btn h-7 px-3 text-body text-destructive">
                       삭제
                     </button>
                   </Td>
@@ -179,7 +179,7 @@ function Td({
   return (
     <td
       title={title}
-      className={`max-w-[220px] truncate px-3 py-2 text-[13px] ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''} ${
+      className={`max-w-[220px] truncate px-3 py-2 text-body ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''} ${
         muted ? 'text-muted-foreground' : 'text-foreground'
       }`}
     >

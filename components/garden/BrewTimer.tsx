@@ -103,12 +103,12 @@ export default function BrewTimer({
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
           {/* ICE/HOT 배지 — 장식적 컬러 액센트 없이(§1) 텍스트로만 구분, 진한 단색 칩으로 강조 */}
           <span
-            className="rounded-sm bg-foreground text-[11px] font-medium text-background"
+            className="rounded-sm bg-foreground text-caption font-medium text-background"
             style={{ padding: '1px 6px', letterSpacing: '0.05em', flexShrink: 0 }}
           >
             {brewType.toUpperCase()}
           </span>
-          <span className="text-[15px] font-medium" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span className="text-title font-medium" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {bean}
           </span>
         </span>
@@ -118,7 +118,7 @@ export default function BrewTimer({
       </div>
 
       {/* 스펙 요약 */}
-      <p className="tabular text-[13px] text-muted-foreground" style={{ margin: '6px 0 0' }}>
+      <p className="tabular text-body text-muted-foreground" style={{ margin: '6px 0 0' }}>
         {[
           recipe.doseG != null ? `도징 ${recipe.doseG}g` : null,
           totalWater ? `물 ${totalWater}g` : null,
@@ -137,7 +137,7 @@ export default function BrewTimer({
           {fmt(phase === 'done' ? doneAtRef.current : elapsed)}
         </div>
         {maxSec > 0 && (
-          <div className={`tabular text-[13px] ${over ? 'text-destructive' : 'text-muted-foreground'}`} style={{ marginTop: 6 }}>
+          <div className={`tabular text-body ${over ? 'text-destructive' : 'text-muted-foreground'}`} style={{ marginTop: 6 }}>
             {over ? `최대 ${recipe.totalTime} 초과 — 드리퍼 분리` : `최대 ${recipe.totalTime}`}
           </div>
         )}
@@ -146,17 +146,17 @@ export default function BrewTimer({
       {/* 현재 단계 크게 */}
       {phase === 'run' && cur && (
         <div className="rounded-md" style={{ border: '2px solid rgba(132, 204, 22, 0.55)', background: 'rgba(132, 204, 22, 0.14)', padding: '14px 16px', textAlign: 'center', marginBottom: 14 }}>
-          <div className="text-[13px] text-muted-foreground">지금</div>
+          <div className="text-body text-muted-foreground">지금</div>
           <div className="tabular font-medium" style={{ fontSize: 28 }}>
             {stepName(stepIdx)} {cur.water}g
           </div>
-          <div className="tabular text-[13px] text-muted-foreground">누적 {cumTo(stepIdx)}g까지 붓기</div>
+          <div className="tabular text-body text-muted-foreground">누적 {cumTo(stepIdx)}g까지 붓기</div>
         </div>
       )}
       {phase === 'done' && (
         <div className="rounded-md border border-border" style={{ padding: '14px 16px', textAlign: 'center', marginBottom: 14 }}>
           <div className="tabular font-medium" style={{ fontSize: 22 }}>추출 완료 · {fmt(doneAtRef.current)}</div>
-          {totalWater > 0 && <div className="tabular text-[13px] text-muted-foreground">총 {totalWater}g</div>}
+          {totalWater > 0 && <div className="tabular text-body text-muted-foreground">총 {totalWater}g</div>}
         </div>
       )}
 
@@ -179,11 +179,11 @@ export default function BrewTimer({
                   background: active ? 'rgba(132, 204, 22, 0.14)' : undefined,
                 }}
               >
-                <span className="text-[15px]">
+                <span className="text-title">
                   {done ? '✓ ' : ''}
                   {stepName(i)}
                 </span>
-                <span className="tabular text-[15px]">
+                <span className="tabular text-title">
                   {s.water}g <span className="text-muted-foreground">/ {cumTo(i)}g</span>
                 </span>
               </div>

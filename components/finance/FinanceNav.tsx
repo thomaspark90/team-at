@@ -57,7 +57,7 @@ export default function FinanceNav({ role }: { role: string | null }) {
         key={href}
         href={withUnit(href)}
         aria-current={active ? 'page' : undefined}
-        className={`whitespace-nowrap text-[13px] transition-colors ${
+        className={`whitespace-nowrap text-body transition-colors ${
           active ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
         }`}
       >
@@ -78,7 +78,7 @@ export default function FinanceNav({ role }: { role: string | null }) {
                 key={x.id}
                 href={unitHref(x.id)}
                 aria-current={on ? 'page' : undefined}
-                className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1 text-[13px] transition-colors ${
+                className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1 text-body transition-colors ${
                   on
                     ? 'bg-foreground font-medium text-background'
                     : 'border border-border text-muted-foreground hover:text-foreground'

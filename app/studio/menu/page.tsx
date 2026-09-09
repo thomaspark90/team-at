@@ -61,7 +61,7 @@ export default function StudioMenuPage() {
                 className="ta-input w-[140px]"
                 placeholder="예: 5/12"
               />
-              <p className="mt-2 text-[11px] text-muted-foreground">배지에 표시될 날짜</p>
+              <p className="mt-2 text-caption text-muted-foreground">배지에 표시될 날짜</p>
             </div>
 
             <div className="rounded-md bg-muted/40 p-6">
@@ -88,7 +88,7 @@ export default function StudioMenuPage() {
 
             <DownloadButton previewRef={previewRef} story={story} />
 
-            <p className="-mt-5 text-center text-[11px] text-muted-foreground">
+            <p className="-mt-5 text-center text-caption text-muted-foreground">
               다운로드 후 인스타그램 앱에서 스토리로 업로드하세요
             </p>
           </div>

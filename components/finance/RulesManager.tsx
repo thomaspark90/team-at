@@ -62,8 +62,8 @@ export default function RulesManager({ catNames }: { catNames: Record<number, st
     setBusy(null);
   }
 
-  if (error) return <p className="text-[13px] text-destructive">⚠️ {error}</p>;
-  if (!rules) return <p className="text-[13px] text-muted-foreground">불러오는 중…</p>;
+  if (error) return <p className="text-body text-destructive">⚠️ {error}</p>;
+  if (!rules) return <p className="text-body text-muted-foreground">불러오는 중…</p>;
 
   return (
     <div className="flex flex-col gap-6">
@@ -74,14 +74,14 @@ export default function RulesManager({ catNames }: { catNames: Record<number, st
           placeholder="가맹점·계정 검색"
           className="ta-input w-[240px]"
         />
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-caption text-muted-foreground">
           {rules.length}개 규칙 — 분류 화면에서 계정을 고르면 자동 학습돼요. 삭제해도 이미 분류된 거래는 안 바뀝니다.
         </span>
       </div>
       <div className="overflow-hidden rounded-md border border-border bg-background">
-        <table className="w-full border-collapse text-[13px]">
+        <table className="w-full border-collapse text-body">
           <thead>
-            <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+            <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
               <th className="px-3 py-2 text-left font-normal">가맹점 키</th>
               <th className="px-3 py-2 text-left font-normal">브랜드</th>
               <th className="px-3 py-2 text-left font-normal">계정</th>
@@ -105,7 +105,7 @@ export default function RulesManager({ catNames }: { catNames: Record<number, st
                   <button
                     onClick={() => remove(r)}
                     disabled={busy === `${r.brand}|${r.normalized_key}`}
-                    className="ta-btn h-7 px-2 text-[13px]"
+                    className="ta-btn h-7 px-2 text-body"
                   >
                     {busy === `${r.brand}|${r.normalized_key}` ? '삭제 중…' : '삭제'}
                   </button>

@@ -200,23 +200,23 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
 
   return (
     <div className="flex flex-col gap-14">
-      <p className="text-[13px] text-muted-foreground">
+      <p className="text-body text-muted-foreground">
         왼쪽 <b>손잡이(⠿)를 드래그</b>해 순서를 바꿔요. <b>이름을 클릭</b>하면 ⭐즐겨찾기로 지정돼 분류 드롭다운 맨 위 &ldquo;자주 쓰는&rdquo;에 떠요. <b>이름 변경</b>으로 계정 이름을 바꾸면 이전에 분류해둔 거래·손익에도 새 이름이 그대로 반영돼요. <b>복제</b>는 같은 설정(상위·과세·활성)으로 바로 아래에 새 항목을 만들어요 — 이름만 바꿔 쓰면 돼요. <b>활성</b>을 끄면 숨겨져요. <b>과세/면세</b>는 손익 계산 기준 — 과세 항목은 대시보드에서 공급가액(÷1.1)으로 순액 처리돼요(인건비·이자·수도·세금 등 면세는 그대로).
       </p>
-      {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
+      {error && <div className="text-body text-destructive">⚠️ {error}</div>}
 
       {GROUPS.map((group) => (
         <div key={group.title} className="flex flex-col gap-8">
           <div>
-            <h2 className="text-[15px] tracking-[-0.3px] text-foreground">{group.title}</h2>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{group.hint}</p>
+            <h2 className="text-title tracking-[-0.3px] text-foreground">{group.title}</h2>
+            <p className="mt-0.5 text-caption text-muted-foreground">{group.hint}</p>
           </div>
 
           {group.types.map((type) => {
             const list = cats.filter((c) => c.type === type).sort((a, b) => a.sort - b.sort);
             return (
               <div key={type}>
-                <h3 className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{TYPE_LABEL[type]}</h3>
+                <h3 className="mb-2 text-caption uppercase tracking-[0.06em] text-muted-foreground">{TYPE_LABEL[type]}</h3>
                 <div className="overflow-hidden rounded-md border border-border bg-background">
                   {list.map((c) => (
                     <div
@@ -236,7 +236,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                           setOverId(null);
                         }}
                         title="드래그해서 순서 변경"
-                        className="cursor-grab select-none text-[15px] leading-none text-muted-foreground"
+                        className="cursor-grab select-none text-title leading-none text-muted-foreground"
                       >
                         ⠿
                       </span>
@@ -251,16 +251,16 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                               if (e.key === 'Escape') setEditId(null);
                             }}
                             autoFocus
-                            className="ta-input flex-1 text-[13px]"
+                            className="ta-input flex-1 text-body"
                           />
                           <button
                             onClick={() => rename(c)}
                             disabled={busy === c.id || !editVal.trim()}
-                            className="ta-btn-primary whitespace-nowrap text-[11px]"
+                            className="ta-btn-primary whitespace-nowrap text-caption"
                           >
                             {busy === c.id ? '저장 중…' : '저장'}
                           </button>
-                          <button onClick={() => setEditId(null)} className="ta-btn whitespace-nowrap text-[11px]">
+                          <button onClick={() => setEditId(null)} className="ta-btn whitespace-nowrap text-caption">
                             취소
                           </button>
                         </span>
@@ -268,7 +268,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                         <span
                           onClick={() => busy !== c.id && patch(c.id, { pinned: !c.pinned })}
                           title="클릭하면 즐겨찾기(상위노출) 토글"
-                          className="flex-[1_1_200px] cursor-pointer select-none text-[13px] text-foreground"
+                          className="flex-[1_1_200px] cursor-pointer select-none text-body text-foreground"
                         >
                           {c.pinned && <span>⭐ </span>}
                           {c.parent_id && <span className="text-muted-foreground">└ </span>}
@@ -278,7 +278,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                       {isSystem(c.name) && (
                         <span
                           title="카드·영수증·분할·대체 정산에 쓰이는 계정이라 이름을 바꾸거나 지울 수 없어요"
-                          className="whitespace-nowrap rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground"
+                          className="whitespace-nowrap rounded-md border border-border px-2 py-1 text-caption text-muted-foreground"
                         >
                           ⚙ 시스템 계정
                         </span>
@@ -291,7 +291,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                           }}
                           disabled={busy === c.id}
                           title="이름을 바꿔요 — 이전에 이 계정으로 분류한 거래에도 새 이름이 그대로 반영돼요"
-                          className="whitespace-nowrap rounded-md border border-border px-3 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+                          className="whitespace-nowrap rounded-md border border-border px-3 py-1 text-caption text-muted-foreground hover:text-foreground"
                         >
                           이름 변경
                         </button>
@@ -301,7 +301,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                           onClick={() => patch(c.id, { vat_taxable: !c.vat_taxable })}
                           disabled={busy === c.id}
                           title="부가세 과세 여부 — 과세면 손익에서 공급가액(총액÷1.1)으로 순액 처리, 면세는 그대로"
-                          className={`whitespace-nowrap rounded-md border px-3 py-1 text-[11px] ${c.vat_taxable ? 'border-border text-foreground' : 'border-transparent bg-muted text-muted-foreground'}`}
+                          className={`whitespace-nowrap rounded-md border px-3 py-1 text-caption ${c.vat_taxable ? 'border-border text-foreground' : 'border-transparent bg-muted text-muted-foreground'}`}
                         >
                           {c.vat_taxable ? '과세' : '면세'}
                         </button>
@@ -316,7 +316,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                               onClick={() => patch(c.id, { cost_nature: nextCostNature(c.cost_nature) })}
                               disabled={busy === c.id}
                               title="고정비/변동비 구분 — 지표 '고정비·변동비'와 손익분기(BEP)가 읽어요. 클릭: 미지정 → 고정 → 변동 → 미지정(상위 상속)"
-                              className={`whitespace-nowrap rounded-md border px-3 py-1 text-[11px] ${d.nature && !d.inherited ? 'border-border text-foreground' : 'border-transparent bg-muted text-muted-foreground'}`}
+                              className={`whitespace-nowrap rounded-md border px-3 py-1 text-caption ${d.nature && !d.inherited ? 'border-border text-foreground' : 'border-transparent bg-muted text-muted-foreground'}`}
                             >
                               {text}
                             </button>
@@ -325,7 +325,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                       <button
                         onClick={() => patch(c.id, { active: !c.active })}
                         disabled={busy === c.id}
-                        className={`whitespace-nowrap rounded-md border px-3 py-1 text-[11px] ${c.active ? 'border-transparent bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}
+                        className={`whitespace-nowrap rounded-md border px-3 py-1 text-caption ${c.active ? 'border-transparent bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}
                       >
                         {c.active ? '활성' : '비활성'}
                       </button>
@@ -334,7 +334,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                           onClick={() => duplicate(c)}
                           disabled={busy === c.id}
                           title="같은 설정(상위·과세·활성)으로 바로 아래에 새 항목을 만들어요 — 이름만 바꿔 쓰면 돼요"
-                          className="whitespace-nowrap rounded-md border border-border px-3 py-1 text-[11px] text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                          className="whitespace-nowrap rounded-md border border-border px-3 py-1 text-caption text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           복제
                         </button>
@@ -343,7 +343,7 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                         onClick={() => remove(c.id)}
                         disabled={busy === c.id || isSystem(c.name)}
                         title={isSystem(c.name) ? '시스템 계정은 삭제할 수 없어요' : undefined}
-                        className="whitespace-nowrap rounded-md border border-border px-3 py-1 text-[11px] text-muted-foreground hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-muted-foreground"
+                        className="whitespace-nowrap rounded-md border border-border px-3 py-1 text-caption text-muted-foreground hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-muted-foreground"
                       >
                         삭제
                       </button>
@@ -355,12 +355,12 @@ export default function CategoryManager({ initial }: { initial: ManagedCat[] }) 
                       onChange={(e) => setNewName((m) => ({ ...m, [type]: e.target.value }))}
                       onKeyDown={(e) => e.key === 'Enter' && add(type)}
                       placeholder={`${TYPE_LABEL[type]} 항목 추가…`}
-                      className="ta-input flex-1 text-[13px]"
+                      className="ta-input flex-1 text-body"
                     />
                     <button
                       onClick={() => add(type)}
                       disabled={adding === type || !(newName[type] || '').trim()}
-                      className="ta-btn-primary text-[13px]"
+                      className="ta-btn-primary text-body"
                     >
                       {adding === type ? '추가 중…' : '+ 추가'}
                     </button>

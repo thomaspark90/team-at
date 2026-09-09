@@ -111,7 +111,7 @@ function ChartTooltip({ active, payload, label, fmt, share }: any) {
   if (!active || !payload?.length) return null;
   const total = share ? payload.reduce((s: number, p: any) => s + (Number(p.value) || 0), 0) : 0;
   return (
-    <div className="rounded-md border border-border bg-background px-2.5 py-1.5 text-[11px] shadow-none">
+    <div className="rounded-md border border-border bg-background px-2.5 py-1.5 text-caption shadow-none">
       <div className="mb-1 text-muted-foreground">{label}</div>
       {payload.map((p: any) => (
         <div key={p.dataKey} className="flex items-center justify-between gap-3 tabular text-foreground">
@@ -575,7 +575,7 @@ export default function Dashboard({
             <button
               key={u}
               onClick={() => setUnit(u)}
-              className={`rounded-sm px-3 py-1 text-[13px] transition-colors ${
+              className={`rounded-sm px-3 py-1 text-body transition-colors ${
                 on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -585,7 +585,7 @@ export default function Dashboard({
         })}
       </div>
       {unit === 'week' && (
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-caption text-muted-foreground">
           주 단위는 현금흐름 관점 — 카드대금이 결제 주에 몰려 보여요. 손익 판단은 월 단위로.
         </span>
       )}
@@ -597,9 +597,9 @@ export default function Dashboard({
       <div className="flex flex-col gap-8">
         {toggle}
         <div className="mx-auto my-10 max-w-[460px] text-center text-muted-foreground">
-          <div className="mb-3 text-[32px]">📊</div>
-          <h2 className="mb-2 text-[15px] text-foreground">표시할 데이터가 없어요</h2>
-          <p className="text-[13px]">거래를 분류하면 매출·지출·손익 그래프가 여기 그려져요.</p>
+          <div className="mb-3 text-display">📊</div>
+          <h2 className="mb-2 text-title text-foreground">표시할 데이터가 없어요</h2>
+          <p className="text-body">거래를 분류하면 매출·지출·손익 그래프가 여기 그려져요.</p>
         </div>
       </div>
     );
@@ -764,7 +764,7 @@ export default function Dashboard({
       >
         {/* 대여금 마커 문구 수정 — 차트의 빨간 원을 클릭하면 열린다 */}
         {markerEdit && (
-          <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px]">
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-caption">
             <span className="text-muted-foreground">{markerEdit.ym} 대여금 표기:</span>
             <input
               value={markerDraft}
@@ -872,7 +872,7 @@ export default function Dashboard({
         subtitle={`판매 수량(잔·개) · 판매하는 메뉴 ${menuSeries.names.length}개 전부 중 켠 것만 그려요 · 카테고리별로 묶었고, 선택은 이 브라우저에 저장돼요`}
       >
         <div className="mb-3">
-          <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px]">
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-caption">
             <span className="text-muted-foreground">
               켠 메뉴 <b className="text-foreground tabular-nums">{activeMenus.length}</b> / {menuSeries.names.length}개
             </span>
@@ -893,7 +893,7 @@ export default function Dashboard({
           <div className="max-h-[190px] overflow-y-auto rounded-md border border-border p-2">
             {menuGroups.map((g) => (
               <div key={g.category} className="mb-2 last:mb-0">
-                <div className="mb-1 text-[11px] text-muted-foreground">{g.category}</div>
+                <div className="mb-1 text-caption text-muted-foreground">{g.category}</div>
                 <div className="flex flex-wrap gap-1.5">
                   {g.items.map((n) => {
                     const on = activeMenus.includes(n);
@@ -904,7 +904,7 @@ export default function Dashboard({
                         onClick={() => toggleMenu(n, activeMenus)}
                         aria-pressed={on}
                         title={`${n} · 총 ${Math.round(menuSeries.total.get(n) ?? 0).toLocaleString()}개`}
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-caption transition-colors ${
                           on ? 'border-foreground/30 bg-muted text-foreground' : 'border-border text-muted-foreground hover:text-foreground'
                         }`}
                       >
@@ -923,7 +923,7 @@ export default function Dashboard({
           </div>
         </div>
         {activeMenus.length === 0 ? (
-          <p className="py-10 text-center text-[13px] text-muted-foreground">위에서 볼 메뉴를 골라주세요.</p>
+          <p className="py-10 text-center text-body text-muted-foreground">위에서 볼 메뉴를 골라주세요.</p>
         ) : (
           <ResponsiveContainer width="100%" height={chartH('products', 520)}>
             <LineChart data={menuSeries.data} margin={{ top: 16, right: 16, bottom: 8, left: 8 }}>
@@ -1113,10 +1113,10 @@ export default function Dashboard({
         <div className="w-full shrink-0 md:w-[230px]">
           <ul className="flex flex-col gap-1.5">
             {breakdown.map((b) => (
-              <li key={b.name} className="flex items-center gap-2 text-[11px]">
+              <li key={b.name} className="flex items-center gap-2 text-caption">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{ background: b.color }} aria-hidden />
                 <span className="min-w-0 flex-1 truncate text-foreground" title={b.name}>{b.name}</span>
-                <span className="tabular shrink-0 text-[11px] text-muted-foreground">{won(b.value)}</span>
+                <span className="tabular shrink-0 text-caption text-muted-foreground">{won(b.value)}</span>
                 <span className="tabular w-[46px] shrink-0 text-right font-medium text-foreground">{b.pct.toFixed(1)}%</span>
               </li>
             ))}
@@ -1165,15 +1165,15 @@ export default function Dashboard({
         <div className="w-full shrink-0 md:w-[230px]">
           <ul className="flex flex-col gap-1.5">
             {natureBreakdown.map((b) => (
-              <li key={b.name} className="flex items-center gap-2 text-[11px]">
+              <li key={b.name} className="flex items-center gap-2 text-caption">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{ background: b.color }} aria-hidden />
                 <span className="min-w-0 flex-1 truncate text-foreground" title={b.name}>{b.name}</span>
-                <span className="tabular shrink-0 text-[11px] text-muted-foreground">{won(b.value)}</span>
+                <span className="tabular shrink-0 text-caption text-muted-foreground">{won(b.value)}</span>
                 <span className="tabular w-[46px] shrink-0 text-right font-medium text-foreground">{b.pct.toFixed(1)}%</span>
               </li>
             ))}
             {natureLast?.변동비율 != null && (
-              <li className="mt-1 flex items-center justify-between border-t border-border pt-1.5 text-[11px]">
+              <li className="mt-1 flex items-center justify-between border-t border-border pt-1.5 text-caption">
                 <span className="text-muted-foreground">변동비율(매출 대비)</span>
                 <span className="tabular font-medium text-foreground">{natureLast.변동비율}%</span>
               </li>
@@ -1181,7 +1181,7 @@ export default function Dashboard({
           </ul>
         </div>
       </div>
-      <ul className="mt-4 flex list-disc flex-col gap-1 pl-4 text-[11px] leading-relaxed text-muted-foreground">
+      <ul className="mt-4 flex list-disc flex-col gap-1 pl-4 text-caption leading-relaxed text-muted-foreground">
         {COST_NATURE_NOTES.map((n) => (
           <li key={n}>{n}</li>
         ))}
@@ -1351,7 +1351,7 @@ export default function Dashboard({
             </ComposedChart>
           </ResponsiveContainer>
           {bandLine && (
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-caption text-muted-foreground">
               회귀로 본 뚜렷한 효과(|t|≥2): <b className="text-foreground">{bandLine}</b> — 기준 {weatherImpact.tempRef}·비
               1mm 미만. 아래 밴드 차트가 같은 값이에요.
             </p>
@@ -1401,7 +1401,7 @@ export default function Dashboard({
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-          <div className="mt-2 flex flex-col gap-1 text-[11px] text-muted-foreground">
+          <div className="mt-2 flex flex-col gap-1 text-caption text-muted-foreground">
             <p className="m-0">
               <b className="text-foreground">
                 폭우({imp.heavyRainLoss.days}일)로 잃은 매출 ≈ {won(imp.heavyRainLoss.won)} — 기간 총매출의{' '}
@@ -1459,7 +1459,7 @@ export default function Dashboard({
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {MENU_TIERS.map((tier) => (
             <div key={tier}>
-              <div className="mb-2 px-1 text-[12px] text-foreground">{tier}</div>
+              <div className="mb-2 px-1 text-caption text-foreground">{tier}</div>
               <ResponsiveContainer width="100%" height={chartH('menu', 495)}>
                 <LineChart data={menuQtyData} margin={{ top: 30, right: 8, bottom: 4, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
@@ -1484,7 +1484,7 @@ export default function Dashboard({
           (2026-08-31 대표 지시) — 월 단위 숫자는 관리손익·월 결산에서 보고, 이 화면은 추이 전용. */}
       <div className="flex flex-wrap items-center justify-end gap-3">{toggle}</div>
       {visMonths.length > 0 && last.revenue === 0 && (
-        <div className="-mt-2 text-[11px] text-muted-foreground">
+        <div className="-mt-2 text-caption text-muted-foreground">
           이 기간 <b>POS 매출이 없어요</b> — 매출은 <a href="/finance/pnl" className="underline">관리손익</a>에서 토스 매출리포트를 올려야 잡혀요.
         </div>
       )}
@@ -1497,12 +1497,12 @@ export default function Dashboard({
         if (entries.length === 0) return null;
         const bl = (b: string) => (b === 'staffmeal' ? '스탭밀' : b === 'garden' ? '가든서비스' : b);
         return (
-          <div className="-mt-2 rounded-md bg-muted/40 px-4 py-3 text-[13px]">
+          <div className="-mt-2 rounded-md bg-muted/40 px-4 py-3 text-body">
             <span className="font-medium">브랜드 간 대여 순잔액</span>
             <span className="ml-3 tabular-nums text-muted-foreground">
               {entries.map(([b, v]) => `${bl(b)} 장부 ${v > 0 ? '순대여 +' : '순차입 −'}${Math.abs(v).toLocaleString()}원`).join(' · ')}
             </span>
-            <span className="ml-2 text-[11px] text-muted-foreground">
+            <span className="ml-2 text-caption text-muted-foreground">
               — 브랜드 간 이동(대여금 계정)이라 손익엔 안 잡히고, 전사 합산 잔고에서는 서로 상쇄돼요.
             </span>
           </div>
@@ -1511,7 +1511,7 @@ export default function Dashboard({
       {/* 판교 손익의 성격 고지(2026-08-23, 지점 분리 회계 확정에 따른 안내) — 판교는 통장·카드 지출이
           없고 인건비·임대료가 스탭밀 장부 귀속(대표 확정)이라, 이 숫자는 완전한 지점 손익이 아니다 */}
       {segId === 'garden-pangyo' && (
-        <div className="-mt-2 text-[11px] text-muted-foreground">
+        <div className="-mt-2 text-caption text-muted-foreground">
           ⓘ 판교 손익은 <b>기여이익 성격</b>이에요 — 판교는 통장·카드 지출이 없고(수집분·POS만) 인건비·임대료는 스탭밀 장부에
           귀속돼 있어(대표 확정), 여기 영업이익은 그 비용들을 빼기 전 숫자예요.
         </div>
@@ -1548,7 +1548,7 @@ export default function Dashboard({
         />
       )}
 
-      <p className="m-0 text-[11px] text-muted-foreground">
+      <p className="m-0 text-caption text-muted-foreground">
         * 매출 표시는 부가세 포함(POS 실매출과 같은 기준), 손익 계산은 공급가액(순액) 기준이에요 — 매출은 품목별 부가세액을 빼서, 과세 매입(재료비·과세 판관비)은 총액÷1.1로 순액 처리. 인건비·이자·수도·세금 등
         면세 항목은 그대로. 과세 여부는 설정(계정과목)에서 조정. 미분류·미상 지출은 비용으로 반영하고(이익 과대 방지), 미분류
         입금은 대출·자본유입일 수 있어 매출에 넣지 않아요 — 분류하면 정확한 계정으로 옮겨가요. 명세 미연결 카드대금·세부 미수집
@@ -1568,9 +1568,9 @@ function delta(cur: number, prevV: number | null | undefined): string | null {
 function Stat({ label, value, delta }: { label: string; value: string; delta: string | null }) {
   return (
     <div className="min-w-[150px] flex-[1_1_auto] rounded-md bg-muted/40 p-[14px_18px]">
-      <div className="mb-[5px] text-[11px] text-muted-foreground">{label}</div>
-      <div className="tabular text-[22px] text-foreground">{value}</div>
-      {delta && <div className={`mt-[3px] text-[11px] ${delta.startsWith('▲') ? 'text-positive' : 'text-muted-foreground'}`}>전기 {delta}</div>}
+      <div className="mb-[5px] text-caption text-muted-foreground">{label}</div>
+      <div className="tabular text-display text-foreground">{value}</div>
+      {delta && <div className={`mt-[3px] text-caption ${delta.startsWith('▲') ? 'text-positive' : 'text-muted-foreground'}`}>전기 {delta}</div>}
     </div>
   );
 }
@@ -1638,13 +1638,13 @@ function ChartCard({
               e.dataTransfer.setData('text/plain', id);
             }}
             title="드래그해서 차트 순서 바꾸기"
-            className="mt-0.5 shrink-0 cursor-grab select-none text-[13px] leading-none tracking-tighter text-muted-foreground/50 hover:text-muted-foreground active:cursor-grabbing"
+            className="mt-0.5 shrink-0 cursor-grab select-none text-body leading-none tracking-tighter text-muted-foreground/50 hover:text-muted-foreground active:cursor-grabbing"
           >
             ⠿
           </span>
           <div>
-            <h3 className="m-0 text-[15px] text-foreground">{title}</h3>
-            {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}
+            <h3 className="m-0 text-title text-foreground">{title}</h3>
+            {subtitle && <p className="mt-0.5 text-caption text-muted-foreground">{subtitle}</p>}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
@@ -1652,7 +1652,7 @@ function ChartCard({
             type="button"
             onClick={() => setFull(true)}
             title="전체 보기 — 화면 풀사이즈"
-            className="select-none text-[15px] leading-none text-muted-foreground/60 transition-colors hover:text-foreground"
+            className="select-none text-title leading-none text-muted-foreground/60 transition-colors hover:text-foreground"
           >
             ⛶
           </button>
@@ -1675,16 +1675,16 @@ function ChartCard({
         <div className="fixed inset-0 z-50 flex flex-col bg-background px-6 py-4">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <h3 className="m-0 text-[15px] text-foreground">{title}</h3>
-              {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}
+              <h3 className="m-0 text-title text-foreground">{title}</h3>
+              {subtitle && <p className="mt-0.5 text-caption text-muted-foreground">{subtitle}</p>}
             </div>
             <div className="flex shrink-0 items-center gap-3">
-              <span className="text-[11px] text-muted-foreground/60">← → 다음 차트</span>
+              <span className="text-caption text-muted-foreground/60">← → 다음 차트</span>
               <button
                 type="button"
                 onClick={() => setFull(false)}
                 title="닫기 (Esc)"
-                className="rounded-md border border-border px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+                className="rounded-md border border-border px-2.5 py-1 text-caption text-muted-foreground transition-colors hover:text-foreground"
               >
                 닫기 ✕
               </button>

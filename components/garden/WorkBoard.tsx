@@ -27,9 +27,9 @@ function Steps({ steps }: { steps: BoardCard['steps'] }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
       {steps.map((s, i) => (
         <span key={s.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-          {i > 0 && <span className="text-[11px] text-muted-foreground/50">▸</span>}
+          {i > 0 && <span className="text-caption text-muted-foreground/50">▸</span>}
           <span
-            className={`text-[11px] ${
+            className={`text-caption ${
               s.state === 'current'
                 ? 'font-medium text-foreground'
                 : s.state === 'done'
@@ -59,11 +59,11 @@ function Card({ card }: { card: BoardCard }) {
         borderColor: card.mine ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
       }}
     >
-      <span className="text-[11px] text-muted-foreground" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <span className="text-caption text-muted-foreground" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
         {dot(t.color)}
         {t.label}
       </span>
-      <p className="text-[13px] font-medium text-foreground" style={{ margin: 0, lineHeight: 1.45 }}>
+      <p className="text-body font-medium text-foreground" style={{ margin: 0, lineHeight: 1.45 }}>
         {card.title}
       </p>
       <Steps steps={card.steps} />
@@ -84,7 +84,7 @@ function Card({ card }: { card: BoardCard }) {
           {card.meta.map((m, i) => (
             <span
               key={i}
-              className="text-[11px]"
+              className="text-caption"
               style={{
                 color:
                   m.tone === 'late'
@@ -100,7 +100,7 @@ function Card({ card }: { card: BoardCard }) {
         </div>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="text-[11px] text-muted-foreground" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span className="text-caption text-muted-foreground" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           {card.mine ? (
             <>
               <span
@@ -176,12 +176,12 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
   const countOf = (t: BoardType) => (cards ?? []).filter((c) => c.type === t).length;
 
   const chip = (active: boolean): string =>
-    `rounded-full border px-2.5 py-1 text-[13px] transition-colors ${
+    `rounded-full border px-2.5 py-1 text-body transition-colors ${
       active ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:text-foreground'
     }`;
 
   if (cards === null) {
-    return <p className="text-[13px] text-muted-foreground">작업 보드를 불러오는 중…</p>;
+    return <p className="text-body text-muted-foreground">작업 보드를 불러오는 중…</p>;
   }
 
   return (
@@ -189,16 +189,16 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
       {/* 내 차례 — 들어오자마자 자기 일이 먼저 보이게 */}
       <div className="min-w-0 pb-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-          <span className="text-[15px] font-medium text-foreground">내 차례</span>
+          <span className="text-title font-medium text-foreground">내 차례</span>
           <span
-            className="tabular text-[11px]"
+            className="tabular text-caption"
             style={{ padding: '1px 8px', borderRadius: 999, background: 'hsl(var(--foreground))', color: 'hsl(var(--background))' }}
           >
             {mineCards.length}
           </span>
         </div>
         {mineCards.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+          <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
             지금 내 차례인 일은 없어요. 아래 보드에서 팀 전체 진행 상황을 볼 수 있습니다.
           </p>
         ) : (
@@ -210,8 +210,8 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
                 style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px' }}
               >
                 {dot(typeOf(c.type).color)}
-                <span className="text-[13px] font-medium text-foreground">{c.title}</span>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-body font-medium text-foreground">{c.title}</span>
+                <span className="text-caption text-muted-foreground">
                   {c.mineReason}
                   {c.meta[0] ? ` · ${c.meta[0].text}` : ''}
                 </span>
@@ -258,11 +258,11 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
           return (
             <div key={col.id} className="rounded-md bg-muted/40 p-6 min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="text-[11px] font-medium text-foreground" style={{ letterSpacing: '0.04em' }}>{col.label}</span>
-                <span className="tabular text-[11px] text-muted-foreground">{list.length}</span>
+                <span className="text-caption font-medium text-foreground" style={{ letterSpacing: '0.04em' }}>{col.label}</span>
+                <span className="tabular text-caption text-muted-foreground">{list.length}</span>
               </div>
               {list.length === 0 ? (
-                <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+                <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
                   {col.id === 'done' ? '아직 없음' : '—'}
                 </p>
               ) : (

@@ -919,9 +919,9 @@ export default function ClassifyPanel({
   if (rows.length === 0) {
     return (
       <div className="mx-auto my-[60px] max-w-[460px] text-center text-muted-foreground">
-        <div className="mb-3 text-[32px]">📭</div>
-        <h2 className="mb-2 text-[15px] text-foreground">저장된 거래가 없어요</h2>
-        <p className="text-[13px]">먼저 업로드 화면에서 거래내역을 저장해주세요.</p>
+        <div className="mb-3 text-display">📭</div>
+        <h2 className="mb-2 text-title text-foreground">저장된 거래가 없어요</h2>
+        <p className="text-body">먼저 업로드 화면에서 거래내역을 저장해주세요.</p>
       </div>
     );
   }
@@ -936,7 +936,7 @@ export default function ClassifyPanel({
           <select
             value={filterYm}
             onChange={(e) => setFilterYm(e.target.value)}
-            className="ta-input text-[13px]"
+            className="ta-input text-body"
           >
             <option value="all">전체 월</option>
             {yms.map((ym) => (
@@ -956,7 +956,7 @@ export default function ClassifyPanel({
                 <button
                   key={b}
                   onClick={() => setFilterBank(b)}
-                  className={`shrink-0 rounded-sm px-3 py-1 text-[13px] ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`shrink-0 rounded-sm px-3 py-1 text-body ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   {b === 'all' ? '전체 출처' : bankSourceLabel(b)}
                 </button>
@@ -970,7 +970,7 @@ export default function ClassifyPanel({
             setMisangOnly(false);
             setBasisOnly(false);
           }}
-          className={`rounded-md border px-3 py-[7px] text-[13px] font-medium ${
+          className={`rounded-md border px-3 py-[7px] text-body font-medium ${
             unclOnly ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground'
           }`}
         >
@@ -984,7 +984,7 @@ export default function ClassifyPanel({
               setUnclOnly(false);
               setBasisOnly(false);
             }}
-            className={`rounded-md border px-3 py-[7px] text-[13px] font-medium ${
+            className={`rounded-md border px-3 py-[7px] text-body font-medium ${
               misangOnly ? 'border-amber-500 bg-amber-500/10 text-amber-600' : 'border-border text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -1001,7 +1001,7 @@ export default function ClassifyPanel({
               setMisangOnly(false);
             }}
             title="배송지를 읽지 못해 기본값(가든)으로 들어온 쿠팡·네이버페이 거래 — 선택해서 브랜드·지점 이동으로 귀속을 확정해요"
-            className={`rounded-md border px-3 py-[7px] text-[13px] font-medium ${
+            className={`rounded-md border px-3 py-[7px] text-body font-medium ${
               basisOnly ? 'border-destructive bg-destructive/10 text-destructive' : 'border-border text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -1012,12 +1012,12 @@ export default function ClassifyPanel({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="가맹점·내용 검색"
-          className="ta-input min-w-[160px] flex-1 text-[13px]"
+          className="ta-input min-w-[160px] flex-1 text-body"
         />
         {search.trim() && selectableIds.length > 0 && (
           <button
             onClick={toggleAllFiltered}
-            className="whitespace-nowrap text-[13px] text-primary underline underline-offset-2"
+            className="whitespace-nowrap text-body text-primary underline underline-offset-2"
           >
             {allFilteredSelected ? '검색결과 선택 해제' : `검색결과 ${selectableIds.length}건 전체 선택`}
           </button>
@@ -1026,17 +1026,17 @@ export default function ClassifyPanel({
           <button
             onClick={() => setCatFilter({})}
             title="필터 해제"
-            className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3 py-1 text-[13px] font-medium text-primary"
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3 py-1 text-body font-medium text-primary"
           >
             {catFilterLabel}만 보기
-            <span className="text-[15px] leading-none">×</span>
+            <span className="text-title leading-none">×</span>
           </button>
         )}
         {srcFilter !== 'all' && (
           <button
             onClick={() => setSrcFilter('all')}
             title="필터 해제"
-            className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3 py-1 text-[13px] font-medium text-primary"
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-3 py-1 text-body font-medium text-primary"
           >
             {srcFilter === 'card'
               ? '💳 카드만 보기'
@@ -1045,18 +1045,18 @@ export default function ClassifyPanel({
                 : srcFilter === 'coupang'
                   ? '📦 쿠팡 지출만 보기'
                   : '🏦 은행만 보기'}
-            <span className="text-[15px] leading-none">×</span>
+            <span className="text-title leading-none">×</span>
           </button>
         )}
         {lockedBrand && (
           // 브랜드 스코프 멤버 — 서버·RLS에서 이미 해당 브랜드만 내려옴
-          <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-[13px] text-muted-foreground">
+          <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-body text-muted-foreground">
             {lockedBrand === 'staffmeal' ? '스탭밀 담당' : '가든서비스 담당'} · 해당 브랜드 거래만 표시
           </span>
         )}
         {fixedUnit && (
           // 단위 고정 뷰(내비 2단) — 브랜드·지점 탭 대신 단위 안내 칩
-          <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-[13px] text-muted-foreground">
+          <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-body text-muted-foreground">
             {fixedUnit.brand === 'personal'
               ? '개인 지출만 표시 — 손익 제외(사업장 손익에 안 잡힘). 채널·월별로 확인하세요'
               : fixedUnit.brand === 'staffmeal'
@@ -1084,7 +1084,7 @@ export default function ClassifyPanel({
                     setBrandFilter(brand);
                     setStoreFilter(store);
                   }}
-                  className={`rounded-sm px-3 py-1 text-[13px] ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`rounded-sm px-3 py-1 text-body ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   {label}
                 </button>
@@ -1104,7 +1104,7 @@ export default function ClassifyPanel({
               <button
                 key={v}
                 onClick={() => setStoreFilter(v)}
-                className={`rounded-sm px-3 py-1 text-[13px] ${storeFilter === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                className={`rounded-sm px-3 py-1 text-body ${storeFilter === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 {label}
               </button>
@@ -1115,7 +1115,7 @@ export default function ClassifyPanel({
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex-1">
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             <b className="text-foreground">{won(filtered.length)}건</b> · 미분류 <b className="text-foreground">{won(unclassified)}건</b>
             {unassignedStore > 0 && (
               <> · 지점 미지정 <b className="text-amber-600">{won(unassignedStore)}건</b></>
@@ -1127,17 +1127,17 @@ export default function ClassifyPanel({
           </div>
         </div>
         {AI_ENABLED && (
-          <button onClick={fetchAI} disabled={aiLoading || unclassified === 0} className="ta-btn-primary text-[13px]">
+          <button onClick={fetchAI} disabled={aiLoading || unclassified === 0} className="ta-btn-primary text-body">
             {aiLoading ? 'AI 분석 중…' : 'AI 추천 분류'}
           </button>
         )}
         {AI_ENABLED && hasSug && confidentKeys.size > 0 && (
-          <button onClick={applyConfident} disabled={aiApplying} className="ta-btn-primary text-[13px]">
+          <button onClick={applyConfident} disabled={aiApplying} className="ta-btn-primary text-body">
             {aiApplying ? '적용 중…' : `확신 항목 저장 (${confidentKeys.size}그룹)`}
           </button>
         )}
         {ruleKeys.size > 0 && (
-          <button onClick={applyRules} disabled={aiApplying} className="ta-btn-primary text-[13px]">
+          <button onClick={applyRules} disabled={aiApplying} className="ta-btn-primary text-body">
             {aiApplying ? '적용 중…' : `학습 추천 적용 (${ruleKeys.size}그룹)`}
           </button>
         )}
@@ -1146,7 +1146,7 @@ export default function ClassifyPanel({
             onClick={undoLast}
             disabled={undoing || aiApplying}
             title={`마지막 적용(${lastApply.label})을 적용 전으로 되돌려요 — 계정과 학습 규칙 모두. 새로 적용하면 이전 기록은 사라져요.`}
-            className="ta-btn text-[13px]"
+            className="ta-btn text-body"
           >
             {undoing ? '되돌리는 중…' : `↩ 방금 적용 ${won(lastApply.changes.length)}건 되돌리기`}
           </button>
@@ -1155,21 +1155,21 @@ export default function ClassifyPanel({
           onClick={resetAll}
           disabled={aiApplying}
           title="분류·학습 규칙을 모두 초기화(되돌릴 수 없음)"
-          className="text-[11px] text-muted-foreground underline underline-offset-2 transition-colors hover:text-destructive disabled:opacity-50"
+          className="text-caption text-muted-foreground underline underline-offset-2 transition-colors hover:text-destructive disabled:opacity-50"
         >
           전체 초기화
         </button>
       </div>
-      {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
+      {error && <div className="text-body text-destructive">⚠️ {error}</div>}
 
       {/* 다중 선택 일괄 분류 바 */}
       {selCount > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-md border border-primary bg-primary/5 px-4 py-3">
-          <span className="text-[13px] font-medium text-foreground">{selCount}건 선택됨</span>
+          <span className="text-body font-medium text-foreground">{selCount}건 선택됨</span>
           <select
             value={bulkCat}
             onChange={(e) => setBulkCat(e.target.value === '' ? '' : Number(e.target.value))}
-            className="ta-input min-w-[190px] text-[13px]"
+            className="ta-input min-w-[190px] text-body"
           >
             <option value="">카테고리 선택…</option>
             {TYPE_ORDER.map((type) => {
@@ -1189,23 +1189,23 @@ export default function ClassifyPanel({
           <button
             onClick={() => bulkCat !== '' && bulkClassify(bulkCat)}
             disabled={bulkCat === '' || aiApplying}
-            className="ta-btn-primary text-[13px]"
+            className="ta-btn-primary text-body"
           >
             {aiApplying ? '적용 중…' : `${selCount}건 일괄 분류`}
           </button>
-          <button onClick={() => setSelected(new Set())} className="ta-btn text-[13px]">
+          <button onClick={() => setSelected(new Set())} className="ta-btn text-body">
             선택 해제
           </button>
           {/* 브랜드·지점 이동 — 잘못 귀속된 거래를 소급 재분류하는 도구 */}
           <div className="flex w-full flex-wrap items-center gap-2 border-t border-primary/20 pt-3">
-            <span className="text-[13px] text-muted-foreground">브랜드·지점 이동:</span>
+            <span className="text-body text-muted-foreground">브랜드·지점 이동:</span>
             <select
               value={moveBrand}
               onChange={(e) => {
                 setMoveBrand(e.target.value as 'garden' | 'staffmeal' | 'personal' | 'eastpark' | '');
                 setMoveStore('');
               }}
-              className="ta-input text-[13px]"
+              className="ta-input text-body"
             >
               <option value="">브랜드 선택…</option>
               <option value="garden">가든서비스</option>
@@ -1214,32 +1214,32 @@ export default function ClassifyPanel({
               <option value="eastpark">이스트파크(前 브랜드)</option>
             </select>
             {moveBrand === 'garden' && (
-              <select value={moveStore} onChange={(e) => setMoveStore(e.target.value as 'pangyo' | 'yangjae' | '')} className="ta-input text-[13px]">
+              <select value={moveStore} onChange={(e) => setMoveStore(e.target.value as 'pangyo' | 'yangjae' | '')} className="ta-input text-body">
                 <option value="">지점 미지정</option>
                 <option value="pangyo">판교</option>
                 <option value="yangjae">양재천</option>
               </select>
             )}
-            <select value={moveScope} onChange={(e) => setMoveScope(e.target.value as 'selected' | 'key')} className="ta-input text-[13px]">
+            <select value={moveScope} onChange={(e) => setMoveScope(e.target.value as 'selected' | 'key')} className="ta-input text-body">
               <option value="selected">선택한 건만</option>
               <option value="key">같은 가맹점 전체 소급</option>
             </select>
-            <button onClick={moveBrandStore} disabled={!moveBrand || moving} className="ta-btn-primary text-[13px]">
+            <button onClick={moveBrandStore} disabled={!moveBrand || moving} className="ta-btn-primary text-body">
               {moving ? '이동 중…' : '이동'}
             </button>
             {moveScope === 'key' && (
-              <span className="text-[11px] text-amber-600">선택한 거래의 가맹점 전체가 과거까지 소급 이동돼요 (확정월 제외)</span>
+              <span className="text-caption text-amber-600">선택한 거래의 가맹점 전체가 과거까지 소급 이동돼요 (확정월 제외)</span>
             )}
           </div>
         </div>
       )}
-      {moveNotice && <p className="text-[13px]" style={{ color: 'hsl(var(--number-colored))' }}>{moveNotice}</p>}
+      {moveNotice && <p className="text-body" style={{ color: 'hsl(var(--number-colored))' }}>{moveNotice}</p>}
 
       <div className="overflow-hidden rounded-md border border-border bg-background">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[940px] border-collapse text-[13px]">
+          <table className="w-full min-w-[940px] border-collapse text-body">
             <thead>
-              <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+              <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
                 <th className="w-[36px] px-3 py-2 text-left">
                   <input type="checkbox" checked={allSelected} onChange={toggleAll} title="현재 페이지 전체 선택" aria-label="현재 페이지 전체 선택" />
                 </th>
@@ -1297,7 +1297,7 @@ export default function ClassifyPanel({
                         <input type="checkbox" checked={selected.has(tx.id)} onChange={() => toggleSel(tx.id)} aria-label="선택" />
                       )}
                     </td>
-                    <td className="px-2 py-2 text-right align-middle text-[11px] tabular-nums text-muted-foreground">
+                    <td className="px-2 py-2 text-right align-middle text-caption tabular-nums text-muted-foreground">
                       {pageStart + rowIdx + 1}
                     </td>
                     <Td>{bankSourceLabel(tx.bank)}</Td>
@@ -1310,10 +1310,10 @@ export default function ClassifyPanel({
                     </Td>
                     <td className="px-3 py-2 align-middle">
                       <div className="flex max-w-[380px] items-center gap-1.5">
-                        {tx.source === 'naverpay' && <span title="네이버페이 결제내역" className="shrink-0 rounded bg-positive/10 px-1.5 py-0.5 text-[11px] font-medium text-positive">N</span>}
+                        {tx.source === 'naverpay' && <span title="네이버페이 결제내역" className="shrink-0 rounded bg-positive/10 px-1.5 py-0.5 text-caption font-medium text-positive">N</span>}
                         <span
                           title="출처(은행 통장 거래는 접두어 없음)·브랜드·지점 — 이 거래가 귀속된 회계 단위"
-                          className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground"
+                          className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-caption font-medium text-muted-foreground"
                         >
                           {tx.source === 'card' && '신한카드 '}
                           {tx.brand === 'personal'
@@ -1327,7 +1327,7 @@ export default function ClassifyPanel({
                         {tx.brand_basis === 'default' && (
                           <span
                             title="귀속 미확정 — 배송지를 읽지 못해 기본값(가든)으로 들어온 거래예요. 선택해서 '브랜드·지점 이동'으로 실제 귀속을 확정해 주세요"
-                            className="shrink-0 rounded bg-destructive/10 px-1.5 py-0.5 text-[11px] font-medium text-destructive"
+                            className="shrink-0 rounded bg-destructive/10 px-1.5 py-0.5 text-caption font-medium text-destructive"
                           >
                             귀속?
                           </span>
@@ -1335,7 +1335,7 @@ export default function ClassifyPanel({
                         {tx.brand_basis === 'default' && merchantHintMap.has(tx.normalized_key) && (
                           <span
                             title="가맹점 이력 힌트 — 이 가맹점의 확정된 과거 거래(배송지 판정·사용자 확정)가 전부 한 브랜드였어요. 선택해서 '브랜드·지점 이동'으로 확정해 주세요"
-                            className="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600"
+                            className="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 text-caption font-medium text-amber-600"
                           >
                             과거 {merchantHintMap.get(tx.normalized_key)!.count}건 모두{' '}
                             {brandLabel(merchantHintMap.get(tx.normalized_key)!.brand)}
@@ -1347,13 +1347,13 @@ export default function ClassifyPanel({
                             title="가맹점명·학습 규칙 기반 지점 제안 — 클릭하면 이 건만 지정돼요"
                             onClick={() => quickAssignStore(tx, storeSug)}
                             disabled={busy === tx.id}
-                            className="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 hover:bg-amber-500/20"
+                            className="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 text-caption font-medium text-amber-600 hover:bg-amber-500/20"
                           >
                             제안: {storeLabel(storeSug)}
                           </button>
                         )}
                         {tx.split_parent_id != null && (
-                          <span title="건별 분할로 생긴 행" className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">🔀</span>
+                          <span title="건별 분할로 생긴 행" className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-caption font-medium text-primary">🔀</span>
                         )}
                         <span className="line-clamp-2 min-w-0 break-all" title={tx.memo}>
                           {tx.memo || <span className="text-muted-foreground">(빈 내용)</span>}
@@ -1361,23 +1361,23 @@ export default function ClassifyPanel({
                             <span className="text-muted-foreground"> · {tx.channel}</span>
                           )}
                         </span>
-                        {tx.is_installment && <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">할부</span>}
+                        {tx.is_installment && <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 text-caption font-medium text-muted-foreground">할부</span>}
                       </div>
                     </td>
                     <Td>
                       {locked ? (
                         <span className="inline-flex items-center gap-[6px] text-foreground">
                           🔒 {tx.category_id ? catName(tx.category_id) : '미분류'}
-                          <span className="text-[11px] text-muted-foreground">확정됨</span>
+                          <span className="text-caption text-muted-foreground">확정됨</span>
                         </span>
                       ) : splitCatId != null && tx.category_id === splitCatId ? (
                         // 건별 분할된 원거래 — 손익 제외, 자식 행들이 각자 회계에 잡힘
                         <span className="inline-flex items-center gap-2">
-                          <span className="text-[13px] text-muted-foreground">🔀 분할됨 (손익 제외)</span>
+                          <span className="text-body text-muted-foreground">🔀 분할됨 (손익 제외)</span>
                           <button
                             onClick={() => undoSplit(tx)}
                             disabled={busy === tx.id}
-                            className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:text-destructive"
+                            className="rounded-full border border-border px-2 py-0.5 text-caption text-muted-foreground hover:text-destructive"
                           >
                             {busy === tx.id ? '해제 중…' : '분할 해제'}
                           </button>
@@ -1391,7 +1391,7 @@ export default function ClassifyPanel({
                             const v = Number(e.target.value);
                             if (v) classify(tx, v);
                           }}
-                          className={`ta-input min-w-[190px] text-[13px] ${pending ? 'border-foreground' : ''}`}
+                          className={`ta-input min-w-[190px] text-body ${pending ? 'border-foreground' : ''}`}
                         >
                           <option value="">미분류 — 선택…</option>
                           {(() => {
@@ -1420,14 +1420,14 @@ export default function ClassifyPanel({
                             );
                           })}
                         </select>
-                        {busy === tx.id && <span className="text-[11px] text-muted-foreground">저장…</span>}
+                        {busy === tx.id && <span className="text-caption text-muted-foreground">저장…</span>}
                         {sug && busy !== tx.id && (
                           // AI 추천 배지 = 원클릭 확정 버튼(2026-08-04 대표 요청) — 맞으면 눌러서
                           // 바로 적용(같은 가맹점 전파 + 규칙 학습). 틀리면 드롭다운으로 다른 계정 선택.
                           <button
                             onClick={() => classify(tx, sug.categoryId)}
                             title={`${sug.reason ? `${sug.reason} — ` : ''}눌러서 이 계정으로 확정해요 (${tx.amount_in > 0 ? '이 달 같은 가맹점의 미분류 입금도 함께 확정' : '같은 가맹점 전파·규칙 학습'})`}
-                            className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                            className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-caption font-medium ${
                               sug.confidence >= CONF
                                 ? 'border-primary/40 bg-primary/10 text-primary'
                                 : 'border-amber-500/40 bg-amber-500/10 text-amber-600 hover:border-amber-600'
@@ -1440,7 +1440,7 @@ export default function ClassifyPanel({
                           <button
                             onClick={() => classify(tx, ruleSug)}
                             title="학습된 추천 — 눌러서 확정"
-                            className="whitespace-nowrap rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+                            className="whitespace-nowrap rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-caption font-medium text-primary"
                           >
                             학습 · {catName(ruleSug)} 적용
                           </button>
@@ -1450,7 +1450,7 @@ export default function ClassifyPanel({
                           <button
                             onClick={() => classify(tx, misangCat.id, { single: true })}
                             title="용도를 모르는 거래를 일단 보류해요 — 이 거래 한 건만 미상으로(학습 없음), 상단 '미상 N건'에서 나중에 밝혀 재분류"
-                            className="whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                            className="whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-caption text-muted-foreground hover:text-foreground"
                           >
                             미상
                           </button>
@@ -1460,7 +1460,7 @@ export default function ClassifyPanel({
                           <button
                             onClick={() => openSplit(tx)}
                             title="한 지점 매입으로 잡힌 공동구매를 브랜드·지점별 금액으로 나눠요"
-                            className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                            className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-caption font-medium ${
                               splitRuleFor(tx)
                                 ? 'border-primary/40 bg-primary/10 text-primary'
                                 : 'border-border text-muted-foreground hover:text-foreground'
@@ -1477,7 +1477,7 @@ export default function ClassifyPanel({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-[13px] text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-6 text-center text-body text-muted-foreground">
                     선택한 월·은행에 거래가 없어요.
                   </td>
                 </tr>
@@ -1486,7 +1486,7 @@ export default function ClassifyPanel({
           </table>
         </div>
         {totalPages > 1 && (
-          <div className="flex flex-wrap items-center justify-center gap-1.5 border-t border-border px-3 py-3 text-[13px]">
+          <div className="flex flex-wrap items-center justify-center gap-1.5 border-t border-border px-3 py-3 text-body">
             <button
               disabled={curPage === 1}
               onClick={() => setPage(curPage - 1)}
@@ -1516,7 +1516,7 @@ export default function ClassifyPanel({
             >
               다음 →
             </button>
-            <span className="ml-2 text-[11px] text-muted-foreground">
+            <span className="ml-2 text-caption text-muted-foreground">
               {won(pageStart + 1)}–{won(Math.min(pageStart + PAGE_SIZE, filtered.length))} / {won(filtered.length)}건
             </span>
           </div>
@@ -1544,7 +1544,7 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
 function Td({ children, right, mono }: { children: React.ReactNode; right?: boolean; mono?: boolean }) {
   return (
     <td
-      className={`whitespace-nowrap px-3 py-2 align-middle text-[13px] text-foreground ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''}`}
+      className={`whitespace-nowrap px-3 py-2 align-middle text-body text-foreground ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''}`}
     >
       {children}
     </td>

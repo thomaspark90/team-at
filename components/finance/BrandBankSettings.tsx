@@ -54,18 +54,18 @@ export default function BrandBankSettings({ initial }: { initial: BrandBankRow[]
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="m-0 text-[13px] text-muted-foreground">
+      <p className="m-0 text-body text-muted-foreground">
         브랜드가 실제로 쓰는 은행만 켜두세요. 꺼진 은행은 그 브랜드의 <b>자료 입력 보드·월 확정 점검·월 배지</b>에서
         요구하지 않아요. (은행을 새로 추가하는 기능이 아니라, 파서가 준비된 은행 중 사용 여부를 고르는 거예요.)
       </p>
-      {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
+      {error && <div className="text-body text-destructive">⚠️ {error}</div>}
       <div className="overflow-hidden rounded-md border border-border bg-background">
         {BRANDS.map((b, i) => (
           <div
             key={b.id}
             className={`flex flex-wrap items-center gap-[10px] px-[14px] py-[20px] ${i > 0 ? 'border-t border-border' : ''}`}
           >
-            <span className="flex-[1_1_140px] text-[13px] text-foreground">{b.label}</span>
+            <span className="flex-[1_1_140px] text-body text-foreground">{b.label}</span>
             {KNOWN_BANKS.map((k) => {
               const on = (rows[b.id] ?? []).includes(k.value);
               return (
@@ -73,7 +73,7 @@ export default function BrandBankSettings({ initial }: { initial: BrandBankRow[]
                   key={k.value}
                   onClick={() => toggle(b.id, k.value)}
                   disabled={busy === b.id}
-                  className={`whitespace-nowrap rounded-md border px-3 py-1 text-[11px] ${
+                  className={`whitespace-nowrap rounded-md border px-3 py-1 text-caption ${
                     on ? 'border-transparent bg-primary text-primary-foreground' : 'border-border text-muted-foreground'
                   }`}
                 >
@@ -82,7 +82,7 @@ export default function BrandBankSettings({ initial }: { initial: BrandBankRow[]
                 </button>
               );
             })}
-            {busy === b.id && <span className="text-[11px] text-muted-foreground">저장 중…</span>}
+            {busy === b.id && <span className="text-caption text-muted-foreground">저장 중…</span>}
           </div>
         ))}
       </div>

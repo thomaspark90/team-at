@@ -31,22 +31,22 @@ export default async function LandingPage({ searchParams }: { searchParams: { de
         <p className="caption mb-10 text-center">F&B Brand Operations</p>
         <LoginButton />
         {denied ? (
-          <p className="mt-4 text-center text-[13px] text-destructive">
+          <p className="mt-4 text-center text-body text-destructive">
             <b>@team-at.space</b> 팀 계정 또는 등록된 이메일만 이용할 수 있어요. 관리자에게 이메일 등록을 요청하세요.
           </p>
         ) : (
-          <p className="mt-4 text-center text-[13px] text-muted-foreground">
+          <p className="mt-4 text-center text-body text-muted-foreground">
             @team-at.space 팀 구글 계정으로 로그인하세요
           </p>
         )}
         {/* 간편 계정(스탭·매니저) — 대표가 설정에서 발급한 이름 + 숫자 6자리 */}
-        <div className="my-8 flex w-full items-center gap-3 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
+        <div className="my-8 flex w-full items-center gap-3 text-caption uppercase tracking-[0.06em] text-muted-foreground">
           <span className="h-px flex-1 bg-border" />
           스탭 · 매니저
           <span className="h-px flex-1 bg-border" />
         </div>
         <SimpleLoginForm />
-        <a href="/install" className="mt-8 text-[11px] text-muted-foreground underline hover:text-foreground">
+        <a href="/install" className="mt-8 text-caption text-muted-foreground underline hover:text-foreground">
           휴대폰·PC에 앱 설치하는 방법
         </a>
       </div>

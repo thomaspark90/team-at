@@ -56,7 +56,7 @@ function ScatterTip({ active, payload }: any) {
   const p: (Pt & { store?: string; stale?: boolean }) | undefined = payload?.[0]?.payload;
   if (!active || !p) return null;
   return (
-    <div className="rounded-md border border-border bg-background px-2.5 py-1.5 text-[13px]">
+    <div className="rounded-md border border-border bg-background px-2.5 py-1.5 text-body">
       <div className="text-muted-foreground">
         {p.label} · {p.date}
         {p.stale ? ' · 얼라인 이전' : ''}
@@ -71,7 +71,7 @@ function ScatterTip({ active, payload }: any) {
 function CurveTip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-md border border-border bg-background px-2.5 py-1.5 text-[13px]">
+    <div className="rounded-md border border-border bg-background px-2.5 py-1.5 text-body">
       <div className="mb-1 text-muted-foreground">{Number(label).toLocaleString()}µm 부근</div>
       {payload.map((p: any) => (
         <div key={p.dataKey} className="flex items-center justify-between gap-3 tabular text-foreground">
@@ -278,16 +278,16 @@ export default function GrindCalibrationCharts() {
             Math.abs(dialToMicron(fit, 8) - dialToMicron(profileFit, 8)) < 1;
           return (
             <div key={s.id} className="rounded-md bg-muted/40 p-6" style={{ flex: 1, minWidth: 220 }}>
-              <div className="text-[11px] text-muted-foreground" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className="text-caption text-muted-foreground" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: C[s.id] }} aria-hidden />
                 {s.label} · 얼라인 {last ?? '기록 없음'}
               </div>
               {/* '기울기(µm/다이얼)' 통계 용어는 화면에서 제거(2026-08-08 대표 지시 — 물리적
                   기울어짐으로 오독됨). 바리스타에게 유효한 다이얼 8 환산값을 헤드라인으로. */}
-              <div className="tabular text-[22px] text-foreground" style={{ marginTop: 4 }}>
+              <div className="tabular text-display text-foreground" style={{ marginTop: 4 }}>
                 {fit ? `다이얼 8 ≈ ${Math.round(dialToMicron(fit, 8))}µm` : '메쉬 기준 미확정'}
               </div>
-              <div className="text-[11px] text-muted-foreground" style={{ marginTop: 2 }}>
+              <div className="text-caption text-muted-foreground" style={{ marginTop: 2 }}>
                 {fit
                   ? `현행 측정 ${points[s.id].current.length}샷 기준`
                   : `서로 다른 다이얼 2개 이상 측정 필요 (현행 ${points[s.id].current.length}샷)`}
@@ -295,7 +295,7 @@ export default function GrindCalibrationCharts() {
               {fit && (
                 <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   {upToDate ? (
-                    <span className="tabular text-[11px]" style={{ color: 'hsl(150 60% 35%)' }}>
+                    <span className="tabular text-caption" style={{ color: 'hsl(150 60% 35%)' }}>
                       레시피 메쉬 기준에 적용됨{profile?.updatedAt ? ` · ${profile.updatedAt.slice(5, 10).replace('-', '.')}` : ''}
                     </span>
                   ) : (
@@ -314,11 +314,11 @@ export default function GrindCalibrationCharts() {
           );
         })}
         <div className="rounded-md bg-muted/40 p-6" style={{ flex: 1, minWidth: 220 }}>
-          <div className="text-[11px] text-muted-foreground">두 지점 오프셋 (같은 다이얼, 판교−양재천)</div>
-          <div className="tabular text-[22px] text-foreground" style={{ marginTop: 4 }}>
+          <div className="text-caption text-muted-foreground">두 지점 오프셋 (같은 다이얼, 판교−양재천)</div>
+          <div className="tabular text-display text-foreground" style={{ marginTop: 4 }}>
             {meanOffset != null ? `${meanOffset > 0 ? '+' : ''}${Math.round(meanOffset)}µm` : '—'}
           </div>
-          <div className="text-[11px] text-muted-foreground" style={{ marginTop: 2 }}>
+          <div className="text-caption text-muted-foreground" style={{ marginTop: 2 }}>
             {meanOffset != null
               ? Math.abs(meanOffset) <= REPEATABILITY_TOLERANCE_UM
                 ? `±${REPEATABILITY_TOLERANCE_UM}µm 이내 — 두 지점 얼라인 일치`
@@ -326,7 +326,7 @@ export default function GrindCalibrationCharts() {
               : '두 지점이 같은 다이얼을 측정하면 계산됩니다'}
           </div>
           {bothApplied && (
-            <div className="tabular text-[11px]" style={{ marginTop: 8, color: 'hsl(150 60% 35%)' }}>
+            <div className="tabular text-caption" style={{ marginTop: 8, color: 'hsl(150 60% 35%)' }}>
               두 지점 메쉬 기준 적용됨 — 레시피의 판교 다이얼이 실측 확정값으로 표시됩니다
             </div>
           )}
@@ -336,12 +336,12 @@ export default function GrindCalibrationCharts() {
       {/* 다이얼 → µm 산점도 + 피팅 */}
       <div className="min-w-0 py-[54px]">
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-          <span className="text-[15px] font-medium text-foreground">다이얼 → 입자 크기 — 측정 전체</span>
-          <button onClick={() => refresh(true)} className="text-[11px] text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+          <span className="text-title font-medium text-foreground">다이얼 → 입자 크기 — 측정 전체</span>
+          <button onClick={() => refresh(true)} className="text-caption text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
             {loading ? '불러오는 중…' : '새로고침'}
           </button>
         </div>
-        <p className="text-[13px] text-muted-foreground" style={{ marginTop: 4, marginBottom: 16, maxWidth: 880 }}>
+        <p className="text-body text-muted-foreground" style={{ marginTop: 4, marginBottom: 16, maxWidth: 880 }}>
           점 1개 = 컴퍼스 촬영 1샷. 진한 점은 각 지점의 최근 얼라인먼트 이후(현행) 측정,{' '}
           {hasStale ? '흐린 점은 얼라인 이전 측정(피팅·비교 제외)' : '얼라인 이전 측정은 흐리게 표시'}입니다. 직선은 현행 측정의
           다이얼→µm 선형 피팅 — 두 지점 직선이 겹칠수록 얼라인이 일치합니다.
@@ -384,10 +384,10 @@ export default function GrindCalibrationCharts() {
       {/* 다이얼별 비교 표 */}
       {dialRows.length > 0 && (
         <div className="min-w-0 py-[54px]" style={{ overflowX: 'auto' }}>
-          <p className="text-[15px] font-medium text-foreground" style={{ marginTop: 0, marginBottom: 20 }}>
+          <p className="text-title font-medium text-foreground" style={{ marginTop: 0, marginBottom: 20 }}>
             다이얼별 지점 비교
           </p>
-          <table className="tabular text-[13px]" style={{ borderCollapse: 'collapse', minWidth: 480, width: '100%', maxWidth: 680 }}>
+          <table className="tabular text-body" style={{ borderCollapse: 'collapse', minWidth: 480, width: '100%', maxWidth: 680 }}>
             <thead>
               <tr className="text-muted-foreground">
                 {['다이얼', '양재천 평균(µm)', '판교 평균(µm)', '오프셋(판교−양재천)', '판정'].map((h) => (
@@ -431,7 +431,7 @@ export default function GrindCalibrationCharts() {
               })}
             </tbody>
           </table>
-          <p className="text-[11px] text-muted-foreground" style={{ marginBottom: 0 }}>
+          <p className="text-caption text-muted-foreground" style={{ marginBottom: 0 }}>
             판정 기준: 샷 간 반복성(±{REPEATABILITY_TOLERANCE_UM}µm) 이내면 일치 — 현행(최근 얼라인 이후) 측정끼리만 판정.
             현행이 없는 쪽은 얼라인 전 평균을 흐리게 참고용으로 표시하며 판정·평균 오프셋 계산에선 제외.
           </p>
@@ -443,7 +443,7 @@ export default function GrindCalibrationCharts() {
         <div className="pt-[54px]" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', columnGap: 12, rowGap: 24 }}>
           {distCharts.map(({ dial, data }) => (
             <div key={dial} className="min-w-0 rounded-md bg-muted/40 p-6">
-              <span className="text-[13px] font-medium text-foreground">다이얼 {dial.toFixed(1)} 분포 비교</span>
+              <span className="text-body font-medium text-foreground">다이얼 {dial.toFixed(1)} 분포 비교</span>
               <div style={{ width: '100%', height: 220 }}>
                 <ResponsiveContainer>
                   <LineChart data={data} margin={{ top: 12, right: 12, bottom: 0, left: -12 }}>

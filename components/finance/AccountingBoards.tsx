@@ -47,7 +47,7 @@ export default function AccountingBoards({
                   key={b.id}
                   onClick={() => setBrand(b.id)}
                   aria-pressed={on}
-                  className={`rounded-lg px-3 py-1 text-[13px] transition-colors ${
+                  className={`rounded-lg px-3 py-1 text-body transition-colors ${
                     on ? 'bg-foreground font-medium text-background' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -55,7 +55,7 @@ export default function AccountingBoards({
                 </button>
               );
             })}
-            <span className="ml-2 text-[11px] text-muted-foreground">브랜드별로 회계가 분리돼요 — 올린 자료는 선택된 브랜드로 들어가요</span>
+            <span className="ml-2 text-caption text-muted-foreground">브랜드별로 회계가 분리돼요 — 올린 자료는 선택된 브랜드로 들어가요</span>
           </div>
         </div>
       )}

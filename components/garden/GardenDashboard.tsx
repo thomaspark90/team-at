@@ -535,7 +535,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
         >
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
-              <span className="text-[15px] font-medium text-foreground" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span className="text-title font-medium text-foreground" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {g.bean}
               </span>
               {/* 등록 시점부터 경과일 — 등록 당일 D+0, D+25부터 주황·D+31부터 빨강 */}
@@ -547,7 +547,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                   : level === 'warn' ? 'text-amber-600 dark:text-amber-500 font-medium'
                   : 'text-muted-foreground';
                 return (
-                  <span className={`tabular text-[11px] ${levelCls}`} style={{ flexShrink: 0 }} title={`등록 ${fmtDate(regAt)}`}>
+                  <span className={`tabular text-caption ${levelCls}`} style={{ flexShrink: 0 }} title={`등록 ${fmtDate(regAt)}`}>
                     D+{n}
                   </span>
                 );
@@ -561,12 +561,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                 if (stockPicker?.beanKey === g.beanKey && stockPicker.store === s.id) {
                   return (
                     <span key={s.id} style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                      <span className="text-[11px] text-muted-foreground">{s.short}</span>
+                      <span className="text-caption text-muted-foreground">{s.short}</span>
                       {STOCK_LEVELS.map((lv) => (
                         <button
                           key={lv}
                           onClick={() => setStock(g.beanKey, g.bean, s.id, lv)}
-                          className={`rounded-sm border text-[11px] tabular ${
+                          className={`rounded-sm border text-caption tabular ${
                             lv === pct
                               ? 'border-foreground text-foreground'
                               : lv <= 20
@@ -594,7 +594,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                   <button
                     key={s.id}
                     onClick={() => setStockPicker({ beanKey: g.beanKey, store: s.id })}
-                    className={`rounded-sm border text-[11px] tabular ${
+                    className={`rounded-sm border text-caption tabular ${
                       low ? 'border-amber-500/40 text-amber-600 dark:text-amber-500' : 'border-border text-foreground hover:bg-accent'
                     }`}
                     style={{ ...ghostBtn, padding: '1px 8px' }}
@@ -635,7 +635,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
               ) : (
                 <button
                   onClick={() => setTastingEdit({ beanKey: g.beanKey, bean: g.bean, value: tastingByBean.get(g.beanKey) ?? '' })}
-                  className={`text-[11px] ${tastingByBean.get(g.beanKey) ? 'text-muted-foreground hover:text-foreground' : 'text-muted-foreground/60 hover:text-foreground'}`}
+                  className={`text-caption ${tastingByBean.get(g.beanKey) ? 'text-muted-foreground hover:text-foreground' : 'text-muted-foreground/60 hover:text-foreground'}`}
                   style={{ ...ghostBtn, textAlign: 'left' }}
                   title="테이스팅 노트 편집"
                 >
@@ -645,7 +645,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             </div>
             {latest?.chosenPrice != null && latest.chosenPrice > 0 && (
               // 책정 판매가 / 재료비율(잔당 재료비 ÷ 판매가)
-              <span className="tabular text-[13px] text-muted-foreground" style={{ flexShrink: 0 }}>
+              <span className="tabular text-body text-muted-foreground" style={{ flexShrink: 0 }}>
                 {won(latest.chosenPrice)} / {Math.round((latest.costPerCup / latest.chosenPrice) * 100)}%
               </span>
             )}
@@ -655,14 +655,14 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           {latest && (latest.recipeReview || latest.chosenPrice != null) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {latest.recipeReview && (
-                <p className="text-[11px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>
+                <p className="text-caption" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>
                   ⚠ 원두카드 담당자가 레시피 재검토를 요청했어요 · {fmtDate(latest.recipeReview.at)}
                   {latest.recipeReview.note ? ` · ${latest.recipeReview.note}` : ''}
                 </p>
               )}
               {latest.chosenPrice != null &&
                 (latest.priceReview ? (
-                  <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>
+                  <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
                     판매가 재검토 요청됨 · {fmtDate(latest.priceReview.at)}
                     {latest.priceReview.note ? ` · ${latest.priceReview.note}` : ''}
                   </p>
@@ -697,7 +697,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                       setPriceReviewOpenFor(g.beanKey);
                       setPriceReviewNote('');
                     }}
-                    className="text-[11px] text-muted-foreground hover:text-foreground"
+                    className="text-caption text-muted-foreground hover:text-foreground"
                     style={{ ...ghostBtn, textAlign: 'left' }}
                   >
                     판매가 재검토 요청 (되돌리기)
@@ -721,14 +721,14 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                   <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                     <BrewBadge bt={bt} />
                     {r && ratioOf(r.doseG, r.waterG) && (
-                      <span className="tabular text-[13px] text-foreground">{ratioOf(r.doseG, r.waterG)}</span>
+                      <span className="tabular text-body text-foreground">{ratioOf(r.doseG, r.waterG)}</span>
                     )}
                   </span>
                   {r ? (
                     <span style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
                       <button
                         onClick={() => setTimerFor({ bean: g.bean, brewType: bt, recipe: r })}
-                        className="text-[11px] text-muted-foreground hover:text-foreground"
+                        className="text-caption text-muted-foreground hover:text-foreground"
                         style={ghostBtn}
                         title="추출 타이머 열기"
                       >
@@ -736,14 +736,14 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                       </button>
                       <button
                         onClick={() => openEditor(g.beanKey, g.bean, bt)}
-                        className="text-[11px] text-muted-foreground hover:text-foreground"
+                        className="text-caption text-muted-foreground hover:text-foreground"
                         style={ghostBtn}
                       >
                         수정
                       </button>
                       <button
                         onClick={() => deleteRecipe(g.beanKey, bt)}
-                        className="text-[11px] text-muted-foreground hover:text-foreground"
+                        className="text-caption text-muted-foreground hover:text-foreground"
                         style={ghostBtn}
                       >
                         삭제
@@ -809,20 +809,20 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                     )}
 
                     {r.notes && (
-                      <p className="text-[11px] text-muted-foreground" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                      <p className="text-caption text-muted-foreground" style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
                         {r.notes}
                       </p>
                     )}
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                      <span className="tabular text-[11px] text-muted-foreground">
+                      <span className="tabular text-caption text-muted-foreground">
                         {fmtDate(r.updatedAt)}
                         {r.updatedBy && ` · ${r.updatedBy.split('@')[0]}`}
                       </span>
                       {(r.history?.length ?? 0) > 0 && (
                         <button
                           onClick={() => toggleHistory(`${g.beanKey}:${bt}`)}
-                          className="tabular text-[11px] text-muted-foreground hover:text-foreground"
+                          className="tabular text-caption text-muted-foreground hover:text-foreground"
                           style={{ ...ghostBtn, flexShrink: 0 }}
                         >
                           이력 {r.history!.length} {openHistory.has(`${g.beanKey}:${bt}`) ? '▴' : '▾'}
@@ -850,7 +850,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                             <span style={{ flex: 1 }} />
                             <button
                               onClick={() => restoreSnapshot(g.beanKey, g.bean, bt, s)}
-                              className="text-[11px] text-muted-foreground hover:text-foreground"
+                              className="text-caption text-muted-foreground hover:text-foreground"
                               style={{ ...ghostBtn, flexShrink: 0 }}
                               title="이 버전을 편집 폼에 불러오기 (저장해야 복원됨)"
                             >
@@ -878,10 +878,10 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {unsetBeans.map((rec) => (
           <div key={rec.id} style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <span className="text-[13px] text-foreground" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span className="text-body text-foreground" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {rec.bean}
             </span>
-            <span className="tabular text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>
+            <span className="tabular text-caption text-muted-foreground" style={{ flexShrink: 0 }}>
               {fmtDate(rec.createdAt)} 발주
               {rec.chosenPrice != null && ` · ${won(rec.chosenPrice)}`}
             </span>
@@ -916,7 +916,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <p className="ta-label" style={{ margin: 0 }}>판매가 미책정 — {unpriced.length}건</p>
         <span
-          className="text-[11px] text-muted-foreground"
+          className="text-caption text-muted-foreground"
           style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
         >
           {unpriced.slice(0, 3).map((r) => r.bean).join(' · ')}
@@ -946,7 +946,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             </p>
             <button
               onClick={resetToHouse}
-              className="text-[11px] text-muted-foreground hover:text-foreground"
+              className="text-caption text-muted-foreground hover:text-foreground"
               style={{ ...ghostBtn, flexShrink: 0 }}
               title={`${btLabel(draft.brewType)} 매장 기준 레시피로 되돌리기`}
             >
@@ -962,7 +962,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                 <button
                   key={bt}
                   onClick={() => !on && openEditor(draft.beanKey, draft.bean, bt)}
-                  className={`rounded-sm px-3 py-1 text-[13px] transition-colors ${
+                  className={`rounded-sm px-3 py-1 text-body transition-colors ${
                     on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -994,12 +994,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
               options={withCurStr(TIME_OPTS, draft.totalTime)}
             />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-              <span className="text-[11px] text-muted-foreground">분쇄도 (Mesh · EK43 양재천)</span>
+              <span className="text-caption text-muted-foreground">분쇄도 (Mesh · EK43 양재천)</span>
               <div className="rounded-md border border-input" style={{ display: 'flex', alignItems: 'center', height: 36 }}>
                 <button onClick={() => adjMesh(-0.1)} className="text-muted-foreground hover:text-foreground" style={meshBtn} title="0.1 곱게">
                   ‹
                 </button>
-                <span className="tabular text-[13px] text-foreground" style={{ flex: 1, textAlign: 'center' }}>
+                <span className="tabular text-body text-foreground" style={{ flex: 1, textAlign: 'center' }}>
                   {draft.grindMesh || '—'}
                 </span>
                 <button onClick={() => adjMesh(0.1)} className="text-muted-foreground hover:text-foreground" style={meshBtn} title="0.1 굵게">
@@ -1007,12 +1007,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                 </button>
               </div>
               {draft.grindMesh && pangyoMeshText(Number(draft.grindMesh)) === '재측정 필요' && (
-                <p className="text-[13px] text-muted-foreground" style={{ margin: '4px 0 0' }}>
+                <p className="text-body text-muted-foreground" style={{ margin: '4px 0 0' }}>
                   판교점 EK43 메쉬 — 재얼라인 이후 재측정 필요 (6/8/10 프로토콜 측정을 올려주세요)
                 </p>
               )}
               {draft.grindMesh && pangyoMeshText(Number(draft.grindMesh)) != null && pangyoMeshText(Number(draft.grindMesh)) !== '재측정 필요' && (
-                <span className="tabular text-[11px] text-muted-foreground">
+                <span className="tabular text-caption text-muted-foreground">
                   판교점 EK43 메쉬 ≈ {pangyoMeshText(Number(draft.grindMesh))}
                 </span>
               )}
@@ -1021,12 +1021,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
           {/* 푸어링 단계 — 물 투입량 30~60g, 5g 단위 드랍다운 */}
           <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <span className="text-[11px] text-muted-foreground">푸어링 (단계별 물 투입량)</span>
+            <span className="text-caption text-muted-foreground">푸어링 (단계별 물 투입량)</span>
             {draft.pours.map((p, i) => {
               const cum = draft.pours.slice(0, i + 1).reduce((a, s) => a + s.water, 0);
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                  <span className="text-[13px] text-foreground" style={{ width: 76, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span className="text-body text-foreground" style={{ width: 76, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {p.at ? `${p.at} ` : ''}
                     {pourName(p, i)}
                   </span>
@@ -1042,7 +1042,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                       </option>
                     ))}
                   </select>
-                  <span className="tabular text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>
+                  <span className="tabular text-caption text-muted-foreground" style={{ flexShrink: 0 }}>
                     누적 {cum}g
                   </span>
                   <span style={{ flex: 1 }} />
@@ -1062,7 +1062,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                 + 푸어링 추가
               </button>
               {draftWater > 0 && (
-                <span className="tabular text-[11px] text-muted-foreground">
+                <span className="tabular text-caption text-muted-foreground">
                   총 물량 {draftWater}g{ratioOf(Number(draft.doseG) || null, draftWater) ? ` · 비율 ${ratioOf(Number(draft.doseG) || null, draftWater)}` : ''}
                 </span>
               )}
@@ -1070,7 +1070,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           </div>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 24 }}>
-            <span className="text-[11px] text-muted-foreground">테이스팅 노트 (ICE/HOT 공통)</span>
+            <span className="text-caption text-muted-foreground">테이스팅 노트 (ICE/HOT 공통)</span>
             <input
               type="text"
               value={draft.tasting}
@@ -1081,7 +1081,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 24 }}>
-            <span className="text-[11px] text-muted-foreground">메모</span>
+            <span className="text-caption text-muted-foreground">메모</span>
             <textarea
               value={draft.notes}
               onChange={(e) => setD('notes', e.target.value)}
@@ -1111,11 +1111,11 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       {/* 필터 레시피 — 모든 레시피 원두를 국가별 그룹으로, 카드 전체 기능(수정·타이머·이력·재고칩) */}
       {section === 'recipes' && (
         <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
-          {loading && <p className="text-[13px] text-muted-foreground">불러오는 중…</p>}
+          {loading && <p className="text-body text-muted-foreground">불러오는 중…</p>}
           {/* 새 발주 원두 — 레시피 미설정이면 상단에서 바로 설정 유도 */}
           {!loading && unsetCard}
           {!loading && beanGroups.length === 0 && unsetBeans.length === 0 && (
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-body text-muted-foreground">
               아직 레시피가 설정된 원두가 없어요. 가격 세팅에서 원두를 발주하면 여기에서 레시피를 만들 수
               있어요.
             </p>
@@ -1130,7 +1130,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                   <button
                     key={c}
                     onClick={() => setSelectedCountry(c)}
-                    className={`rounded-md border px-2.5 py-1 text-[13px] transition-colors ${
+                    className={`rounded-md border px-2.5 py-1 text-body transition-colors ${
                       on
                         ? 'border-foreground bg-foreground text-background'
                         : 'border-border text-muted-foreground hover:text-foreground'
@@ -1154,8 +1154,8 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           ).map(({ country, groups }) => (
             <div key={country} className="min-w-0">
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, borderBottom: '1px solid hsl(var(--border))', paddingBottom: 6, marginBottom: 24 }}>
-                <h3 className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>{country}</h3>
-                <span className="text-[11px] text-muted-foreground">{groups.length}종</span>
+                <h3 className="text-title font-medium text-foreground" style={{ margin: 0 }}>{country}</h3>
+                <span className="text-caption text-muted-foreground">{groups.length}종</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px 12px' }}>
                 {groups.map(renderBeanCard)}
@@ -1164,7 +1164,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           ))}
 
           {!loading && beanGroups.length > 0 && (
-            <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+            <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
               판교 분쇄도는 지점 캘리브레이션 실측 기반 메쉬 값입니다. <strong>*</strong>는 잠정 범위(메쉬 실측 전),
               &lsquo;재측정 필요&rsquo;는 재얼라인 이후 새 측정이 아직 없다는 뜻입니다 —{' '}
               <Link href="/garden/calibration/report" className="underline hover:text-foreground">
@@ -1177,7 +1177,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
       {/* 레시피 미설정 원두 — 가격 세팅에서 저장한 원두 목록 (대시보드) */}
       {section === 'unset' && unsetBeans.length === 0 && !loading && (
-        <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+        <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
           레시피 미설정 원두가 없어요. 레시피 카드는{' '}
           <Link href="/garden/recipes" className="underline hover:text-foreground">필터 레시피</Link>
           에서 관리합니다.
@@ -1204,7 +1204,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 function BrewBadge({ bt }: { bt: BrewType }) {
   return (
     <span
-      className="rounded-sm bg-foreground text-[11px] font-medium text-background"
+      className="rounded-sm bg-foreground text-caption font-medium text-background"
       style={{ padding: '1px 6px', letterSpacing: '0.05em', flexShrink: 0 }}
     >
       {bt.toUpperCase()}
@@ -1306,7 +1306,7 @@ function PangyoMeshRow({
       {historyOpen && history.length > 0 && (
         <div className="rounded-md bg-muted/40" style={{ padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {history.map((h, i) => (
-            <div key={i} className="tabular text-[11px] text-muted-foreground" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+            <div key={i} className="tabular text-caption text-muted-foreground" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
               <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {h.mesh != null ? `판교 ${h.mesh.toFixed(1)}` : '산식 자동값 복귀'}
                 {h.baseMesh != null && h.mesh != null ? ` (양재천 ${h.baseMesh.toFixed(1)} 기준)` : ''}
@@ -1350,7 +1350,7 @@ function SelField({
 }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-      <span className="text-[11px] text-muted-foreground">{label}</span>
+      <span className="text-caption text-muted-foreground">{label}</span>
       <select value={value} onChange={(e) => onChange(e.target.value)} className="ta-input w-full tabular" style={{ cursor: 'pointer' }}>
         <option value="">—</option>
         {options.map((o) => (

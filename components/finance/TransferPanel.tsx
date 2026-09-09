@@ -395,8 +395,8 @@ export default function TransferPanel({ role, email, mode }: Props) {
   }
 
   const inputCls =
-    'w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] text-foreground outline-none focus:border-foreground/40';
-  const labelCls = 'text-[11px] text-muted-foreground';
+    'w-full rounded-lg border border-border bg-background px-3 py-2 text-body text-foreground outline-none focus:border-foreground/40';
+  const labelCls = 'text-caption text-muted-foreground';
 
   const card = (r: TransferRequestRow) => {
     const account = [r.bank, r.account_no].filter(Boolean).join(' ');
@@ -404,11 +404,11 @@ export default function TransferPanel({ role, email, mode }: Props) {
     return (
       <div key={r.id} className="rounded-xl bg-muted/40 p-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="flex items-baseline gap-2 text-[15px] font-medium">
+          <span className="flex items-baseline gap-2 text-title font-medium">
             {r.vendor_name}
             {r.brand && (
               <span
-                className={`rounded px-1.5 py-0.5 text-[11px] font-normal ${
+                className={`rounded px-1.5 py-0.5 text-caption font-normal ${
                   r.brand === 'staffmeal' ? 'bg-emerald-500/15 text-emerald-600' : 'bg-foreground/10 text-foreground'
                 }`}
               >
@@ -416,32 +416,32 @@ export default function TransferPanel({ role, email, mode }: Props) {
               </span>
             )}
             <span
-              className={`rounded px-1.5 py-0.5 text-[11px] font-normal ${
+              className={`rounded px-1.5 py-0.5 text-caption font-normal ${
                 r.status === 'pending' ? 'bg-amber-500/15 text-amber-600' : 'bg-foreground/10 text-muted-foreground'
               }`}
             >
               {r.status === 'pending' ? '대기' : '완료'}
             </span>
           </span>
-          <span className="flex items-baseline gap-1.5 text-[15px] font-medium" style={{ color: 'hsl(var(--number-colored))' }}>
+          <span className="flex items-baseline gap-1.5 text-title font-medium" style={{ color: 'hsl(var(--number-colored))' }}>
             {won(Number(r.amount))}
             <button
               onClick={() => copy(String(Math.round(Number(r.amount))), `amt${r.id}`)}
-              className="text-[11px] font-normal text-muted-foreground hover:text-foreground"
+              className="text-caption font-normal text-muted-foreground hover:text-foreground"
             >
               {copied === `amt${r.id}` ? '복사됨' : '복사'}
             </button>
           </span>
         </div>
 
-        <div className="mt-1.5 text-[13px]">
+        <div className="mt-1.5 text-body">
           {account ? (
             <span className="flex flex-wrap items-center gap-1.5">
               <span className="font-mono">{account}</span>
               {r.account_holder && <span className="text-muted-foreground">({r.account_holder})</span>}
               <button
                 onClick={() => copy(r.account_no ?? '', `acc${r.id}`)}
-                className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                className="rounded border border-border px-1.5 py-0.5 text-caption text-muted-foreground hover:text-foreground"
               >
                 {copied === `acc${r.id}` ? '복사됨 ✓' : '계좌 복사'}
               </button>
@@ -451,15 +451,15 @@ export default function TransferPanel({ role, email, mode }: Props) {
           )}
         </div>
 
-        {r.items_summary && <p className="mt-1 text-[13px] text-muted-foreground">{r.items_summary}</p>}
-        {r.memo && <p className="mt-1 text-[13px] text-muted-foreground">메모: {r.memo}</p>}
-        <p className="mt-1.5 text-[11px] text-muted-foreground">
+        {r.items_summary && <p className="mt-1 text-body text-muted-foreground">{r.items_summary}</p>}
+        {r.memo && <p className="mt-1 text-body text-muted-foreground">메모: {r.memo}</p>}
+        <p className="mt-1.5 text-caption text-muted-foreground">
           {r.requester_email.split('@')[0]} · {fmtDate(r.created_at)}
           {r.doc_date && ` · 거래일 ${r.doc_date}`}
           {r.status === 'done' && r.done_by_email && ` · ${r.done_by_email.split('@')[0]}가 ${r.done_at ? fmtDate(r.done_at) : ''} 이체 완료`}
         </p>
 
-        <div className="mt-3 flex flex-wrap gap-2 text-[13px]">
+        <div className="mt-3 flex flex-wrap gap-2 text-body">
           {r.image_path && (
             <button onClick={() => setImageViewId(r.id)} className="rounded-lg border border-border px-3 py-1.5 text-muted-foreground hover:text-foreground">
               원본 사진
@@ -511,8 +511,8 @@ export default function TransferPanel({ role, email, mode }: Props) {
       {/* ---------- 업로드 (대시보드 전용) ---------- */}
       {isDashboard && (
         <section className="pb-[54px]">
-          <h2 className="m-0 text-[15px] font-medium">송금 요청</h2>
-          <p className="mt-1 text-[13px] text-muted-foreground">
+          <h2 className="m-0 text-title font-medium">송금 요청</h2>
+          <p className="mt-1 text-body text-muted-foreground">
             거래명세서·영수증 사진을 올리면 거래처, 금액, 입금 계좌를 자동으로 읽어요. <b>여러 장을 한 번에</b> 올리면
             동시에 인식하고, 한 장씩 확인해 등록하면 송금 담당자 리스트에 올라가요.
           </p>
@@ -527,25 +527,25 @@ export default function TransferPanel({ role, email, mode }: Props) {
           <button
             onClick={() => fileInput.current?.click()}
             disabled={parsing}
-            className="mt-8 w-full rounded-xl border border-dashed border-border bg-background py-6 text-[13px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground disabled:opacity-60 sm:w-auto sm:px-10"
+            className="mt-8 w-full rounded-xl border border-dashed border-border bg-background py-6 text-body text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground disabled:opacity-60 sm:w-auto sm:px-10"
           >
             {parsing ? `인식 중…${batchTotal > 1 ? ` (${batchTotal}장)` : ''}` : '📷 사진 촬영 / 여러 장 선택'}
           </button>
-          {notice && <p className="mt-3 text-[13px]" style={{ color: 'hsl(var(--number-colored))' }}>{notice}</p>}
-          {error && !draft && <p className="mt-3 text-[13px] text-destructive">{error}</p>}
+          {notice && <p className="mt-3 text-body" style={{ color: 'hsl(var(--number-colored))' }}>{notice}</p>}
+          {error && !draft && <p className="mt-3 text-body text-destructive">{error}</p>}
           {notifyPrompt && (
-            <div className="mt-6 flex flex-wrap items-center gap-2 rounded-xl bg-muted/40 p-3 text-[13px]">
+            <div className="mt-6 flex flex-wrap items-center gap-2 rounded-xl bg-muted/40 p-3 text-body">
               <span>🔔 내가 올린 송금이 <b>이체 완료되면 알림</b>으로 바로 알려드려요.</span>
               <span className="hidden flex-1 sm:block" />
               <button
                 onClick={goToNotify}
-                className="rounded-lg bg-foreground px-3 py-1.5 text-[13px] font-medium text-background"
+                className="rounded-lg bg-foreground px-3 py-1.5 text-body font-medium text-background"
               >
                 알림 켜러 가기 ↓
               </button>
               <button
                 onClick={dismissNotify}
-                className="rounded-lg border border-border px-3 py-1.5 text-[13px] text-muted-foreground hover:text-foreground"
+                className="rounded-lg border border-border px-3 py-1.5 text-body text-muted-foreground hover:text-foreground"
               >
                 다음에
               </button>
@@ -561,15 +561,15 @@ export default function TransferPanel({ role, email, mode }: Props) {
             className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-card p-5 sm:max-w-[520px] sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="m-0 text-[15px] font-medium">
+            <h3 className="m-0 text-title font-medium">
               인식 결과 확인
               {batchTotal > 1 && (
-                <span className="ml-2 text-[11px] font-normal text-muted-foreground">
+                <span className="ml-2 text-caption font-normal text-muted-foreground">
                   {batchTotal - pendingParsed.length} / {batchTotal}장
                 </span>
               )}
             </h3>
-            <p className="mt-1 text-[13px] text-muted-foreground">
+            <p className="mt-1 text-body text-muted-foreground">
               잘못 읽은 부분은 고친 뒤 등록하세요.
               {accountFromBook && ' 계좌는 이전에 확인된 거래처 계좌로 채웠어요.'}
             </p>
@@ -580,7 +580,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
                 <img src={previewUrl} alt="영수증 미리보기" className="max-h-[180px] w-full rounded-lg border border-border object-contain" />
                 <button
                   onClick={rotateManually}
-                  className="absolute bottom-2 right-2 rounded-lg border border-border bg-card/90 px-2.5 py-1 text-[13px] text-muted-foreground hover:text-foreground"
+                  className="absolute bottom-2 right-2 rounded-lg border border-border bg-card/90 px-2.5 py-1 text-body text-muted-foreground hover:text-foreground"
                   title="사진이 눕어 보이면 눌러서 돌리세요"
                 >
                   ↻ 90°
@@ -600,7 +600,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
                       type="button"
                       onClick={() => setDraft({ ...draft, brand: b })}
                       aria-pressed={draft.brand === b}
-                      className={`rounded-lg border py-2.5 text-[13px] transition-colors ${
+                      className={`rounded-lg border py-2.5 text-body transition-colors ${
                         draft.brand === b
                           ? b === 'staffmeal'
                             ? 'border-emerald-600 bg-emerald-600 font-medium text-white'
@@ -629,7 +629,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
                   명세서마다 총잔액에 이번 발주가 포함되기도 하고 아니기도 해서 계산식을 함께 보여준다 */}
               {breakdown && breakdown.options.length > 1 && (
                 <div className="col-span-2 -mt-1 flex flex-col gap-1.5 rounded-lg bg-muted/40 px-3 py-2.5">
-                  <span className="text-[11px] font-medium">지급 기준</span>
+                  <span className="text-caption font-medium">지급 기준</span>
                   <div className="flex flex-wrap gap-1.5">
                     {breakdown.options.map((o) => {
                       const on = payBasis ? payBasis === o.key : String(o.amount) === draft.amount;
@@ -640,7 +640,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
                             setPayBasis(o.key);
                             setDraft({ ...draft, amount: String(o.amount) });
                           }}
-                          className={`rounded-md border px-2.5 py-1 text-[13px] transition-colors ${
+                          className={`rounded-md border px-2.5 py-1 text-body transition-colors ${
                             on ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:text-foreground'
                           }`}
                         >
@@ -651,7 +651,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
                   </div>
                   {breakdown.note && (
                     <span
-                      className="text-[11px]"
+                      className="text-caption"
                       style={{ color: breakdown.totalIncludesCurrent === null ? 'hsl(0 72% 45%)' : undefined }}
                     >
                       {breakdown.note}
@@ -660,7 +660,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
                 </div>
               )}
               {breakdown && breakdown.options.length <= 1 && breakdown.prev != null && breakdown.prev > 0 && (
-                <div className="col-span-2 -mt-1 text-[13px] text-muted-foreground">
+                <div className="col-span-2 -mt-1 text-body text-muted-foreground">
                   이전 미수금 {won(breakdown.prev)}이 함께 잡혀 있어요.
                 </div>
               )}
@@ -670,17 +670,17 @@ export default function TransferPanel({ role, email, mode }: Props) {
                   className="col-span-2 -mt-1 flex flex-col gap-1 rounded-lg border px-3 py-2.5"
                   style={{ borderColor: 'hsl(0 72% 45% / 0.4)' }}
                 >
-                  <span className="text-[13px] font-medium" style={{ color: 'hsl(0 72% 45%)' }}>
+                  <span className="text-body font-medium" style={{ color: 'hsl(0 72% 45%)' }}>
                     명세서에 확인이 필요한 금액이 있어요
                   </span>
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
                     {otherAmounts.map((o, i) => (
-                      <span key={i} className="text-[13px]">
+                      <span key={i} className="text-body">
                         {o.label} <b>{won(o.amount)}</b>
                       </span>
                     ))}
                   </div>
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-caption text-muted-foreground">
                     금액에 반영할지 확인해 주세요. 담당자에게 알림도 보냈어요.
                   </span>
                 </div>
@@ -712,20 +712,20 @@ export default function TransferPanel({ role, email, mode }: Props) {
               </div>
             </div>
 
-            {error && <p className="mt-3 text-[13px] text-destructive">{error}</p>}
+            {error && <p className="mt-3 text-body text-destructive">{error}</p>}
 
             <div className="mt-5 flex gap-2">
               <button
                 onClick={batchTotal > 1 ? advanceNext : closeDraft}
                 disabled={submitting}
-                className="flex-1 rounded-xl border border-border py-2.5 text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-60"
+                className="flex-1 rounded-xl border border-border py-2.5 text-body text-muted-foreground hover:text-foreground disabled:opacity-60"
               >
                 {batchTotal > 1 ? '이 장 건너뛰기' : '취소'}
               </button>
               <button
                 onClick={submit}
                 disabled={submitting}
-                className="flex-[2] rounded-xl bg-foreground py-2.5 text-[13px] font-medium text-background disabled:opacity-60"
+                className="flex-[2] rounded-xl bg-foreground py-2.5 text-body font-medium text-background disabled:opacity-60"
               >
                 {submitting ? '등록 중…' : pendingParsed.length ? '등록 · 다음 장 →' : '확인 — 송금 대기에 등록'}
               </button>
@@ -737,13 +737,13 @@ export default function TransferPanel({ role, email, mode }: Props) {
       {/* ---------- 리스트 ---------- */}
       <section className={isDashboard ? 'border-t border-border pt-[54px]' : undefined}>
         <div className="flex items-center justify-between">
-          <h2 className="m-0 text-[15px] font-medium">{isDashboard ? '송금 현황' : '송금 내역'}</h2>
+          <h2 className="m-0 text-title font-medium">{isDashboard ? '송금 현황' : '송금 내역'}</h2>
           {isDashboard ? (
-            <Link href="/dashboard/history" className="text-[13px] text-muted-foreground hover:text-foreground">
+            <Link href="/dashboard/history" className="text-body text-muted-foreground hover:text-foreground">
               전체 내역 →
             </Link>
           ) : (
-            <div className="flex gap-1 rounded-lg border border-border p-0.5 text-[13px]">
+            <div className="flex gap-1 rounded-lg border border-border p-0.5 text-body">
               {(['all', 'pending', 'done'] as const).map((t) => (
                 <button
                   key={t}
@@ -757,23 +757,23 @@ export default function TransferPanel({ role, email, mode }: Props) {
           )}
         </div>
         {pendingRows.length > 0 && (
-          <p className="mt-2 text-[13px] text-muted-foreground">
+          <p className="mt-2 text-body text-muted-foreground">
             대기 합계 <span className="font-medium text-foreground">{won(pendingSum)}</span> · {pendingRows.length}건
           </p>
         )}
 
         <div className="mt-8 flex flex-col gap-6">
-          {loadingList && <p className="text-[13px] text-muted-foreground">불러오는 중…</p>}
+          {loadingList && <p className="text-body text-muted-foreground">불러오는 중…</p>}
           {!loadingList && listError && (
-            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-[13px]">
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-body">
               <p className="m-0">{listError}</p>
-              <button onClick={loadList} className="mt-2 rounded border border-border px-2 py-1 text-[13px] text-muted-foreground hover:text-foreground">
+              <button onClick={loadList} className="mt-2 rounded border border-border px-2 py-1 text-body text-muted-foreground hover:text-foreground">
                 다시 시도
               </button>
             </div>
           )}
           {!loadingList && !listError && visible.length === 0 && (
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-body text-muted-foreground">
               {isDashboard ? '아직 송금 요청이 없어요.' : filter === 'pending' ? '대기 중인 송금이 없어요.' : filter === 'done' ? '완료된 송금이 없어요.' : '송금 내역이 없어요.'}
             </p>
           )}
@@ -783,8 +783,8 @@ export default function TransferPanel({ role, email, mode }: Props) {
             : months.map(([ym, list]) => (
                 <div key={ym} className="flex flex-col gap-6">
                   <div className="mt-4 flex items-baseline justify-between border-b border-border pb-1.5 first:mt-0">
-                    <h3 className="m-0 text-[15px] font-medium">{fmtYm(ym)}</h3>
-                    <span className="text-[11px] text-muted-foreground">{monthSummary(list)}</span>
+                    <h3 className="m-0 text-title font-medium">{fmtYm(ym)}</h3>
+                    <span className="text-caption text-muted-foreground">{monthSummary(list)}</span>
                   </div>
                   {list.map(card)}
                 </div>

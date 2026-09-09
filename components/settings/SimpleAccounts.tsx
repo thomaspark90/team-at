@@ -157,7 +157,7 @@ export default function SimpleAccounts() {
             className={
               size === 'md'
                 ? `ta-btn ${on ? 'bg-primary text-primary-foreground hover:opacity-90' : ''}`
-                : `rounded-md border px-2 py-0.5 text-[11px] ${on ? 'border-foreground' : 'border-border text-muted-foreground'}`
+                : `rounded-md border px-2 py-0.5 text-caption ${on ? 'border-foreground' : 'border-border text-muted-foreground'}`
             }
           >
             {s.short}
@@ -170,17 +170,17 @@ export default function SimpleAccounts() {
   return (
     <section className="min-w-0 space-y-8">
       <div>
-        <h2 className="text-[15px] font-medium" style={{ margin: '0 0 4px' }}>간편 계정</h2>
-        <p className="text-[13px] text-muted-foreground">
+        <h2 className="text-title font-medium" style={{ margin: '0 0 4px' }}>간편 계정</h2>
+        <p className="text-body text-muted-foreground">
           스탭·매니저는 구글 계정 대신 <b>이름 + 숫자 6자리</b>로 로그인합니다. 로그인 화면에서 본인이 가입 신청하면 아래
           승인 대기에 뜨고, 여기서 직접 발급할 수도 있어요. 기본 권한은 가든 섹션의 교육 탭이고 더 넓힐 땐 아래 페이지 접근 권한에서 조정하세요.
         </p>
       </div>
 
       {issued && (
-        <div className="space-y-1 rounded-md bg-muted/40 px-4 py-3 text-[13px]">
+        <div className="space-y-1 rounded-md bg-muted/40 px-4 py-3 text-body">
           <p>
-            <b>{issued.name}</b>의 임시 비밀번호 <span className="tabular text-[22px]">{issued.pin}</span>
+            <b>{issued.name}</b>의 임시 비밀번호 <span className="tabular text-display">{issued.pin}</span>
           </p>
           <p className="text-muted-foreground">
             지금 본인에게 알려주세요. 이 화면을 떠나면 다시 볼 수 없고, 첫 로그인 때 본인이 새 비밀번호로 바꿉니다.{' '}
@@ -192,27 +192,27 @@ export default function SimpleAccounts() {
       {pending.length > 0 && (
         <div className="space-y-4">
           <div>
-            <h3 className="text-[15px]">
-              승인 대기 <span className="text-[11px] text-muted-foreground tabular">{pending.length}명</span>
+            <h3 className="text-title">
+              승인 대기 <span className="text-caption text-muted-foreground tabular">{pending.length}명</span>
             </h3>
-            <p className="text-[13px] text-muted-foreground">본인이 로그인 화면에서 신청한 계정입니다. 역할·지점을 지정해 승인하면 바로 로그인할 수 있고, 이메일을 적었으면 승인 안내 메일이 갑니다.</p>
+            <p className="text-body text-muted-foreground">본인이 로그인 화면에서 신청한 계정입니다. 역할·지점을 지정해 승인하면 바로 로그인할 수 있고, 이메일을 적었으면 승인 안내 메일이 갑니다.</p>
           </div>
           <ul className="space-y-3">
             {pending.map((r) => {
               const d = draftOf(r);
               return (
-                <li key={r.user_id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md bg-muted/40 px-4 py-3 text-[13px]">
+                <li key={r.user_id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md bg-muted/40 px-4 py-3 text-body">
                   <span className="font-medium">{r.display_name}</span>
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-caption text-muted-foreground">
                     {new Date(r.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })} 신청
                   </span>
-                  <span className="text-[11px] text-muted-foreground">{r.contact_email ?? '이메일 미기재'}</span>
+                  <span className="text-caption text-muted-foreground">{r.contact_email ?? '이메일 미기재'}</span>
                   {roleSelect(d.role, (v) => setDraft(r, { role: v }))}
                   {storeToggles(d.stores, (id) => setDraft(r, { stores: d.stores.includes(id) ? d.stores.filter((x) => x !== id) : [...d.stores, id] }))}
                   <button className="ta-btn-primary h-8" disabled={busy || d.stores.length === 0} onClick={() => approve(r)}>
                     승인
                   </button>
-                  <button className="text-[11px] text-muted-foreground underline underline-offset-2" disabled={busy} onClick={() => reject(r)}>
+                  <button className="text-caption text-muted-foreground underline underline-offset-2" disabled={busy} onClick={() => reject(r)}>
                     거절
                   </button>
                 </li>
@@ -239,17 +239,17 @@ export default function SimpleAccounts() {
           {busy ? '처리 중…' : '계정 발급'}
         </button>
       </div>
-      {error && <p className="ta-error text-[13px]">{error}</p>}
+      {error && <p className="ta-error text-body">{error}</p>}
 
       {rows === null ? (
-        <p className="text-[13px] text-muted-foreground">불러오는 중…</p>
+        <p className="text-body text-muted-foreground">불러오는 중…</p>
       ) : active.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground">아직 발급한 계정이 없어요.</p>
+        <p className="text-body text-muted-foreground">아직 발급한 계정이 없어요.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+              <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
                 <th className="px-3 py-2">이름</th>
                 <th className="px-3 py-2">역할</th>
                 <th className="px-3 py-2">지점</th>
@@ -261,7 +261,7 @@ export default function SimpleAccounts() {
               {active.map((r) => {
                 const locked = r.locked_until && new Date(r.locked_until).getTime() > Date.now();
                 return (
-                  <tr key={r.user_id} className="border-t border-border text-[13px]">
+                  <tr key={r.user_id} className="border-t border-border text-body">
                     <td className="px-3 py-2">{r.display_name}</td>
                     <td className="px-3 py-2">{roleSelect(r.role, (v) => setRoleOf(r, v))}</td>
                     <td className="px-3 py-2">{storeToggles(r.stores, (id) => toggleStore(r, id))}</td>
@@ -278,11 +278,11 @@ export default function SimpleAccounts() {
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-right">
                       {r.simple_login && (
-                        <button className="mr-3 text-[11px] underline underline-offset-2" disabled={busy} onClick={() => resetPin(r)}>
+                        <button className="mr-3 text-caption underline underline-offset-2" disabled={busy} onClick={() => resetPin(r)}>
                           비밀번호 초기화
                         </button>
                       )}
-                      <button className="text-[11px] text-muted-foreground underline underline-offset-2" disabled={busy} onClick={() => remove(r)}>
+                      <button className="text-caption text-muted-foreground underline underline-offset-2" disabled={busy} onClick={() => remove(r)}>
                         삭제
                       </button>
                     </td>
@@ -296,29 +296,29 @@ export default function SimpleAccounts() {
 
       {/* 역할 관리 — 접혀 있다가 펼침. 역할마다 '교육 운영 권한' 하나만 정한다 */}
       <div className="space-y-4">
-        <button className="text-[13px] underline underline-offset-2" onClick={() => setRolesOpen((o) => !o)}>
+        <button className="text-body underline underline-offset-2" onClick={() => setRolesOpen((o) => !o)}>
           역할 관리 {rolesOpen ? '접기' : `펼치기 (${roles.length}개)`}
         </button>
         {rolesOpen && (
           <div className="space-y-4">
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-body text-muted-foreground">
               <b>교육 운영</b>이 켜진 역할은 매니저 화면(출근 일정·지점 집계·교육함 기록)을 보고, 꺼진 역할은 스탭 화면(위시리스트)을 봅니다.
               스탭·매니저는 기본 역할이라 이름만 바꿀 수 있어요.
             </p>
             <ul className="space-y-2">
               {roles.map((r) => (
-                <li key={r.key} className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
+                <li key={r.key} className="flex flex-wrap items-center gap-x-4 gap-y-1 text-body">
                   <span className="min-w-[80px]">{r.label}</span>
                   <label className="flex cursor-pointer items-center gap-2 text-muted-foreground">
                     <input type="checkbox" className="h-4 w-4 accent-[hsl(var(--foreground))]" checked={r.canManage} disabled={busy} onChange={() => toggleRoleManage(r)} />
                     교육 운영
                   </label>
-                  <span className="text-[11px] text-muted-foreground tabular">{usedBy(r.key)}명 사용</span>
-                  <button className="text-[11px] underline underline-offset-2" disabled={busy} onClick={() => renameRole(r)}>
+                  <span className="text-caption text-muted-foreground tabular">{usedBy(r.key)}명 사용</span>
+                  <button className="text-caption underline underline-offset-2" disabled={busy} onClick={() => renameRole(r)}>
                     이름 변경
                   </button>
                   {!r.builtin && (
-                    <button className="text-[11px] text-muted-foreground underline underline-offset-2" disabled={busy || usedBy(r.key) > 0} onClick={() => deleteRole(r)}>
+                    <button className="text-caption text-muted-foreground underline underline-offset-2" disabled={busy || usedBy(r.key) > 0} onClick={() => deleteRole(r)}>
                       삭제
                     </button>
                   )}
@@ -327,7 +327,7 @@ export default function SimpleAccounts() {
             </ul>
             <div className="flex flex-wrap items-center gap-3">
               <input className="ta-input h-8" placeholder="새 역할 이름 (예: 점장)" value={newRole} maxLength={10} onChange={(e) => setNewRole(e.target.value)} />
-              <label className="flex cursor-pointer items-center gap-2 text-[13px] text-muted-foreground">
+              <label className="flex cursor-pointer items-center gap-2 text-body text-muted-foreground">
                 <input type="checkbox" className="h-4 w-4 accent-[hsl(var(--foreground))]" checked={newRoleManage} onChange={(e) => setNewRoleManage(e.target.checked)} />
                 교육 운영
               </label>

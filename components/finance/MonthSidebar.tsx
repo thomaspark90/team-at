@@ -52,7 +52,7 @@ export default function MonthSidebar({
           <div key={y}>
             {/* 연도 줄 — 라벨 클릭 = (지원 화면에서) 그 해 전체 선택, ›  클릭 = 접기/펼치기 */}
             <div
-              className={`flex w-full items-center justify-between rounded-lg text-[11px] uppercase tracking-[0.06em] transition-colors ${
+              className={`flex w-full items-center justify-between rounded-lg text-caption uppercase tracking-[0.06em] transition-colors ${
                 yearSelected ? 'bg-foreground text-background' : 'text-muted-foreground'
               }`}
             >
@@ -77,7 +77,7 @@ export default function MonthSidebar({
                 className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors hover:text-foreground"
               >
                 {!opened && yearBadge > 0 && <Badge n={yearBadge} />}
-                <span className={`text-[12px] transition-transform ${opened ? 'rotate-90' : ''}`}>›</span>
+                <span className={`text-caption transition-transform ${opened ? 'rotate-90' : ''}`}>›</span>
               </button>
             </div>
             {opened && (
@@ -90,7 +90,7 @@ export default function MonthSidebar({
                       key={m}
                       onClick={() => onSelect(m)}
                       aria-pressed={selected}
-                      className={`flex items-center justify-between rounded-lg px-2.5 py-[7px] text-left text-[13px] transition-colors ${
+                      className={`flex items-center justify-between rounded-lg px-2.5 py-[7px] text-left text-body transition-colors ${
                         selected
                           ? 'bg-foreground font-medium text-background'
                           : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
@@ -112,7 +112,7 @@ export default function MonthSidebar({
 
 function Badge({ n }: { n: number }) {
   return (
-    <span className="inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-medium leading-none text-white">
+    <span className="inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-caption font-medium leading-none text-white">
       {n > 999 ? '999+' : n}
     </span>
   );

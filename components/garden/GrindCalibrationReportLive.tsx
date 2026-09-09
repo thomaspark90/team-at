@@ -39,7 +39,7 @@ const dialKey = (dial: number) => (Math.round(dial * 10) / 10).toFixed(1);
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-md border border-border bg-background px-2.5 py-1.5 text-[12px]">
+    <div className="rounded-md border border-border bg-background px-2.5 py-1.5 text-caption">
       <div className="mb-1 text-muted-foreground">{Number(label).toLocaleString()}µm 부근</div>
       {payload.map((p: any) => (
         <div key={p.dataKey} className="flex items-center justify-between gap-3 tabular text-foreground">
@@ -58,12 +58,12 @@ function Stat({ value, label, tone }: { value: string; label: string; tone?: 'ok
   return (
     <div className="rounded-md bg-muted/40 p-6" style={{ flex: 1, minWidth: 220 }}>
       <div
-        className="tabular text-[22px] font-medium"
+        className="tabular text-display font-medium"
         style={{ color: tone === 'warn' ? 'hsl(0 72% 45%)' : 'hsl(var(--foreground))' }}
       >
         {value}
       </div>
-      <div className="text-[13px] text-muted-foreground" style={{ marginTop: 6 }}>{label}</div>
+      <div className="text-body text-muted-foreground" style={{ marginTop: 6 }}>{label}</div>
     </div>
   );
 }
@@ -125,7 +125,7 @@ export default function GrindCalibrationReportLive() {
   const conv = pangyoDialText(profiles, 6.5, latestAligns);
 
   if (measurements === null) {
-    return <p className="text-[13px] text-muted-foreground">현행 측정 불러오는 중…</p>;
+    return <p className="text-body text-muted-foreground">현행 측정 불러오는 중…</p>;
   }
 
   const storeShots = (id: StoreId) => current.filter((m) => m.store === id).length;
@@ -162,7 +162,7 @@ export default function GrindCalibrationReportLive() {
 
       {/* 데이터 없는 지점 안내 */}
       {missing.length > 0 && (
-        <p className="py-[54px] text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+        <p className="py-[54px] text-body text-muted-foreground" style={{ margin: 0 }}>
           {missing.map((s) => s.label).join(' · ')}
           {missing.length === 1 ? '은(는)' : '은'} 최근 얼라인 이후 측정이 아직 없어요 — 프로토콜(다이얼
           6·8·10 × 각 3샷) 측정을 올리면 이 리포트가 자동으로 채워집니다. (얼라인:{' '}
@@ -184,8 +184,8 @@ export default function GrindCalibrationReportLive() {
             return (
               <div key={g.dial} className="min-w-0 rounded-md bg-muted/40 p-6">
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                  <span className="text-[15px] font-medium text-foreground">다이얼 {g.dial}</span>
-                  <span className="tabular text-[11px] text-muted-foreground">
+                  <span className="text-title font-medium text-foreground">다이얼 {g.dial}</span>
+                  <span className="tabular text-caption text-muted-foreground">
                     양재천 {Math.round(my)}µm({g.yangjae.length}샷) · 판교 {Math.round(mp)}µm(
                     {g.pangyo.length}샷) · Δ{Math.round(mp - my)}µm
                   </span>
@@ -221,10 +221,10 @@ export default function GrindCalibrationReportLive() {
       {/* 현행 원자료 */}
       {current.length > 0 && (
         <div className="min-w-0 pt-[54px]" style={{ overflowX: 'auto' }}>
-          <p className="text-[15px] font-medium text-foreground" style={{ marginTop: 0, marginBottom: 20 }}>
+          <p className="text-title font-medium text-foreground" style={{ marginTop: 0, marginBottom: 20 }}>
             현행 측정 원자료 — 최근 얼라인 이후 {current.length}샷
           </p>
-          <table className="tabular text-[13px]" style={{ borderCollapse: 'collapse', minWidth: 620, width: '100%', maxWidth: 860 }}>
+          <table className="tabular text-body" style={{ borderCollapse: 'collapse', minWidth: 620, width: '100%', maxWidth: 860 }}>
             <thead>
               <tr className="text-muted-foreground">
                 {['날짜', '지점', '원두', '다이얼', '평균(µm)', 'σ'].map((h) => (

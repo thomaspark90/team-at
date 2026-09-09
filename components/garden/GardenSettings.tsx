@@ -131,12 +131,12 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
   }) => (
     <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-        <span className="text-[13px] font-medium text-foreground">{label}</span>
-        <span className="text-[11px] text-muted-foreground">{desc}</span>
+        <span className="text-body font-medium text-foreground">{label}</span>
+        <span className="text-caption text-muted-foreground">{desc}</span>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         {emails.map((email) => (
-          <span key={email} className="rounded-full border border-border text-[11px] text-foreground" style={chip}>
+          <span key={email} className="rounded-full border border-border text-caption text-foreground" style={chip}>
             {email.split('@')[0]}
             <button
               onClick={() => onRemove(email)}
@@ -158,8 +158,8 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
   return (
     <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       <div>
-        <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>알림</p>
-        <p className="text-[13px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
+        <p className="text-title font-medium text-foreground" style={{ margin: 0 }}>알림</p>
+        <p className="text-body text-muted-foreground" style={{ margin: '2px 0 0' }}>
           아래 <strong>내 수신 채널</strong>에서 내가 받을 방법을 켜고,{' '}
           <strong>항목별 담당자</strong>에서 각 알림을 누가 받을지 지정합니다. 담당자로 지정돼도 본인이
           푸시를 켜야 기기 알림이 옵니다.
@@ -197,11 +197,11 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
             })
           )}
       </div>
-      <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+      <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
         담당자를 지정하지 않으면 요청류·이슈 리뷰·측정 업로드 알림은 원두 알림
         수신자 전체에게 발송됩니다. 레시피 등록·수정만 담당자 지정 시에 발송됩니다(옵트인).
       </p>
-      {error && <p className="text-[13px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{error}</p>}
+      {error && <p className="text-body" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{error}</p>}
     </div>
   );
 }
@@ -277,8 +277,8 @@ function RequestForms() {
   return (
     <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div>
-        <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>요청 보내기</p>
-        <p className="text-[13px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
+        <p className="text-title font-medium text-foreground" style={{ margin: 0 }}>요청 보내기</p>
+        <p className="text-body text-muted-foreground" style={{ margin: '2px 0 0' }}>
           해당 항목의 담당자에게 이메일·앱푸시로 전달됩니다. 담당자가 지정되지 않았으면 원두 알림
           수신자 전체에게 발송돼요.
         </p>
@@ -335,7 +335,7 @@ function RequestForms() {
 
       {kind === 'grind' && staff.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span className="text-[11px] text-muted-foreground">담당자 (선택 안 하면 전체 발송)</span>
+          <span className="text-caption text-muted-foreground">담당자 (선택 안 하면 전체 발송)</span>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {staff.map((email) => (
               <button key={email} onClick={() => toggleStaff(email)} style={segBtn(picked.includes(email))}>
@@ -349,7 +349,7 @@ function RequestForms() {
       <button onClick={send} disabled={!canSend} className="ta-btn-primary" style={{ height: 36, opacity: canSend ? 1 : 0.5 }}>
         {sending ? '발송 중…' : '요청 보내기'}
       </button>
-      {result && <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>{result}</p>}
+      {result && <p className="text-body text-muted-foreground" style={{ margin: 0 }}>{result}</p>}
     </div>
   );
 }

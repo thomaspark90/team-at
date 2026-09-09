@@ -40,12 +40,12 @@ export default async function OriginalsPage({ searchParams }: { searchParams: { 
       <AccountingNav role={role} />
       <div className="mx-auto max-w-[1200px] px-6 py-8">
         <div className="mb-1 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">원본 자료함</h1>
-          <Link href="/finance/uploads" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+          <h1 className="m-0 text-display tracking-[-0.5px]">원본 자료함</h1>
+          <Link href="/finance/uploads" className="text-body text-muted-foreground transition-colors hover:text-foreground">
             자료 이력 →
           </Link>
         </div>
-        <p className="mb-5 text-[13px] text-muted-foreground">
+        <p className="mb-5 text-body text-muted-foreground">
           {unit ? <b>{unit.label}</b> : '전체'} 업로드 원본이에요 — POS·통장·카드·영수증·원두봉투 사진까지, 올린 파일 그대로 보관돼요.
           {unit?.store && ' 통장·카드는 가든 공용 자료라 양재천·판교에 같이 보여요.'}
         </p>

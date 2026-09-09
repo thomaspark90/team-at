@@ -87,15 +87,15 @@ export default async function RawPage({ searchParams }: { searchParams: Record<s
       <AccountingNav role={role} />
       <div className="mx-auto max-w-[1680px] px-6 py-8">
         <div className="mb-1 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">로우데이터</h1>
+          <h1 className="m-0 text-display tracking-[-0.5px]">로우데이터</h1>
           <Link
             href="/finance/originals"
-            className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+            className="text-body text-muted-foreground transition-colors hover:text-foreground"
           >
             원본 자료함 →
           </Link>
         </div>
-        <p className="mb-5 text-[13px] text-muted-foreground">
+        <p className="mb-5 text-body text-muted-foreground">
           <b>{unit.label}</b> 자료의 원본 행이에요 — 파서가 파일에서 읽은 그대로, 부호 변환·분류·중복제거를
           거치기 전 상태예요. 행 번호는 원본 파일에서의 위치라 엑셀과 나란히 두고 대조할 수 있어요.
           컬럼 제목을 누르면 정렬되고, 그 아래 칸에 입력하면 그 열로 걸러져요.
@@ -109,7 +109,7 @@ export default async function RawPage({ searchParams }: { searchParams: Record<s
                 key={s.key}
                 href={href({ source: s.key })}
                 aria-current={s.key === query.source ? 'page' : undefined}
-                className={`px-3 py-1.5 text-[13px] transition-colors ${
+                className={`px-3 py-1.5 text-body transition-colors ${
                   s.key === query.source
                     ? 'bg-foreground text-background'
                     : 'text-muted-foreground hover:text-foreground'
@@ -125,7 +125,7 @@ export default async function RawPage({ searchParams }: { searchParams: Record<s
               <Link
                 href={href({ issuer: null })}
                 aria-current={!query.issuer ? 'page' : undefined}
-                className={`px-3 py-1.5 text-[13px] transition-colors ${
+                className={`px-3 py-1.5 text-body transition-colors ${
                   !query.issuer ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -136,7 +136,7 @@ export default async function RawPage({ searchParams }: { searchParams: Record<s
                   key={iss}
                   href={href({ issuer: iss })}
                   aria-current={query.issuer === iss ? 'page' : undefined}
-                  className={`px-3 py-1.5 text-[13px] transition-colors ${
+                  className={`px-3 py-1.5 text-body transition-colors ${
                     query.issuer === iss ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -150,7 +150,7 @@ export default async function RawPage({ searchParams }: { searchParams: Record<s
               <Link
                 href={href({})}
                 aria-current={!activeHalf && !query.from ? 'page' : undefined}
-                className={`rounded-md border px-2.5 py-1 text-[12px] transition-colors ${
+                className={`rounded-md border px-2.5 py-1 text-caption transition-colors ${
                   !activeHalf && !query.from
                     ? 'border-foreground bg-foreground text-background'
                     : 'border-border text-muted-foreground hover:text-foreground'
@@ -163,7 +163,7 @@ export default async function RawPage({ searchParams }: { searchParams: Record<s
                   key={h.label}
                   href={href({ from: h.from, to: h.to })}
                   aria-current={h.label === activeHalf ? 'page' : undefined}
-                  className={`rounded-md border px-2.5 py-1 text-[12px] tabular-nums transition-colors ${
+                  className={`rounded-md border px-2.5 py-1 text-caption tabular-nums transition-colors ${
                     h.label === activeHalf
                       ? 'border-foreground bg-foreground text-background'
                       : 'border-border text-muted-foreground hover:text-foreground'
@@ -178,7 +178,7 @@ export default async function RawPage({ searchParams }: { searchParams: Record<s
 
         {/* 배치 목록 — 같은 파일을 두 번 올렸는지가 여기서 드러난다 */}
         {batches.length > 0 && (
-          <div className="mb-4 flex flex-wrap gap-2 text-[12px] text-muted-foreground">
+          <div className="mb-4 flex flex-wrap gap-2 text-caption text-muted-foreground">
             {batches.map((b) => (
               <span key={b.id} className="rounded-md border border-border px-2 py-1">
                 {b.filename ?? `${b.issuer ?? b.source} 수집`}

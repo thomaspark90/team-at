@@ -193,10 +193,10 @@ export default function UploadPanel({
   return (
     <div className="flex flex-col gap-10">
       <div>
-        <h1 className="mb-1 text-[22px] tracking-[-0.5px] text-foreground">
+        <h1 className="mb-1 text-display tracking-[-0.5px] text-foreground">
           {brandLabel(brand)} · 거래내역 업로드
         </h1>
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           {brandLabel(brand)} 명의 통장의 거래내역 PDF 또는 엑셀(.xlsx/.xls/.csv)을 <b>여러 개 한 번에</b> 올려
           파싱·미리보기 후 저장해요. 엑셀은 AI가 양식과 무관하게 열을 읽어요. 같은 거래는 파일 안·파일 간·재업로드 모두
           자동으로 중복 제거되고, 거래는 각자 실제 날짜의 달로, 전부 <b>{brandLabel(brand)}</b> 회계로 들어가요.{' '}
@@ -219,7 +219,7 @@ export default function UploadPanel({
       {done && (
         <div className="rounded-md bg-muted p-4">
           <div className="mb-1 text-foreground">✓ 저장 완료</div>
-          <div className="text-[13px] text-muted-foreground">
+          <div className="text-body text-muted-foreground">
             {won(done.saved)}건 저장 (자동 분류 {won(done.autoClassified)}건) · 중복 {won(done.duplicates)}건 건너뜀
             {(done.blockedConfirmed ?? 0) > 0 && (
               <span className="text-amber-600"> · 확정월 거래 {won(done.blockedConfirmed!)}건 제외(재오픈 후 업로드)</span>
@@ -239,7 +239,7 @@ export default function UploadPanel({
                 <button
                   key={b.value}
                   onClick={() => setBank(b.value)}
-                  className={`rounded-sm px-4 py-1.5 text-[13px] ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`rounded-sm px-4 py-1.5 text-body ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   {b.label}
                 </button>
@@ -266,9 +266,9 @@ export default function UploadPanel({
                 addFiles(e.target.files);
                 e.target.value = ''; // 같은 파일을 다시 골라도 onChange가 뜨게
               }}
-              className="text-[13px] text-foreground"
+              className="text-body text-foreground"
             />
-            <p className="m-0 text-[11px] text-muted-foreground">
+            <p className="m-0 text-caption text-muted-foreground">
               파일을 이 칸에 끌어다 놓아도 돼요. 선택 창에서는 ⌘(맥)/Ctrl(윈도우)을 누른 채 클릭하면 여러 개가
               골라지고, <b>하나씩 다시 선택해도 아래 목록에 계속 추가</b>돼요.
             </p>
@@ -297,13 +297,13 @@ export default function UploadPanel({
           </button>
         </div>
 
-        {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
+        {error && <div className="text-body text-destructive">⚠️ {error}</div>}
       </div>
 
       {/* 파일별 목록 — 선택 즉시 표시, 파싱·저장 진행 상태 겸용 */}
       {entries.length > 0 && (
         <div className="overflow-hidden rounded-md border border-border bg-background">
-          <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-2 text-[13px] text-muted-foreground">
+          <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-2 text-body text-muted-foreground">
             <span>{entries.length}개 파일 선택됨</span>
             {!loading && !saving && (
               <button onClick={() => setEntries([])} className="hover:text-foreground">
@@ -312,19 +312,19 @@ export default function UploadPanel({
             )}
           </div>
           {entries.map((e, i) => (
-            <div key={`${e.file.name}-${i}`} className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-5 text-[13px] ${i > 0 ? 'border-t border-border' : ''}`}>
+            <div key={`${e.file.name}-${i}`} className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-5 text-body ${i > 0 ? 'border-t border-border' : ''}`}>
               <span className="min-w-0 flex-1 truncate text-foreground">
                 {e.file.name}
-                <span className="ml-2 text-[11px] uppercase text-muted-foreground">{e.isExcel ? '엑셀' : 'PDF'}</span>
+                <span className="ml-2 text-caption uppercase text-muted-foreground">{e.isExcel ? '엑셀' : 'PDF'}</span>
               </span>
               <span className="flex shrink-0 items-center gap-3">
                 {e.preview?.continuity && (
                   e.preview.continuity.breaks === 0 ? (
-                    <span className="text-[11px] text-emerald-600">잔액연속 ✓</span>
+                    <span className="text-caption text-emerald-600">잔액연속 ✓</span>
                   ) : e.preview.continuity.reliable ? (
-                    <span className="text-[11px] text-destructive">⚠ 잔액 끊김 {e.preview.continuity.breaks}곳</span>
+                    <span className="text-caption text-destructive">⚠ 잔액 끊김 {e.preview.continuity.breaks}곳</span>
                   ) : (
-                    <span className="text-[11px] text-muted-foreground">잔액연속 판정불가</span>
+                    <span className="text-caption text-muted-foreground">잔액연속 판정불가</span>
                   )
                 )}
                 {e.status === 'picked' && <span className="text-muted-foreground">대기</span>}
@@ -363,13 +363,13 @@ export default function UploadPanel({
       {ready.length > 0 && !done && (
         <>
           {boundaryGaps.length > 0 && (
-            <p className="m-0 text-[13px] text-destructive">
+            <p className="m-0 text-body text-destructive">
               ⚠ 파일 사이 잔액이 이어지지 않아요 — 그 사이 기간의 거래가 빠졌을 수 있어요: {boundaryGaps.join(', ')}.
               은행에서 빠진 기간을 다시 내려받아 함께 올려주세요.
             </p>
           )}
           {crossCount > 0 && (
-            <p className="m-0 text-[13px] text-amber-600">
+            <p className="m-0 text-body text-amber-600">
               ⚠ 이 기간에 <b>다른 형식(PDF↔엑셀)</b>으로 올린 이력이 있어요. 형식이 다르면 중복이 걸러지지 않아
               같은 거래가 이중 저장될 수 있어요 — 같은 계좌 내역이면 저장 전에 업로드 이력을 확인하세요.
             </p>
@@ -383,7 +383,7 @@ export default function UploadPanel({
           </div>
 
           {entries.length > 1 && agg.fresh > 0 && (
-            <p className="m-0 text-[13px] text-muted-foreground">
+            <p className="m-0 text-body text-muted-foreground">
               파일 간 기간이 겹치면 신규 합계가 실제보다 크게 보일 수 있어요 — 저장할 때 앞 파일부터 차례로 넣으며
               겹치는 거래는 자동으로 걸러져요.
             </p>
@@ -392,9 +392,9 @@ export default function UploadPanel({
           {single?.preview && single.preview.fresh > 0 && (
           <div className="overflow-hidden rounded-md border border-border bg-background">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] border-collapse text-[13px]">
+              <table className="w-full min-w-[720px] border-collapse text-body">
                 <thead>
-                  <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+                  <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
                     <Th>거래일시</Th><Th>채널</Th><Th>내용</Th>
                     <Th right>출금</Th><Th right>입금</Th><Th>정규화 키(학습용)</Th>
                   </tr>
@@ -414,7 +414,7 @@ export default function UploadPanel({
               </table>
             </div>
             {single.preview.fresh > single.preview.sample.length && (
-              <div className="border-t border-border px-4 py-[10px] text-[11px] text-muted-foreground">
+              <div className="border-t border-border px-4 py-[10px] text-caption text-muted-foreground">
                 … 외 {won(single.preview.fresh - single.preview.sample.length)}건 (미리보기는 최대 200건, 저장은 전체)
               </div>
             )}
@@ -432,7 +432,7 @@ export default function UploadPanel({
           ) : (
             <div className="rounded-md bg-muted p-4">
               <div className="mb-1 text-foreground">✓ 이미 모두 저장된 거래예요</div>
-              <div className="text-[13px] text-muted-foreground">
+              <div className="text-body text-muted-foreground">
                 올린 파일의 {won(agg.totalRows)}건은 전부 중복(이미 저장됨)이라 새로 저장할 게 없어요. 분류는{' '}
                 <a href="/finance/classify" className="text-foreground underline">지출 자료 분류 →</a> 에서 하세요.
               </div>
@@ -447,8 +447,8 @@ export default function UploadPanel({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-[110px] flex-[1_1_auto] rounded-md bg-muted/40 px-4 py-3">
-      <div className="mb-1 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{label}</div>
-      <div className="tabular text-[15px] text-foreground">{value}</div>
+      <div className="mb-1 text-caption uppercase tracking-[0.06em] text-muted-foreground">{label}</div>
+      <div className="tabular text-title text-foreground">{value}</div>
     </div>
   );
 }
@@ -457,6 +457,6 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
 }
 function Td({ children, right, mono, muted, pos }: { children: React.ReactNode; right?: boolean; mono?: boolean; muted?: boolean; pos?: boolean }) {
   return (
-    <td className={`whitespace-nowrap px-3 py-2 text-[13px] ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''} ${muted ? 'text-muted-foreground' : pos ? 'text-positive' : 'text-foreground'}`}>{children}</td>
+    <td className={`whitespace-nowrap px-3 py-2 text-body ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''} ${muted ? 'text-muted-foreground' : pos ? 'text-positive' : 'text-foreground'}`}>{children}</td>
   );
 }

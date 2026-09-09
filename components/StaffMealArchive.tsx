@@ -79,7 +79,7 @@ export default function StaffMealArchive({ initial }: { initial: StaffMealRecord
       <div className="pb-[54px]">
         <p className="ta-label">메뉴 기록</p>
         {records.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             아직 기록이 없습니다. IG 메뉴 업데이트에서 스토리를 다운로드하면 자동으로 쌓입니다.
           </p>
         ) : (
@@ -88,20 +88,20 @@ export default function StaffMealArchive({ initial }: { initial: StaffMealRecord
               <div key={rec.id} className="rounded-lg bg-muted/40 p-3.5">
                 <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                   <span className="flex items-baseline gap-2">
-                    <span className="tabular text-[15px] font-medium">{rec.date}</span>
+                    <span className="tabular text-title font-medium">{rec.date}</span>
                     {(dupCounts.get(dupKey(rec)) ?? 0) > 1 && (
-                      <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                      <span className="rounded-full border border-border px-2 py-0.5 text-caption text-muted-foreground">
                         {latestIds.has(rec.id) ? '최신' : '이전 버전'}
                       </span>
                     )}
                   </span>
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-caption text-muted-foreground">
                     {rec.createdBy.split('@')[0]} · 저장 {fmtSaved(rec.createdAt)}
                   </span>
                 </div>
                 <div className="flex flex-col gap-1">
                   {menuLines(rec).map(([name, items]) => (
-                    <p key={name} className="m-0 text-[13px]">
+                    <p key={name} className="m-0 text-body">
                       <span className="text-muted-foreground">{name}</span>{' '}
                       <span className="text-foreground">{items}</span>
                     </p>
@@ -111,7 +111,7 @@ export default function StaffMealArchive({ initial }: { initial: StaffMealRecord
                   <button
                     onClick={() => deleteRecord(rec.id)}
                     disabled={deletingId === rec.id}
-                    className="text-[11px] text-muted-foreground hover:text-foreground"
+                    className="text-caption text-muted-foreground hover:text-foreground"
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, margin: -6 }}
                   >
                     {deletingId === rec.id ? '삭제 중…' : '삭제'}
@@ -126,14 +126,14 @@ export default function StaffMealArchive({ initial }: { initial: StaffMealRecord
       {ranked.length > 0 && (
         <div className="pt-[54px]">
           <p className="ta-label">메뉴별 기록 횟수</p>
-          <p className="mb-2 mt-0 text-[11px] text-muted-foreground">
+          <p className="mb-2 mt-0 text-caption text-muted-foreground">
             같은 날 중복 기록은 최신 1건만 집계됩니다
           </p>
           <div className="flex flex-wrap gap-1.5">
             {ranked.map(([name, count]) => (
               <span
                 key={name}
-                className="rounded-full border border-border px-2.5 py-1 text-[11px]"
+                className="rounded-full border border-border px-2.5 py-1 text-caption"
               >
                 <span className="text-foreground">{name}</span>{' '}
                 <span className="tabular text-muted-foreground">{count}회</span>

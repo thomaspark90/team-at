@@ -3,7 +3,7 @@
 export default function RouteLoading() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
-      <p className="animate-pulse text-[13px] text-muted-foreground">불러오는 중…</p>
+      <p className="animate-pulse text-body text-muted-foreground">불러오는 중…</p>
     </div>
   );
 }

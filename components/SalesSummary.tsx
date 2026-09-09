@@ -65,8 +65,8 @@ export default function SalesSummary({ rows, brand }: { rows: SalesRow[]; brand?
       <div className="grid gap-x-3 gap-y-6 pb-[54px] sm:grid-cols-3">
         {summary.map((s) => (
           <section key={s.label} className="rounded-2xl bg-muted/40 p-5">
-            <p className="m-0 text-[13px] text-muted-foreground">{s.label} <span className="text-[11px]">({s.sub})</span></p>
-            <p className="m-0 mt-1 text-[22px]" style={{ color: 'hsl(var(--number-colored))' }}>
+            <p className="m-0 text-body text-muted-foreground">{s.label} <span className="text-caption">({s.sub})</span></p>
+            <p className="m-0 mt-1 text-display" style={{ color: 'hsl(var(--number-colored))' }}>
               {won(s.value)}
             </p>
           </section>
@@ -75,8 +75,8 @@ export default function SalesSummary({ rows, brand }: { rows: SalesRow[]; brand?
 
       {/* 최근 30일 일별 매출 막대 */}
       <section className="py-[54px]">
-        <h2 className="m-0 text-[15px] font-medium">일별 매출 — 최근 30일</h2>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <h2 className="m-0 text-title font-medium">일별 매출 — 최근 30일</h2>
+        <p className="mt-1 text-body text-muted-foreground">
           데이터가 있는 마지막 날({lastDataDay.slice(5).replace('-', '.')}) 기준. 공급가액(VAT 제외).
         </p>
         <div className="mt-8 flex items-end gap-[3px]" style={{ height: 72 }}>
@@ -94,7 +94,7 @@ export default function SalesSummary({ rows, brand }: { rows: SalesRow[]; brand?
             />
           ))}
         </div>
-        <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+        <div className="mt-1 flex justify-between text-caption text-muted-foreground">
           <span>{chartDays[0].day.slice(5).replace('-', '.')}</span>
           <span>{chartDays[chartDays.length - 1].day.slice(5).replace('-', '.')}</span>
         </div>
@@ -102,19 +102,19 @@ export default function SalesSummary({ rows, brand }: { rows: SalesRow[]; brand?
 
       {/* 카테고리 요약 */}
       <section className="pt-[54px]">
-        <h2 className="m-0 text-[15px] font-medium">카테고리별 — {monthLabel(latestYm)}</h2>
+        <h2 className="m-0 text-title font-medium">카테고리별 — {monthLabel(latestYm)}</h2>
         {cats.length === 0 ? (
-          <p className="mt-4 text-[13px] text-muted-foreground">이 달에 집계된 매출이 없어요.</p>
+          <p className="mt-4 text-body text-muted-foreground">이 달에 집계된 매출이 없어요.</p>
         ) : (
           <div className="mt-6 flex flex-col gap-4">
             {cats.map(([cat, v]) => (
               <div key={cat} className="flex items-center gap-3">
-                <span className="w-24 flex-shrink-0 truncate text-[13px]" title={catLabel(cat)}>{catLabel(cat)}</span>
+                <span className="w-24 flex-shrink-0 truncate text-body" title={catLabel(cat)}>{catLabel(cat)}</span>
                 <div className="h-2 min-w-0 flex-1 overflow-hidden rounded bg-muted/40">
                   <div className="h-full rounded" style={{ width: `${(v / (cats[0][1] || 1)) * 100}%`, background: 'hsl(var(--number-colored) / 0.6)' }} />
                 </div>
-                <span className="tabular w-28 flex-shrink-0 text-right text-[13px]">{won(v)}</span>
-                <span className="tabular w-12 flex-shrink-0 text-right text-[11px] text-muted-foreground">
+                <span className="tabular w-28 flex-shrink-0 text-right text-body">{won(v)}</span>
+                <span className="tabular w-12 flex-shrink-0 text-right text-caption text-muted-foreground">
                   {catTotal ? Math.round((v / catTotal) * 100) : 0}%
                 </span>
               </div>

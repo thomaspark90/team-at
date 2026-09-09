@@ -41,14 +41,14 @@ export default function OrderOutlookCard() {
     <section>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
         <p className="ta-label" style={{ marginBottom: 0 }}>발주 참고 — 원두 잔여 추정</p>
-        <span className="text-[11px] text-muted-foreground/70">
+        <span className="text-caption text-muted-foreground/70">
           다음 7일 날씨 배율 ×{data.weatherFactor} · 주기=재발주 간격 기반, 용량=1회 1봉 가정 — 참고치
         </span>
       </div>
       <div className="mt-6 overflow-x-auto">
-        <table className="w-full border-collapse text-[13px]">
+        <table className="w-full border-collapse text-body">
           <thead>
-            <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+            <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
               <th className="px-2 py-1.5 text-left font-normal">원두</th>
               <th className="px-2 py-1.5 text-left font-normal">지점</th>
               <th className="px-2 py-1.5 text-right font-normal">재고</th>
@@ -69,7 +69,7 @@ export default function OrderOutlookCard() {
                     style={urgent ? { color: 'hsl(var(--destructive))' } : undefined}
                   >
                     {r.estDaysLeft != null ? `~${r.estDaysLeft}일` : '추정 불가'}
-                    {r.method && <span className="text-[11px] text-muted-foreground/60"> ({r.method})</span>}
+                    {r.method && <span className="text-caption text-muted-foreground/60"> ({r.method})</span>}
                   </td>
                   <td className="tabular px-2 py-1.5 text-right text-muted-foreground/70">
                     {r.lastPurchaseAt} ({r.daysSince}일 전)

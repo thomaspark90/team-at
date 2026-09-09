@@ -16,7 +16,7 @@ import dynamic from 'next/dynamic';
 
 // recharts 포함 차트 번들은 별도 청크로 지연 로드 — 페이지 뼈대가 먼저 그려진다
 const Dashboard = dynamic(() => import('@/components/finance/Dashboard'), {
-  loading: () => <p className="px-6 py-8 text-[13px] text-muted-foreground">차트 불러오는 중…</p>,
+  loading: () => <p className="px-6 py-8 text-body text-muted-foreground">차트 불러오는 중…</p>,
 });
 
 // 지표 — 매출·이익·비율 추이 차트 (구 재무 대시보드). 대시보드는 업무 보드로 개편.
@@ -331,23 +331,23 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
       <FinanceNav role={role} />
       <div className="w-full px-6 py-8">
         <div className="mb-5 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">지표{isAll ? ' — 전사 통합' : ''}</h1>
+          <h1 className="m-0 text-display tracking-[-0.5px]">지표{isAll ? ' — 전사 통합' : ''}</h1>
           <span className="flex items-baseline gap-4">
             {isAll ? (
-              <Link href="/finance/metrics" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+              <Link href="/finance/metrics" className="text-body text-muted-foreground transition-colors hover:text-foreground">
                 ← 매장별 보기
               </Link>
             ) : (
-              <Link href="/finance/metrics?unit=all" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+              <Link href="/finance/metrics?unit=all" className="text-body text-muted-foreground transition-colors hover:text-foreground">
                 전사 통합 →
               </Link>
             )}
-            <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+            <Link href="/finance" className="text-body text-muted-foreground transition-colors hover:text-foreground">
               ← 업로드로
             </Link>
           </span>
         </div>
-        <p className="mb-5 text-[13px] text-muted-foreground">
+        <p className="mb-5 text-body text-muted-foreground">
           <b>매출은 POS(발생주의)</b>, 지출은 통장·카드 기준이에요. 통장 현금흐름·잔액은 <Link href="/finance/cashflow" className="underline">월별 요약</Link>·<Link href="/finance/flow" className="underline">자금 흐름</Link>에서 봐요.
         </p>
         {/* 좌측 연·월 사이드바와 요약 타일은 제거했다(2026-08-31 대표 지시) — 이 화면은 추이 전용이고,

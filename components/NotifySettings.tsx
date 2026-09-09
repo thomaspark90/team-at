@@ -128,7 +128,7 @@ export default function NotifySettings({
     <button
       onClick={onClick}
       disabled={busy}
-      className={`rounded-lg px-3 py-1.5 text-[13px] transition-colors disabled:opacity-60 ${
+      className={`rounded-lg px-3 py-1.5 text-body transition-colors disabled:opacity-60 ${
         on ? 'bg-foreground font-medium text-background' : 'border border-border text-muted-foreground hover:text-foreground'
       }`}
     >
@@ -140,8 +140,8 @@ export default function NotifySettings({
     <div>
       {!bare && (
         <>
-          <h2 className="m-0 text-[15px] font-medium">{isRecipient ? '알림 설정' : '내 요청 알림'}</h2>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
+          <h2 className="m-0 text-title font-medium">{isRecipient ? '알림 설정' : '내 요청 알림'}</h2>
+          <p className="mt-0.5 text-body text-muted-foreground">
             {isRecipient
               ? '새 송금 요청이 등록되면 알림을 받아요. 채널별로 켜고 끌 수 있어요.'
               : '내가 올린 송금 요청이 이체 완료되면 알림을 받아요. 완료 이메일은 자동으로 오고, 푸시는 아래에서 켤 수 있어요.'}
@@ -151,9 +151,9 @@ export default function NotifySettings({
 
       {isRecipient && (
         <div className="mt-3 flex items-center justify-between gap-2">
-          <span className="text-[13px]">이메일 알림</span>
+          <span className="text-body">이메일 알림</span>
           {emailEnabled === null ? (
-            <span className="text-[13px] text-muted-foreground">…</span>
+            <span className="text-body text-muted-foreground">…</span>
           ) : (
             toggleBtn(emailEnabled, false, toggleEmail)
           )}
@@ -162,23 +162,23 @@ export default function NotifySettings({
 
       <div className="mt-2.5 flex items-center justify-between gap-2">
         <div>
-          <span className="flex items-center gap-1.5 text-[13px]">
+          <span className="flex items-center gap-1.5 text-body">
             푸시알림 (이 기기)
             <button
               onClick={() => setGuide('setup')}
-              className="rounded-full border border-border px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+              className="rounded-full border border-border px-1.5 text-caption text-muted-foreground hover:text-foreground"
               aria-label="푸시알림 설정 방법"
             >
               ? 설정 방법
             </button>
           </span>
           {push === 'ios-browser' && (
-            <p className="m-0 mt-0.5 text-[11px] text-muted-foreground">
+            <p className="m-0 mt-0.5 text-caption text-muted-foreground">
               아이폰은 사파리 공유 → &lsquo;홈 화면에 추가&rsquo; 후, 그 아이콘으로 열어야 켤 수 있어요.
             </p>
           )}
           {push === 'unsupported' && (
-            <p className="m-0 mt-0.5 text-[11px] text-muted-foreground">이 브라우저는 푸시알림을 지원하지 않아요.</p>
+            <p className="m-0 mt-0.5 text-caption text-muted-foreground">이 브라우저는 푸시알림을 지원하지 않아요.</p>
           )}
         </div>
         {(push === 'on' || push === 'off' || push === 'busy') &&
@@ -187,7 +187,7 @@ export default function NotifySettings({
 
       {/* 권한이 '차단'된 기기 — 사이트가 다시 물을 수 없으니 해제 방법 팝업으로 바로 연결 */}
       {denied && push !== 'unsupported' && push !== 'ios-browser' && (
-        <p className="mt-2 text-[11px] text-destructive">
+        <p className="mt-2 text-caption text-destructive">
           알림 권한이 거부됐어요. 브라우저 설정에서 허용해주세요.{' '}
           <button
             onClick={() => setGuide('unblock')}
@@ -197,7 +197,7 @@ export default function NotifySettings({
           </button>
         </p>
       )}
-      {error && <p className="mt-2 text-[11px] text-destructive">{error}</p>}
+      {error && <p className="mt-2 text-caption text-destructive">{error}</p>}
 
       {/* ---------- 푸시알림 안내 팝업 (setup = 최초 설정 / unblock = 차단 해제) ---------- */}
       {guide && (
@@ -211,16 +211,16 @@ export default function NotifySettings({
           >
             {guide === 'unblock' ? (
               <>
-                <h3 className="m-0 text-[15px] font-medium">알림 차단 해제 방법</h3>
-                <p className="mt-1 text-[13px] text-muted-foreground">
+                <h3 className="m-0 text-title font-medium">알림 차단 해제 방법</h3>
+                <p className="mt-1 text-body text-muted-foreground">
                   권한 요청에서 &lsquo;차단&rsquo;을 누르면 브라우저가 기억해서 다시 묻지 않아요. 아래처럼 브라우저
                   설정에서 직접 허용으로 바꾼 뒤, 이 화면을 새로고침하고 <strong>알림 켜기</strong>를 다시 누르면
                   됩니다.
                 </p>
 
                 <div className="mt-4 rounded-xl bg-muted/40 p-4">
-                  <h4 className="m-0 text-[13px] font-medium">PC 크롬 · 엣지 · 웨일</h4>
-                  <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-[13px]">
+                  <h4 className="m-0 text-body font-medium">PC 크롬 · 엣지 · 웨일</h4>
+                  <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-body">
                     <li>
                       주소창 왼쪽 <strong>자물쇠(또는 ⚙ 튜너) 아이콘</strong>을 눌러요
                     </li>
@@ -230,27 +230,27 @@ export default function NotifySettings({
                     </li>
                     <li>탭으로 돌아와 새로고침 → <strong>알림 켜기</strong></li>
                   </ol>
-                  <p className="mt-2 text-[13px] text-muted-foreground">
-                    안 보이면 주소창에 <span className="break-all font-mono text-[11px]">chrome://settings/content/notifications</span> 을
+                  <p className="mt-2 text-body text-muted-foreground">
+                    안 보이면 주소창에 <span className="break-all font-mono text-caption">chrome://settings/content/notifications</span> 을
                     입력해 &lsquo;차단됨&rsquo; 목록에서 이 사이트를 허용으로 바꿔요.
                   </p>
                 </div>
 
                 <div className="mt-3 rounded-xl bg-muted/40 p-4">
-                  <h4 className="m-0 text-[13px] font-medium">맥 사파리</h4>
-                  <p className="mt-1.5 text-[13px]">
+                  <h4 className="m-0 text-body font-medium">맥 사파리</h4>
+                  <p className="mt-1.5 text-body">
                     Safari 메뉴 → <strong>설정 → 웹사이트 → 알림</strong>에서 이 사이트를 <strong>허용</strong>으로
                     변경 → 새로고침 후 알림 켜기.
                   </p>
-                  <p className="mt-2 text-[13px] text-muted-foreground">
+                  <p className="mt-2 text-body text-muted-foreground">
                     맥 공통: 브라우저에서 허용해도 안 뜨면 <strong>시스템 설정 → 알림</strong>에서 크롬/사파리의 알림
                     허용이 켜져 있는지 확인하세요.
                   </p>
                 </div>
 
                 <div className="mt-3 rounded-xl bg-muted/40 p-4">
-                  <h4 className="m-0 text-[13px] font-medium">안드로이드 크롬</h4>
-                  <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-[13px]">
+                  <h4 className="m-0 text-body font-medium">안드로이드 크롬</h4>
+                  <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-body">
                     <li>주소창 <strong>자물쇠</strong> → <strong>권한</strong> → 알림 <strong>허용</strong></li>
                     <li>
                       없으면 크롬 <strong>⋮ → 설정 → 사이트 설정 → 알림</strong>의 &lsquo;차단됨&rsquo; 목록에서 해제
@@ -260,8 +260,8 @@ export default function NotifySettings({
                 </div>
 
                 <div className="mt-3 rounded-xl bg-muted/40 p-4">
-                  <h4 className="m-0 text-[13px] font-medium">아이폰 (홈 화면 앱)</h4>
-                  <p className="mt-1.5 text-[13px]">
+                  <h4 className="m-0 text-body font-medium">아이폰 (홈 화면 앱)</h4>
+                  <p className="mt-1.5 text-body">
                     아이폰 <strong>설정 → 알림 → team-at</strong>에서 알림 허용을 켜요. (사파리 탭에서는 원래 푸시가
                     안 돼요 — 홈 화면에 추가한 아이콘으로 열어야 해요)
                   </p>
@@ -269,14 +269,14 @@ export default function NotifySettings({
               </>
             ) : (
               <>
-            <h3 className="m-0 text-[15px] font-medium">푸시알림 설정 방법</h3>
-            <p className="mt-1 text-[13px] text-muted-foreground">
+            <h3 className="m-0 text-title font-medium">푸시알림 설정 방법</h3>
+            <p className="mt-1 text-body text-muted-foreground">
               앱 설치 없이, 이 사이트가 직접 알림을 보내요. 알림을 받을 기기마다 아래처럼 한 번만 켜면 됩니다.
             </p>
 
             <div className="mt-4 rounded-xl bg-muted/40 p-4">
-              <h4 className="m-0 text-[13px] font-medium">안드로이드 (갤럭시 등)</h4>
-              <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-[13px]">
+              <h4 className="m-0 text-body font-medium">안드로이드 (갤럭시 등)</h4>
+              <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-body">
                 <li>
                   <strong>크롬</strong>(또는 삼성인터넷)으로 이 사이트에 접속해요
                 </li>
@@ -287,17 +287,17 @@ export default function NotifySettings({
                   브라우저가 묻는 알림 권한에서 <strong>허용</strong>을 눌러요
                 </li>
               </ol>
-              <p className="mt-2 text-[13px] text-muted-foreground">
+              <p className="mt-2 text-body text-muted-foreground">
                 이후 일반 앱 알림처럼 잠금화면과 상단 알림바에 떠요. 홈 화면 추가는 필요 없어요.
               </p>
             </div>
 
             <div className="mt-3 rounded-xl bg-muted/40 p-4">
-              <h4 className="m-0 text-[13px] font-medium">아이폰 / 아이패드</h4>
-              <p className="mt-1.5 text-[13px] text-amber-600">
+              <h4 className="m-0 text-body font-medium">아이폰 / 아이패드</h4>
+              <p className="mt-1.5 text-body text-amber-600">
                 아이폰은 사파리 탭에서는 알림을 못 받아요. 꼭 홈 화면에 추가한 뒤 그 아이콘으로 열어야 해요.
               </p>
-              <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-[13px]">
+              <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-body">
                 <li>
                   <strong>사파리</strong>로 이 사이트에 접속해요
                 </li>
@@ -314,19 +314,19 @@ export default function NotifySettings({
                   이 화면에서 <strong>알림 켜기</strong> → 권한 <strong>허용</strong>을 눌러요
                 </li>
               </ol>
-              <p className="mt-2 text-[13px] text-muted-foreground">
+              <p className="mt-2 text-body text-muted-foreground">
                 이후 일반 앱처럼 잠금화면·알림센터에 떠요. iOS 16.4 이상 필요(2023년 3월 이후 업데이트된 아이폰이면 대부분 가능).
               </p>
             </div>
 
             <div className="mt-3 rounded-xl bg-muted/40 p-4">
-              <h4 className="m-0 text-[13px] font-medium">PC (맥 · 윈도우)</h4>
-              <p className="mt-1.5 text-[13px]">
+              <h4 className="m-0 text-body font-medium">PC (맥 · 윈도우)</h4>
+              <p className="mt-1.5 text-body">
                 크롬·엣지·사파리로 접속해 <strong>알림 켜기</strong> → <strong>허용</strong>. 화면 구석에 시스템 알림으로 떠요.
               </p>
             </div>
 
-            <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-[13px]">
+            <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-body">
               <p className="m-0 font-medium">잘 안 될 때</p>
               <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-5">
                 <li>
@@ -347,7 +347,7 @@ export default function NotifySettings({
 
             <button
               onClick={() => setGuide(null)}
-              className="mt-4 w-full rounded-xl bg-foreground py-2.5 text-[13px] font-medium text-background"
+              className="mt-4 w-full rounded-xl bg-foreground py-2.5 text-body font-medium text-background"
             >
               확인
             </button>

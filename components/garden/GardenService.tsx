@@ -296,7 +296,7 @@ export default function GardenService() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {scanMsg && (
-              <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>{scanMsg}</p>
+              <p className="text-body text-muted-foreground" style={{ margin: 0 }}>{scanMsg}</p>
             )}
             <input
               value={bean}
@@ -364,7 +364,7 @@ export default function GardenService() {
             />
             {/* 로스팅 날짜는 봉투에 찍혀 와서 발주 시점엔 모른다 — 수령 후 발주 리스트의 [수령]으로 기재 */}
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <span className="text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>발주 날짜</span>
+              <span className="text-caption text-muted-foreground" style={{ flexShrink: 0 }}>발주 날짜</span>
               <input
                 type="date"
                 value={orderDate}
@@ -375,7 +375,7 @@ export default function GardenService() {
             </label>
             {/* 구매 용량 — 500g/1000g 프리셋 + 직접 입력 (잔당 재료비 계산 기준) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <span className="text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>구매 용량</span>
+              <span className="text-caption text-muted-foreground" style={{ flexShrink: 0 }}>구매 용량</span>
               <div className="inline-flex gap-1 rounded-md border border-border p-1" style={{ flexShrink: 0 }}>
                 {[500, 1000].map((g) => {
                   const on = settings.capacityG === g;
@@ -383,7 +383,7 @@ export default function GardenService() {
                     <button
                       key={g}
                       onClick={() => setNum('capacityG', g)}
-                      className={`rounded-sm px-2.5 py-1 text-[13px] transition-colors ${
+                      className={`rounded-sm px-2.5 py-1 text-body transition-colors ${
                         on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
@@ -400,7 +400,7 @@ export default function GardenService() {
                 className="ta-input tabular"
                 style={{ flex: 1, minWidth: 0 }}
               />
-              <span className="text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>g</span>
+              <span className="text-caption text-muted-foreground" style={{ flexShrink: 0 }}>g</span>
             </div>
             <div style={{ display: 'flex', gap: 8, minWidth: 0 }}>
               <input
@@ -420,7 +420,7 @@ export default function GardenService() {
                     <button
                       key={String(v)}
                       onClick={() => setSettings((s) => ({ ...s, vatIncluded: v }))}
-                      className={`rounded-sm px-2.5 py-1 text-[13px] transition-colors ${
+                      className={`rounded-sm px-2.5 py-1 text-body transition-colors ${
                         on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                       }`}
                       title={v ? '입력한 공급가를 부가세 포함가로 계산' : '입력한 공급가에 부가세 10%를 더해 계산'}
@@ -437,10 +437,10 @@ export default function GardenService() {
             <div style={{ marginTop: 40, display: 'flex', flexDirection: 'column', gap: 28, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span className="text-[11px] text-muted-foreground">잔당 재료비 (VAT 포함)</span>
-                  <span className="text-[22px] text-foreground tabular">{won(result.costPerCup)}</span>
+                  <span className="text-caption text-muted-foreground">잔당 재료비 (VAT 포함)</span>
+                  <span className="text-display text-foreground tabular">{won(result.costPerCup)}</span>
                 </div>
-                <div className="text-[11px] text-muted-foreground" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div className="text-caption text-muted-foreground" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span>권장</span>
                   <Stepper value={settings.minMult} onDec={() => adjMin(-0.5)} onInc={() => adjMin(0.5)} />
                   <span>~</span>
@@ -450,12 +450,12 @@ export default function GardenService() {
 
               {/* 권장 판매 범위 — 배수 선택(책정)은 '판매가 설정' 탭 담당이라 여기선 범위만 보여준다 */}
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span className="text-[11px] text-muted-foreground">권장 판매 범위</span>
-                <span className="text-[15px] text-foreground tabular">
+                <span className="text-caption text-muted-foreground">권장 판매 범위</span>
+                <span className="text-title text-foreground tabular">
                   {won(result.rangeLow)} ~ {won(result.rangeHigh)}
                 </span>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-caption text-muted-foreground">
                 저장하면 발주 기록으로 남고, 판매가 책정은 &lsquo;판매가 설정&rsquo; 탭에서 담당자가 진행해요
               </p>
 
@@ -474,7 +474,7 @@ export default function GardenService() {
         {!purchasesLoaded && (
           <div className="min-w-0 pt-[54px]">
             <p className="ta-label">이전 발주 리스트</p>
-            <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>불러오는 중…</p>
+            <p className="text-body text-muted-foreground" style={{ margin: 0 }}>불러오는 중…</p>
           </div>
         )}
         {purchasesLoaded && purchases.length > 0 && (
@@ -483,10 +483,10 @@ export default function GardenService() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
               {purchaseGroups.map((group) => (
                 <div key={group[0].id}>
-                  <p className="text-[13px] text-foreground mb-3">
+                  <p className="text-body text-foreground mb-3">
                     {group[0].bean}
                     {group[0].roastery && (
-                      <span className="text-[11px] text-muted-foreground"> · {group[0].roastery}</span>
+                      <span className="text-caption text-muted-foreground"> · {group[0].roastery}</span>
                     )}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -603,7 +603,7 @@ export default function GardenService() {
             >
               <div>
                 <p className="ta-label" style={{ margin: 0 }}>발주 메시지 전송</p>
-                <p className="text-[13px] text-muted-foreground" style={{ margin: '4px 0 0' }}>
+                <p className="text-body text-muted-foreground" style={{ margin: '4px 0 0' }}>
                   <span className="text-foreground">[{kakaoPreview.room}]</span> 방으로 전송됩니다 — 문구는 자유롭게 고칠 수 있어요
                 </p>
               </div>
@@ -741,7 +741,7 @@ function Field({
 }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
-      <span className="text-[11px] text-muted-foreground">{label}</span>
+      <span className="text-caption text-muted-foreground">{label}</span>
       <input
         type="number"
         step={step}

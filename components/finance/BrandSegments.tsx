@@ -25,7 +25,7 @@ export default function BrandSegments({
           key={s.id}
           href={`${basePath}?brand=${s.id}${extraParams}`}
           aria-current={s.id === seg ? 'page' : undefined}
-          className={`px-3 py-1.5 text-[13px] transition-colors ${
+          className={`px-3 py-1.5 text-body transition-colors ${
             s.id === seg ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
           }`}
         >

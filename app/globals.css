@@ -149,7 +149,7 @@
 
 /* midday: 대문자 캡션 라벨 */
 .caption {
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: hsl(var(--muted-foreground));
@@ -157,7 +157,7 @@
 
 /*
  * 재사용 프리미티브 — midday/shadcn 메트릭 그대로.
- * 카드 p-6 · 버튼/인풋 h-9(px-4/px-3) · radius md · 본문 13px.
+ * 카드 p-6 · 버튼/인풋 h-9(px-4/px-3) · radius md · 본문 15px(text-body).
  * ta-card는 페이지 최상위 섹션에 쓰지 않는다(DESIGN_SYSTEM.md §1·§7) — 모달·팝오버 등
  * 플로팅 패널이나 화면 중앙 독립형 단일 카드(/install, /s/[token] 등)에만 사용.
  */
@@ -166,16 +166,16 @@
     @apply rounded-md border border-border bg-card p-6;
   }
   .ta-label {
-    @apply mb-3 block text-[11px] uppercase tracking-[0.06em] text-muted-foreground;
+    @apply mb-3 block text-caption uppercase tracking-[0.06em] text-muted-foreground;
   }
   .ta-input {
-    @apply h-9 rounded-md border border-input bg-transparent px-3 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring;
+    @apply h-9 rounded-md border border-input bg-transparent px-3 text-body text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring;
   }
   .ta-btn {
-    @apply inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-[13px] text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-body text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50;
   }
   .ta-btn-primary {
-    @apply inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-[13px] text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-body text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50;
   }
   /* 에러 문구 공통색 — 컴포넌트별 하드코딩(#c0392b·text-red-500 등) 대체, 다크에서 한 단계 밝게 */
   .ta-error {
@@ -185,27 +185,6 @@
     color: hsl(0 84% 68%);
   }
 }
-
-/*
- * 전역 폰트 스케일 ×1.2 (2026-09-09 대표 지시 "너무 작다").
- * 앱의 글자 크기가 px 고정 유틸(text-[13px] 등, 126개 파일)로 박혀 있어 rem 조정이 먹지 않는다 —
- * 소스를 일괄 치환하는 대신 여기서 클래스별로 1.2배를 덮어쓴다(여백·높이는 그대로, 글자만).
- * 배율은 --font-scale 하나로 조절. 아래 iOS 16px 규칙보다 앞에 두어 모바일 입력 확대 방지는 유지.
- */
-:root {
-  --font-scale: 1.2;
-}
-.text-\[11px\], .caption, .gs-row, .ta-label { font-size: calc(11px * var(--font-scale)); }
-.text-\[12px\] { font-size: calc(12px * var(--font-scale)); }
-.text-\[13px\], .ta-input, .ta-btn, .ta-btn-primary { font-size: calc(13px * var(--font-scale)); }
-.text-\[14px\] { font-size: calc(14px * var(--font-scale)); }
-.text-\[15px\] { font-size: calc(15px * var(--font-scale)); }
-.text-\[16px\] { font-size: calc(16px * var(--font-scale)); }
-.text-\[18px\] { font-size: calc(18px * var(--font-scale)); }
-.text-\[20px\] { font-size: calc(20px * var(--font-scale)); }
-.text-\[22px\] { font-size: calc(22px * var(--font-scale)); }
-.text-\[32px\] { font-size: calc(32px * var(--font-scale)); }
-.text-2xl { font-size: calc(24px * var(--font-scale)); }
 
 /* 네이티브 드롭다운 대비 개선 — optgroup 그룹 헤더(재료비(원가) 등)가 기본 흐린 회색이라
    다크 팝업에서 잘 안 보인다. 전경색으로 올려 라이트/다크 모두에서 뚜렷하게(흰색·검정에 가깝게) */
@@ -252,7 +231,7 @@ select.ta-input {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
   flex-wrap: wrap;
 }
 .gs-meta {

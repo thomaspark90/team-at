@@ -144,8 +144,8 @@ export default function GardenOptionsManager() {
   return (
     <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       <div>
-        <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>발주 드롭다운 관리</p>
-        <p className="text-[13px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
+        <p className="text-title font-medium text-foreground" style={{ margin: 0 }}>발주 드롭다운 관리</p>
+        <p className="text-body text-muted-foreground" style={{ margin: '2px 0 0' }}>
           필터 원두 발주 화면의 스탭이름·로스팅사 선택지를 관리합니다.
         </p>
       </div>
@@ -229,7 +229,7 @@ function RoasteryList({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>
+      <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
         로스팅사 <span style={{ opacity: 0.7 }}>— 로고·QR을 등록하면 원두카드에 자동 배치됩니다</span>
       </p>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -252,7 +252,7 @@ function RoasteryList({
         </button>
       </div>
       {items.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+        <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
           아직 등록된 항목이 없어요. 발주 화면에서 직접 입력해 저장해도 여기에 추가됩니다.
         </p>
       ) : (
@@ -296,7 +296,7 @@ function RoasteryList({
                 </>
               ) : (
                 <>
-                  <span className="text-[13px] text-foreground" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span className="text-body text-foreground" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {v}
                   </span>
                   <button
@@ -370,7 +370,7 @@ function RoomInput({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-        <span className="text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>발주 카톡방</span>
+        <span className="text-caption text-muted-foreground" style={{ flexShrink: 0 }}>발주 카톡방</span>
         <input
           type="text"
           value={v}
@@ -394,7 +394,7 @@ function RoomInput({
         </button>
       </label>
       {!dirty && sharedWith.length > 0 && (
-        <p className="text-[11px]" style={{ margin: 0, marginLeft: 78, color: 'hsl(38 92% 40%)' }}>
+        <p className="text-caption" style={{ margin: 0, marginLeft: 78, color: 'hsl(38 92% 40%)' }}>
           ⚠ {sharedWith.join(', ')}와 같은 카톡방을 쓰고 있어요 — 복붙 실수가 아니라면 무시해도 됩니다.
         </p>
       )}
@@ -486,7 +486,7 @@ function OptionList({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>{title}</p>
+      <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>{title}</p>
       <div style={{ display: 'flex', gap: 8 }}>
         <input
           type="text"
@@ -507,7 +507,7 @@ function OptionList({
         </button>
       </div>
       {items.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+        <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
           아직 등록된 항목이 없어요. 발주 화면에서 직접 입력해 저장해도 여기에 추가됩니다.
         </p>
       ) : (
@@ -515,7 +515,7 @@ function OptionList({
           {items.map((v) => (
             <span
               key={v}
-              className="rounded-md border border-border text-[11px] text-foreground"
+              className="rounded-md border border-border text-caption text-foreground"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px' }}
             >
               {display ? display(v) : v}

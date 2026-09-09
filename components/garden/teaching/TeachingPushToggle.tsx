@@ -77,7 +77,7 @@ export default function TeachingPushToggle() {
 
   if (status === 'checking') return null;
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px]">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-body">
       <span className="text-muted-foreground">매니저 출근 전날 저녁 알림</span>
       {status === 'on' && (
         <>

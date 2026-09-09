@@ -14,7 +14,7 @@ const cnt = (n: number) => Math.round(n).toLocaleString('ko-KR');
 function SeriesRow({ s, buckets, gran, max }: { s: PeriodSeries; buckets: string[]; gran: AmericanoPeriod['gran']; max: number }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="w-28 flex-shrink-0 truncate text-[13px]" title={s.label}>{s.label}</span>
+      <span className="w-28 flex-shrink-0 truncate text-body" title={s.label}>{s.label}</span>
       <div className="flex min-w-0 flex-1 items-end gap-[2px]" style={{ height: 36 }}>
         {s.qty.map((q, i) => (
           <div
@@ -30,8 +30,8 @@ function SeriesRow({ s, buckets, gran, max }: { s: PeriodSeries; buckets: string
           />
         ))}
       </div>
-      <span className="tabular w-16 flex-shrink-0 text-right text-[13px]">{cnt(s.totalQty)}건</span>
-      <span className="tabular w-24 flex-shrink-0 text-right text-[11px] text-muted-foreground">{won(s.totalSupply)}</span>
+      <span className="tabular w-16 flex-shrink-0 text-right text-body">{cnt(s.totalQty)}건</span>
+      <span className="tabular w-24 flex-shrink-0 text-right text-caption text-muted-foreground">{won(s.totalSupply)}</span>
     </div>
   );
 }
@@ -39,7 +39,7 @@ function SeriesRow({ s, buckets, gran, max }: { s: PeriodSeries; buckets: string
 function BucketAxis({ buckets, gran }: { buckets: string[]; gran: AmericanoPeriod['gran'] }) {
   if (buckets.length === 0) return null;
   return (
-    <div className="mt-1 flex justify-between text-[11px] text-muted-foreground" style={{ paddingLeft: '7.75rem', paddingRight: '10rem' }}>
+    <div className="mt-1 flex justify-between text-caption text-muted-foreground" style={{ paddingLeft: '7.75rem', paddingRight: '10rem' }}>
       <span>{bucketLabel(buckets[0], gran)}</span>
       <span>{bucketLabel(buckets[buckets.length - 1], gran)}</span>
     </div>
@@ -61,12 +61,12 @@ export default function MenuSalesReport({ americano, menus }: { americano: Ameri
       {hasAme && (
         // 카드 해체(2026-08-08) — 페이지 최상위 섹션은 박스 없이 가로 구분선+py-[54px]로 구획(§6.1)
         <section className="py-[54px]">
-          <h2 className="m-0 text-[15px] font-medium">아메리카노 — 아이스/핫 · 원두별 추이</h2>
-          <p className="mt-1 text-[13px] text-muted-foreground">
+          <h2 className="m-0 text-title font-medium">아메리카노 — 아이스/핫 · 원두별 추이</h2>
+          <p className="mt-1 text-body text-muted-foreground">
             오픈 이후 전체 {americano.buckets.length}{unit}, 판매 건수 기준(원두: 스테이=메인 블렌드, 라이트=시즈널). 금액은 공급가액.
           </p>
           {americano.unclassifiedOptions.length > 0 && (
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-caption text-muted-foreground">
               ⚠ 옵션 인식 안 됨({americano.unclassifiedOptions.length}종) — {americano.unclassifiedOptions.join(', ')}
             </p>
           )}
@@ -83,13 +83,13 @@ export default function MenuSalesReport({ americano, menus }: { americano: Ameri
               const share = americano.totalQty ? Math.round((qty / americano.totalQty) * 100) : 0;
               return (
                 <div key={c.label} className="rounded-2xl bg-muted/40 p-5">
-                  <p className="m-0 text-[13px] text-muted-foreground">
-                    {c.label} {c.s && <span className="text-[11px]">({share}%)</span>}
+                  <p className="m-0 text-body text-muted-foreground">
+                    {c.label} {c.s && <span className="text-caption">({share}%)</span>}
                   </p>
-                  <p className="m-0 mt-1 text-[22px]" style={{ color: 'hsl(var(--number-colored))' }}>
+                  <p className="m-0 mt-1 text-display" style={{ color: 'hsl(var(--number-colored))' }}>
                     {cnt(qty)}건
                   </p>
-                  <p className="m-0 mt-0.5 text-[11px] text-muted-foreground">{won(supply)}</p>
+                  <p className="m-0 mt-0.5 text-caption text-muted-foreground">{won(supply)}</p>
                 </div>
               );
             })}
@@ -105,7 +105,7 @@ export default function MenuSalesReport({ americano, menus }: { americano: Ameri
           {/* 원두별(메인/시즈널/디카페인) 기간별 */}
           {americano.beans.length > 0 && (
             <>
-              <h3 className="mb-0 mt-6 text-[13px] font-medium text-muted-foreground">원두별</h3>
+              <h3 className="mb-0 mt-6 text-body font-medium text-muted-foreground">원두별</h3>
               <div className="mt-3 flex flex-col gap-3">
                 {americano.beans.map((s) => (
                   <SeriesRow key={s.label} s={s} buckets={americano.buckets} gran={americano.gran} max={ameMax} />
@@ -120,8 +120,8 @@ export default function MenuSalesReport({ americano, menus }: { americano: Ameri
       {hasMenus && (
         // 카드 해체(2026-08-08) — 페이지 최상위 섹션은 박스 없이 가로 구분선+py-[54px]로 구획(§6.1)
         <section className="py-[54px]">
-          <h2 className="m-0 text-[15px] font-medium">메뉴별 판매 추이 — 상위 {menus.menus.length}개</h2>
-          <p className="mt-1 text-[13px] text-muted-foreground">
+          <h2 className="m-0 text-title font-medium">메뉴별 판매 추이 — 상위 {menus.menus.length}개</h2>
+          <p className="mt-1 text-body text-muted-foreground">
             오픈 이후 전체 {menus.buckets.length}{granUnitLabel(menus.gran)} 판매 건수 상위 메뉴. 라인에 마우스를 올리면 기간·건수가 보여요.
           </p>
           <div className="mt-8">

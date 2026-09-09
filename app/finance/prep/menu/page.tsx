@@ -198,7 +198,7 @@ export default async function PrepMenuPage({
 
   const renderTable = (columns: MenuColumn[]) => (
     <div className="overflow-auto rounded-md border border-border">
-      <table className="w-max min-w-full border-collapse text-[13px]">
+      <table className="w-max min-w-full border-collapse text-body">
         <thead className="sticky top-0 z-10 bg-card">
           <tr className="border-b border-border text-muted-foreground">
             <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">기간</th>
@@ -240,7 +240,7 @@ export default async function PrepMenuPage({
                       <span className="inline-flex flex-col items-end leading-tight">
                         <span>{num(v)}</span>
                         {(c.qtyAmounts[b] ?? 0) !== 0 && (
-                          <span className="text-[11px] text-muted-foreground">{num(c.qtyAmounts[b] ?? 0)}개</span>
+                          <span className="text-caption text-muted-foreground">{num(c.qtyAmounts[b] ?? 0)}개</span>
                         )}
                       </span>
                     ) : (
@@ -262,15 +262,15 @@ export default async function PrepMenuPage({
       <AccountingNav role={role} />
       <div className="mx-auto max-w-[1680px] px-6 py-8">
         <div className="mb-1 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">전처리4 — 메뉴별 판매</h1>
+          <h1 className="m-0 text-display tracking-[-0.5px]">전처리4 — 메뉴별 판매</h1>
           <Link
             href={`/finance/prep/revenue?unit=${unit.id}&grain=${grain}`}
-            className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+            className="text-body text-muted-foreground transition-colors hover:text-foreground"
           >
             ← 전처리3 매출 총합
           </Link>
         </div>
-        <p className="mb-5 max-w-[880px] text-[13px] text-muted-foreground">
+        <p className="mb-5 max-w-[880px] text-body text-muted-foreground">
           <b>{unit.label}</b>의 품목 리포트(pos_items)를 메뉴 축으로 펼친 표예요. 요약은 매장/포장·사이즈·
           한/영 표기를 <b>메뉴 하나로 묶고</b>(Staff·Newbie…), 상세는 상품 원문 그대로예요.
           매출 뷰의 <b>정합 차이</b> 열이 0이 아니면 품목 리포트와 POS 총액(전처리3 정본)이 어긋난 거예요.
@@ -283,7 +283,7 @@ export default async function PrepMenuPage({
                 key={g.key}
                 href={href({ grain: g.key })}
                 aria-current={g.key === grain ? 'page' : undefined}
-                className={`px-3 py-1.5 text-[13px] transition-colors ${
+                className={`px-3 py-1.5 text-body transition-colors ${
                   g.key === grain ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -297,7 +297,7 @@ export default async function PrepMenuPage({
                 key={m.key}
                 href={href({ metric: m.key })}
                 aria-current={m.key === metric ? 'page' : undefined}
-                className={`px-3 py-1.5 text-[13px] transition-colors ${
+                className={`px-3 py-1.5 text-body transition-colors ${
                   m.key === metric ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -305,16 +305,16 @@ export default async function PrepMenuPage({
               </Link>
             ))}
           </div>
-          <span className="text-[12px] text-muted-foreground">
+          <span className="text-caption text-muted-foreground">
             {metric === 'gross' ? '부가세 포함 총액' : '판매 수량'}
             {allBuckets.length > buckets.length && ` · 최근 ${buckets.length}개 구간`}
           </span>
         </div>
 
-        <h2 className="mb-2 mt-2 text-[15px] font-medium">메뉴 요약</h2>
+        <h2 className="mb-2 mt-2 text-title font-medium">메뉴 요약</h2>
         <div className="mb-8">{renderTable(summaryShown)}</div>
 
-        <h2 className="mb-2 text-[15px] font-medium">상품별 상세</h2>
+        <h2 className="mb-2 text-title font-medium">상품별 상세</h2>
         {renderTable(detailShown)}
         <MenuPrefsPanel
           unit={unit.id}
@@ -324,7 +324,7 @@ export default async function PrepMenuPage({
           merges={merges}
         />
 
-        <div className="mt-4 flex flex-col gap-1 text-[12px] text-muted-foreground">
+        <div className="mt-4 flex flex-col gap-1 text-caption text-muted-foreground">
           {summary
             .filter((c) => c.hint)
             .map((c) => (

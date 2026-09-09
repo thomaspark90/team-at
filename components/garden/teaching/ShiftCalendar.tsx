@@ -83,8 +83,8 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-[22px] font-medium">교육</h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <h1 className="text-display font-medium">교육</h1>
+        <p className="mt-1 text-body text-muted-foreground">
           {isAdmin
             ? '티칭 일정(날짜·시간·지점·교육 대상)과 지점별 교육 요청을 관리합니다.'
             : `${me.profile?.name} ${me.profile?.roleLabel ?? '매니저'} — 아래는 대표가 잡아둔 내 티칭 일정입니다. 교육 대상 아래 주제가 그 스탭이 배우고 싶어 하는 것이에요.`}
@@ -92,7 +92,7 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
       </div>
 
       {next ? (
-        <p className="text-[15px]">
+        <p className="text-title">
           다음 {isAdmin ? '일정' : '출근'} <span className="tabular">{when(next)}</span> {storeLabel(next.store)}
           {isAdmin && <span className="text-muted-foreground"> · {next.managerName}</span>}
           {next.trainees.length > 0 && (
@@ -100,7 +100,7 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
           )}
         </p>
       ) : (
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           {isAdmin ? '등록된 일정이 없어요. 아래에서 추가하세요.' : '아직 잡힌 일정이 없어요. 대표가 등록하면 여기에 뜹니다.'}
         </p>
       )}
@@ -143,7 +143,7 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
           <div>
             <span className="ta-label">교육 대상 ({storeLabel(store)} 스탭)</span>
             {storeStaff.length === 0 ? (
-              <p className="text-[13px] text-muted-foreground">이 지점에 승인된 스탭이 없어요. 비워 두면 지점 스탭 전원에게 알림이 갑니다.</p>
+              <p className="text-body text-muted-foreground">이 지점에 승인된 스탭이 없어요. 비워 두면 지점 스탭 전원에게 알림이 갑니다.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {storeStaff.map((p) => {
@@ -166,11 +166,11 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
             <button className="ta-btn-primary" disabled={busy || !date || !managerId} onClick={add}>
               {busy ? '저장 중…' : '일정 추가'}
             </button>
-            {error && <span className="ta-error text-[13px]">{error}</span>}
+            {error && <span className="ta-error text-body">{error}</span>}
           </div>
         </div>
       )}
-      {!isAdmin && error && <p className="ta-error text-[13px]">{error}</p>}
+      {!isAdmin && error && <p className="ta-error text-body">{error}</p>}
 
       <TeachingPushToggle />
     </div>

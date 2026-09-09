@@ -350,7 +350,7 @@ export default function GrindMeasurementUpload() {
     // 카드 해체(2026-08-08) — 입력 폼·목록 섹션 경계는 가로 구분선으로만
     <div className="divide-y divide-border">
       <div className="pb-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-        <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+        <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
           <a href={COMPASS_URL} target="_blank" rel="noreferrer" className="underline hover:text-foreground">
             언스페셜티 컴퍼스
           </a>
@@ -358,7 +358,7 @@ export default function GrindMeasurementUpload() {
           <strong>평균 µm은 직접 입력해야 차트·메쉬 기준 계산에 반영됩니다</strong> — 이미지는 기록용으로만
           저장돼요.
         </p>
-        <p className="text-[13px] text-foreground" style={{ margin: 0 }}>
+        <p className="text-body text-foreground" style={{ margin: 0 }}>
           이번 프로토콜 (2026-08-07 판교 재얼라인 이후): <strong>에티오피아 싱글 × 다이얼 6 / 8 / 10 × 각 3샷</strong>
           (샷마다 촬영 각도 조금씩 회전, 이전 촬영 스펙과 동일) × 두 지점. 샷 1장 = 기록 1건으로 올려주세요.
         </p>
@@ -369,7 +369,7 @@ export default function GrindMeasurementUpload() {
             const total = PROTOCOL_DIALS.reduce((sum, d) => sum + Math.min(progress.get(`${s.id}:${d}`) ?? 0, SHOTS_PER_DIAL), 0);
             return (
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-caption text-muted-foreground">
                   {s.label} 오늘 {total}/{PROTOCOL_DIALS.length * SHOTS_PER_DIAL}
                 </span>
                 {PROTOCOL_DIALS.map((d) => {
@@ -378,7 +378,7 @@ export default function GrindMeasurementUpload() {
                   return (
                     <span
                       key={d}
-                      className={`tabular rounded-md border px-2 py-0.5 text-[11px] ${
+                      className={`tabular rounded-md border px-2 py-0.5 text-caption ${
                         done ? 'border-foreground text-foreground' : 'border-border text-muted-foreground'
                       }`}
                     >
@@ -422,19 +422,19 @@ export default function GrindMeasurementUpload() {
 
         {/* 다이얼 + 컴퍼스 수치 */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
-          <label className="text-[11px] text-muted-foreground" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label className="text-caption text-muted-foreground" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             EK43 다이얼 *
             <input type="text" inputMode="decimal" value={draft.dial} onChange={(e) => set('dial', e.target.value.replace(/[^\d.]/g, ''))} placeholder="6.5" className="ta-input tabular" />
           </label>
-          <label className="text-[11px] text-muted-foreground" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label className="text-caption text-muted-foreground" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             평균 크기(µm)
             <input type="text" inputMode="numeric" value={draft.mean} onChange={(e) => set('mean', e.target.value.replace(/[^\d.]/g, ''))} placeholder="720" className="ta-input tabular" />
           </label>
-          <label className="text-[11px] text-muted-foreground" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label className="text-caption text-muted-foreground" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             표준편차
             <input type="text" inputMode="numeric" value={draft.std} onChange={(e) => set('std', e.target.value.replace(/[^\d.]/g, ''))} placeholder="230" className="ta-input tabular" />
           </label>
-          <label className="text-[11px] text-muted-foreground" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label className="text-caption text-muted-foreground" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             미분 비율(%)
             <input type="text" inputMode="decimal" value={draft.fines} onChange={(e) => set('fines', e.target.value.replace(/[^\d.]/g, ''))} placeholder="12" className="ta-input tabular" />
           </label>
@@ -467,7 +467,7 @@ export default function GrindMeasurementUpload() {
           </label>
           {(scanning || scanNote) && (
             <p
-              className="text-[13px]"
+              className="text-body"
               style={{
                 margin: 0,
                 color: scanning
@@ -518,11 +518,11 @@ export default function GrindMeasurementUpload() {
           )}
         </div>
 
-        {error && <p className="text-[13px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{error}</p>}
+        {error && <p className="text-body" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{error}</p>}
 
         {/* 비활성 사유 안내 — 버튼이 왜 안 눌리는지 화면이 말해준다(2026-08-08 대표 문의) */}
         {!canSave && !saving && (
-          <p className="text-[13px]" style={{ margin: 0, color: 'hsl(25 85% 45%)' }}>
+          <p className="text-body" style={{ margin: 0, color: 'hsl(25 85% 45%)' }}>
             저장하려면{' '}
             {[
               draft.bean.trim() === '' ? '원두명' : null,
@@ -541,12 +541,12 @@ export default function GrindMeasurementUpload() {
 
         {/* 이미지는 백그라운드로 올라간다 — 저장 버튼을 막지 않는다(2026-08-08 대표 지적) */}
         {bgUpload && (
-          <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+          <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
             ⏳ 이미지 배경 업로드 중… {bgUpload.total}장 · {bgUpload.pct}% (측정값은 이미 저장됐어요)
           </p>
         )}
         {bgError && (
-          <p className="text-[13px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>
+          <p className="text-body" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>
             {bgError}
           </p>
         )}
@@ -554,7 +554,7 @@ export default function GrindMeasurementUpload() {
 
       {/* 측정 목록 — 날짜별 그룹, 날짜 안에서 두 지점 모두 있으면 비교 가능 표시 */}
       {days.length === 0 ? (
-        <p className="pt-[54px] text-[13px] text-muted-foreground">아직 업로드된 측정 기록이 없어요. 프로토콜: 에티오피아 싱글 × 다이얼 6 / 8 / 10 × 각 3샷 × 두 지점.</p>
+        <p className="pt-[54px] text-body text-muted-foreground">아직 업로드된 측정 기록이 없어요. 프로토콜: 에티오피아 싱글 × 다이얼 6 / 8 / 10 × 각 3샷 × 두 지점.</p>
       ) : (
         <div className="pt-[54px]" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
           {days.map(([date, list]) => {
@@ -564,13 +564,13 @@ export default function GrindMeasurementUpload() {
             return (
               <div key={date} className="rounded-md bg-muted/40 p-6" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                  <span className="tabular text-[15px] font-medium text-foreground">{date.replaceAll('-', '.')}</span>
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="tabular text-title font-medium text-foreground">{date.replaceAll('-', '.')}</span>
+                  <span className="text-caption text-muted-foreground">
                     {beanNames.join(' · ')}
                     {roasts.length === 1 && ` (${roastLabel(roasts[0])})`}
                   </span>
-                  <span className="tabular text-[11px] text-muted-foreground">{list.length}샷</span>
-                  <span className="tabular text-[11px]" style={{ color: storesCovered.size === 2 ? 'hsl(150 60% 35%)' : 'hsl(var(--muted-foreground))' }}>
+                  <span className="tabular text-caption text-muted-foreground">{list.length}샷</span>
+                  <span className="tabular text-caption" style={{ color: storesCovered.size === 2 ? 'hsl(150 60% 35%)' : 'hsl(var(--muted-foreground))' }}>
                     {storesCovered.size === 2 ? '두 지점 측정 완료 — 비교 가능' : `${storeLabel(Array.from(storesCovered)[0])}만 측정됨`}
                   </span>
                 </div>
@@ -579,17 +579,17 @@ export default function GrindMeasurementUpload() {
                   .sort((a, b) => a.store.localeCompare(b.store) || a.dial - b.dial || a.createdAt.localeCompare(b.createdAt))
                   .map((m) => (
                     <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <span className="tabular text-[13px] text-foreground" style={{ minWidth: 150 }}>
+                      <span className="tabular text-body text-foreground" style={{ minWidth: 150 }}>
                         {storeLabel(m.store)} · 다이얼 {m.dial.toFixed(1)}
                       </span>
-                      {beanNames.length > 1 && <span className="text-[11px] text-muted-foreground">{m.bean.trim()}</span>}
-                      <span className="tabular text-[13px] text-muted-foreground">
+                      {beanNames.length > 1 && <span className="text-caption text-muted-foreground">{m.bean.trim()}</span>}
+                      <span className="tabular text-body text-muted-foreground">
                         {m.mean ? `평균 ${m.mean}µm` : '수치 미입력'}
                         {m.std ? ` · σ ${m.std}` : ''}
                         {m.fines != null ? ` · 미분 ${m.fines}%` : ''}
                       </span>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        {m.imageUrls.length === 0 && <span className="text-[11px] text-muted-foreground/70">이미지 없음</span>}
+                        {m.imageUrls.length === 0 && <span className="text-caption text-muted-foreground/70">이미지 없음</span>}
                         {m.imageUrls.map((u, i) => (
                           // 잘못 올린 장만 × 로 이 이미지만 제거(측정 수치는 유지) — 클릭하면 원본 열람
                           <div key={u} style={{ position: 'relative' }}>

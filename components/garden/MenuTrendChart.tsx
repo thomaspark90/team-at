@@ -25,7 +25,7 @@ const cnt = (n: number) => Math.round(n).toLocaleString('ko-KR');
 function TrendTip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-md border border-border bg-background px-2.5 py-1.5 text-[13px]">
+    <div className="rounded-md border border-border bg-background px-2.5 py-1.5 text-body">
       <div className="mb-1 text-muted-foreground">{label}</div>
       {payload
         .filter((p: any) => p.value > 0)

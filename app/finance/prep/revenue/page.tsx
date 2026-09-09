@@ -135,15 +135,15 @@ export default async function PrepRevenuePage({
       <AccountingNav role={role} />
       <div className="mx-auto max-w-[1680px] px-6 py-8">
         <div className="mb-1 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">전처리3 — 매출 총합</h1>
+          <h1 className="m-0 text-display tracking-[-0.5px]">전처리3 — 매출 총합</h1>
           <Link
             href={`/finance/prep/expense-detail?unit=${unit.id}&grain=${grain}`}
-            className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+            className="text-body text-muted-foreground transition-colors hover:text-foreground"
           >
             ← 전처리2 지출 세분화
           </Link>
         </div>
-        <p className="mb-5 max-w-[880px] text-[13px] text-muted-foreground">
+        <p className="mb-5 max-w-[880px] text-body text-muted-foreground">
           매출 평가의 정본은 <b>POS 매출(발생주의 — 판매한 날 기준)</b>이에요. 관리손익도 이 기준이고요.
           이 표의 통장 입금 축은 매출 인식이 아니라 <b>회수 검증</b>이에요 —{' '}
           {unit.brand === 'garden' ? (
@@ -163,7 +163,7 @@ export default async function PrepRevenuePage({
         </p>
 
         {unit.store && unassigned.count > 0 && (
-          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
             ⚠️ 가든 공용(지점 미지정) 거래 {unassigned.count}건이 이 지점 운영 기간({unassigned.sinceYm}~)에
             있어요 — 지정 전까지 어느 지점 표에도 안 잡혀요. 분류 화면에서 지점을 지정해 주세요.
           </div>
@@ -175,7 +175,7 @@ export default async function PrepRevenuePage({
                 key={g.key}
                 href={`/finance/prep/revenue?unit=${unit.id}&grain=${g.key}`}
                 aria-current={g.key === grain ? 'page' : undefined}
-                className={`px-3 py-1.5 text-[13px] transition-colors ${
+                className={`px-3 py-1.5 text-body transition-colors ${
                   g.key === grain ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -183,7 +183,7 @@ export default async function PrepRevenuePage({
               </Link>
             ))}
           </div>
-          <span className="text-[12px] text-muted-foreground">
+          <span className="text-caption text-muted-foreground">
             {isMonth
               ? '월 기준 — 보정 정산률 90~105% 밖이면 ⚠ (최신 1~2개월은 정산 대기라 판정 보류)'
               : '일·주는 정산 시차로 어긋나는 게 정상이라 경고를 걸지 않아요'}
@@ -192,7 +192,7 @@ export default async function PrepRevenuePage({
         </div>
 
         {warnings.length > 0 && (
-          <ul className="mb-5 flex list-none flex-col gap-1 rounded-md border border-border bg-card/40 p-3 text-[12px] text-muted-foreground">
+          <ul className="mb-5 flex list-none flex-col gap-1 rounded-md border border-border bg-card/40 p-3 text-caption text-muted-foreground">
             {warnings
               .filter((w) => buckets.includes(w.bucket))
               .map((w) => (
@@ -204,7 +204,7 @@ export default async function PrepRevenuePage({
         )}
 
         <div className="overflow-auto rounded-md border border-border">
-          <table className="w-max min-w-full border-collapse text-[13px]">
+          <table className="w-max min-w-full border-collapse text-body">
             <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b border-border text-muted-foreground">
                 <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">기간</th>
@@ -268,7 +268,7 @@ export default async function PrepRevenuePage({
           </table>
         </div>
 
-        <div className="mt-4 flex flex-col gap-1 text-[12px] text-muted-foreground">
+        <div className="mt-4 flex flex-col gap-1 text-caption text-muted-foreground">
           {columns
             .filter((c) => c.hint)
             .map((c) => (

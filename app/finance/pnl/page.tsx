@@ -59,27 +59,27 @@ export default async function PnlPage({
       <FinanceNav role={role} />
       <div className="mx-auto max-w-[1600px] px-6 py-8">
         <div className="mb-1.5 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">관리손익</h1>
-          <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+          <h1 className="m-0 text-display tracking-[-0.5px]">관리손익</h1>
+          <Link href="/finance" className="text-body text-muted-foreground transition-colors hover:text-foreground">
             ← 재무 홈
           </Link>
         </div>
-        <p className="mb-10 text-[13px] text-muted-foreground">
+        <p className="mb-10 text-body text-muted-foreground">
           POS 매출(발생주의·공급가액)에 매입기준 재료비·인건비를 맞춰 본 손익이에요. 통장 입출금 기준은 <Link href="/finance/cashflow" className="underline">월별 요약</Link>·<Link href="/finance/flow" className="underline">자금 흐름</Link>에서 봐요.
         </p>
 
         {/* 좌측 연·월 사이드바 — 달 선택 시 ?ym= 내비게이션으로 서버가 그 달 손익을 다시 계산(2026-08-03) */}
         <MonthShell brand={seg} initialTodos={initialTodos} navigate>
         {store && (
-          <p className="mb-10 text-[11px] text-muted-foreground">
+          <p className="mb-10 text-caption text-muted-foreground">
             지점 손익은 근사치예요 — 기말재고·채널수수료는 지점 매출비율로 안분해요.
           </p>
         )}
 
         {yms.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-10 text-center">
-            <div className="text-[32px]">🧾</div>
-            <p className="m-0 text-[13px] text-muted-foreground">
+            <div className="text-display">🧾</div>
+            <p className="m-0 text-body text-muted-foreground">
               먼저 {unitLabelFor(seg, store)} POS 매출리포트를 올려주세요.
             </p>
             <PnlUpload />
@@ -145,7 +145,7 @@ async function PnlBody({
               key={ym}
               href={`/finance/pnl?ym=${ym}&unit=${unitId}`}
               aria-current={ym === selectedYm ? 'page' : undefined}
-              className={`rounded-md border px-3 py-1.5 text-[13px] transition-colors ${
+              className={`rounded-md border px-3 py-1.5 text-body transition-colors ${
                 ym === selectedYm
                   ? 'border-foreground font-medium text-foreground'
                   : 'border-border text-muted-foreground hover:text-foreground'
@@ -167,7 +167,7 @@ async function PnlBody({
       </div>
 
       {p.unclassified > 0 && (
-        <div className="mb-10 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+        <div className="mb-10 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
           <span className="text-foreground">
             ⚠️ 이 달 <b>미분류 지출 {won(p.unclassified)}</b>이 손익에 잡혀 있어요. 분류하면 지표가 정확해져요.
           </span>
@@ -178,7 +178,7 @@ async function PnlBody({
       )}
 
       {p.cardLump > 0 && (
-        <div className="mb-10 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+        <div className="mb-10 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
           <span className="text-foreground">
             ⚠️ 카드 명세가 연결되지 않은 <b>카드대금 {won(p.cardLump)}</b>을 '카드 지출(미분해)'로 잡았어요.
             신한카드 이용내역을 올려 정산 연결하면 재료비·판관비로 분해돼요.
@@ -193,7 +193,7 @@ async function PnlBody({
       )}
 
       {store && unassignedOut > 0 && (
-        <div className="mb-10 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+        <div className="mb-10 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
           <span className="text-foreground">
             ⚠️ 지점이 지정되지 않은 가든 지출 <b>{won(unassignedOut)}</b>이 이 지점 손익에서 빠져 있어요.
             분류 화면에서 지점을 지정하거나 건별 분할로 나눠주세요.
@@ -207,7 +207,7 @@ async function PnlBody({
       {/* 보정값 미입력 경고 — 관리손익 설계(2026-07-05)의 필수 보정 2가지가 빠지면 지표가 왜곡된다.
           수수료 미입력 → 추정률 사용(순매출 부정확), 기말재고 미입력 → 매입 전액이 재료비(이익 과소, 특히 초도발주 달). */}
       {(channelFee == null || !invBrand.some((i) => i.ym === selectedYm)) && (
-        <div className="mb-10 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+        <div className="mb-10 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
           <span className="text-foreground">
             ⚠️ 이 달{' '}
             {channelFee == null && <b>채널 수수료가 미입력</b>}
@@ -226,8 +226,8 @@ async function PnlBody({
       <div className="grid gap-x-5 gap-y-10 lg:grid-cols-[1fr_320px]">
         {/* 손익계산서 */}
         <div className="rounded-md bg-muted/40 p-6">
-          <h2 className="mb-4 text-[15px] text-foreground">손익계산서 · {fmtYm(selectedYm)}</h2>
-          <table className="w-full border-collapse text-[13px]">
+          <h2 className="mb-4 text-title text-foreground">손익계산서 · {fmtYm(selectedYm)}</h2>
+          <table className="w-full border-collapse text-body">
             <tbody>
               <Row label="총매출 (VAT 포함)" amount={p.sales.gross} muted />
               <Row label="(−) 부가세" amount={-p.sales.vat} muted />
@@ -280,13 +280,13 @@ async function PnlBody({
             </tbody>
           </table>
           {p.cardReconcile && p.cardReconcile.settledWithdrawn > 0 && (
-            <p className={`mt-4 text-[11px] ${p.cardReconcile.diff !== 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+            <p className={`mt-4 text-caption ${p.cardReconcile.diff !== 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
               카드 정산 대사 — 카드대금 인출 {won(p.cardReconcile.settledWithdrawn)} ↔ 연결 명세 사용액{' '}
               {won(p.cardReconcile.settledUsage)}
               {p.cardReconcile.diff !== 0 ? ` · 차액 ${won(Math.abs(p.cardReconcile.diff))} ⚠️` : ' · 일치 ✓'}
             </p>
           )}
-          <p className="mt-4 text-[11px] text-muted-foreground">
+          <p className="mt-4 text-caption text-muted-foreground">
             채널수수료는 정산서 금액(없으면 추정)까지 반영했어요. 영업외·자본적지출(감가상각) 등 손익제외 계정은 빠져 있어요.
             카드·쿠팡·네이버페이는 세부 자료가 있으면 계정별로, 없으면 통장 인출 총액을 '(미분해/미분류)' 줄로 잡아요
             — 미분해 lump는 보통 전월 사용분이라 월 귀속이 ±1개월 밀릴 수 있어요.
@@ -297,7 +297,7 @@ async function PnlBody({
             지점 필을 선택 중이어도 여기서 그대로 입력하면 가든서비스 전체 값이 바뀐다(지점별 입력 아님). */}
         <div id="pnl-inputs" className="flex flex-col gap-10">
           {store && (
-            <div className="rounded-md bg-muted/40 p-4 text-[13px] text-muted-foreground">
+            <div className="rounded-md bg-muted/40 p-4 text-body text-muted-foreground">
               지점 뷰의 재료비·수수료는 {storeLabel(store)} 매출비율({pct(storeRatio)})로 안분한 근사치예요.
               아래 입력은 가든서비스 전체 기준이에요.
             </div>
@@ -321,8 +321,8 @@ async function PnlBody({
             estimate={Math.round((store ? brandSupply : p.sales.supply) * CHANNEL_FEE_RATE)}
           />
           <div className="rounded-md bg-muted/40 p-6">
-            <h2 className="mb-3 text-[15px] text-foreground">매출 구성</h2>
-            <table className="w-full border-collapse text-[13px]">
+            <h2 className="mb-3 text-title text-foreground">매출 구성</h2>
+            <table className="w-full border-collapse text-body">
               <tbody>
                 {p.sales.byCategory.map((c) => (
                   <tr key={c.category} className="border-t border-border first:border-t-0">
@@ -357,9 +357,9 @@ function Metric({
   const showSig = sig && !uncertain;
   return (
     <div className="rounded-md bg-muted/40 p-4">
-      <div className="text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{label}</div>
-      <div className={`mt-1 text-[22px] tabular ${showSig ? sig.cls : 'text-foreground'}`}>{value}</div>
-      <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <div className="text-caption uppercase tracking-[0.06em] text-muted-foreground">{label}</div>
+      <div className={`mt-1 text-display tabular ${showSig ? sig.cls : 'text-foreground'}`}>{value}</div>
+      <div className="mt-0.5 flex items-center gap-1.5 text-caption text-muted-foreground">
         {showSig && <span className={sig.cls}>● {sig.label}</span>}
         {uncertain && <span className="text-amber-600 dark:text-amber-500">● 미분류 있어 잠정</span>}
         {sub && <span>{sub}</span>}
@@ -389,12 +389,12 @@ function Row({
 }) {
   return (
     <tr className={bold ? 'border-t-2 border-border' : 'border-t border-border'}>
-      <td className={`py-2 ${big ? 'text-[15px]' : ''} ${bold ? 'font-medium text-foreground' : muted ? 'text-muted-foreground' : 'text-foreground'}`}>
+      <td className={`py-2 ${big ? 'text-title' : ''} ${bold ? 'font-medium text-foreground' : muted ? 'text-muted-foreground' : 'text-foreground'}`}>
         {label}
-        {sub && <span className="ml-2 text-[11px] font-normal text-muted-foreground">{sub}</span>}
+        {sub && <span className="ml-2 text-caption font-normal text-muted-foreground">{sub}</span>}
       </td>
-      <td className="py-2 text-right text-[11px] tabular text-muted-foreground">{rate != null ? pct(rate) : ''}</td>
-      <td className={`py-2 text-right tabular ${big ? 'text-[15px]' : ''} ${bold ? 'font-medium text-foreground' : warn ? 'text-amber-600 dark:text-amber-500' : 'text-foreground'}`}>
+      <td className="py-2 text-right text-caption tabular text-muted-foreground">{rate != null ? pct(rate) : ''}</td>
+      <td className={`py-2 text-right tabular ${big ? 'text-title' : ''} ${bold ? 'font-medium text-foreground' : warn ? 'text-amber-600 dark:text-amber-500' : 'text-foreground'}`}>
         {won(amount)}
       </td>
     </tr>
@@ -404,14 +404,14 @@ function Row({
 function SubRow({ label, k }: { label: string; k: { 기초: number; 매입: number; 기말: number; 재료비: number; 기말입력: boolean } }) {
   return (
     <tr className="border-t border-border/50">
-      <td className="py-1.5 pl-4 text-[13px] text-muted-foreground">
+      <td className="py-1.5 pl-4 text-body text-muted-foreground">
         {label}
-        <span className="ml-2 text-[11px]">
+        <span className="ml-2 text-caption">
           {k.기말입력 ? `기초 ${won(k.기초)} + 매입 ${won(k.매입)} − 기말 ${won(k.기말)}` : `매입 ${won(k.매입)} (기말 미입력)`}
         </span>
       </td>
       <td />
-      <td className="py-1.5 text-right text-[13px] tabular text-muted-foreground">{won(k.재료비)}</td>
+      <td className="py-1.5 text-right text-body tabular text-muted-foreground">{won(k.재료비)}</td>
     </tr>
   );
 }

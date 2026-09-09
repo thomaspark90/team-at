@@ -270,28 +270,28 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
           <div />
         ) : (
           <div>
-            <h2 className="text-[15px] text-foreground">POS 매출 올리기</h2>
-            <p className="mt-1 text-[13px] text-muted-foreground">
+            <h2 className="text-title text-foreground">POS 매출 올리기</h2>
+            <p className="mt-1 text-body text-muted-foreground">
               지점의 POS 매출리포트 엑셀을 올리면 <b>공급가액 매출</b>이 월별로 반영돼요. 같은 달·같은 지점을 다시 올리면 교체돼요.
               양재천=토스(비번 0000), 스탭밀=페이히어. (식권·상품권 판매는 선수금이라 매출에서 제외 — 사용 시점에 매출로 잡혀요)
             </p>
           </div>
         )}
-        <button onClick={() => { setOpen(false); reset(); }} className="text-[13px] text-muted-foreground hover:text-foreground">닫기</button>
+        <button onClick={() => { setOpen(false); reset(); }} className="text-body text-muted-foreground hover:text-foreground">닫기</button>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         {/* POS 단위 선택 — 어느 브랜드·지점의 파일인지 (같은 달이라도 지점별로 따로 저장·교체).
             단위별 자료 입력 페이지에서는 단위가 고정돼 선택기가 숨는다. */}
         {fixedUnit ? (
-          <span className="rounded-md bg-muted px-3 py-1.5 text-[13px] text-foreground">{fixedUnit.label}</span>
+          <span className="rounded-md bg-muted px-3 py-1.5 text-body text-foreground">{fixedUnit.label}</span>
         ) : (
           <div className="flex overflow-hidden rounded-md border border-border">
             {POS_UNITS.map((u) => (
               <button
                 key={u.key}
                 onClick={() => { setUnit(u); setPassword(u.posType === 'toss' ? '0000' : ''); reset(); }}
-                className={`px-3 py-1.5 text-[13px] transition-colors ${
+                className={`px-3 py-1.5 text-body transition-colors ${
                   unit.key === u.key ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -312,9 +312,9 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
             setBatchFiles(list.length > 1 ? list : []);
             reset();
           }}
-          className="text-[13px] text-foreground"
+          className="text-body text-foreground"
         />
-        <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+        <label className="flex items-center gap-2 text-body text-muted-foreground">
           비번
           <input
             type="text"
@@ -340,7 +340,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
       </div>
 
       {batchFiles.length > 1 && !applying && batchResults.length === 0 && (
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           {batchFiles.length}개 파일을 순서대로 바로 저장해요(파일별 미리보기 없음 — 같은 달 재업로드는 교체라 안전).
           끝나면 파일별 결과 표로 확인해요.
         </p>
@@ -348,7 +348,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
 
       {/* 사전 점검 중 안내(2026-08-09) — 실제 저장 전, 기존 자료와 많이 다른 파일이 있는지 훑는 단계 */}
       {checking && (
-        <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-3 text-[13px]">
+        <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-3 text-body">
           <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-foreground" aria-hidden />
           <span className="text-foreground">⏳ 저장 전 기존 자료와 비교하는 중…</span>
           <span className="text-muted-foreground">다른 지점 파일이 섞여 있는지 먼저 확인해요.</span>
@@ -357,7 +357,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
 
       {/* 처리 중 안내 — 뭘 하고 있는지 화면에 명시(2026-08-01 대표 요청) */}
       {applying && batchAt != null && batchFiles[batchAt] && (
-        <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-3 text-[13px]">
+        <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-3 text-body">
           <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-foreground" aria-hidden />
           <span className="text-foreground">
             ⏳ 파일 처리 중 — {batchAt + 1}/{batchFiles.length} · <b>{batchFiles[batchAt].name}</b>
@@ -366,22 +366,22 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
         </div>
       )}
       {loading && file && (
-        <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-3 text-[13px]">
+        <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-3 text-body">
           <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-foreground" aria-hidden />
           <span className="text-foreground">⏳ 파일 읽는 중 — <b>{file.name}</b></span>
         </div>
       )}
       {applying && batchAt == null && (
-        <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-3 text-[13px]">
+        <div className="flex items-center gap-2 rounded-md bg-muted px-4 py-3 text-body">
           <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-foreground" aria-hidden />
           <span className="text-foreground">⏳ 저장 중…</span>
         </div>
       )}
 
-      {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
+      {error && <div className="text-body text-destructive">⚠️ {error}</div>}
 
       {done && (
-        <div className="rounded-md bg-muted p-4 text-[13px]">
+        <div className="rounded-md bg-muted p-4 text-body">
           <div className="mb-1 text-foreground">
             {done.changedYms.length > 0
               ? `✓ 저장 완료 — ${done.changedYms.map(fmtYm).join(', ')} · 이어서 다음 파일을 올릴 수 있어요`
@@ -401,7 +401,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
 
       {batchDone && (
         <div
-          className="rounded-md p-4 text-[13px]"
+          className="rounded-md p-4 text-body"
           style={{ background: batchFail.length > 0 ? 'hsl(25 85% 45% / 0.1)' : 'hsl(150 60% 35% / 0.1)' }}
         >
           <div className="mb-1 font-medium text-foreground">
@@ -425,9 +425,9 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
 
       {(batchResults.length > 0 || (applying && batchAt != null)) && (
         <div className="overflow-hidden rounded-md border border-border bg-background">
-          <table className="w-full border-collapse text-[13px]">
+          <table className="w-full border-collapse text-body">
             <thead>
-              <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+              <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
                 <th className="px-3 py-2 text-left font-normal">파일</th>
                 <th className="px-3 py-2 text-left font-normal">월</th>
                 <th className="px-3 py-2 text-right font-normal">공급가액</th>
@@ -469,7 +469,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
 
       {preview && (
         <>
-          <div className="flex flex-wrap gap-3 text-[13px]">
+          <div className="flex flex-wrap gap-3 text-body">
             <span className="rounded-md border border-border px-3 py-1.5">대상 월 <b>{preview.yms.map(fmtYm).join(', ')}</b></span>
             <span className="rounded-md border border-border px-3 py-1.5">공급가액 매출 <b className="text-positive">{won(preview.totals.supply)}</b></span>
             <span className="rounded-md border border-border px-3 py-1.5">주문행 <b>{preview.meta.dataRows.toLocaleString('ko-KR')}</b> (취소 {preview.meta.canceled})</span>
@@ -479,13 +479,13 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
           </div>
 
           {/* 미리보기만 보고 저장을 안 누른 채 떠나는 사고 방지(2026-08-08 판교 업로드 누락 건) */}
-          <p className="m-0 text-[13px] font-medium" style={{ color: 'hsl(25 85% 45%)' }}>
+          <p className="m-0 text-body font-medium" style={{ color: 'hsl(25 85% 45%)' }}>
             ⚠️ 아직 저장 전이에요 — 내용 확인 후 아래 &lsquo;매출 저장&rsquo; 버튼을 눌러야 반영됩니다.
           </p>
 
           {/* 다른 지점·브랜드 파일 오업로드 방지(2026-08-09 사고 반영) — 체크해야 저장 버튼이 풀린다 */}
           {preview.plausibility?.suspicious && (
-            <div className="rounded-md p-4 text-[13px]" style={{ background: 'hsl(25 85% 45% / 0.1)' }}>
+            <div className="rounded-md p-4 text-body" style={{ background: 'hsl(25 85% 45% / 0.1)' }}>
               <p className="m-0 font-medium text-foreground">
                 ⚠️ {unit.label} 기존 자료와 이 파일이 많이 달라요 — 다른 지점·브랜드 파일을 잘못 고르진 않았는지 확인해주세요.
               </p>
@@ -504,7 +504,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
           {/* 중복 감지(2026-08-09) — 같은 파일 두 번 올리면 원본 자료함에 중복이 쌓인다는 지적 반영.
               완전히 같은 달은 저장을 눌러도 재기재·재보관 없이 건너뛴다. */}
           {previewDupYms.length > 0 && (
-            <p className="m-0 text-[13px] text-muted-foreground">
+            <p className="m-0 text-body text-muted-foreground">
               ↷ {previewDupYms
                 .map((d) => `${fmtYm(d.ym)}${d.lastUploadedAt ? `(${fmtDt(d.lastUploadedAt)}에 올린 자료와 동일)` : '(이미 동일한 자료 있음)'}`)
                 .join(', ')}
@@ -513,9 +513,9 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
           )}
 
           <div className="overflow-hidden rounded-md border border-border bg-background">
-            <table className="w-full border-collapse text-[13px]">
+            <table className="w-full border-collapse text-body">
               <thead>
-                <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+                <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
                   <th className="px-3 py-2 text-left font-normal">카테고리</th>
                   <th className="px-3 py-2 text-right font-normal">수량</th>
                   <th className="px-3 py-2 text-right font-normal">공급가액</th>
@@ -538,11 +538,11 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
               상품별 총계 + 일별 총계 두 표로 나눴다. 둘 다 스크롤 — 기간이 길면 줄이 많다. */}
           {preview.byProduct && preview.byProduct.length > 0 && (
             <div>
-              <p className="m-0 mb-2 text-[13px] text-muted-foreground">상품별 합계(전체 기간, 매출 많은 순)</p>
+              <p className="m-0 mb-2 text-body text-muted-foreground">상품별 합계(전체 기간, 매출 많은 순)</p>
               <div className="max-h-64 overflow-y-auto rounded-md border border-border bg-background">
-                <table className="w-full border-collapse text-[13px]">
+                <table className="w-full border-collapse text-body">
                   <thead className="sticky top-0 bg-background">
-                    <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+                    <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
                       <th className="px-3 py-2 text-left font-normal">카테고리</th>
                       <th className="px-3 py-2 text-left font-normal">상품명</th>
                       <th className="px-3 py-2 text-right font-normal">수량</th>
@@ -566,11 +566,11 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
 
           {preview.byDay && preview.byDay.length > 0 && (
             <div>
-              <p className="m-0 mb-2 text-[13px] text-muted-foreground">일별 합계(날짜순, {preview.byDay.length}일)</p>
+              <p className="m-0 mb-2 text-body text-muted-foreground">일별 합계(날짜순, {preview.byDay.length}일)</p>
               <div className="max-h-64 overflow-y-auto rounded-md border border-border bg-background">
-                <table className="w-full border-collapse text-[13px]">
+                <table className="w-full border-collapse text-body">
                   <thead className="sticky top-0 bg-background">
-                    <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+                    <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
                       <th className="px-3 py-2 text-left font-normal">날짜</th>
                       <th className="px-3 py-2 text-right font-normal">건수</th>
                       <th className="px-3 py-2 text-right font-normal">공급가액</th>
@@ -591,7 +591,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
           )}
 
           {mapping && (
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-body text-muted-foreground">
               페이히어 읽기 — 시트 &lsquo;{mapping.sheet}&rsquo;,{' '}
               {Object.entries(mapping.header)
                 .map(([k, v]) => `${k}=${v}`)

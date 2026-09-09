@@ -75,8 +75,8 @@ export default function StaffWishlist({ me, onChange }: { me: TeachingMe; onChan
   return (
     <div className="space-y-12">
       <div>
-        <h1 className="text-[22px] font-medium">교육</h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <h1 className="text-display font-medium">교육</h1>
+        <p className="mt-1 text-body text-muted-foreground">
           {me.profile?.name}님, 매니저에게 배우고 싶은 걸 골라두세요. 매니저가 출근하는 날 이 목록을 보고 준비합니다.
         </p>
       </div>
@@ -84,9 +84,9 @@ export default function StaffWishlist({ me, onChange }: { me: TeachingMe; onChan
       <section className="space-y-3">
         <span className="ta-label">매니저 출근 예정</span>
         {me.shifts.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground">아직 등록된 일정이 없어요.</p>
+          <p className="text-body text-muted-foreground">아직 등록된 일정이 없어요.</p>
         ) : (
-          <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[13px]">
+          <ul className="flex flex-wrap gap-x-6 gap-y-2 text-body">
             {me.shifts.slice(0, 8).map((s) => {
               const mine = s.trainees.some((t) => t.userId === me.userId);
               return (
@@ -94,7 +94,7 @@ export default function StaffWishlist({ me, onChange }: { me: TeachingMe; onChan
                   <span className={s.date === me.today ? 'text-emerald-600' : ''}>{fmtMd(s.date)}</span>{' '}
                   {fmtRange(s.startTime, s.endTime) && <span>{fmtRange(s.startTime, s.endTime)} </span>}
                   <span className="text-muted-foreground">{storeLabel(s.store)}</span> {s.managerName}
-                  {mine && <span className="ml-1 text-[11px] text-emerald-600">내 교육</span>}
+                  {mine && <span className="ml-1 text-caption text-emerald-600">내 교육</span>}
                 </li>
               );
             })}
@@ -105,8 +105,8 @@ export default function StaffWishlist({ me, onChange }: { me: TeachingMe; onChan
 
       <section className="space-y-8">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-[15px]">배우고 싶은 주제</h2>
-          <span className="text-[11px] text-muted-foreground tabular">요청 중 {openCount}개</span>
+          <h2 className="text-title">배우고 싶은 주제</h2>
+          <span className="text-caption text-muted-foreground tabular">요청 중 {openCount}개</span>
         </div>
         <div className="grid gap-x-10 gap-y-10 sm:grid-cols-2">
           {TEACHING_CATEGORIES.map((cat) => (
@@ -122,18 +122,18 @@ export default function StaffWishlist({ me, onChange }: { me: TeachingMe; onChan
                     const again = rerequest.has(t.key);
                     return (
                       <li key={t.key} className="flex flex-wrap items-start gap-x-3 gap-y-1">
-                        <label className="flex cursor-pointer items-center gap-2 text-[13px]">
+                        <label className="flex cursor-pointer items-center gap-2 text-body">
                           <input type="checkbox" className="h-4 w-4 accent-[hsl(var(--foreground))]" checked={on} onChange={() => toggle(t.key)} />
                           <span className={on ? '' : 'text-muted-foreground'}>{t.label}</span>
                         </label>
                         {on && rec && !again && (
-                          <span className="text-[11px] text-emerald-600">
+                          <span className="text-caption text-emerald-600">
                             {fmtMd(rec.date)} {rec.managerName}에게 받음 ·{' '}
                             <button className="underline underline-offset-2" onClick={() => askAgain(t.key)}>다시 요청</button>
                           </span>
                         )}
-                        {on && again && <span className="text-[11px] text-amber-600">다시 요청 (저장하면 반영)</span>}
-                        {!on && last && <span className="text-[11px] text-muted-foreground">{fmtMd(last.date)} 받음</span>}
+                        {on && again && <span className="text-caption text-amber-600">다시 요청 (저장하면 반영)</span>}
+                        {!on && last && <span className="text-caption text-muted-foreground">{fmtMd(last.date)} 받음</span>}
                       </li>
                     );
                   })}
@@ -163,10 +163,10 @@ export default function StaffWishlist({ me, onChange }: { me: TeachingMe; onChan
         <button className="ta-btn-primary" disabled={busy || !dirty} onClick={save}>
           {busy ? '저장 중…' : '저장'}
         </button>
-        {saved && !dirty && <span className="text-[13px] text-emerald-600">저장했어요</span>}
-        {error && <span className="ta-error text-[13px]">{error}</span>}
+        {saved && !dirty && <span className="text-body text-emerald-600">저장했어요</span>}
+        {error && <span className="ta-error text-body">{error}</span>}
         {me.profile?.simpleLogin && (
-          <Link href="/account/pin" className="ml-auto text-[11px] text-muted-foreground underline underline-offset-2">
+          <Link href="/account/pin" className="ml-auto text-caption text-muted-foreground underline underline-offset-2">
             비밀번호 변경
           </Link>
         )}

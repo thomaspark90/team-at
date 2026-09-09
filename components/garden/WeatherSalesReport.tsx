@@ -51,13 +51,13 @@ function SeasonalCurve({
   const span = monthly.length > 0 ? `${monthly[0].ym} ~ ${monthly[monthly.length - 1].ym}` : '';
   return (
     <div>
-      <p className="m-0 mb-2 text-[13px] font-medium">
-        {STORE_LABEL[store] ?? store} <span className="tabular font-normal text-muted-foreground text-[11px]">({span})</span>
+      <p className="m-0 mb-2 text-body font-medium">
+        {STORE_LABEL[store] ?? store} <span className="tabular font-normal text-muted-foreground text-caption">({span})</span>
       </p>
       <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
         {factors.map((f, m) => (
           <div key={m} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, width: 44 }}>
-            <span className={`tabular text-[11px] ${f != null && f >= 1 ? 'text-foreground' : 'text-muted-foreground'}`}>
+            <span className={`tabular text-caption ${f != null && f >= 1 ? 'text-foreground' : 'text-muted-foreground'}`}>
               {f != null ? f.toFixed(2) : '—'}
             </span>
             <div style={{ position: 'relative', width: '100%', height: 56, background: 'hsl(var(--muted) / 0.5)', borderRadius: 2, overflow: 'hidden' }}>
@@ -75,7 +75,7 @@ function SeasonalCurve({
                 />
               )}
             </div>
-            <span className="tabular text-[11px] text-muted-foreground">{m + 1}월</span>
+            <span className="tabular text-caption text-muted-foreground">{m + 1}월</span>
           </div>
         ))}
       </div>
@@ -88,7 +88,7 @@ function EffectRow({ e }: { e: BandEffect }) {
   const width = Math.min(50, Math.abs(e.pct)); // 바 절반폭 50% = 효과 50%
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '88px 1fr 76px', alignItems: 'center', gap: 10 }}>
-      <span className={`text-[13px] ${sig ? 'text-foreground' : 'text-muted-foreground'}`}>{e.label}</span>
+      <span className={`text-body ${sig ? 'text-foreground' : 'text-muted-foreground'}`}>{e.label}</span>
       <div style={{ position: 'relative', height: 14 }}>
         <span style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: 'hsl(var(--border))' }} />
         <span
@@ -103,9 +103,9 @@ function EffectRow({ e }: { e: BandEffect }) {
           }}
         />
       </div>
-      <span className={`tabular text-[13px] ${sig ? 'font-medium text-foreground' : 'text-muted-foreground'}`} style={{ textAlign: 'right' }}>
+      <span className={`tabular text-body ${sig ? 'font-medium text-foreground' : 'text-muted-foreground'}`} style={{ textAlign: 'right' }}>
         {pctText(e.pct)}
-        <span className="text-[11px] text-muted-foreground/70"> · {e.n}일</span>
+        <span className="text-caption text-muted-foreground/70"> · {e.n}일</span>
       </span>
     </div>
   );
@@ -115,15 +115,15 @@ function SeriesCard({ s }: { s: Series }) {
   return (
     <section className="py-[54px]">
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-        <h3 className="m-0 text-[15px] font-medium">{s.label}</h3>
+        <h3 className="m-0 text-title font-medium">{s.label}</h3>
         {s.result && (
-          <span className="tabular text-[11px] text-muted-foreground">
+          <span className="tabular text-caption text-muted-foreground">
             n={s.result.n}일 · R²={s.result.r2.toFixed(2)}
           </span>
         )}
       </div>
       {!s.result ? (
-        <p className="mt-4 text-[13px] text-muted-foreground">표본이 부족해요(영업일 40일 미만) — 데이터가 더 쌓이면 표시됩니다.</p>
+        <p className="mt-4 text-body text-muted-foreground">표본이 부족해요(영업일 40일 미만) — 데이터가 더 쌓이면 표시됩니다.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 28, marginTop: 28 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -135,12 +135,12 @@ function SeriesCard({ s }: { s: Series }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <p className="ta-label" style={{ marginBottom: 2 }}>강수 (기준: 비 없음)</p>
             {s.result.rain.length === 0 ? (
-              <p className="m-0 text-[13px] text-muted-foreground">비 온 영업일이 적어 추정 불가</p>
+              <p className="m-0 text-body text-muted-foreground">비 온 영업일이 적어 추정 불가</p>
             ) : (
               s.result.rain.map((e) => <EffectRow key={e.band} e={e} />)
             )}
           </div>
-          <p className="m-0 text-[11px] text-muted-foreground/80">
+          <p className="m-0 text-caption text-muted-foreground/80">
             트렌드(기간 처음→끝): <span className="tabular">{pctText(s.result.trendPct)}</span>
             {Math.abs(s.result.trendT) >= 2 ? ' (뚜렷)' : ' (불확실)'}
             {s.result.holidayPct != null && (
@@ -183,14 +183,14 @@ export default function WeatherSalesReport() {
   if (error) {
     return (
       <div className="rounded-md bg-muted/40 p-5">
-        <p className="m-0 text-[13px] text-muted-foreground">{error}</p>
+        <p className="m-0 text-body text-muted-foreground">{error}</p>
       </div>
     );
   }
   if (!data) {
     return (
       <div className="rounded-md p-5" style={{ background: 'hsl(var(--muted) / 0.4)' }}>
-        <p className="m-0 text-[13px] text-muted-foreground">POS 전 기간 × 과거 날씨를 계산하는 중…</p>
+        <p className="m-0 text-body text-muted-foreground">POS 전 기간 × 과거 날씨를 계산하는 중…</p>
       </div>
     );
   }
@@ -203,20 +203,20 @@ export default function WeatherSalesReport() {
         <p className="ta-label">데이터 커버리지</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {data.coverage.map((c) => (
-            <p key={c.store} className="m-0 text-[13px]">
+            <p key={c.store} className="m-0 text-body">
               <span className="font-medium">{STORE_LABEL[c.store] ?? c.store}</span>{' '}
               <span className="tabular text-muted-foreground">
                 {c.from} ~ {c.to} · 영업일 {c.days}일
               </span>
               {c.sparseMonths.length > 0 && (
-                <span className="text-[11px]" style={{ color: 'hsl(var(--destructive))' }}>
+                <span className="text-caption" style={{ color: 'hsl(var(--destructive))' }}>
                   {' '}
                   누락 의심: {c.sparseMonths.join(', ')}
                 </span>
               )}
             </p>
           ))}
-          <p className="m-0 mt-1 text-[11px] text-muted-foreground/80">
+          <p className="m-0 mt-1 text-caption text-muted-foreground/80">
             날씨 조인 {data.weatherDays}일 (Open-Meteo Archive, 최근 약 5일은 아카이브 지연으로 제외)
             {data.computedAt && (
               <>
@@ -235,7 +235,7 @@ export default function WeatherSalesReport() {
             )}
           </p>
           {Date.parse(KR_HOLIDAYS_UNTIL) - Date.now() < 60 * 86400_000 && (
-            <p className="m-0 mt-1 text-[11px]" style={{ color: 'hsl(var(--destructive))' }}>
+            <p className="m-0 mt-1 text-caption" style={{ color: 'hsl(var(--destructive))' }}>
               공휴일 목록이 {KR_HOLIDAYS_UNTIL}까지만 등록돼 있어요 — lib/garden/krHolidays.ts 연장 필요 (공휴일 통제·휴일
               강조가 그 이후 날짜엔 빠집니다)
             </p>
@@ -254,7 +254,7 @@ export default function WeatherSalesReport() {
                 <SeasonalCurve key={store} store={store} factors={factors} monthly={data.monthly?.[store] ?? []} />
               ))}
           </div>
-          <p className="m-0 mt-4 text-[11px] text-muted-foreground/80">
+          <p className="m-0 mt-4 text-caption text-muted-foreground/80">
             발주 계획: 연평균 대비 그 달을 몇 %로 잡을지의 기준선. 성장 트렌드 미보정 원시 평균이라 신규 지점 초기 달은
             낮게, 최근 달은 높게 나올 수 있어요. 영업 10일 미만인 달은 제외(—).
           </p>
@@ -271,8 +271,8 @@ export default function WeatherSalesReport() {
           <p className="ta-label">판교 카테고리(메뉴) 상위 — 커피 메뉴 선별용</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px' }}>
             {data.categories.pangyo.map((c) => (
-              <span key={c.category} className="tabular text-[13px] text-muted-foreground">
-                {c.category} <span className="text-[11px]">({c.qty.toLocaleString()}건)</span>
+              <span key={c.category} className="tabular text-body text-muted-foreground">
+                {c.category} <span className="text-caption">({c.qty.toLocaleString()}건)</span>
               </span>
             ))}
           </div>

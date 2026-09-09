@@ -90,7 +90,7 @@ export default function GardenNav() {
                     key={href}
                     aria-disabled="true"
                     title={desc ? `${desc} — 접근 권한이 없어요` : '접근 권한이 없어요'}
-                    className="inline-flex cursor-not-allowed items-center gap-1 whitespace-nowrap text-[13px] text-muted-foreground/40"
+                    className="inline-flex cursor-not-allowed items-center gap-1 whitespace-nowrap text-body text-muted-foreground/40"
                   >
                     {label}
                   </span>
@@ -107,13 +107,13 @@ export default function GardenNav() {
                   key={href}
                   href={href}
                   aria-current={active ? 'page' : undefined}
-                  className={`inline-flex items-center gap-1 whitespace-nowrap text-[13px] transition-colors ${
+                  className={`inline-flex items-center gap-1 whitespace-nowrap text-body transition-colors ${
                     active ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {label}
                   {badge > 0 && (
-                    <span className="inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-medium leading-none text-white">
+                    <span className="inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-caption font-medium leading-none text-white">
                       {badge > 999 ? '999+' : badge}
                     </span>
                   )}

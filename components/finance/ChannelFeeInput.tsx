@@ -66,16 +66,16 @@ export default function ChannelFeeInput({
 
   return (
     <div className="rounded-md bg-muted/40 p-6">
-      <h2 className="text-[15px] text-foreground">
+      <h2 className="text-title text-foreground">
         채널수수료{storeLabel ? ` — ${storeLabel}` : ''} <span className="font-normal text-muted-foreground">(선택)</span>
       </h2>
-      <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+      <p className="mt-1 text-body leading-relaxed text-muted-foreground">
         카드사·간편결제·배달앱 <b>정산서의 그 달 총 수수료</b>를 넣으면 순매출이 정확해져요. 안 넣으면 <b>추정 {won(estimate)}</b>으로 잡혀요.
         {storeLabel && ' 이 입력은 이 지점 몫으로만 저장돼요(가든 전체 뷰에는 두 지점 합이 잡혀요).'}
       </p>
       <div className="mt-3 flex items-center gap-2">
         <div className="relative flex-1">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground">₩</span>
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-body text-muted-foreground">₩</span>
           <input
             inputMode="numeric"
             value={val}
@@ -92,7 +92,7 @@ export default function ChannelFeeInput({
           {saving ? '저장 중' : '저장'}
         </button>
       </div>
-      <div className="mt-1.5 flex items-center gap-3 text-[13px]">
+      <div className="mt-1.5 flex items-center gap-3 text-body">
         {saved && <span className="text-positive">✓ 저장됨</span>}
         {initial != null && (
           <button onClick={reset} disabled={saving} className="text-muted-foreground underline hover:text-foreground disabled:opacity-50">
@@ -100,7 +100,7 @@ export default function ChannelFeeInput({
           </button>
         )}
       </div>
-      {error && <div className="mt-2 text-[13px] text-destructive">⚠️ {error}</div>}
+      {error && <div className="mt-2 text-body text-destructive">⚠️ {error}</div>}
     </div>
   );
 }

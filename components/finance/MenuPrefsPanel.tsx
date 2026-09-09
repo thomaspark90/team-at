@@ -138,7 +138,7 @@ export default function MenuPrefsPanel({
     <div className="mt-3 rounded-md border border-border">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-body text-muted-foreground transition-colors hover:text-foreground"
       >
         <span>
           표 설정 — 노출 항목·순서 {`(노출 ${visible.size} / 전체 ${ordered.length})`}
@@ -147,21 +147,21 @@ export default function MenuPrefsPanel({
       </button>
       {open && (
         <div className="border-t border-border px-4 py-3">
-          <p className="m-0 mb-3 text-[12px] text-muted-foreground">
+          <p className="m-0 mb-3 text-caption text-muted-foreground">
             체크한 상품만 표에 나와요 — 새로 생긴 상품은 여기서 체크해야 보여요. 켜면 노출 목록 맨 아래로 올라오고, 끄면 미노출 목록 맨 위로 내려가요(합계에는 그대로
             들어가요). ⠿를 잡고 끌어 순서를 바꿔요 — 위가 표의 왼쪽이에요. <b>병합</b>은 POS에서 표기가 갈라진
             같은 메뉴를 한 열로 합쳐 보여줘요 — 원본 데이터는 그대로고 언제든 해제돼요. 이 설정은 이 매장을 보는 모두에게 적용돼요.
           </p>
           {mergeTarget && (
-            <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px]">
+            <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-caption">
               <span>
                 <b className="text-foreground">‘{mergeTarget}’</b>에 합칠 메뉴를 목록에서 클릭하세요
                 {mergePick.size > 0 && ` — ${mergePick.size}개 선택됨`}
               </span>
-              <button onClick={commitMerge} disabled={mergePick.size === 0} className="ta-btn-primary text-[12px] disabled:opacity-40">
+              <button onClick={commitMerge} disabled={mergePick.size === 0} className="ta-btn-primary text-caption disabled:opacity-40">
                 합치기
               </button>
-              <button onClick={() => setMergeTarget(null)} className="ta-btn text-[12px]">
+              <button onClick={() => setMergeTarget(null)} className="ta-btn text-caption">
                 취소
               </button>
             </div>
@@ -189,7 +189,7 @@ export default function MenuPrefsPanel({
                     return n;
                   });
                 }}
-                className={`flex select-none items-center gap-2 rounded px-1 py-0.5 text-[13px] ${
+                className={`flex select-none items-center gap-2 rounded px-1 py-0.5 text-body ${
                   dragIdx === i ? 'bg-muted opacity-60' : ''
                 } ${mergeTarget && p !== mergeTarget ? 'cursor-pointer hover:bg-muted/50' : ''} ${
                   mergePick.has(p) ? 'bg-primary/10' : ''
@@ -198,7 +198,7 @@ export default function MenuPrefsPanel({
                 <span
                   aria-hidden
                   title="끌어서 순서 바꾸기"
-                  className="cursor-grab text-[13px] leading-none text-muted-foreground/50 active:cursor-grabbing"
+                  className="cursor-grab text-body leading-none text-muted-foreground/50 active:cursor-grabbing"
                 >
                   ⠿
                 </span>
@@ -213,11 +213,11 @@ export default function MenuPrefsPanel({
                 <span className={`min-w-0 flex-1 truncate ${!visible.has(p) ? 'text-muted-foreground/50 line-through' : ''}`}>
                   {p}
                   {merges[p] && merges[p].length > 0 && (
-                    <span className="ml-1.5 text-[11px] text-muted-foreground" title={merges[p].join(', ')}>
+                    <span className="ml-1.5 text-caption text-muted-foreground" title={merges[p].join(', ')}>
                       +{merges[p].length}개 병합
                     </span>
                   )}
-                  {mergePick.has(p) && <span className="ml-1.5 text-[11px] text-foreground">← 합칠 메뉴</span>}
+                  {mergePick.has(p) && <span className="ml-1.5 text-caption text-foreground">← 합칠 메뉴</span>}
                 </span>
                 {!mergeTarget &&
                   (merges[p] && merges[p].length > 0 ? (
@@ -226,7 +226,7 @@ export default function MenuPrefsPanel({
                         e.stopPropagation();
                         unmerge(p);
                       }}
-                      className="shrink-0 rounded border border-border px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+                      className="shrink-0 rounded border border-border px-1.5 text-caption text-muted-foreground hover:text-foreground"
                     >
                       병합 해제
                     </button>
@@ -236,7 +236,7 @@ export default function MenuPrefsPanel({
                         e.stopPropagation();
                         startMerge(p);
                       }}
-                      className="shrink-0 rounded border border-border px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+                      className="shrink-0 rounded border border-border px-1.5 text-caption text-muted-foreground hover:text-foreground"
                       title="다른 표기의 같은 메뉴를 이 이름으로 합치기"
                     >
                       병합
@@ -246,13 +246,13 @@ export default function MenuPrefsPanel({
             ))}
           </ul>
           <div className="mt-3 flex items-center gap-2">
-            <button onClick={save} disabled={busy} className="ta-btn-primary text-[13px]">
+            <button onClick={save} disabled={busy} className="ta-btn-primary text-body">
               {busy ? '저장 중…' : '저장'}
             </button>
-            <button onClick={reset} disabled={busy} className="ta-btn text-[13px]">
+            <button onClick={reset} disabled={busy} className="ta-btn text-body">
               기본값(총액순·전체 노출)
             </button>
-            {msg && <span className="text-[12px] text-muted-foreground">{msg}</span>}
+            {msg && <span className="text-caption text-muted-foreground">{msg}</span>}
           </div>
         </div>
       )}

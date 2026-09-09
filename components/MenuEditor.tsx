@@ -45,7 +45,7 @@ export default function MenuEditor({ story, onChange }: Props) {
           <button
             key={mode}
             onClick={() => setMode(mode)}
-            className={`flex-1 rounded-sm py-2 text-[13px] transition-colors ${
+            className={`flex-1 rounded-sm py-2 text-body transition-colors ${
               story.inputMode === mode
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'
@@ -60,7 +60,7 @@ export default function MenuEditor({ story, onChange }: Props) {
         <div className="flex flex-col gap-10">
           {story.categories.map((cat, ci) => (
             <div key={ci}>
-              <p className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{cat.name}</p>
+              <p className="mb-2 text-caption uppercase tracking-[0.06em] text-muted-foreground">{cat.name}</p>
               <div className="flex flex-col gap-1.5">
                 {cat.items.map((item, ii) => (
                   <div key={ii} className="flex items-center gap-2">
@@ -73,7 +73,7 @@ export default function MenuEditor({ story, onChange }: Props) {
                     {cat.items.length > 1 && (
                       <button
                         onClick={() => removeItem(ci, ii)}
-                        className="px-1 text-[15px] leading-none text-muted-foreground transition-colors hover:text-foreground"
+                        className="px-1 text-title leading-none text-muted-foreground transition-colors hover:text-foreground"
                       >
                         ×
                       </button>
@@ -83,7 +83,7 @@ export default function MenuEditor({ story, onChange }: Props) {
               </div>
               <button
                 onClick={() => addItem(ci)}
-                className="mt-2 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                className="mt-2 text-caption text-muted-foreground transition-colors hover:text-foreground"
               >
                 + 항목 추가
               </button>
@@ -92,7 +92,7 @@ export default function MenuEditor({ story, onChange }: Props) {
         </div>
       ) : (
         <div>
-          <p className="mb-2 text-[11px] text-muted-foreground">
+          <p className="mb-2 text-caption text-muted-foreground">
             카테고리는 [대괄호]로 구분하세요. 빈 줄로 섹션을 나눌 수 있습니다.
           </p>
           <textarea

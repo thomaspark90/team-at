@@ -41,6 +41,14 @@ const config: Config = {
           foreground: 'hsl(var(--card-foreground))',
         },
       },
+      // 폰트 크기 4단계 램프(2026-09-09 대표 확정) — px 직접 지정(text-[Npx]) 금지, 이 네 토큰만 쓴다.
+      // line-height는 건드리지 않는다(기존 text-[Npx]도 font-size만 바꿨음).
+      fontSize: {
+        caption: '12px', // 캡션·라벨·보조
+        body: '15px', // 본문·UI 기본(버튼·인풋·테이블·탭)
+        title: '20px', // 섹션 타이틀·상단 내비
+        display: '28px', // 페이지 타이틀·KPI 큰 숫자
+      },
       fontFamily: {
         sans: ['Freesentation', 'system-ui', 'sans-serif'],
         serif: ['Freesentation', 'system-ui', 'sans-serif'],

@@ -206,7 +206,7 @@ export default function RawTable({
   return (
     <div className="flex flex-col gap-3">
       {/* 기간 선택 — 월 단축은 페이지(서버)가 링크로, 임의 기간은 여기서 */}
-      <div className="flex flex-wrap items-center gap-2 text-[12px]">
+      <div className="flex flex-wrap items-center gap-2 text-caption">
         <span className="text-muted-foreground">기간</span>
         <input
           type="date"
@@ -233,7 +233,7 @@ export default function RawTable({
           value={qDraft}
           onChange={(e) => setQDraft(e.target.value)}
           placeholder="전체 검색"
-          className="ml-2 h-8 w-48 rounded-md border border-border bg-background px-2.5 text-[13px] outline-none focus:border-foreground/40"
+          className="ml-2 h-8 w-48 rounded-md border border-border bg-background px-2.5 text-body outline-none focus:border-foreground/40"
         />
         {/* 출금만·입금만 토글 — 값이 있는 행만 남긴다(해당 열 1원 이상 구간) */}
         {outCol >= 0 && inCol >= 0 && (
@@ -248,7 +248,7 @@ export default function RawTable({
               <button
                 key={m.key}
                 onClick={() => setFlowMode(m.key)}
-                className={`rounded-sm px-2 py-0.5 text-[12px] transition-colors ${
+                className={`rounded-sm px-2 py-0.5 text-caption transition-colors ${
                   flowMode === m.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -262,14 +262,14 @@ export default function RawTable({
         </span>
         <a
           href={`/api/finance/raw/export?${rawQueryToParams(query)}`}
-          className="ml-auto text-[13px] text-muted-foreground underline transition-colors hover:text-foreground"
+          className="ml-auto text-body text-muted-foreground underline transition-colors hover:text-foreground"
         >
           CSV 내려받기 →
         </a>
       </div>
 
       {rows.length === 0 && !loading ? (
-        <p className="py-10 text-center text-[13px] text-muted-foreground">
+        <p className="py-10 text-center text-body text-muted-foreground">
           {error ?? '이 조건에 해당하는 원본 행이 없어요.'}
         </p>
       ) : (
@@ -280,7 +280,7 @@ export default function RawTable({
           }`}
           aria-busy={loading}
         >
-          <table className="w-max min-w-full border-collapse text-[12px]">
+          <table className="w-max min-w-full border-collapse text-caption">
             <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="whitespace-nowrap px-2 py-1.5 font-normal">행</th>
@@ -335,7 +335,7 @@ export default function RawTable({
                           }
                           placeholder="최소"
                           inputMode="numeric"
-                          className="h-6 w-[76px] rounded border border-border bg-background px-1.5 text-right text-[11px] tabular-nums outline-none focus:border-foreground/40"
+                          className="h-6 w-[76px] rounded border border-border bg-background px-1.5 text-right text-caption tabular-nums outline-none focus:border-foreground/40"
                         />
                         <span className="text-muted-foreground">~</span>
                         <input
@@ -351,7 +351,7 @@ export default function RawTable({
                           }
                           placeholder="최대"
                           inputMode="numeric"
-                          className="h-6 w-[76px] rounded border border-border bg-background px-1.5 text-right text-[11px] tabular-nums outline-none focus:border-foreground/40"
+                          className="h-6 w-[76px] rounded border border-border bg-background px-1.5 text-right text-caption tabular-nums outline-none focus:border-foreground/40"
                         />
                       </span>
                     ) : (
@@ -366,7 +366,7 @@ export default function RawTable({
                           })
                         }
                         placeholder="필터"
-                        className="h-6 w-full min-w-[70px] rounded border border-border bg-background px-1.5 text-[11px] font-normal outline-none focus:border-foreground/40"
+                        className="h-6 w-full min-w-[70px] rounded border border-border bg-background px-1.5 text-caption font-normal outline-none focus:border-foreground/40"
                       />
                     )}
                   </th>
@@ -407,7 +407,7 @@ export default function RawTable({
             {/* 소계 — 필터·기간 적용된 전체 행 기준(서버 집계). 스크롤해도 바닥에 고정 */}
             {totals && (
               <tfoot className="sticky bottom-0 z-10 bg-card">
-                <tr className="border-t-2 border-border text-[12px] font-medium">
+                <tr className="border-t-2 border-border text-caption font-medium">
                   <td colSpan={2} className="whitespace-nowrap px-2 py-2 text-muted-foreground">
                     소계 · {totals.count.toLocaleString('ko-KR')}행
                   </td>
@@ -422,8 +422,8 @@ export default function RawTable({
             )}
           </table>
           <div ref={sentinel} />
-          {loading && <p className="py-3 text-center text-[12px] text-muted-foreground">불러오는 중…</p>}
-          {error && <p className="py-3 text-center text-[12px] text-destructive">{error}</p>}
+          {loading && <p className="py-3 text-center text-caption text-muted-foreground">불러오는 중…</p>}
+          {error && <p className="py-3 text-center text-caption text-destructive">{error}</p>}
         </div>
       )}
     </div>

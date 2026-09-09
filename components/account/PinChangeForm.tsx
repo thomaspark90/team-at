@@ -40,9 +40,9 @@ export default function PinChangeForm() {
     }
   };
 
-  if (!state) return <p className="text-[13px] text-muted-foreground">불러오는 중…</p>;
+  if (!state) return <p className="text-body text-muted-foreground">불러오는 중…</p>;
   if (!state.simpleLogin) {
-    return <p className="text-[13px] text-muted-foreground">구글 계정은 여기서 비밀번호를 바꾸지 않습니다.</p>;
+    return <p className="text-body text-muted-foreground">구글 계정은 여기서 비밀번호를 바꾸지 않습니다.</p>;
   }
 
   const pinInput = (value: string, set: (v: string) => void, placeholder: string, autoFocus = false) => (
@@ -63,8 +63,8 @@ export default function PinChangeForm() {
   return (
     <div className="max-w-[360px] space-y-8">
       <div>
-        <h1 className="text-[22px] font-medium">비밀번호 변경</h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <h1 className="text-display font-medium">비밀번호 변경</h1>
+        <p className="mt-1 text-body text-muted-foreground">
           {state.pinResetRequired
             ? `${state.displayName}님, 처음 로그인이시네요. 대표에게 받은 비밀번호를 본인만 아는 숫자 6자리로 바꿔주세요.`
             : '숫자 6자리. 연속·반복 숫자는 쓸 수 없어요.'}
@@ -83,7 +83,7 @@ export default function PinChangeForm() {
           <span className="ta-label">새 비밀번호 확인</span>
           {pinInput(confirm, setConfirm, '한 번 더')}
         </label>
-        {error && <p className="ta-error text-[13px]">{error}</p>}
+        {error && <p className="ta-error text-body">{error}</p>}
         <button className="ta-btn-primary w-full" disabled={busy || current.length !== 6 || next.length !== 6 || confirm.length !== 6} onClick={submit}>
           {busy ? '변경 중…' : '변경하기'}
         </button>

@@ -64,12 +64,12 @@ export default async function UploadsPage({ searchParams }: { searchParams: { un
       <AccountingNav role={role} />
       <div className="mx-auto max-w-[1120px] px-6 py-8">
         <div className="mb-1 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">자료 이력</h1>
-          <Link href="/finance/classify" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+          <h1 className="m-0 text-display tracking-[-0.5px]">자료 이력</h1>
+          <Link href="/finance/classify" className="text-body text-muted-foreground transition-colors hover:text-foreground">
             ← 지출 자료 분류
           </Link>
         </div>
-        <p className="mb-5 text-[13px] text-muted-foreground">
+        <p className="mb-5 text-body text-muted-foreground">
           {unit ? <b>{unit.label}</b> : '전체'} 자료 이력이에요 — 단위는 상단에서 선택해요.
           {unit?.store && ' 통장·카드는 가든 공용 자료라 양재천·판교에 같이 보여요.'}
         </p>

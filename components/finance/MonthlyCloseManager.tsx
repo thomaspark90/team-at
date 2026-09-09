@@ -186,20 +186,20 @@ export default function MonthlyCloseManager({
   if (rows.length === 0) {
     return (
       <div className="mx-auto my-[60px] max-w-[460px] text-center text-muted-foreground">
-        <div className="mb-3 text-[32px]">📭</div>
-        <h2 className="mb-2 text-[15px] text-foreground">확정할 달이 없어요</h2>
-        <p className="text-[13px]">먼저 거래내역을 업로드·분류해주세요.</p>
+        <div className="mb-3 text-display">📭</div>
+        <h2 className="mb-2 text-title text-foreground">확정할 달이 없어요</h2>
+        <p className="text-body">먼저 거래내역을 업로드·분류해주세요.</p>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-6">
-      {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
+      {error && <div className="text-body text-destructive">⚠️ {error}</div>}
 
       {/* 일괄 확정 툴바 — 확정 대기(미분류 0) 달을 골라 한 번에 */}
       {canConfirm && eligible.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-[13px]">
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-background px-3 py-2 text-body">
           <label className="flex cursor-pointer items-center gap-2">
             <input
               type="checkbox"
@@ -211,7 +211,7 @@ export default function MonthlyCloseManager({
           <button
             onClick={() => bulkConfirm()}
             disabled={selected.size === 0 || !!bulkBusy?.includes('처리 중')}
-            className="ta-btn-primary text-[13px]"
+            className="ta-btn-primary text-body"
           >
             선택 {selected.size}개월 일괄 확정
           </button>
@@ -221,9 +221,9 @@ export default function MonthlyCloseManager({
 
       <div className="overflow-hidden rounded-md border border-border bg-background">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] border-collapse text-[13px]">
+          <table className="w-full min-w-[560px] border-collapse text-body">
             <thead>
-              <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+              <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
                 {canConfirm && <th className="w-8 px-2 py-2" aria-label="선택" />}
                 <Th>월</Th>
                 <Th right>거래수</Th>
@@ -290,14 +290,14 @@ export default function MonthlyCloseManager({
                     </Td>
                     <Td right>
                       {busy === r.ym ? (
-                        <span className="text-[11px] text-muted-foreground">처리 중…</span>
+                        <span className="text-caption text-muted-foreground">처리 중…</span>
                       ) : confirmed ? (
                         <span className="inline-flex items-center gap-1.5">
-                          <button onClick={() => (snaps[r.ym] ? setSnaps((m) => { const n = { ...m }; delete n[r.ym]; return n; }) : loadSnap(r.ym))} className="ta-btn text-[13px]">
+                          <button onClick={() => (snaps[r.ym] ? setSnaps((m) => { const n = { ...m }; delete n[r.ym]; return n; }) : loadSnap(r.ym))} className="ta-btn text-body">
                             {snaps[r.ym] ? '결산 닫기' : '결산 확인'}
                           </button>
                           {canConfirm && (
-                            <button onClick={() => act(r.ym, 'reopen')} className="ta-btn text-[13px]">
+                            <button onClick={() => act(r.ym, 'reopen')} className="ta-btn text-body">
                               재오픈
                             </button>
                           )}
@@ -310,22 +310,22 @@ export default function MonthlyCloseManager({
                               ? `/finance/classify?ym=${r.ym}&unit=${unit}&unclassified=1`
                               : `/finance/classify?ym=${r.ym}&brand=garden&store=none`
                           }
-                          className="ta-btn text-[13px]"
+                          className="ta-btn text-body"
                         >
                           {r.unclassified > 0 ? '미분류 분류 →' : '지점 지정 →'}
                         </Link>
                       ) : canConfirm ? (
-                        <button onClick={() => requestConfirm(r.ym)} className="ta-btn-primary text-[13px]">
+                        <button onClick={() => requestConfirm(r.ym)} className="ta-btn-primary text-body">
                           확정
                         </button>
                       ) : (
-                        <span className="text-[11px] text-muted-foreground">—</span>
+                        <span className="text-caption text-muted-foreground">—</span>
                       )}
                     </Td>
                   </tr>
                   {snaps[r.ym] && (
                     <tr className="border-t border-border/40 bg-muted/30">
-                      <td colSpan={canConfirm ? 6 : 5} className="px-4 py-3 text-[12px]">
+                      <td colSpan={canConfirm ? 6 : 5} className="px-4 py-3 text-caption">
                         {(() => {
                           const sn = snaps[r.ym]!;
                           if (sn.loading) return <span className="text-muted-foreground">결산값 확인 중…</span>;
@@ -335,7 +335,7 @@ export default function MonthlyCloseManager({
                               <span className="flex flex-wrap items-center gap-2 text-muted-foreground">
                                 이 달엔 저장된 결산값이 없어요(결산값 도입 전에 확정된 달이에요).
                                 {canConfirm && (
-                                  <button onClick={() => resnap(r.ym)} className="ta-btn text-[12px]">
+                                  <button onClick={() => resnap(r.ym)} className="ta-btn text-caption">
                                     지금 결산값 만들기
                                   </button>
                                 )}
@@ -366,7 +366,7 @@ export default function MonthlyCloseManager({
                               </ul>
                               {canConfirm && (
                                 <span className="flex items-center gap-2">
-                                  <button onClick={() => resnap(r.ym)} className="ta-btn-primary text-[12px]">
+                                  <button onClick={() => resnap(r.ym)} className="ta-btn-primary text-caption">
                                     이 숫자로 재결산
                                   </button>
                                   <span className="text-muted-foreground">
@@ -398,14 +398,14 @@ export default function MonthlyCloseManager({
             className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-card p-5 sm:max-w-[480px] sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="m-0 text-[15px] font-medium">⚠ 자료가 덜 올라온 {bulkGate.length}개월은 보류했어요</h3>
-            <p className="mt-1 text-[13px] text-muted-foreground">
+            <h3 className="m-0 text-title font-medium">⚠ 자료가 덜 올라온 {bulkGate.length}개월은 보류했어요</h3>
+            <p className="mt-1 text-body text-muted-foreground">
               지금 확정하면 아래 자료가 빠진 채로 그 달 손익이 잠겨요. 자료 입력에서 마저 올린 뒤 다시 일괄
               확정하는 걸 권해요.
             </p>
             <ul className="mt-3 flex max-h-[300px] list-none flex-col gap-1.5 overflow-y-auto p-0">
               {bulkGate.map((g) => (
-                <li key={g.ym} className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[13px]">
+                <li key={g.ym} className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-body">
                   <b>{fmtYm(g.ym)}</b> — {g.issues.join(' · ')}
                 </li>
               ))}
@@ -413,7 +413,7 @@ export default function MonthlyCloseManager({
             <div className="mt-4 flex gap-2">
               <button
                 onClick={() => setBulkGate(null)}
-                className="flex-[2] rounded-xl bg-foreground py-2.5 text-[13px] font-medium text-background"
+                className="flex-[2] rounded-xl bg-foreground py-2.5 text-body font-medium text-background"
               >
                 자료 마저 올리고 확정할게요
               </button>
@@ -423,7 +423,7 @@ export default function MonthlyCloseManager({
                   setBulkGate(null);
                   bulkConfirm(yms);
                 }}
-                className="flex-1 rounded-xl border border-border py-2.5 text-[13px] text-muted-foreground hover:text-foreground"
+                className="flex-1 rounded-xl border border-border py-2.5 text-body text-muted-foreground hover:text-foreground"
               >
                 그래도 확정
               </button>
@@ -442,14 +442,14 @@ export default function MonthlyCloseManager({
             className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-card p-5 sm:max-w-[440px] sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="m-0 text-[15px] font-medium">⚠ {fmtYm(gate.ym)} 자료가 아직 덜 올라왔어요</h3>
-            <p className="mt-1 text-[13px] text-muted-foreground">
+            <h3 className="m-0 text-title font-medium">⚠ {fmtYm(gate.ym)} 자료가 아직 덜 올라왔어요</h3>
+            <p className="mt-1 text-body text-muted-foreground">
               지금 확정하면 아래 자료가 빠진 채로 그 달 손익이 잠겨요. 회계 대시보드에서 마저 올린 뒤
               확정하는 걸 권해요.
             </p>
             <ul className="mt-3 flex list-none flex-col gap-1.5 p-0">
               {gate.issues.map((msg) => (
-                <li key={msg} className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[13px]">
+                <li key={msg} className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-body">
                   {msg}
                 </li>
               ))}
@@ -457,7 +457,7 @@ export default function MonthlyCloseManager({
             <div className="mt-4 flex gap-2">
               <Link
                 href="/dashboard"
-                className="flex-[2] rounded-xl bg-foreground py-2.5 text-center text-[13px] font-medium text-background"
+                className="flex-[2] rounded-xl bg-foreground py-2.5 text-center text-body font-medium text-background"
               >
                 업로드 보드로 가기
               </Link>
@@ -467,7 +467,7 @@ export default function MonthlyCloseManager({
                   setGate(null);
                   act(ym, 'confirm');
                 }}
-                className="flex-1 rounded-xl border border-border py-2.5 text-[13px] text-muted-foreground hover:text-foreground"
+                className="flex-1 rounded-xl border border-border py-2.5 text-body text-muted-foreground hover:text-foreground"
               >
                 그래도 확정
               </button>
@@ -485,7 +485,7 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
 function Td({ children, right, mono }: { children: React.ReactNode; right?: boolean; mono?: boolean }) {
   return (
     <td
-      className={`whitespace-nowrap px-3 py-2 align-middle text-[13px] text-foreground ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''}`}
+      className={`whitespace-nowrap px-3 py-2 align-middle text-body text-foreground ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''}`}
     >
       {children}
     </td>

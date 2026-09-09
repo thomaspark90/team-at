@@ -53,9 +53,9 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
         <div className="flex flex-col gap-12">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-[11px] uppercase tracking-[0.06em] text-muted-foreground">자료 입력</div>
-              <h1 className="m-0 text-[22px] tracking-[-0.5px]">{unit.label}</h1>
-              <p className="mt-1 text-[13px] text-muted-foreground">
+              <div className="text-caption uppercase tracking-[0.06em] text-muted-foreground">자료 입력</div>
+              <h1 className="m-0 text-display tracking-[-0.5px]">{unit.label}</h1>
+              <p className="mt-1 text-body text-muted-foreground">
                 {unit.store ? (
                   <>
                     {unit.id === 'yangjae' && <>POS 매출은 이 지점으로 바로 들어가요. </>}
@@ -91,8 +91,8 @@ export default async function UnitUploadPage({ params }: { params: { unit: strin
             {unit.id !== 'pangyo' && (
               <div id="pos" className="flex flex-col gap-6 scroll-mt-4 py-[54px]">
                 <div>
-                  <h2 className="m-0 text-[15px] font-medium text-foreground">POS 매출</h2>
-                  <p className="mt-1 text-[13px] text-muted-foreground">
+                  <h2 className="m-0 text-title font-medium text-foreground">POS 매출</h2>
+                  <p className="mt-1 text-body text-muted-foreground">
                     {unit.id === 'yangjae' ? '토스 매출리포트(비번 0000)' : '페이히어 매출 리포트'} 엑셀 — {unit.label} 매출로
                     저장돼요.
                   </p>

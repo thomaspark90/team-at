@@ -97,7 +97,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
       {saved && (
         <div className="rounded-md bg-muted/40 p-4">
           <div className="mb-1 text-foreground">✓ 저장 완료{saved.linked ? ' · 정산 연결됨' : ' · 미연결(결제 대기)'}</div>
-          <div className="text-[13px] text-muted-foreground">
+          <div className="text-body text-muted-foreground">
             {won(saved.saved).replace('₩', '')}건 저장 · 중복 {saved.duplicates}건 건너뜀 · 카테고리는 직접 지정해요(학습된 가맹점은 미리 선택돼요) ·{' '}
             <a href="/finance/classify?source=card" className="text-foreground underline">지출 자료 분류에서 지정 →</a>
           </div>
@@ -107,8 +107,8 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
       {/* 업로드 카드 */}
       <div className="flex flex-col gap-8">
         <div>
-          <h2 className="text-[15px] text-foreground">신한카드 이용내역으로 지출 자료 세분화</h2>
-          <p className="mt-1 text-[13px] text-muted-foreground">
+          <h2 className="text-title text-foreground">신한카드 이용내역으로 지출 자료 세분화</h2>
+          <p className="mt-1 text-body text-muted-foreground">
             신한 사업자카드 <b>이용내역 엑셀</b>을 올려, 통장의 <b>‘신한카드’ 결제 건</b>과 연결하세요. 그 결제 한 줄이 아래 사용내역으로 나뉘어 지출 자료 분류에 들어가요.
           </p>
         </div>
@@ -118,7 +118,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
             type="file"
             accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             onChange={(e) => { setFile(e.target.files?.[0] ?? null); setSaved(null); setPreview(null); }}
-            className="text-[13px] text-foreground"
+            className="text-body text-foreground"
           />
         </div>
         <div>
@@ -126,7 +126,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
             {loading ? '업로드 중…' : '업로드'}
           </button>
         </div>
-        {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
+        {error && <div className="text-body text-destructive">⚠️ {error}</div>}
       </div>
 
       {/* 정산(B안): 스트립 + 내역 미리보기 */}
@@ -135,19 +135,19 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
           {/* 정산 스트립 */}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-border bg-muted p-4">
             <div>
-              <div className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+              <div className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
                 카드 사용합계 · {fmtYm(preview.usageYm)} · 신규 {preview.fresh}건
               </div>
-              <div className="tabular text-[22px] text-foreground">{won(preview.net)}</div>
+              <div className="tabular text-display text-foreground">{won(preview.net)}</div>
               {preview.sumIn > 0 && (
-                <div className="text-[11px] text-muted-foreground">사용 {won(preview.sumOut)} − 환불 {won(preview.sumIn)}</div>
+                <div className="text-caption text-muted-foreground">사용 {won(preview.sumOut)} − 환불 {won(preview.sumIn)}</div>
               )}
             </div>
-            <div className="text-[15px] text-muted-foreground">↔</div>
+            <div className="text-title text-muted-foreground">↔</div>
             <div>
-              <div className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">은행 카드결제 (연결 대상)</div>
+              <div className="text-caption uppercase tracking-[0.04em] text-muted-foreground">은행 카드결제 (연결 대상)</div>
               {preview.candidates.length > 0 ? (
-                <select value={sel} onChange={(e) => setSel(e.target.value === 'none' ? 'none' : Number(e.target.value))} className="ta-input mt-1 text-[13px]">
+                <select value={sel} onChange={(e) => setSel(e.target.value === 'none' ? 'none' : Number(e.target.value))} className="ta-input mt-1 text-body">
                   {preview.candidates.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.txAt.slice(0, 10)} · {won(c.amount)} {Math.abs(c.diff) < 1 ? '(정확히 일치)' : `(차액 ${won(Math.abs(c.diff))})`}
@@ -156,18 +156,18 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
                   <option value="none">연결 안 함 (미연결로 저장)</option>
                 </select>
               ) : (
-                <div className="text-[13px] text-muted-foreground">후보 없음 — 미연결로 저장돼요</div>
+                <div className="text-body text-muted-foreground">후보 없음 — 미연결로 저장돼요</div>
               )}
             </div>
             <div>
               {cand ? (
                 Math.abs(diff) < 1 ? (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-[11px] font-medium text-positive">✅ 일치 · 차액 ₩0</span>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-caption font-medium text-positive">✅ 일치 · 차액 ₩0</span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground">⚠️ 차액 {won(Math.abs(diff))}</span>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-caption font-medium text-foreground">⚠️ 차액 {won(Math.abs(diff))}</span>
                 )
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">🕗 미연결(결제 대기)</span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-caption font-medium text-muted-foreground">🕗 미연결(결제 대기)</span>
               )}
             </div>
             <span className="flex-1" />
@@ -176,15 +176,15 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
             </button>
           </div>
 
-          <div className="border-b border-border px-4 py-[10px] text-[13px] text-muted-foreground">
+          <div className="border-b border-border px-4 py-[10px] text-body text-muted-foreground">
             연결하면 아래 <b>{preview.fresh}건</b>이 지출 자료 분류에 편입되고, 통장의 카드결제 1건은 <b>손익 제외 › 카드대금정산</b>으로 잠겨요.
             {preview.duplicates > 0 && <> (이미 저장된 {preview.duplicates}건 제외)</>}
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[680px] border-collapse text-[13px]">
+            <table className="w-full min-w-[680px] border-collapse text-body">
               <thead>
-                <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+                <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
                   <Th>일자</Th><Th>가맹점(내용)</Th><Th right>금액</Th><Th>정규화 키(학습용)</Th>
                 </tr>
               </thead>
@@ -194,7 +194,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
                     <Td mono>{t.txAt.slice(0, 10)}</Td>
                     <Td>
                       {t.memo}
-                      {t.isInstallment && <span className="ml-1.5 rounded-sm bg-accent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">할부</span>}
+                      {t.isInstallment && <span className="ml-1.5 rounded-sm bg-accent px-1.5 py-0.5 text-caption font-medium text-muted-foreground">할부</span>}
                     </Td>
                     <Td right mono>
                       {t.amountIn > 0 ? <span className="text-positive">+{won(t.amountIn).replace('₩', '')} 환불</span> : `-${won(t.amountOut).replace('₩', '')}`}
@@ -206,7 +206,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
             </table>
           </div>
           {preview.fresh > preview.sample.length && (
-            <div className="border-t border-border px-4 py-[10px] text-[11px] text-muted-foreground">
+            <div className="border-t border-border px-4 py-[10px] text-caption text-muted-foreground">
               … 외 {preview.fresh - preview.sample.length}건 (미리보기 최대 300건, 저장은 전체)
             </div>
           )}
@@ -221,6 +221,6 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
 }
 function Td({ children, right, mono, muted }: { children: React.ReactNode; right?: boolean; mono?: boolean; muted?: boolean }) {
   return (
-    <td className={`whitespace-nowrap px-3 py-2 text-[13px] ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''} ${muted ? 'text-muted-foreground' : 'text-foreground'}`}>{children}</td>
+    <td className={`whitespace-nowrap px-3 py-2 text-body ${right ? 'text-right' : 'text-left'} ${mono ? 'tabular' : ''} ${muted ? 'text-muted-foreground' : 'text-foreground'}`}>{children}</td>
   );
 }

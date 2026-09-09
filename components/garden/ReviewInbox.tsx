@@ -224,7 +224,7 @@ export default function ReviewInbox() {
           <button
             key={t.key}
             onClick={() => { setTab(t.key); setCat('all'); }}
-            className={`text-[13px] transition-colors ${
+            className={`text-body transition-colors ${
               tab === t.key ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -239,28 +239,28 @@ export default function ReviewInbox() {
             <button
               key={s.key}
               onClick={() => setStore(s.key)}
-              className={`text-[13px] transition-colors ${
+              className={`text-body transition-colors ${
                 store === s.key ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {s.label} {count > 0 && <span className="text-[11px] text-muted-foreground">{count}</span>}
+              {s.label} {count > 0 && <span className="text-caption text-muted-foreground">{count}</span>}
             </button>
           );
         })}
       </div>
 
-      {error && <p className="ta-error text-[13px]" style={{ marginBottom: 24 }}>{error}</p>}
+      {error && <p className="ta-error text-body" style={{ marginBottom: 24 }}>{error}</p>}
 
       {/* 이슈 탭 — 아직 분류되지 않은 과거 리뷰가 있으면 백필 실행을 안내 */}
       {tab === 'issues' && !loading && unclassified > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted/40 text-[13px]" style={{ padding: '10px 12px', marginBottom: 24 }}>
+        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted/40 text-body" style={{ padding: '10px 12px', marginBottom: 24 }}>
           <span className="text-muted-foreground">
             분류가 필요한 리뷰가 {unclassified}건 있습니다(미분류·카테고리 보완 포함). 실행하면 이슈 리뷰가 이 탭에 모입니다.
           </span>
           <button
             onClick={runClassify}
             disabled={classifying}
-            className="rounded-md bg-foreground text-background text-[13px] disabled:opacity-40"
+            className="rounded-md bg-foreground text-background text-body disabled:opacity-40"
             style={{ padding: '4px 12px' }}
           >
             {classifying ? `분류 중… (남은 ${unclassified}건)` : '분류 실행'}
@@ -278,7 +278,7 @@ export default function ReviewInbox() {
               <button
                 key={c}
                 onClick={() => setCat(c)}
-                className={`rounded-full border text-[11px] transition-colors ${
+                className={`rounded-full border text-caption transition-colors ${
                   cat === c ? 'border-foreground font-medium text-foreground' : 'border-border text-muted-foreground hover:text-foreground'
                 }`}
                 style={{ padding: '3px 10px' }}
@@ -290,9 +290,9 @@ export default function ReviewInbox() {
         </div>
       )}
 
-      {loading && <p className="text-[13px] text-muted-foreground">불러오는 중…</p>}
+      {loading && <p className="text-body text-muted-foreground">불러오는 중…</p>}
       {!loading && shown.length === 0 && (
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           {tab === 'issues' ? '모아둔 이슈·개선 리뷰가 없습니다.' : '표시할 리뷰가 없습니다.'}
         </p>
       )}
@@ -304,7 +304,7 @@ export default function ReviewInbox() {
           const hasVariants = !!r.draft_variants?.length;
           return (
             <article key={r.id} className="rounded-lg bg-muted/40" style={{ padding: 16 }}>
-              <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground" style={{ marginBottom: 8 }}>
+              <div className="flex flex-wrap items-center gap-2 text-caption text-muted-foreground" style={{ marginBottom: 8 }}>
                 <span className="font-medium text-foreground">{STORE_LABEL[r.store_key] ?? r.store_key}</span>
                 <span>{fmtDate(r.reviewed_at)}</span>
                 {r.rating != null && <span>★ {r.rating}</span>}
@@ -316,7 +316,7 @@ export default function ReviewInbox() {
 
               {/* 이슈 리뷰 표시 — 어느 탭에서든 뱃지·카테고리·지적 요약을 보여주고, 수동 정정을 허용한다 */}
               {r.issue && (
-                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" style={{ color: ISSUE_COLOR, margin: '0 0 6px' }}>
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body" style={{ color: ISSUE_COLOR, margin: '0 0 6px' }}>
                   <span
                     className="rounded-sm font-medium"
                     style={{ border: `1px solid ${ISSUE_COLOR}55`, padding: '1px 6px' }}
@@ -337,7 +337,7 @@ export default function ReviewInbox() {
                 </p>
               )}
               {r.issue === false && (
-                <p className="text-[13px]" style={{ margin: '0 0 6px' }}>
+                <p className="text-body" style={{ margin: '0 0 6px' }}>
                   <button
                     onClick={() => setIssue(r, true)}
                     disabled={busy === r.id}
@@ -348,12 +348,12 @@ export default function ReviewInbox() {
                 </p>
               )}
 
-              <p className="text-[13px] whitespace-pre-wrap" style={{ margin: '0 0 8px' }}>
+              <p className="text-body whitespace-pre-wrap" style={{ margin: '0 0 8px' }}>
                 {r.content?.trim() || <span className="text-muted-foreground">(본문 없이 사진만 등록된 리뷰)</span>}
               </p>
 
               {!!r.keywords?.length && (
-                <p className="text-[11px] text-muted-foreground" style={{ margin: '0 0 12px' }}>
+                <p className="text-caption text-muted-foreground" style={{ margin: '0 0 12px' }}>
                   {r.keywords.join(' · ')}
                 </p>
               )}
@@ -390,7 +390,7 @@ export default function ReviewInbox() {
                           <div className="flex-1">
                             <button
                               onClick={toggle}
-                              className={`text-[11px] transition-colors ${
+                              className={`text-caption transition-colors ${
                                 selected ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
                               }`}
                             >
@@ -402,7 +402,7 @@ export default function ReviewInbox() {
                                 setTexts((t) => ({ ...t, [r.id]: { ...t[r.id], [v.tone]: e.target.value } }))
                               }
                               rows={1}
-                              className="w-full bg-transparent text-[13px] focus:outline-none"
+                              className="w-full bg-transparent text-body focus:outline-none"
                               // field-sizing: 내용 높이만큼만 차지 (Chrome 123+) — 하단 빈 공간 제거
                               style={{ padding: 0, marginTop: 2, resize: 'none', border: 0, fieldSizing: 'content' } as React.CSSProperties}
                             />
@@ -415,7 +415,7 @@ export default function ReviewInbox() {
                     <button
                       onClick={() => act(r, 'approve')}
                       disabled={busy === r.id || !sel[r.id] || !(texts[r.id]?.[sel[r.id]!] ?? '').trim()}
-                      className="rounded-md bg-foreground text-background text-[13px] disabled:opacity-40"
+                      className="rounded-md bg-foreground text-background text-body disabled:opacity-40"
                       style={{ padding: '6px 14px' }}
                     >
                       확정
@@ -423,20 +423,20 @@ export default function ReviewInbox() {
                     <button
                       onClick={() => act(r, 'redraft')}
                       disabled={busy === r.id}
-                      className="text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      className="text-body text-muted-foreground hover:text-foreground disabled:opacity-40"
                     >
                       초안 다시 생성
                     </button>
                     <button
                       onClick={() => act(r, 'skip')}
                       disabled={busy === r.id}
-                      className="text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      className="text-body text-muted-foreground hover:text-foreground disabled:opacity-40"
                     >
                       답글 안 달기
                     </button>
-                    {busy === r.id && <span className="text-[13px] text-muted-foreground">처리 중…</span>}
+                    {busy === r.id && <span className="text-body text-muted-foreground">처리 중…</span>}
                     {!sel[r.id] && (
-                      <span className="text-[13px] text-muted-foreground">톤을 선택하면 확정할 수 있습니다.</span>
+                      <span className="text-body text-muted-foreground">톤을 선택하면 확정할 수 있습니다.</span>
                     )}
                   </div>
                 </>
@@ -450,14 +450,14 @@ export default function ReviewInbox() {
                     onChange={(e) => setSingle((d) => ({ ...d, [r.id]: e.target.value }))}
                     rows={3}
                     placeholder="답글 초안"
-                    className="w-full rounded-md border border-border bg-background text-[13px]"
+                    className="w-full rounded-md border border-border bg-background text-body"
                     style={{ padding: 10, resize: 'vertical' }}
                   />
                   <div className="flex flex-wrap items-center gap-3" style={{ marginTop: 8 }}>
                     <button
                       onClick={() => act(r, 'approve')}
                       disabled={busy === r.id || !(single[r.id] ?? '').trim()}
-                      className="rounded-md bg-foreground text-background text-[13px] disabled:opacity-40"
+                      className="rounded-md bg-foreground text-background text-body disabled:opacity-40"
                       style={{ padding: '6px 14px' }}
                     >
                       확정
@@ -465,18 +465,18 @@ export default function ReviewInbox() {
                     <button
                       onClick={() => act(r, 'redraft')}
                       disabled={busy === r.id}
-                      className="text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      className="text-body text-muted-foreground hover:text-foreground disabled:opacity-40"
                     >
                       초안 다시 생성
                     </button>
                     <button
                       onClick={() => act(r, 'skip')}
                       disabled={busy === r.id}
-                      className="text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      className="text-body text-muted-foreground hover:text-foreground disabled:opacity-40"
                     >
                       답글 안 달기
                     </button>
-                    {busy === r.id && <span className="text-[13px] text-muted-foreground">처리 중…</span>}
+                    {busy === r.id && <span className="text-body text-muted-foreground">처리 중…</span>}
                   </div>
                 </>
               )}
@@ -509,8 +509,8 @@ export default function ReviewInbox() {
                               )}
                             </span>
                             <div className="flex-1">
-                              <p className="text-[11px] font-medium" style={{ margin: 0 }}>{v.label}</p>
-                              <p className="text-[13px] whitespace-pre-wrap" style={{ margin: '2px 0 0' }}>
+                              <p className="text-caption font-medium" style={{ margin: 0 }}>{v.label}</p>
+                              <p className="text-body whitespace-pre-wrap" style={{ margin: '2px 0 0' }}>
                                 {isSel ? r.reply_text ?? v.text : v.text}
                               </p>
                             </div>
@@ -520,7 +520,7 @@ export default function ReviewInbox() {
                     </div>
                   ) : (
                     r.reply_text && (
-                      <p className="text-[13px] rounded-md bg-foreground text-background whitespace-pre-wrap" style={{ padding: 10, margin: '0 0 8px' }}>
+                      <p className="text-body rounded-md bg-foreground text-background whitespace-pre-wrap" style={{ padding: 10, margin: '0 0 8px' }}>
                         {r.reply_text}
                       </p>
                     )
@@ -529,13 +529,13 @@ export default function ReviewInbox() {
                     <button
                       onClick={() => act(r, 'cancel')}
                       disabled={busy === r.id}
-                      className="rounded-md border border-border text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40"
+                      className="rounded-md border border-border text-body text-muted-foreground hover:text-foreground disabled:opacity-40"
                       style={{ padding: '6px 14px' }}
                     >
                       취소
                     </button>
-                    {busy === r.id && <span className="text-[13px] text-muted-foreground">처리 중…</span>}
-                    <span className="text-[13px] text-muted-foreground">
+                    {busy === r.id && <span className="text-body text-muted-foreground">처리 중…</span>}
+                    <span className="text-body text-muted-foreground">
                       {postEta(r.approved_at)} 이후 게시 예정 — 취소하면 다시 선택할 수 있습니다.
                     </span>
                   </div>
@@ -544,13 +544,13 @@ export default function ReviewInbox() {
 
               {/* 종료 상태 — 게시 완료 등은 확정 답글만 표시 */}
               {!pending && !approved && r.reply_text && (
-                <p className="text-[13px] rounded-md bg-muted/40 whitespace-pre-wrap" style={{ padding: 10, margin: 0 }}>
+                <p className="text-body rounded-md bg-muted/40 whitespace-pre-wrap" style={{ padding: 10, margin: 0 }}>
                   {r.reply_text}
                 </p>
               )}
 
               {r.post_error && (
-                <p className="ta-error text-[13px]" style={{ marginTop: 8 }}>
+                <p className="ta-error text-body" style={{ marginTop: 8 }}>
                   게시 실패: {r.post_error}
                 </p>
               )}

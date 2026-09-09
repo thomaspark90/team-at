@@ -110,7 +110,7 @@ export default async function PrepHoursPage({
 
   const trendTable = (list: TrendRow[], firstLabel: string, showHours: boolean, label: (b: string) => string) => (
     <div className="overflow-auto rounded-md border border-border">
-      <table className="w-max min-w-full border-collapse text-[13px]">
+      <table className="w-max min-w-full border-collapse text-body">
         <thead className="sticky top-0 z-10 bg-card">
           <tr className="border-b border-border text-muted-foreground">
             <th className="whitespace-nowrap px-3 py-2 text-left font-normal">{firstLabel}</th>
@@ -159,22 +159,22 @@ export default async function PrepHoursPage({
       <AccountingNav role={role} />
       <div className="mx-auto max-w-[1680px] px-6 py-8">
         <div className="mb-1 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">전처리5 — 시간대별 판매</h1>
+          <h1 className="m-0 text-display tracking-[-0.5px]">전처리5 — 시간대별 판매</h1>
           <Link
             href={`/finance/prep/menu?unit=${unit.id}`}
-            className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+            className="text-body text-muted-foreground transition-colors hover:text-foreground"
           >
             ← 전처리4 메뉴별 판매
           </Link>
         </div>
-        <p className="mb-5 max-w-[880px] text-[13px] text-muted-foreground">
+        <p className="mb-5 max-w-[880px] text-body text-muted-foreground">
           <b>{unit.label}</b>의 POS 원본에 있는 <b>주문시작시각</b>을 살려 상품별로 &lsquo;몇 시에 몇 개&rsquo;를
           보는 표예요. 저울로 다는 상품(브런치바)은 <b>정가 ÷ 그램당 단가</b>로 평균 그램을 함께 냅니다 —
           할인·선불권 결제는 실판매금액이 깎여서 그램 계산엔 <b>정가</b>를 씁니다.
         </p>
 
         {rows.length === 0 ? (
-          <div className="rounded-md border border-border bg-muted/40 px-4 py-6 text-[13px] text-muted-foreground">
+          <div className="rounded-md border border-border bg-muted/40 px-4 py-6 text-body text-muted-foreground">
             이 기간에 시간대 자료가 없어요. 시간대 행은 <b>토스 POS 매출리포트</b>에서만 만들어지고
             (판교·스탭밀 페이히어 리포트엔 시각 컬럼이 없어요), 2026-08-26 이전에 올린 파일은 아직 비어 있을 수
             있어요 — 회계 → 자료 입력에서 해당 월 리포트를 다시 올리면 채워집니다.
@@ -195,7 +195,7 @@ export default async function PrepHoursPage({
                     key={s.key}
                     href={href({ span: s.key })}
                     aria-current={s.key === span.key ? 'page' : undefined}
-                    className={`px-3 py-1.5 text-[13px] transition-colors ${
+                    className={`px-3 py-1.5 text-body transition-colors ${
                       s.key === span.key ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
@@ -209,7 +209,7 @@ export default async function PrepHoursPage({
                     key={g.key}
                     href={href({ grain: g.key })}
                     aria-current={g.key === grain ? 'page' : undefined}
-                    className={`px-3 py-1.5 text-[13px] transition-colors ${
+                    className={`px-3 py-1.5 text-body transition-colors ${
                       g.key === grain ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
@@ -219,7 +219,7 @@ export default async function PrepHoursPage({
               </div>
             </div>
 
-            <div className="mb-6 flex flex-wrap gap-x-8 gap-y-2 rounded-md bg-muted/40 px-4 py-3 text-[13px]">
+            <div className="mb-6 flex flex-wrap gap-x-8 gap-y-2 rounded-md bg-muted/40 px-4 py-3 text-body">
               <span>
                 판매 건수 <b className="tabular-nums">{n0(totals.qty)}</b>
                 <span className="text-muted-foreground">
@@ -247,9 +247,9 @@ export default async function PrepHoursPage({
               </span>
             </div>
 
-            <h2 className="mb-2 text-[15px] font-medium">매출 비중</h2>
+            <h2 className="mb-2 text-title font-medium">매출 비중</h2>
             <div className="mb-3 overflow-auto rounded-md border border-border">
-              <table className="w-max min-w-full border-collapse text-[13px]">
+              <table className="w-max min-w-full border-collapse text-body">
                 <thead className="sticky top-0 z-10 bg-card">
                   <tr className="border-b border-border text-muted-foreground">
                     <th className="whitespace-nowrap px-3 py-2 text-left font-normal">단위</th>
@@ -288,14 +288,14 @@ export default async function PrepHoursPage({
                 </tbody>
               </table>
             </div>
-            <p className="mb-4 text-[12px] text-muted-foreground">
+            <p className="mb-4 text-caption text-muted-foreground">
               평균은 <b>{selected}가 팔린 구간</b>만 대상이에요(판매 개시 전 구간을 넣으면 평균이 근거 없이
               희석돼요). 비중은 구간별 비중의 산술평균이 아니라 <b>합 ÷ 합(가중)</b>이고, 매장 전체 매출은 같은
               표의 전 상품 합 — 전처리3 POS 매출(정본)과 일치해요.
             </p>
 
             <div className="mb-2 overflow-auto rounded-md border border-border">
-              <table className="w-max min-w-full border-collapse text-[13px]">
+              <table className="w-max min-w-full border-collapse text-body">
                 <thead className="sticky top-0 z-10 bg-card">
                   <tr className="border-b border-border text-muted-foreground">
                     <th className="whitespace-nowrap px-3 py-2 text-left font-normal">구간</th>
@@ -352,14 +352,14 @@ export default async function PrepHoursPage({
                 </tbody>
               </table>
             </div>
-            <p className="mb-8 text-[12px] text-muted-foreground">
+            <p className="mb-8 text-caption text-muted-foreground">
               구간 단위는 위 <b>일별·주별·월별</b> 토글을 따라요. 매출은 둘 다 실판매금액(VAT 포함)이라 비중은
               같은 기준끼리의 비교예요. 막대는 비중(0~100%)이에요.
             </p>
 
-            <h2 className="mb-2 text-[15px] font-medium">구간 × 상품 비중</h2>
+            <h2 className="mb-2 text-title font-medium">구간 × 상품 비중</h2>
             <div className="mb-2 overflow-auto rounded-md border border-border">
-              <table className="w-max min-w-full border-collapse text-[13px]">
+              <table className="w-max min-w-full border-collapse text-body">
                 <thead className="sticky top-0 z-10 bg-card">
                   <tr className="border-b border-border text-muted-foreground">
                     <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">기간</th>
@@ -373,7 +373,7 @@ export default async function PrepHoursPage({
                       >
                         <span className="inline-flex flex-col items-end leading-tight">
                           <span>{c.product}</span>
-                          <span className="text-[11px] text-muted-foreground/70">{(c.share * 100).toFixed(1)}%</span>
+                          <span className="text-caption text-muted-foreground/70">{(c.share * 100).toFixed(1)}%</span>
                         </span>
                       </th>
                     ))}
@@ -391,7 +391,7 @@ export default async function PrepHoursPage({
                         }`}
                       >
                         {i === 0 ? '전체' : bucketLabel(r.bucket)}
-                        {i > 0 && <span className="ml-1 text-[11px] text-muted-foreground">{r.days}일</span>}
+                        {i > 0 && <span className="ml-1 text-caption text-muted-foreground">{r.days}일</span>}
                       </td>
                       <td className="whitespace-nowrap px-3 py-1.5 text-right tabular-nums text-muted-foreground">
                         {n0(r.total)}
@@ -410,7 +410,7 @@ export default async function PrepHoursPage({
                               <span className={c.product === selected ? 'font-medium' : ''}>
                                 {(c.share * 100).toFixed(1)}%
                               </span>
-                              <span className="text-[11px] text-muted-foreground">{n0(c.gross)}</span>
+                              <span className="text-caption text-muted-foreground">{n0(c.gross)}</span>
                             </span>
                           )}
                         </td>
@@ -420,15 +420,15 @@ export default async function PrepHoursPage({
                 </tbody>
               </table>
             </div>
-            <p className="mb-8 text-[12px] text-muted-foreground">
+            <p className="mb-8 text-caption text-muted-foreground">
               행은 구간(위 토글), 열은 <b>매출 상위 12개 상품 + 기타</b>예요. 보고 있는 상품({selected})은 상위권
               밖이어도 항상 첫 열에 고정됩니다. 큰 숫자가 <b>그 구간 매장 매출 대비 비중</b>, 작은 숫자가 매출
               (VAT 포함)이고, 한 행의 비중 합은 100%예요.
             </p>
 
-            <h2 className="mb-2 text-[15px] font-medium">시간대별</h2>
+            <h2 className="mb-2 text-title font-medium">시간대별</h2>
             <div className="mb-2 overflow-auto rounded-md border border-border">
-              <table className="w-max min-w-full border-collapse text-[13px]">
+              <table className="w-max min-w-full border-collapse text-body">
                 <thead className="sticky top-0 z-10 bg-card">
                   <tr className="border-b border-border text-muted-foreground">
                     <th className="whitespace-nowrap px-3 py-2 text-left font-normal">시간</th>
@@ -478,18 +478,18 @@ export default async function PrepHoursPage({
                 </tbody>
               </table>
             </div>
-            <p className="mb-8 text-[12px] text-muted-foreground">
+            <p className="mb-8 text-caption text-muted-foreground">
               영업일 기준이라 자정을 넘긴 주문은 전날 영업일에 0~2시로 잡혀요. &lsquo;주문 수&rsquo;는 그 시간대
               안의 서로 다른 주문번호 수 — 한 주문에 두 접시가 들어가면 판매 건수 2 · 주문 수 1이에요.
             </p>
 
-            <h2 className="mb-2 text-[15px] font-medium">기간 추이</h2>
+            <h2 className="mb-2 text-title font-medium">기간 추이</h2>
             <div className="mb-8">{trendTable(trend, '구간', true, bucketLabel)}</div>
 
-            <h2 className="mb-2 text-[15px] font-medium">요일별</h2>
+            <h2 className="mb-2 text-title font-medium">요일별</h2>
             <div className="mb-4">{trendTable(dow, '요일', false, (b) => `${b}요일`)}</div>
 
-            <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+            <div className="flex flex-col gap-1 text-caption text-muted-foreground">
               {rule ? (
                 <p className="m-0">
                   <b className="text-foreground">그램 환산</b> — {selected}는 {rule.priceLabel} 기준,{' '}

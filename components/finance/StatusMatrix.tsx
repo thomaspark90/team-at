@@ -85,31 +85,31 @@ export default function StatusMatrix({
 
   return (
     <details open className="rounded-2xl bg-card p-5">
-      <summary className="cursor-pointer select-none list-none text-[15px] font-medium [&::-webkit-details-marker]:hidden">
+      <summary className="cursor-pointer select-none list-none text-title font-medium [&::-webkit-details-marker]:hidden">
         {brandLabel(brand)} · 전체 자료 현황
         {data && (
-          <span className={`ml-2 text-[11px] font-normal ${missingTotal === 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+          <span className={`ml-2 text-caption font-normal ${missingTotal === 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
             {missingTotal === 0 ? '전부 완료' : `남은 항목 ${missingTotal}개`}
           </span>
         )}
-        <span className="ml-2 text-[11px] font-normal text-muted-foreground">— 접기/펼치기</span>
+        <span className="ml-2 text-caption font-normal text-muted-foreground">— 접기/펼치기</span>
       </summary>
-      <p className="mb-6 mt-1 text-[13px] text-muted-foreground">
+      <p className="mb-6 mt-1 text-body text-muted-foreground">
         연·월 × 자료 종류의 미입력 현황이에요. 칸을 누르면 그 달로 이동해요.{' '}
-        <span className="text-[13px]">
+        <span className="text-body">
           <span className="text-emerald-600">✓ 완료</span> · <span className="text-amber-600">◐ 일부만</span> ·{' '}
           <span className="rounded bg-amber-500/15 px-1 text-amber-600">자료 업로드 필요 = 미입력</span>
         </span>
       </p>
 
-      {error && <p className="text-[13px] text-destructive">⚠ {error}</p>}
-      {!data && !error && <p className="text-[13px] text-muted-foreground">불러오는 중…</p>}
+      {error && <p className="text-body text-destructive">⚠ {error}</p>}
+      {!data && !error && <p className="text-body text-muted-foreground">불러오는 중…</p>}
 
       {data && (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-[13px]">
+          <table className="w-full min-w-[640px] border-collapse text-body">
             <thead>
-              <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+              <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
                 <th className="sticky left-0 bg-card px-2 py-2 text-left font-normal">
                   <button
                     onClick={() => setDesc((d) => !d)}
@@ -160,7 +160,7 @@ export default function StatusMatrix({
                       <td colSpan={colCount} className="p-0">
                         <button
                           onClick={() => toggleYear(g.year)}
-                          className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[12px] font-medium hover:bg-muted/60"
+                          className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-caption font-medium hover:bg-muted/60"
                           aria-expanded={open}
                         >
                           <span aria-hidden>{open ? '▾' : '▸'}</span>
@@ -186,7 +186,7 @@ export default function StatusMatrix({
     if (!data) return null; // 호출 지점에서 data 확인 후 들어오지만 타입 좁힘용
     return (
                 <tr key={r.ym} className="border-t border-border">
-                  <td className="sticky left-0 whitespace-nowrap bg-card px-2 py-1.5 text-[13px] text-muted-foreground">
+                  <td className="sticky left-0 whitespace-nowrap bg-card px-2 py-1.5 text-body text-muted-foreground">
                     {fmtYm(r.ym)}
                   </td>
                   {data.slots.map((s) => (
@@ -200,7 +200,7 @@ export default function StatusMatrix({
                     {r.uncl > 0 ? (
                       <Link
                         href={`/finance/classify?ym=${r.ym}&brand=${brand}&unclassified=1`}
-                        className="inline-block min-w-[52px] rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 hover:bg-amber-500/25"
+                        className="inline-block min-w-[52px] rounded bg-amber-500/15 px-1.5 py-0.5 text-caption font-medium text-amber-600 hover:bg-amber-500/25"
                       >
                         {r.uncl.toLocaleString('ko-KR')}건
                       </Link>
@@ -217,7 +217,7 @@ export default function StatusMatrix({
                     ) : r.hasData ? (
                       <Link
                         href={`/finance/close?unit=${unitId ?? (brand === 'staffmeal' ? 'staffmeal' : 'yangjae')}`}
-                        className="inline-block rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] text-amber-600 hover:bg-amber-500/25"
+                        className="inline-block rounded bg-amber-500/15 px-1.5 py-0.5 text-caption text-amber-600 hover:bg-amber-500/25"
                       >
                         미확정
                       </Link>
@@ -254,7 +254,7 @@ function Cell({ state, onClick }: { state: SlotState; onClick: () => void }) {
       <button
         onClick={onClick}
         aria-label="미입력 — 그 달로 이동"
-        className="w-full min-w-[52px] whitespace-nowrap rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] text-amber-600 transition-colors hover:bg-amber-500/30"
+        className="w-full min-w-[52px] whitespace-nowrap rounded bg-amber-500/15 px-1.5 py-0.5 text-caption text-amber-600 transition-colors hover:bg-amber-500/30"
       >
         자료 업로드 필요
       </button>

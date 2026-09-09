@@ -118,17 +118,17 @@ export default function IncentiveSim({
   const rowsDesc = [...sim.rows].reverse(); // 표는 최신 월 위로(결산 표와 같은 방향)
 
   const inputCls =
-    'w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-right text-[13px] tabular-nums focus:outline-none focus:ring-1 focus:ring-foreground/30';
+    'w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-right text-body tabular-nums focus:outline-none focus:ring-1 focus:ring-foreground/30';
 
   return (
     <section className="rounded-md border border-border p-5">
       <div className="mb-1 flex flex-wrap items-baseline gap-x-3">
-        <h2 className="m-0 text-[15px] font-medium">인센 시뮬레이션</h2>
-        <span className="text-[12px] text-muted-foreground">
+        <h2 className="m-0 text-title font-medium">인센 시뮬레이션</h2>
+        <span className="text-caption text-muted-foreground">
           인센 기준 = 월 손익(EBIT) − 투자 상각(총투자 ÷ 개월수, 정액) — 개월수를 바꿔가며 안을 비교해요.
         </span>
       </div>
-      <p className="mb-4 mt-0 text-[12px] leading-relaxed text-muted-foreground">
+      <p className="mb-4 mt-0 text-caption leading-relaxed text-muted-foreground">
         {segLabel}의 장부 자본적지출 <b className="text-foreground">{won(ledgerTotal)}원</b>
         {extra > 0 && (
           <>
@@ -145,7 +145,7 @@ export default function IncentiveSim({
       {/* 입력 줄 — 상각 개월수 · 장부 외 투자(금액+시작월) · 인센율 */}
       <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <label className="block">
-          <span className="mb-1 block text-[11px] text-muted-foreground">상각 개월수</span>
+          <span className="mb-1 block text-caption text-muted-foreground">상각 개월수</span>
           <input
             type="number"
             min={1}
@@ -160,7 +160,7 @@ export default function IncentiveSim({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[11px] text-muted-foreground">장부 외 초기 투자(원)</span>
+          <span className="mb-1 block text-caption text-muted-foreground">장부 외 초기 투자(원)</span>
           <input
             type="text"
             inputMode="numeric"
@@ -175,7 +175,7 @@ export default function IncentiveSim({
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[11px] text-muted-foreground">장부 외 투자 귀속 시작월</span>
+          <span className="mb-1 block text-caption text-muted-foreground">장부 외 투자 귀속 시작월</span>
           <select
             value={extraYm}
             onChange={(e) => {
@@ -192,7 +192,7 @@ export default function IncentiveSim({
           </select>
         </label>
         <label className="block">
-          <span className="mb-1 block text-[11px] text-muted-foreground">인센율 %</span>
+          <span className="mb-1 block text-caption text-muted-foreground">인센율 %</span>
           <input
             type="number"
             min={0}
@@ -219,7 +219,7 @@ export default function IncentiveSim({
               setNMonths(p.n);
               persist({ n: p.n });
             }}
-            className={`rounded-md border px-3 py-1.5 text-[12px] tabular-nums transition-colors ${
+            className={`rounded-md border px-3 py-1.5 text-caption tabular-nums transition-colors ${
               p.n === nMonths
                 ? 'border-foreground/60 bg-muted/60 text-foreground'
                 : 'border-border text-muted-foreground hover:text-foreground'
@@ -232,7 +232,7 @@ export default function IncentiveSim({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse text-[13px]">
+        <table className="w-full min-w-[720px] border-collapse text-body">
           <thead>
             <tr className="border-b border-border text-muted-foreground">
               <th className="whitespace-nowrap px-3 py-2 text-left font-normal">월</th>
@@ -274,7 +274,7 @@ export default function IncentiveSim({
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t border-border text-[13px]">
+            <tr className="border-t border-border text-body">
               <td className="px-3 py-2 font-medium">합계</td>
               <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                 {won(sim.rows.reduce((a, r) => a + r.ebit, 0))}
@@ -292,7 +292,7 @@ export default function IncentiveSim({
         </table>
       </div>
 
-      <p className="mb-0 mt-3 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mb-0 mt-3 text-caption leading-relaxed text-muted-foreground">
         * 인센은 <b>당월 기준이 양수인 달</b>에만 요율을 적용한 시뮬레이션 값이에요 — 적자 달을 다음 달과 상계(이월)할지,
         누적 기준이 흑자로 돌아선 뒤부터 지급할지는 제도 확정 때 정해요. 진행 중인 달은 차트와 같은 규칙으로 제외돼요.
         입력값은 이 브라우저에만 저장돼요(제도 확정 전 시뮬레이션 용도).

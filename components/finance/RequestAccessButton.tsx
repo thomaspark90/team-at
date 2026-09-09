@@ -25,7 +25,7 @@ export default function RequestAccessButton() {
 
   if (state === 'done') {
     return (
-      <p className="mt-[18px] text-[13px] text-foreground">
+      <p className="mt-[18px] text-body text-foreground">
         ✓ 요청 완료 — 관리자 승인을 기다려주세요
       </p>
     );
@@ -41,7 +41,7 @@ export default function RequestAccessButton() {
         {state === 'sending' ? '요청 중…' : '접근 권한 요청하기'}
       </button>
       {state === 'error' && (
-        <p className="mt-2 text-[13px] text-destructive">
+        <p className="mt-2 text-body text-destructive">
           요청에 실패했어요. 잠시 후 다시 시도해주세요.
         </p>
       )}

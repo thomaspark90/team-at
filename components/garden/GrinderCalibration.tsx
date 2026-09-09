@@ -74,7 +74,7 @@ export default function GrinderCalibration({
     <div className="min-w-0">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="mb-3 block text-[13px] text-muted-foreground hover:text-foreground"
+        className="mb-3 block text-body text-muted-foreground hover:text-foreground"
         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: open ? undefined : 0 }}
       >
         그라인더 캘리브레이션 (EK43 지점 연동) {open ? '▴' : '▾'}
@@ -82,7 +82,7 @@ export default function GrinderCalibration({
 
       {open && (
         <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-          <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+          <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
             <a href={COMPASS_URL} target="_blank" rel="noreferrer" className="underline hover:text-foreground">
               언스페셜티 컴퍼스
             </a>
@@ -99,19 +99,19 @@ export default function GrinderCalibration({
               return (
                 <div key={s.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-                    <span className="text-[13px] font-medium text-foreground">
+                    <span className="text-body font-medium text-foreground">
                       {s.label} EK43
                     </span>
                     {fit && (
-                      <span className="tabular text-[11px] text-muted-foreground">
+                      <span className="tabular text-caption text-muted-foreground">
                         ≈ {Math.round(fit.a)}µm / 다이얼 1.0
                       </span>
                     )}
                   </div>
 
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <span className="text-[11px] text-muted-foreground" style={{ width: 80 }}>다이얼</span>
-                    <span className="text-[11px] text-muted-foreground">평균 입자(µm)</span>
+                    <span className="text-caption text-muted-foreground" style={{ width: 80 }}>다이얼</span>
+                    <span className="text-caption text-muted-foreground">평균 입자(µm)</span>
                   </div>
                   {rows[s.id].map((row, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -159,7 +159,7 @@ export default function GrinderCalibration({
                     </button>
                   </div>
                   {profiles[s.id]?.updatedAt && (
-                    <span className="tabular text-[11px] text-muted-foreground">
+                    <span className="tabular text-caption text-muted-foreground">
                       {profiles[s.id]!.updatedAt!.slice(2, 10).replace(/-/g, '.')} 저장
                       {profiles[s.id]?.updatedBy && ` · ${profiles[s.id]!.updatedBy!.split('@')[0]}`}
                     </span>
@@ -172,17 +172,17 @@ export default function GrinderCalibration({
           {/* 환산 미리보기 — 레시피 기준(양재천) → 판교 */}
           {ready ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span className="text-[11px] text-muted-foreground">다이얼 대응 미리보기 (양재천 → 판교, 같은 메쉬 기준)</span>
+              <span className="text-caption text-muted-foreground">다이얼 대응 미리보기 (양재천 → 판교, 같은 메쉬 기준)</span>
               <div className="rounded-md border border-border" style={{ display: 'grid', gridTemplateColumns: `repeat(${SAMPLE_DIALS.length}, 1fr)`, textAlign: 'center' }}>
                 {SAMPLE_DIALS.map((d) => (
-                  <div key={`y${d}`} className="tabular text-[13px] text-muted-foreground" style={{ padding: '6px 4px', borderBottom: '1px solid hsl(var(--border))' }}>
+                  <div key={`y${d}`} className="tabular text-body text-muted-foreground" style={{ padding: '6px 4px', borderBottom: '1px solid hsl(var(--border))' }}>
                     {d.toFixed(1)}
                   </div>
                 ))}
                 {SAMPLE_DIALS.map((d) => {
                   const c = convertDial(profiles, 'yangjae', 'pangyo', d);
                   return (
-                    <div key={`p${d}`} className="tabular text-[13px] text-foreground" style={{ padding: '6px 4px' }}>
+                    <div key={`p${d}`} className="tabular text-body text-foreground" style={{ padding: '6px 4px' }}>
                       {c != null ? c.toFixed(1) : '—'}
                     </div>
                   );
@@ -190,7 +190,7 @@ export default function GrinderCalibration({
               </div>
             </div>
           ) : (
-            <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>
+            <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
               {loading ? '측정 데이터를 불러오는 중…' : '아직 다이얼 대응 계산 불가 — 두 지점 모두 측정점이 2개 이상이어야 해요.'}
             </p>
           )}

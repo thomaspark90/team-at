@@ -45,7 +45,7 @@ export default function MemberManager({ initial }: { initial: Member[] }) {
 
   return (
     <div className="flex flex-col gap-12">
-      {error && <div className="text-[13px] text-destructive">⚠️ {error}</div>}
+      {error && <div className="text-body text-destructive">⚠️ {error}</div>}
 
       <Section title={`승인 대기 (${pending.length})`} empty="대기 중인 요청이 없어요.">
         {pending.map((m) => (
@@ -75,10 +75,10 @@ function Section({
   const isEmpty = arr.filter(Boolean).length === 0;
   return (
     <div>
-      <h2 className="mb-[10px] text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{title}</h2>
+      <h2 className="mb-[10px] text-caption uppercase tracking-[0.06em] text-muted-foreground">{title}</h2>
       <div className="overflow-hidden rounded-md border border-border bg-background">
         {isEmpty ? (
-          <div className="px-5 py-[18px] text-[13px] text-muted-foreground">{empty}</div>
+          <div className="px-5 py-[18px] text-body text-muted-foreground">{empty}</div>
         ) : (
           children
         )}
@@ -103,7 +103,7 @@ function Row({
       className={`flex flex-wrap items-center gap-4 border-t border-border px-5 py-6 first:border-t-0 hover:bg-accent ${highlight ? 'bg-muted' : ''}`}
     >
       <div className="min-w-0 flex-[1_1_200px]">
-        <div className="break-all text-[13px] text-foreground">{m.email}</div>
+        <div className="break-all text-body text-foreground">{m.email}</div>
       </div>
 
       <select
@@ -114,7 +114,7 @@ function Row({
           // admin 은 항상 전체 브랜드 — 스코프가 남아 있으면 함께 해제
           onPatch(m.id, role === 'admin' && m.brand_scope ? { role, brand_scope: null } : { role });
         }}
-        className="ta-input text-[13px]"
+        className="ta-input text-body"
       >
         {ROLES.map((r) => (
           <option key={r.value} value={r.value}>
@@ -127,7 +127,7 @@ function Row({
         value={m.brand_scope ?? ''}
         disabled={saving || !m.role || m.role === 'admin'}
         onChange={(e) => onPatch(m.id, { brand_scope: e.target.value || null })}
-        className="ta-input text-[13px]"
+        className="ta-input text-body"
         title="데이터 범위 — 스코프를 두면 해당 브랜드 거래만 보이고 분류할 수 있어요 (RLS 강제)"
       >
         {SCOPES.map((s) => (
@@ -137,7 +137,7 @@ function Row({
         ))}
       </select>
 
-      <label className="flex items-center gap-[6px] text-[13px] text-muted-foreground">
+      <label className="flex items-center gap-[6px] text-body text-muted-foreground">
         <input
           type="checkbox"
           checked={m.can_confirm}
@@ -147,7 +147,7 @@ function Row({
         월 확정 권한
       </label>
 
-      {saving && <span className="text-[11px] text-muted-foreground">저장 중…</span>}
+      {saving && <span className="text-caption text-muted-foreground">저장 중…</span>}
     </div>
   );
 }

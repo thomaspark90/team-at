@@ -43,7 +43,7 @@ export default function StudioNav() {
                 key={href}
                 aria-disabled="true"
                 title={desc ? `${desc} — 접근 권한이 없어요` : '접근 권한이 없어요'}
-                className="cursor-not-allowed whitespace-nowrap text-[13px] text-muted-foreground/40"
+                className="cursor-not-allowed whitespace-nowrap text-body text-muted-foreground/40"
               >
                 {label}
               </span>
@@ -55,7 +55,7 @@ export default function StudioNav() {
               key={href}
               href={href}
               aria-current={active ? 'page' : undefined}
-              className={`whitespace-nowrap text-[13px] transition-colors ${
+              className={`whitespace-nowrap text-body transition-colors ${
                 active ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >

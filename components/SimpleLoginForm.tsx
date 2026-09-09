@@ -78,7 +78,7 @@ export default function SimpleLoginForm() {
 
   return (
     <form onSubmit={submit} className="w-full space-y-3">
-      {done && <p className="text-center text-[13px] text-emerald-600">{done}</p>}
+      {done && <p className="text-center text-body text-emerald-600">{done}</p>}
       {mode === 'login' ? (
         <div className="flex gap-2">
           <input
@@ -118,8 +118,8 @@ export default function SimpleLoginForm() {
       <button type="submit" className="ta-btn w-full" disabled={busy || !ready}>
         {busy ? '확인 중…' : mode === 'login' ? '이름으로 로그인' : '가입 신청'}
       </button>
-      {error && <p className="ta-error text-center text-[13px]">{error}</p>}
-      <p className="text-center text-[11px] text-muted-foreground">
+      {error && <p className="ta-error text-center text-body">{error}</p>}
+      <p className="text-center text-caption text-muted-foreground">
         {mode === 'login' ? (
           <>
             계정이 없나요?{' '}

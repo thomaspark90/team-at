@@ -45,8 +45,8 @@ export default async function AccountingDashboardPage({ searchParams }: { search
         <section className="pb-[54px]">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="m-0 text-[15px] font-medium">송금 대기</h2>
-              <p className="mt-1 text-[13px] text-muted-foreground">
+              <h2 className="m-0 text-title font-medium">송금 대기</h2>
+              <p className="mt-1 text-body text-muted-foreground">
                 {pendingCount > 0 ? (
                   <>
                     <span className="font-medium text-foreground">{pendingCount}건</span> ·{' '}
@@ -62,7 +62,7 @@ export default async function AccountingDashboardPage({ searchParams }: { search
             </div>
             <Link
               href="/dashboard/transfer"
-              className="rounded-lg bg-foreground px-3 py-1.5 text-[13px] font-medium text-background"
+              className="rounded-lg bg-foreground px-3 py-1.5 text-body font-medium text-background"
             >
               송금 요청 →
             </Link>

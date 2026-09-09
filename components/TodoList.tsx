@@ -52,8 +52,8 @@ export default function TodoList({
   return (
     <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div>
-        <p className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>{title}</p>
-        <p className="text-[13px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
+        <p className="text-title font-medium text-foreground" style={{ margin: 0 }}>{title}</p>
+        <p className="text-body text-muted-foreground" style={{ margin: '2px 0 0' }}>
           {desc}
         </p>
       </div>
@@ -72,22 +72,22 @@ export default function TodoList({
         </button>
       </div>
       {todos.length === 0 ? (
-        <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>아직 할 일이 없어요.</p>
+        <p className="text-body text-muted-foreground" style={{ margin: 0 }}>아직 할 일이 없어요.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {todos.map((t) => (
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
               <input type="checkbox" checked={t.done} onChange={() => toggle(t)} disabled={busy} style={{ cursor: 'pointer', flexShrink: 0 }} />
               <span
-                className={`text-[13px] ${t.done ? 'text-muted-foreground' : 'text-foreground'}`}
+                className={`text-body ${t.done ? 'text-muted-foreground' : 'text-foreground'}`}
                 style={{ minWidth: 0, flex: 1, textDecoration: t.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
               >
                 {t.text}
               </span>
-              <span className="tabular text-[11px] text-muted-foreground" style={{ flexShrink: 0 }}>
+              <span className="tabular text-caption text-muted-foreground" style={{ flexShrink: 0 }}>
                 {t.done ? `${fmt(t.doneAt)} 완료${t.doneBy ? ` · ${t.doneBy.split('@')[0]}` : ''}` : `${fmt(t.createdAt)}${t.createdBy ? ` · ${t.createdBy.split('@')[0]}` : ''}`}
               </span>
-              <button onClick={() => remove(t)} disabled={busy} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, flexShrink: 0, padding: 6, margin: -6 }} title="삭제">
+              <button onClick={() => remove(t)} disabled={busy} className="text-muted-foreground hover:text-foreground" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, flexShrink: 0, padding: 6, margin: -6 }} title="삭제">
                 ×
               </button>
             </div>

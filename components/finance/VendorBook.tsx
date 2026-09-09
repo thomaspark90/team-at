@@ -92,7 +92,7 @@ export default function VendorBook() {
   );
 
   const inputCls =
-    'w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-foreground/40';
+    'w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-body text-foreground outline-none focus:border-foreground/40';
 
   const editRow = (
     <div className="rounded-xl border border-border bg-background p-3">
@@ -103,10 +103,10 @@ export default function VendorBook() {
         <input className={`${inputCls} col-span-2`} placeholder="계좌번호" value={draft?.account_no ?? ''} onChange={(e) => setDraft({ ...(draft ?? EMPTY), account_no: e.target.value })} />
       </div>
       <div className="mt-2 flex gap-2">
-        <button onClick={() => setDraft(null)} className="flex-1 rounded-lg border border-border py-1.5 text-[13px] text-muted-foreground hover:text-foreground">
+        <button onClick={() => setDraft(null)} className="flex-1 rounded-lg border border-border py-1.5 text-body text-muted-foreground hover:text-foreground">
           취소
         </button>
-        <button onClick={save} disabled={busy} className="flex-[2] rounded-lg bg-foreground py-1.5 text-[13px] font-medium text-background disabled:opacity-60">
+        <button onClick={save} disabled={busy} className="flex-[2] rounded-lg bg-foreground py-1.5 text-body font-medium text-background disabled:opacity-60">
           {busy ? '저장 중…' : '저장'}
         </button>
       </div>
@@ -117,12 +117,12 @@ export default function VendorBook() {
     <section>
       <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between text-left">
         <div>
-          <h2 className="m-0 text-[15px] font-medium">거래처 계좌장부</h2>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
+          <h2 className="m-0 text-title font-medium">거래처 계좌장부</h2>
+          <p className="mt-0.5 text-body text-muted-foreground">
             AI가 학습한 거래처 계좌를 확인·수정해요. 잘못된 계좌를 고치면 다음 업로드부터 반영돼요.
           </p>
         </div>
-        <span className="text-[13px] text-muted-foreground">{open ? '접기 ▲' : '펼치기 ▼'}</span>
+        <span className="text-body text-muted-foreground">{open ? '접기 ▲' : '펼치기 ▼'}</span>
       </button>
 
       {open && (
@@ -136,7 +136,7 @@ export default function VendorBook() {
             />
             <button
               onClick={() => setDraft({ ...EMPTY })}
-              className="whitespace-nowrap rounded-lg border border-border px-3 py-1.5 text-[13px] text-muted-foreground hover:text-foreground"
+              className="whitespace-nowrap rounded-lg border border-border px-3 py-1.5 text-body text-muted-foreground hover:text-foreground"
             >
               + 추가
             </button>
@@ -144,9 +144,9 @@ export default function VendorBook() {
 
           {draft && draft.id === undefined && editRow}
 
-          {vendors === null && !error && <p className="text-[13px] text-muted-foreground">불러오는 중…</p>}
+          {vendors === null && !error && <p className="text-body text-muted-foreground">불러오는 중…</p>}
           {vendors !== null && visible.length === 0 && (
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-body text-muted-foreground">
               {query ? '검색 결과가 없어요.' : '아직 학습된 거래처가 없어요. 영수증을 등록하면 자동으로 쌓여요.'}
             </p>
           )}
@@ -157,8 +157,8 @@ export default function VendorBook() {
             ) : (
               <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 px-3 py-2.5">
                 <div className="min-w-0">
-                  <p className="m-0 text-[13px] font-medium">{v.vendor_name}</p>
-                  <p className="m-0 mt-0.5 text-[13px] text-muted-foreground">
+                  <p className="m-0 text-body font-medium">{v.vendor_name}</p>
+                  <p className="m-0 mt-0.5 text-body text-muted-foreground">
                     {v.account_no ? (
                       <>
                         <span className="font-mono text-foreground">{[v.bank, v.account_no].filter(Boolean).join(' ')}</span>
@@ -169,7 +169,7 @@ export default function VendorBook() {
                     )}
                   </p>
                 </div>
-                <div className="flex gap-1.5 text-[13px]">
+                <div className="flex gap-1.5 text-body">
                   <button
                     onClick={() =>
                       setDraft({
@@ -192,7 +192,7 @@ export default function VendorBook() {
             )
           )}
 
-          {error && <p className="text-[13px] text-destructive">{error}</p>}
+          {error && <p className="text-body text-destructive">{error}</p>}
         </div>
       )}
     </section>

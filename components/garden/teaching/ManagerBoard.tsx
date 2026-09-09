@@ -84,13 +84,13 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
             <button
               key={s.id}
               onClick={() => setStore(s.id)}
-              className={`rounded-sm px-4 py-1.5 text-[13px] ${store === s.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`rounded-sm px-4 py-1.5 text-body ${store === s.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
             >
               {s.label}
             </button>
           ))}
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-muted-foreground">
           {/* 지점별 스탭 설문(탈리) — 앱 계정 없이 걷은 요청은 여기서 본다 */}
           {STORE_SURVEYS[store] && (
             <a
@@ -110,14 +110,14 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
         </div>
       </div>
 
-      {error && <p className="ta-error text-[13px]">{error}</p>}
+      {error && <p className="ta-error text-body">{error}</p>}
       {!board ? (
-        <p className="text-[13px] text-muted-foreground">불러오는 중…</p>
+        <p className="text-body text-muted-foreground">불러오는 중…</p>
       ) : (
         <>
           <section className="space-y-8">
-            <h2 className="text-[15px]">스탭들이 배우고 싶은 것</h2>
-            {openTotal === 0 && <p className="text-[13px] text-muted-foreground">열린 요청이 없어요. 스탭이 고르면 여기에 실명과 함께 뜹니다.</p>}
+            <h2 className="text-title">스탭들이 배우고 싶은 것</h2>
+            {openTotal === 0 && <p className="text-body text-muted-foreground">열린 요청이 없어요. 스탭이 고르면 여기에 실명과 함께 뜹니다.</p>}
             <div className="grid gap-x-10 gap-y-10 sm:grid-cols-2">
               {TEACHING_CATEGORIES.map((cat) => {
                 const rows = cat.topics.map((t) => ({ t, wanters: wantersOf(t.key) })).filter((r) => r.wanters.length > 0);
@@ -129,13 +129,13 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
                       {rows.map(({ t, wanters }) => (
                         <li key={t.key} className="space-y-2">
                           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                            <span className="text-[13px]">{t.label}</span>
-                            <span className="text-[11px] text-muted-foreground tabular">{wanters.length}명</span>
-                            <button className="text-[11px] underline underline-offset-2" onClick={() => openDraft(t.key)}>
+                            <span className="text-body">{t.label}</span>
+                            <span className="text-caption text-muted-foreground tabular">{wanters.length}명</span>
+                            <button className="text-caption underline underline-offset-2" onClick={() => openDraft(t.key)}>
                               교육함
                             </button>
                           </div>
-                          <p className="text-[13px] text-muted-foreground">{wanters.map((w) => w.name).join(' · ')}</p>
+                          <p className="text-body text-muted-foreground">{wanters.map((w) => w.name).join(' · ')}</p>
                           {draft?.topicKey === t.key && (
                             <div className="space-y-4 rounded-md bg-muted/40 p-4">
                               <div className="flex flex-wrap items-end gap-3">
@@ -187,10 +187,10 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
 
           {board.notes.length > 0 && (
             <section className="space-y-4">
-              <h2 className="text-[15px]">이런 것도 배우고 싶어요</h2>
+              <h2 className="text-title">이런 것도 배우고 싶어요</h2>
               <ul className="space-y-3">
                 {board.notes.map((n) => (
-                  <li key={n.userId} className="text-[13px]">
+                  <li key={n.userId} className="text-body">
                     <span className="text-muted-foreground">{n.name}</span> · {n.note}
                   </li>
                 ))}
@@ -199,13 +199,13 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
           )}
 
           <section className="space-y-4">
-            <h2 className="text-[15px]">최근 교육 기록</h2>
+            <h2 className="text-title">최근 교육 기록</h2>
             {board.sessions.length === 0 ? (
-              <p className="text-[13px] text-muted-foreground">아직 기록이 없어요.</p>
+              <p className="text-body text-muted-foreground">아직 기록이 없어요.</p>
             ) : (
               <table className="w-full text-left">
                 <thead>
-                  <tr className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+                  <tr className="text-caption uppercase tracking-[0.04em] text-muted-foreground">
                     <th className="px-3 py-2">날짜</th>
                     <th className="px-3 py-2">주제</th>
                     <th className="px-3 py-2">참석</th>
@@ -216,7 +216,7 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
                 </thead>
                 <tbody>
                   {board.sessions.map((s) => (
-                    <tr key={s.id} className="border-t border-border text-[13px] hover:bg-accent">
+                    <tr key={s.id} className="border-t border-border text-body hover:bg-accent">
                       <td className="px-3 py-2 tabular">{fmtMd(s.date)}</td>
                       <td className="px-3 py-2">{topicLabel(s.topicKey)}</td>
                       <td className="px-3 py-2 text-muted-foreground">{s.attendees.map((a) => a.name).join(', ')}</td>
@@ -224,7 +224,7 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
                       <td className="px-3 py-2 text-muted-foreground">{s.memo}</td>
                       <td className="px-3 py-2 text-right">
                         {(me.role === 'admin' || s.managerId === me.userId) && (
-                          <button className="text-[11px] text-muted-foreground underline underline-offset-2" onClick={() => removeSession(s.id)}>
+                          <button className="text-caption text-muted-foreground underline underline-offset-2" onClick={() => removeSession(s.id)}>
                             삭제
                           </button>
                         )}

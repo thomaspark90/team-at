@@ -49,9 +49,9 @@ function Line({
     <tr className={bold ? 'border-t border-border' : 'border-t border-border/40'}>
       <td className={`py-1 pr-3 ${bold ? 'font-medium text-foreground' : muted ? 'text-muted-foreground' : 'text-foreground/90'}`}>
         {label}
-        {sub && <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">{sub}</span>}
+        {sub && <span className="ml-1.5 text-caption font-normal text-muted-foreground">{sub}</span>}
       </td>
-      <td className="py-1 pr-3 text-right text-[11px] tabular-nums text-muted-foreground">
+      <td className="py-1 pr-3 text-right text-caption tabular-nums text-muted-foreground">
         {supply != null && supply > 0 ? ((Math.abs(amount) * 100) / supply).toFixed(1) + '%' : ''}
       </td>
       <td
@@ -96,28 +96,28 @@ export default function ClosePnlDrilldown({ ym, unitId, colSpan }: { ym: string;
       <td />
       <td colSpan={colSpan - 1} className="px-3 py-3">
         {error ? (
-          <span className="text-[12px] text-destructive">{error}</span>
+          <span className="text-caption text-destructive">{error}</span>
         ) : !data ? (
-          <span className="text-[12px] text-muted-foreground">관리손익 불러오는 중…</span>
+          <span className="text-caption text-muted-foreground">관리손익 불러오는 중…</span>
         ) : (
           <div className="max-w-[520px]">
             <div className="mb-1.5 flex items-baseline justify-between gap-3">
-              <span className="text-[12px] font-medium text-foreground">{ym} 관리손익 (부가세·수수료 제외 기준)</span>
-              <Link href={`/finance/pnl?unit=${unitId}&ym=${ym}`} className="whitespace-nowrap text-[12px] underline hover:text-foreground">
+              <span className="text-caption font-medium text-foreground">{ym} 관리손익 (부가세·수수료 제외 기준)</span>
+              <Link href={`/finance/pnl?unit=${unitId}&ym=${ym}`} className="whitespace-nowrap text-caption underline hover:text-foreground">
                 관리손익 자세히 →
               </Link>
             </div>
             {data.sales.gross === 0 && (
-              <p className="mb-1.5 mt-0 text-[11px] text-amber-600">
+              <p className="mb-1.5 mt-0 text-caption text-amber-600">
                 이 달 POS 매출이 없어(미업로드) 지출만 잡혀요 — 영업이익이 실제보다 낮게 보여요.
               </p>
             )}
             {unitId === 'pangyo' && (
-              <p className="mb-1.5 mt-0 text-[11px] text-muted-foreground">
+              <p className="mb-1.5 mt-0 text-caption text-muted-foreground">
                 ⓘ 판교 손익은 기여이익 성격 — 통장·카드 지출이 없고 인건비·임대료는 스탭밀 장부 귀속이라(대표 확정), 그 비용들을 빼기 전 숫자예요.
               </p>
             )}
-            <table className="w-full border-collapse text-[12px]">
+            <table className="w-full border-collapse text-caption">
               <tbody>
                 <Line label="총매출 (VAT 포함)" amount={data.sales.gross} muted />
                 <Line label="(−) 부가세" amount={-data.sales.vat} muted />
@@ -153,7 +153,7 @@ export default function ClosePnlDrilldown({ ym, unitId, colSpan }: { ym: string;
                 <Line label="영업이익 (EBIT 근사)" amount={data.operatingProfit} supply={s} bold />
               </tbody>
             </table>
-            <p className="mb-0 mt-1.5 text-[11px] text-muted-foreground">
+            <p className="mb-0 mt-1.5 text-caption text-muted-foreground">
               위 요약 표의 손익(부가세 포함 총액 기준)과 기준이 달라 값이 달라요 — 재고·수수료까지 반영한 정식 손익이에요.
             </p>
           </div>

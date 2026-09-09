@@ -100,8 +100,8 @@ export default function GardenWords() {
   return (
     <div className="space-y-16">
       <div>
-        <h1 className="text-[22px] font-medium">제철 단어 검수</h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <h1 className="text-display font-medium">제철 단어 검수</h1>
+        <p className="mt-1 text-body text-muted-foreground">
           손님이 보낸 단어를 게시하면{' '}
           <a href={PUBLIC_URL} target="_blank" rel="noreferrer" className="underline underline-offset-2">
             공개 페이지
@@ -111,22 +111,22 @@ export default function GardenWords() {
       </div>
 
       {error && (
-        <p className="ta-error rounded-md bg-muted/40 px-4 py-3 text-[13px]">{error}</p>
+        <p className="ta-error rounded-md bg-muted/40 px-4 py-3 text-body">{error}</p>
       )}
 
       {words === null ? (
-        <p className="text-[13px] text-muted-foreground">불러오는 중…</p>
+        <p className="text-body text-muted-foreground">불러오는 중…</p>
       ) : (
         <>
           <section>
-            <h2 className="mb-6 text-[13px] font-medium text-muted-foreground">
+            <h2 className="mb-6 text-body font-medium text-muted-foreground">
               지금 화면에 떠 있는 단어 {SEED_WORDS.length + approvedLive.length}
             </h2>
             <ul className="flex flex-wrap gap-2">
               {SEED_WORDS.map((w) => (
                 <li
                   key={'seed-' + w.t}
-                  className="rounded-full border border-border px-3.5 py-1.5 text-[13px] text-muted-foreground"
+                  className="rounded-full border border-border px-3.5 py-1.5 text-body text-muted-foreground"
                   title="기본 제철 단어"
                 >
                   {w.t}
@@ -135,24 +135,24 @@ export default function GardenWords() {
               {approvedLive.map((w) => (
                 <li
                   key={'live-' + w.id}
-                  className="rounded-full border border-border bg-card px-3.5 py-1.5 text-[13px]"
+                  className="rounded-full border border-border bg-card px-3.5 py-1.5 text-body"
                   title="게시된 손님 단어"
                 >
                   {w.text}
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-[13px] text-muted-foreground">
+            <p className="mt-2 text-body text-muted-foreground">
               흐린 것은 기본 제철 단어, 진한 것은 게시된 손님 단어입니다.
             </p>
           </section>
 
           <section>
-            <h2 className="mb-6 text-[13px] font-medium text-muted-foreground">
+            <h2 className="mb-6 text-body font-medium text-muted-foreground">
               대기 중 {pending.length > 0 && <span className="text-foreground">{pending.length}</span>}
             </h2>
             {pending.length === 0 ? (
-              <p className="text-[13px] text-muted-foreground">대기 중인 단어가 없습니다.</p>
+              <p className="text-body text-muted-foreground">대기 중인 단어가 없습니다.</p>
             ) : (
               <ul className="space-y-4">
                 {pending.map((w) => (
@@ -161,8 +161,8 @@ export default function GardenWords() {
                     className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-4 py-3"
                   >
                     <div className="min-w-0">
-                      <span className="text-[15px]">{w.text}</span>
-                      <span className="ml-3 text-[11px] text-muted-foreground">
+                      <span className="text-title">{w.text}</span>
+                      <span className="ml-3 text-caption text-muted-foreground">
                         {fmt(w.created_at)}
                         {subLabel(w) && ` · 제출자 ${subLabel(w)}`}
                       </span>
@@ -171,14 +171,14 @@ export default function GardenWords() {
                       <button
                         onClick={() => setStatus(w.id, 'approved')}
                         disabled={busyId === w.id}
-                        className="rounded-md bg-foreground px-3.5 py-2 text-[13px] text-background disabled:opacity-50"
+                        className="rounded-md bg-foreground px-3.5 py-2 text-body text-background disabled:opacity-50"
                       >
                         게시
                       </button>
                       <button
                         onClick={() => setStatus(w.id, 'rejected')}
                         disabled={busyId === w.id}
-                        className="rounded-md border border-border px-3.5 py-2 text-[13px] text-muted-foreground disabled:opacity-50"
+                        className="rounded-md border border-border px-3.5 py-2 text-body text-muted-foreground disabled:opacity-50"
                       >
                         반려
                       </button>
@@ -190,16 +190,16 @@ export default function GardenWords() {
           </section>
 
           <section>
-            <h2 className="mb-6 text-[13px] font-medium text-muted-foreground">게시됨 {approved.length}</h2>
+            <h2 className="mb-6 text-body font-medium text-muted-foreground">게시됨 {approved.length}</h2>
             {approved.length === 0 ? (
-              <p className="text-[13px] text-muted-foreground">아직 게시된 손님 단어가 없습니다.</p>
+              <p className="text-body text-muted-foreground">아직 게시된 손님 단어가 없습니다.</p>
             ) : (
               <ul className="flex flex-wrap gap-2">
                 {approved.map((w) => (
                   <li
                     key={w.id}
                     title={subTitle(w)}
-                    className="flex items-center gap-2 rounded-full border border-border bg-card py-1.5 pl-3.5 pr-2 text-[13px]"
+                    className="flex items-center gap-2 rounded-full border border-border bg-card py-1.5 pl-3.5 pr-2 text-body"
                   >
                     {w.text}
                     <button
@@ -218,16 +218,16 @@ export default function GardenWords() {
 
           {rejected.length > 0 && (
             <section>
-              <h2 className="mb-6 text-[13px] font-medium text-muted-foreground">반려됨 {rejected.length}</h2>
+              <h2 className="mb-6 text-body font-medium text-muted-foreground">반려됨 {rejected.length}</h2>
               <ul className="flex flex-wrap gap-2">
                 {rejected.map((w) => (
                   <li
                     key={w.id}
                     title={subTitle(w)}
-                    className="flex items-center gap-2 rounded-full border border-border py-1.5 pl-3.5 pr-2 text-[13px] text-muted-foreground"
+                    className="flex items-center gap-2 rounded-full border border-border py-1.5 pl-3.5 pr-2 text-body text-muted-foreground"
                   >
                     <span className="line-through">{w.text}</span>
-                    {subLabel(w) && <span className="text-[11px]">{subLabel(w)}</span>}
+                    {subLabel(w) && <span className="text-caption">{subLabel(w)}</span>}
                     <button
                       onClick={() => setStatus(w.id, 'pending')}
                       disabled={busyId === w.id}

@@ -28,7 +28,7 @@ export default function HoursProductPicker({
           `/finance/prep/hours?unit=${unit}&product=${encodeURIComponent(e.target.value)}&grain=${grain}&span=${span}`,
         )
       }
-      className="ta-input text-[13px]"
+      className="ta-input text-body"
       aria-label="상품 선택"
     >
       {products.map((p) => (

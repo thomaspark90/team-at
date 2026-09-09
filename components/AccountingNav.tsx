@@ -95,7 +95,7 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
                   key={x.id}
                   href={unitHref(x.id)}
                   aria-current={on ? 'page' : undefined}
-                  className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1 text-[13px] transition-colors ${
+                  className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1 text-body transition-colors ${
                     on
                       ? 'bg-foreground font-medium text-background'
                       : 'border border-border text-muted-foreground hover:text-foreground'
@@ -115,7 +115,7 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
           <div key={ri} className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
             {row.map((group, gi) => (
               <span key={gi} className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                {gi > 0 && <span className="select-none text-[11px] text-border">|</span>}
+                {gi > 0 && <span className="select-none text-caption text-border">|</span>}
                 {group.map(({ href, label }) => (
                   <NavLink key={href} href={withUnit(href)} active={isActive(href)} label={label} />
                 ))}
@@ -130,7 +130,7 @@ export default function AccountingNav({ role, scoped = false }: { role: string |
             <div className="flex w-max items-center gap-x-5">
               {row.map((group, gi) => (
                 <span key={gi} className="flex shrink-0 items-center gap-x-5">
-                  {gi > 0 && <span className="select-none text-[11px] text-border">|</span>}
+                  {gi > 0 && <span className="select-none text-caption text-border">|</span>}
                   {group.map(({ href, label }) => (
                     <NavLink key={href} href={withUnit(href)} active={isActive(href)} label={label} />
                   ))}
@@ -149,7 +149,7 @@ function NavLink({ href, active, label }: { href: string; active: boolean; label
     <Link
       href={href}
       aria-current={active ? 'page' : undefined}
-      className={`whitespace-nowrap text-[13px] transition-colors ${
+      className={`whitespace-nowrap text-body transition-colors ${
         active ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
       }`}
     >

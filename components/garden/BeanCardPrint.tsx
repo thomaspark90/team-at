@@ -150,7 +150,7 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
           {record && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {record.recipeReview ? (
-                <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>
+                <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
                   레시피 재검토 요청됨 · {fmtDate(record.recipeReview.at)}
                   {record.recipeReview.note ? ` · ${record.recipeReview.note}` : ''}
                 </p>
@@ -175,7 +175,7 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
                   레시피 재검토 요청 (되돌리기)
                 </button>
               )}
-              {reviewMsg && <p className="text-[13px]" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{reviewMsg}</p>}
+              {reviewMsg && <p className="text-body" style={{ margin: 0, color: 'hsl(0 72% 45%)' }}>{reviewMsg}</p>}
             </div>
           )}
 
@@ -211,9 +211,9 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
             />
           </div>
           {translateMsg && (
-            <p className="text-[13px] text-muted-foreground" style={{ margin: 0 }}>{translateMsg}</p>
+            <p className="text-body text-muted-foreground" style={{ margin: 0 }}>{translateMsg}</p>
           )}
-          <p className="text-[11px] text-muted-foreground" style={{ margin: 0 }}>
+          <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
             {asset.logo || asset.qr
               ? '로고·QR은 설정에 등록된 이미지가 자동 배치됩니다.'
               : (

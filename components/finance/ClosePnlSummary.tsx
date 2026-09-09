@@ -61,12 +61,12 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
   return (
     <section className="mb-8">
       <div className="mb-1 flex flex-wrap items-baseline gap-x-3">
-        <h2 className="m-0 text-[15px] font-medium">월별 손익 요약</h2>
-        <span className="text-[12px] text-muted-foreground">
+        <h2 className="m-0 text-title font-medium">월별 손익 요약</h2>
+        <span className="text-caption text-muted-foreground">
           전처리1(지출)·전처리3(매출 대사)·전처리4(POS 정본)와 같은 계산 — 숫자가 늘 일치해요.
         </span>
       </div>
-      <p className="mb-3 mt-0 text-[12px] text-muted-foreground">
+      <p className="mb-3 mt-0 text-caption text-muted-foreground">
         손익 = POS 매출(발생주의) − 지출 합계. <b>부가세 포함 총액</b> 기준의 간이 손익이에요 — 지표
         그래프(EBIT)는 부가세 제외 공급가액 기준이라 값은 다르지만 규칙(발생주의·카드대금 차감·미분류 포함)이
         같아 추세는 일치해요. 재고·채널수수료까지 반영한 정식 손익은{' '}
@@ -85,11 +85,11 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
       {/* xl 이상(표가 다 들어가는 폭)에선 overflow를 풀어 ⓘ·미분해 팝오버가 잘리지 않게 —
           overflow-x-auto 컨테이너는 overflow-y도 auto가 돼 하단 행 팝오버가 안에서 잘린다 */}
       <div className="overflow-x-auto rounded-md border border-border xl:overflow-visible">
-        <table className="w-full min-w-[1280px] border-collapse text-[13px]">
+        <table className="w-full min-w-[1280px] border-collapse text-body">
           <thead>
             {/* 그룹 헤더 — 매출 축과 지출 축이 시각적으로 섞여 보인다는 지적(2026-08-21 대표)에
                 따라 2단으로 구분. 비용 구성 %는 지출 합계 바로 오른쪽 열들로 배치. */}
-            <tr className="border-b border-border/50 text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+            <tr className="border-b border-border/50 text-caption uppercase tracking-[0.04em] text-muted-foreground">
               <th className="px-3 py-1.5" />
               <th colSpan={2} className="border-l-2 border-l-border px-3 py-1.5 text-left font-normal">
                 매출
@@ -152,7 +152,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                   className="relative inline-block text-left font-normal"
                   summaryClassName="cursor-pointer list-none whitespace-nowrap hover:text-foreground [&::-webkit-details-marker]:hidden"
                   summary="은행 잔고 ⓘ"
-                  panelClassName="absolute right-0 z-10 mt-1 w-[360px] whitespace-normal rounded-md border border-border bg-background p-3 text-[12px] font-normal leading-relaxed shadow-md"
+                  panelClassName="absolute right-0 z-10 mt-1 w-[360px] whitespace-normal rounded-md border border-border bg-background p-3 text-caption font-normal leading-relaxed shadow-md"
                 >
                     <div className="mb-1.5 font-medium text-foreground">은행 잔고와 손익이 다른 이유</div>
                     <p className="m-0 mb-2 text-muted-foreground">
@@ -258,8 +258,8 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                         summary={won(r.pendingExpense)}
                         panelClassName="absolute right-0 z-10 mt-1 w-[300px] rounded-md border border-border bg-background p-3 text-left shadow-md"
                       >
-                          <div className="mb-2 text-[12px] font-medium text-foreground">{r.ym} 미분해·미분류 구성</div>
-                          <dl className="m-0 space-y-1.5 text-[12px]">
+                          <div className="mb-2 text-caption font-medium text-foreground">{r.ym} 미분해·미분류 구성</div>
+                          <dl className="m-0 space-y-1.5 text-caption">
                             {r.pending.cardOther !== 0 && (
                               <div className="flex items-baseline justify-between gap-2">
                                 <dt className="text-muted-foreground">카드 기타(미분해)</dt>
@@ -314,7 +314,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                               </div>
                             )}
                           </dl>
-                          <div className="mt-2 border-t border-border/50 pt-2 text-[11px] text-muted-foreground">
+                          <div className="mt-2 border-t border-border/50 pt-2 text-caption text-muted-foreground">
                             열 구조 그대로 보려면{' '}
                             <Link href={grainLink('expense-detail')} className="underline hover:text-foreground">
                               전처리2
@@ -325,7 +325,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                     )}
                     {r.pendingExpense !== 0 && pctBase > 0 && (
                       <span
-                        className={`ml-1 text-[12px] ${pendingPct >= 5 ? 'text-amber-600' : 'text-muted-foreground/70'}`}
+                        className={`ml-1 text-caption ${pendingPct >= 5 ? 'text-amber-600' : 'text-muted-foreground/70'}`}
                         title="미분해·미분류 ÷ 매출 — 이 몫이 클수록 왼쪽 구성 %가 실제보다 낮게 보여요"
                       >
                         ({pct(r.pendingExpense)}%{pendingPct >= 5 && ' ⚠'})
@@ -351,7 +351,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                       title="누르면 이 달 관리손익 요약(부가세·수수료 제외)이 펼쳐져요"
                       aria-expanded={expanded.has(r.ym)}
                     >
-                      <span className={`mr-1 text-[11px] ${profit > 0 ? 'text-white/70' : 'text-muted-foreground'}`}>{expanded.has(r.ym) ? '▾' : '▸'}</span>
+                      <span className={`mr-1 text-caption ${profit > 0 ? 'text-white/70' : 'text-muted-foreground'}`}>{expanded.has(r.ym) ? '▾' : '▸'}</span>
                       {profit < 0 ? `−${won(-profit)}` : won(profit)}
                       {noPos && <span className={`ml-0.5 ${profit > 0 ? 'text-white/70' : 'text-muted-foreground'}`}>†</span>}
                     </button>
@@ -359,7 +359,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                         지출% 합 = 지출÷매출, 이익률 = 손익÷매출 이라 둘을 더하면 항상 100%. */}
                     {pctBase > 0 && (
                       <span
-                        className="ml-1 text-[12px] font-normal text-muted-foreground"
+                        className="ml-1 text-caption font-normal text-muted-foreground"
                         title={`이익률 = 손익 ÷ 매출 — 왼쪽 지출 구성 %들과 더하면 100%가 돼요`}
                       >
                         ({profit < 0 ? '−' : ''}{pct(Math.abs(profit))}%)
@@ -379,7 +379,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                       const delta = balanceDelta(r);
                       return delta == null ? null : (
                         <div
-                          className={`text-[11px] ${delta >= 0 ? 'text-positive' : 'text-destructive'}`}
+                          className={`text-caption ${delta >= 0 ? 'text-positive' : 'text-destructive'}`}
                           title="전월 말 잔고 대비 증감 — 회수 시차·손익 밖 입출금 때문에 손익과는 달라요(잔고 ⓘ 참고)"
                         >
                           전월대비 {delta >= 0 ? '+' : '−'}{Math.abs(delta).toLocaleString()}
@@ -388,7 +388,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                     })()}
                     {/* 계좌 2개 이상(가든 양재)이면 합산 아래 계좌별 분해(2026-08-23 그릴 확정) */}
                     {r.bankDetail && r.bankDetail.length >= 2 && (
-                      <div className="text-[11px] text-muted-foreground/70">
+                      <div className="text-caption text-muted-foreground/70">
                         {r.bankDetail.map((b) => `${bankShort(b.bank)} ${won(b.balance) || 0}`).join(' · ')}
                       </div>
                     )}

@@ -62,24 +62,24 @@ export default async function FlowPage({ searchParams }: { searchParams: { unit?
       <FinanceNav role={role} />
       <div className="mx-auto max-w-[1680px] px-6 py-8">
         <div className="mb-1.5 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">자금 흐름</h1>
-          <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+          <h1 className="m-0 text-display tracking-[-0.5px]">자금 흐름</h1>
+          <Link href="/finance" className="text-body text-muted-foreground transition-colors hover:text-foreground">
             ← 재무 홈
           </Link>
         </div>
-        <p className="mb-4 text-[13px] text-muted-foreground">
+        <p className="mb-4 text-body text-muted-foreground">
           통장 현금 기준으로 매출·지출을 카테고리·품목별로 보여줘요(미분류 포함, 카드는 품목까지). 현금 입출금·잔액 합계는 <Link href="/finance/cashflow" className="underline">월별 요약</Link>, 발생주의 손익은 <Link href="/finance/pnl" className="underline">관리손익</Link>에서 봐요.
         </p>
         {unit.store && unassignedCount > 0 && (
-          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
             ⚠️ 지점이 지정되지 않은 가든 거래 {unassignedCount}건이 이 지점 흐름도에서 빠져 있어요. 분류
             화면에서 지점을 지정해 주세요.
           </div>
         )}
         {yms.length === 0 ? (
           <div className="mx-auto my-[60px] text-center text-muted-foreground">
-            <div className="mb-2.5 text-[32px]">📭</div>
-            <p className="m-0 text-[13px]">먼저 거래를 업로드·분류해주세요.</p>
+            <div className="mb-2.5 text-display">📭</div>
+            <p className="m-0 text-body">먼저 거래를 업로드·분류해주세요.</p>
           </div>
         ) : (
           <SankeyFlow periods={periods} data={data} initialKey={initialKey} />

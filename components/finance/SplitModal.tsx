@@ -115,8 +115,8 @@ export default function SplitModal({
         className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-card p-5 shadow-xl sm:max-w-[480px] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="m-0 text-[15px] font-medium">건별 분할</h3>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <h3 className="m-0 text-title font-medium">건별 분할</h3>
+        <p className="mt-1 text-body text-muted-foreground">
           <b className="text-foreground">{target.memo}</b> · {won(target.amount)} — 브랜드·지점별 금액으로 나눠요.
           원거래는 손익에서 빠지고(건별분할), 나눈 행들이 각자 회계로 들어가요.
         </p>
@@ -130,7 +130,7 @@ export default function SplitModal({
                   const u = UNITS.find((x) => unitKey(x.brand, x.store) === e.target.value)!;
                   setLine(i, { brand: u.brand, store: u.store });
                 }}
-                className="ta-input w-[150px] text-[13px]"
+                className="ta-input w-[150px] text-body"
               >
                 {UNITS.map((u) => (
                   <option key={unitKey(u.brand, u.store)} value={unitKey(u.brand, u.store)}>
@@ -143,19 +143,19 @@ export default function SplitModal({
                 min={0}
                 value={Number.isFinite(l.amount) ? l.amount : ''}
                 onChange={(e) => setLine(i, { amount: Number(e.target.value) })}
-                className="ta-input flex-1 text-right text-[13px] tabular"
+                className="ta-input flex-1 text-right text-body tabular"
               />
               <button
                 onClick={() => fillRemain(i)}
                 title="남은 금액 채우기"
-                className="ta-btn h-8 px-2 text-[11px]"
+                className="ta-btn h-8 px-2 text-caption"
               >
                 잔액
               </button>
               {lines.length > 2 && (
                 <button
                   onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))}
-                  className="text-[15px] text-muted-foreground hover:text-destructive"
+                  className="text-title text-muted-foreground hover:text-destructive"
                   title="줄 삭제"
                 >
                   ×
@@ -165,7 +165,7 @@ export default function SplitModal({
           ))}
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-body">
           {lines.length < UNITS.length && (
             <button
               onClick={() => {
@@ -173,12 +173,12 @@ export default function SplitModal({
                 const next = UNITS.find((u) => !used.has(unitKey(u.brand, u.store))) ?? UNITS[0];
                 setLines((ls) => [...ls, { brand: next.brand, store: next.store, amount: 0 }]);
               }}
-              className="ta-btn h-7 px-2.5 text-[13px]"
+              className="ta-btn h-7 px-2.5 text-body"
             >
               + 줄 추가
             </button>
           )}
-          <button onClick={evenSplit} className="ta-btn h-7 px-2.5 text-[13px]">
+          <button onClick={evenSplit} className="ta-btn h-7 px-2.5 text-body">
             균등 분할
           </button>
           <span className={`ml-auto tabular ${remain === 0 ? 'text-positive' : 'text-destructive'}`}>
@@ -186,21 +186,21 @@ export default function SplitModal({
           </span>
         </div>
 
-        <label className="mt-3 flex items-center gap-2 text-[13px] text-muted-foreground">
+        <label className="mt-3 flex items-center gap-2 text-body text-muted-foreground">
           <input type="checkbox" checked={learn} onChange={(e) => setLearn(e.target.checked)} />
           이 가맹점({target.memo.slice(0, 20)})의 분할 비율을 학습해 다음부터 자동 제안
         </label>
 
-        {error && <p className="mt-2 text-[13px] text-destructive">⚠️ {error}</p>}
+        {error && <p className="mt-2 text-body text-destructive">⚠️ {error}</p>}
 
         <div className="mt-4 flex gap-2">
-          <button onClick={onClose} disabled={saving} className="flex-1 rounded-xl border border-border py-2 text-[13px] text-muted-foreground hover:text-foreground">
+          <button onClick={onClose} disabled={saving} className="flex-1 rounded-xl border border-border py-2 text-body text-muted-foreground hover:text-foreground">
             취소
           </button>
           <button
             onClick={save}
             disabled={!valid || saving}
-            className="flex-[2] rounded-xl bg-foreground py-2 text-[13px] font-medium text-background disabled:opacity-50"
+            className="flex-[2] rounded-xl bg-foreground py-2 text-body font-medium text-background disabled:opacity-50"
           >
             {saving
               ? '분할 중…'

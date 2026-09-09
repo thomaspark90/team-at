@@ -134,13 +134,13 @@ export default async function ClassifyPage({
       <AccountingNav role={role} scoped={!!brandScope} />
       <div className="mx-auto max-w-[1600px] px-6 py-8">
         <div className="mb-4 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">지출 자료 분류</h1>
+          <h1 className="m-0 text-display tracking-[-0.5px]">지출 자료 분류</h1>
           <div className="flex gap-4">
-            <Link href="/finance/uploads" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+            <Link href="/finance/uploads" className="text-body text-muted-foreground transition-colors hover:text-foreground">
               자료 이력 →
             </Link>
             {role === 'admin' && (
-              <Link href={settingsHref} className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+              <Link href={settingsHref} className="text-body text-muted-foreground transition-colors hover:text-foreground">
                 설정(계정과목) →
               </Link>
             )}

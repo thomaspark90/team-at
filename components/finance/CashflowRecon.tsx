@@ -107,7 +107,7 @@ export default function CashflowReconTable({ recon, unitId }: { recon: CashflowR
   return (
     <div>
       {warnings.length > 0 && (
-        <ul className="mb-5 flex list-none flex-col gap-1 rounded-md border border-border bg-card/40 p-3 text-[12px] text-muted-foreground">
+        <ul className="mb-5 flex list-none flex-col gap-1 rounded-md border border-border bg-card/40 p-3 text-caption text-muted-foreground">
           {warnings.map((w, i) => (
             <li key={`${w.bucket}-${i}`}>
               <b className="tabular-nums text-foreground">{w.bucket}</b> — {w.message}
@@ -117,9 +117,9 @@ export default function CashflowReconTable({ recon, unitId }: { recon: CashflowR
       )}
 
       <div className="overflow-auto rounded-md border border-border">
-        <table className="w-max min-w-full border-collapse text-[13px]">
+        <table className="w-max min-w-full border-collapse text-body">
           <thead className="sticky top-0 z-10 bg-card">
-            <tr className="border-b border-border/50 text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+            <tr className="border-b border-border/50 text-caption uppercase tracking-[0.04em] text-muted-foreground">
               <th className="sticky left-0 z-20 bg-card px-3 py-1.5" />
               {groups.map((g) => (
                 <th key={g.label} colSpan={g.cols.length} className="border-l-2 border-l-border px-3 py-1.5 text-left font-normal">
@@ -191,7 +191,7 @@ export default function CashflowReconTable({ recon, unitId }: { recon: CashflowR
         </table>
       </div>
 
-      <div className="mt-4 flex flex-col gap-1 text-[12px] text-muted-foreground">
+      <div className="mt-4 flex flex-col gap-1 text-caption text-muted-foreground">
         {groups.flatMap((g) => g.cols)
           .filter((c) => c.hint)
           .map((c) => (

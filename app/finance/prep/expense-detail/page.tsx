@@ -93,22 +93,22 @@ export default async function PrepExpenseDetailPage({
       <AccountingNav role={role} />
       <div className="mx-auto max-w-[1680px] px-6 py-8">
         <div className="mb-1 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">전처리2 — 지출 세분화</h1>
+          <h1 className="m-0 text-display tracking-[-0.5px]">전처리2 — 지출 세분화</h1>
           <Link
             href={`/finance/prep/expense?unit=${unit.id}&grain=${grain}`}
-            className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+            className="text-body text-muted-foreground transition-colors hover:text-foreground"
           >
             ← 전처리1 지출 총합
           </Link>
         </div>
-        <p className="mb-5 max-w-[880px] text-[13px] text-muted-foreground">
+        <p className="mb-5 max-w-[880px] text-body text-muted-foreground">
           <b>{unit.label}</b> 지출을 계정과목별로 펼친 표예요 — 전처리1과 같은 돈을 계정 축으로 다시 자른
           것이라 <b>합계가 전처리1과 정확히 같아야</b> 해요. 하위 계정(정규직·단기 등)은 최상위
           계정(인건비)으로 합쳐 보여요. 금액을 누르면 그 계정 건들이 분류 화면에 필터된 상태로 열려요.
         </p>
 
         {unit.store && unassigned.count > 0 && (
-          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
             ⚠️ 가든 공용(지점 미지정) 거래 {unassigned.count}건이 이 지점 운영 기간({unassigned.sinceYm}~)에
             있어요 — 지정 전까지 어느 지점 표에도 안 잡혀요. 분류 화면에서 지점을 지정해 주세요.
           </div>
@@ -120,7 +120,7 @@ export default async function PrepExpenseDetailPage({
                 key={g.key}
                 href={`/finance/prep/expense-detail?unit=${unit.id}&grain=${g.key}`}
                 aria-current={g.key === grain ? 'page' : undefined}
-                className={`px-3 py-1.5 text-[13px] transition-colors ${
+                className={`px-3 py-1.5 text-body transition-colors ${
                   g.key === grain ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -128,14 +128,14 @@ export default async function PrepExpenseDetailPage({
               </Link>
             ))}
           </div>
-          <span className="text-[12px] text-muted-foreground">
+          <span className="text-caption text-muted-foreground">
             {isMonth ? '비용 기준 — 카드대금에서 수집분을 뺀 값' : '현금흐름 기준 — 나간 돈 그대로'}
             {allBuckets.length > buckets.length && ` · 최근 ${buckets.length}개 구간`}
           </span>
         </div>
 
         {warnings.length > 0 && (
-          <ul className="mb-5 flex list-none flex-col gap-1 rounded-md border border-border bg-card/40 p-3 text-[12px] text-muted-foreground">
+          <ul className="mb-5 flex list-none flex-col gap-1 rounded-md border border-border bg-card/40 p-3 text-caption text-muted-foreground">
             {warnings
               .filter((w) => buckets.includes(w.bucket))
               .map((w) => (
@@ -147,9 +147,9 @@ export default async function PrepExpenseDetailPage({
         )}
 
         {/* 상단 요약 — 5+1 그룹. 그룹 합 = 아래 상세 열 합 = 지출 합계 */}
-        <h2 className="mb-2 mt-2 text-[15px] font-medium">{isMonth ? '월별' : grain === 'week' ? '주별' : '일별'} 요약</h2>
+        <h2 className="mb-2 mt-2 text-title font-medium">{isMonth ? '월별' : grain === 'week' ? '주별' : '일별'} 요약</h2>
         <div className="mb-8 overflow-auto rounded-md border border-border">
-          <table className="w-max min-w-full border-collapse text-[13px]">
+          <table className="w-max min-w-full border-collapse text-body">
             <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b border-border text-muted-foreground">
                 <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">기간</th>
@@ -190,9 +190,9 @@ export default async function PrepExpenseDetailPage({
           </table>
         </div>
 
-        <h2 className="mb-2 text-[15px] font-medium">계정별 상세</h2>
+        <h2 className="mb-2 text-title font-medium">계정별 상세</h2>
         <div className="overflow-auto rounded-md border border-border">
-          <table className="w-max min-w-full border-collapse text-[13px]">
+          <table className="w-max min-w-full border-collapse text-body">
             <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b border-border text-muted-foreground">
                 <th className="sticky left-0 z-20 whitespace-nowrap bg-card px-3 py-2 text-left font-normal">기간</th>
@@ -259,7 +259,7 @@ export default async function PrepExpenseDetailPage({
           </table>
         </div>
 
-        <div className="mt-4 flex flex-col gap-1 text-[12px] text-muted-foreground">
+        <div className="mt-4 flex flex-col gap-1 text-caption text-muted-foreground">
           {columns
             .filter((c) => c.hint)
             .map((c) => (

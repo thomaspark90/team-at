@@ -37,7 +37,7 @@ const fmtDay = (iso: string) => {
 // 칸(슬롯) 우상단 필요 액션 배지 — 좌측 월 사이드바 배지와 같은 시각 언어.
 // 미완료 칸마다 1 (업로드/수집 액션 1개). 부모 칸에 relative 필요.
 const ActionBadge = ({ n = 1 }: { n?: number }) => (
-  <span className="absolute -right-1.5 -top-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-medium leading-none text-white">
+  <span className="absolute -right-1.5 -top-1.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-caption font-medium leading-none text-white">
     {n}
   </span>
 );
@@ -206,16 +206,16 @@ export default function MonthlyUploadBoard({
   return (
     <section id="monthly-board" className="scroll-mt-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="m-0 text-[15px] font-medium">
+        <h2 className="m-0 text-title font-medium">
           {brandLabel(brand)} · {readOnly ? '월별 자료 현황' : '월별 회계자료 업로드'}
           {slots && (
-            <span className={`ml-2 text-[11px] font-normal ${totalDone === totalSlots ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+            <span className={`ml-2 text-caption font-normal ${totalDone === totalSlots ? 'text-emerald-600' : 'text-muted-foreground'}`}>
               {totalDone}/{totalSlots} 완료{partialCount > 0 && <span className="text-amber-600"> · 부분 {partialCount}</span>}
             </span>
           )}
         </h2>
       </div>
-      <p className="mt-1 text-[13px] text-muted-foreground">
+      <p className="mt-1 text-body text-muted-foreground">
         {readOnly ? (
           <>
             이 달에 필요한 자료가 다 들어왔는지 확인하는 화면이에요. 점선 칸 = 아직 없는 자료 — 누르면{' '}
@@ -236,7 +236,7 @@ export default function MonthlyUploadBoard({
       <div className={`mt-8 grid gap-x-4 gap-y-8 sm:grid-cols-2 ${posEntries.length > 0 ? 'xl:grid-cols-4' : 'lg:grid-cols-3'}`}>
         {GROUPS.map((group) => (
           <div key={group}>
-            <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">{group}</div>
+            <div className="mb-2 text-caption uppercase tracking-[0.06em] text-muted-foreground">{group}</div>
             <div className="flex flex-col gap-4">
               {SLOTS.filter((s) => s.group === group).map((s) => {
                 const st = slots?.[s.key];
@@ -256,11 +256,11 @@ export default function MonthlyUploadBoard({
                       }`}
                     >
                       {slots && !st?.done && <ActionBadge />}
-                      <span className="flex items-center gap-2 text-[13px] font-medium">
+                      <span className="flex items-center gap-2 text-body font-medium">
                         {st?.done && <span className="text-emerald-600">✓</span>}
                         {s.label}
                       </span>
-                      <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-2 text-caption text-muted-foreground">
                         {!slots ? (
                           '확인 중…'
                         ) : busy ? (
@@ -299,11 +299,11 @@ export default function MonthlyUploadBoard({
                       title={`${fmtYm(ym)} ${s.label} 거래 내역 보기`}
                       className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 opacity-70 transition-opacity hover:opacity-100"
                     >
-                      <span className="flex items-center gap-2 text-[13px]">
+                      <span className="flex items-center gap-2 text-body">
                         <span className="text-emerald-600">✓</span>
                         <span className="text-muted-foreground line-through">{s.label}</span>
                       </span>
-                      <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-2 text-caption text-muted-foreground">
                         {st.count > 0 && `${st.count}건`}
                         {st.via === 'auto' ? ' · 자동 반영' : st.at ? ` · ${fmtDay(st.at)}` : ''}
                         <span>· 내역 →</span>
@@ -339,13 +339,13 @@ export default function MonthlyUploadBoard({
                   const partialInner = (
                     <>
                       <ActionBadge />
-                      <span className="flex items-center gap-2 text-[13px] font-medium">
+                      <span className="flex items-center gap-2 text-body font-medium">
                         <span className="text-amber-600">◐</span>
                         {s.label}
                       </span>
-                      <span className="text-right text-[11px]">
+                      <span className="text-right text-caption">
                         <span className="font-medium text-amber-600">{st.range ?? '일부'}만 올라옴</span>
-                        <span className="block text-[11px] text-muted-foreground">
+                        <span className="block text-caption text-muted-foreground">
                           {readOnly ? '자료 입력에서 이어서 →' : busy ? '읽는 중…' : '이어서 업로드 →'}
                         </span>
                       </span>
@@ -366,8 +366,8 @@ export default function MonthlyUploadBoard({
                 const emptyInner = (
                   <>
                     {slots && <ActionBadge />}
-                    <span className="text-[13px] font-medium">{s.label}</span>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-body font-medium">{s.label}</span>
+                    <span className="text-caption text-muted-foreground">
                       {readOnly
                         ? '없음 — 자료 입력에서 올리기 →'
                         : busy
@@ -398,7 +398,7 @@ export default function MonthlyUploadBoard({
         {/* POS 매출 체크 — 현황 모드는 브랜드 전 지점, 업로드 모드는 이 단위 지점(빠졌으면 #pos 업로더로) */}
         {posEntries.length > 0 && (
           <div>
-            <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">매출 (POS)</div>
+            <div className="mb-2 text-caption uppercase tracking-[0.06em] text-muted-foreground">매출 (POS)</div>
             <div className="flex flex-col gap-4">
               {posEntries.map(([storeKey, p]) => {
                 const meta = POS_META[storeKey];
@@ -411,11 +411,11 @@ export default function MonthlyUploadBoard({
                       href={readOnly ? `/finance/pnl?ym=${ym}&brand=${brand}${storeKey ? `&store=${storeKey}` : ''}` : '#pos'}
                       className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 opacity-80 transition-colors hover:border-foreground/40"
                     >
-                      <span className="flex items-center gap-2 text-[13px]">
+                      <span className="flex items-center gap-2 text-body">
                         <span className="text-emerald-600">✓</span>
                         <span className="text-muted-foreground">{meta.label}</span>
                       </span>
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-caption text-muted-foreground">
                         {p.days}일 · {won(p.supply)} · {readOnly ? '손익 보기 →' : '위 업로더에서 추가 ↑'}
                       </span>
                     </Link>
@@ -428,8 +428,8 @@ export default function MonthlyUploadBoard({
                     className="relative flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 transition-colors hover:border-foreground/40"
                   >
                     <ActionBadge />
-                    <span className="text-[13px] font-medium">{meta.label}</span>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-body font-medium">{meta.label}</span>
+                    <span className="text-caption text-muted-foreground">
                       {readOnly ? '없음 — 자료 입력에서 올리기 →' : '없음 — 위 POS 업로더에서 올리기 ↑'}
                     </span>
                   </Link>
@@ -441,16 +441,16 @@ export default function MonthlyUploadBoard({
         {/* 분류·월 확정 — 업로드 다음의 마감 업무. 이 칸들 배지까지 합치면 좌측 월 배지와 일치한다 */}
         {(classify || monthClose) && (
           <div>
-            <div className="mb-2 text-[11px] uppercase tracking-[0.06em] text-muted-foreground">분류 · 확정</div>
+            <div className="mb-2 text-caption uppercase tracking-[0.06em] text-muted-foreground">분류 · 확정</div>
             <div className="flex flex-col gap-4">
               {classify &&
                 (classify.total === 0 ? (
                   <div className="flex items-center justify-between gap-2 rounded-xl bg-muted/40 px-3.5 py-2.5 opacity-70">
-                    <span className="flex items-center gap-2 text-[13px]">
+                    <span className="flex items-center gap-2 text-body">
                       <span className="text-emerald-600">✓</span>
                       <span className="text-muted-foreground line-through">지출 자료 분류</span>
                     </span>
-                    <span className="text-[11px] text-muted-foreground">미분류 없음</span>
+                    <span className="text-caption text-muted-foreground">미분류 없음</span>
                   </div>
                 ) : (
                   <Link
@@ -458,8 +458,8 @@ export default function MonthlyUploadBoard({
                     className="relative flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 transition-colors hover:border-foreground/40"
                   >
                     <ActionBadge n={classify.sources} />
-                    <span className="text-[13px] font-medium">지출 자료 분류</span>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-body font-medium">지출 자료 분류</span>
+                    <span className="text-caption text-muted-foreground">
                       미분류 <b className="tabular-nums text-foreground">{classify.total}건</b> · 분류하기 →
                     </span>
                   </Link>
@@ -467,11 +467,11 @@ export default function MonthlyUploadBoard({
               {monthClose &&
                 (monthClose.confirmed ? (
                   <div className="flex items-center justify-between gap-2 rounded-xl bg-muted/40 px-3.5 py-2.5 opacity-70">
-                    <span className="flex items-center gap-2 text-[13px]">
+                    <span className="flex items-center gap-2 text-body">
                       <span className="text-emerald-600">✓</span>
                       <span className="text-muted-foreground line-through">월 확정</span>
                     </span>
-                    <span className="text-[11px] text-muted-foreground">확정됨</span>
+                    <span className="text-caption text-muted-foreground">확정됨</span>
                   </div>
                 ) : (
                   <Link
@@ -479,8 +479,8 @@ export default function MonthlyUploadBoard({
                     className="relative flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-background px-3.5 py-2.5 transition-colors hover:border-foreground/40"
                   >
                     <ActionBadge />
-                    <span className="text-[13px] font-medium">월 확정</span>
-                    <span className="text-[11px] text-muted-foreground">미확정 — 확정하기 →</span>
+                    <span className="text-body font-medium">월 확정</span>
+                    <span className="text-caption text-muted-foreground">미확정 — 확정하기 →</span>
                   </Link>
                 ))}
             </div>
@@ -490,10 +490,10 @@ export default function MonthlyUploadBoard({
 
       {!readOnly && preview && activeSlot && (
         <div className="mt-8 rounded-xl bg-muted/40 p-4">
-          <div className="text-[13px] font-medium">
+          <div className="text-body font-medium">
             {fmtYm(ym)} · {activeLabel} <span className="font-normal text-muted-foreground">— 인식 결과 확인</span>
           </div>
-          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[13px]">
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-body">
             <span>읽음 <b>{preview.totalRows}건</b></span>
             <span className="text-emerald-600">신규 <b>{preview.fresh}건</b></span>
             {preview.duplicates > 0 && <span className="text-muted-foreground">중복 {preview.duplicates}건</span>}
@@ -502,7 +502,7 @@ export default function MonthlyUploadBoard({
             <span>출금 {won(preview.sumOut)}</span>
           </div>
           {preview.coverage && !preview.coverage.full && (
-            <p className="mt-2 text-[13px] text-amber-600">
+            <p className="mt-2 text-body text-amber-600">
               ◐ 이 파일은 {preview.coverage.label ? `${preview.coverage.label} 구간만` : `${fmtYm(ym)} 거래 없이`} 포함해요
               (월 커버리지 {preview.coverage.pct}%). 저장은 되지만 칸은 <b>부분</b>으로 표시되고, 나머지 기간 파일을
               이어서 올리면 완료로 바뀌어요.
@@ -510,35 +510,35 @@ export default function MonthlyUploadBoard({
           )}
           {preview.continuity && (
             preview.continuity.breaks === 0 ? (
-              <p className="mt-2 text-[13px] text-emerald-600">
+              <p className="mt-2 text-body text-emerald-600">
                 ✓ 잔액 연속성 확인 — 중간 누락 없음 ({preview.continuity.checked}건 연결)
               </p>
             ) : preview.continuity.reliable ? (
-              <p className="mt-2 text-[13px] text-destructive">
+              <p className="mt-2 text-body text-destructive">
                 ⚠ 잔액 흐름이 {preview.continuity.breaks}곳에서 끊겨요
                 {preview.continuity.firstBreak &&
                   ` (첫 지점: ${preview.continuity.firstBreak.date.slice(5).replace('-', '/')} ${preview.continuity.firstBreak.memo})`}
                 — 그 사이 거래가 빠졌을 수 있어요. 은행에서 전체 기간을 다시 내려받아 확인하세요.
               </p>
             ) : (
-              <p className="mt-2 text-[13px] text-muted-foreground">
+              <p className="mt-2 text-body text-muted-foreground">
                 잔액 연속성은 판정하지 못했어요 (여러 계좌가 섞였거나 정렬이 다른 파일이에요).
               </p>
             )
           )}
           {preview.outOfMonth > 0 && (
-            <p className="mt-2 text-[13px] text-amber-600">
+            <p className="mt-2 text-body text-amber-600">
               ⚠ {fmtYm(ym)} 밖의 거래가 {preview.outOfMonth}건 있어요. 다른 달 파일이 아닌지 확인하세요. (거래는 각자 실제 날짜의 달로 들어가고, 그 달의 칸에도 자동 반영돼요)
             </p>
           )}
           {(preview.crossFormat?.count ?? 0) > 0 && (
-            <p className="mt-2 text-[13px] text-amber-600">
+            <p className="mt-2 text-body text-amber-600">
               ⚠ 이 기간에 <b>PDF로 올린 이력</b>이 있어요. 형식이 다르면 중복이 걸러지지 않아 같은 거래가 이중
               저장될 수 있어요 — 같은 계좌 내역이면 저장 전에 업로드 이력을 확인하세요.
             </p>
           )}
           {preview.sample.length > 0 && (
-            <div className="mt-3 flex flex-col gap-1 border-t border-border pt-3 text-[13px] text-muted-foreground">
+            <div className="mt-3 flex flex-col gap-1 border-t border-border pt-3 text-body text-muted-foreground">
               {preview.sample.slice(0, 5).map((t) => (
                 <div key={t.dedupHash} className="flex justify-between gap-3">
                   <span className="truncate">{t.txAt.slice(0, 10)} · {t.memo}</span>
@@ -549,13 +549,13 @@ export default function MonthlyUploadBoard({
             </div>
           )}
           <div className="mt-4 flex gap-2">
-            <button onClick={cancel} disabled={saving} className="flex-1 rounded-xl border border-border py-2.5 text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-60">
+            <button onClick={cancel} disabled={saving} className="flex-1 rounded-xl border border-border py-2.5 text-body text-muted-foreground hover:text-foreground disabled:opacity-60">
               취소
             </button>
             <button
               onClick={save}
               disabled={saving}
-              className="flex-[2] rounded-xl bg-foreground py-2.5 text-[13px] font-medium text-background disabled:opacity-60"
+              className="flex-[2] rounded-xl bg-foreground py-2.5 text-body font-medium text-background disabled:opacity-60"
             >
               {saving ? '저장 중…' : preview.fresh === 0 ? '완료로 표시 (새 거래 없음)' : `신규 ${preview.fresh}건 저장`}
             </button>
@@ -563,8 +563,8 @@ export default function MonthlyUploadBoard({
         </div>
       )}
 
-      {notice && <p className="mt-3 text-[13px]" style={{ color: 'hsl(var(--number-colored))' }}>{notice}</p>}
-      {error && <p className="mt-3 text-[13px] text-destructive">{error}</p>}
+      {notice && <p className="mt-3 text-body" style={{ color: 'hsl(var(--number-colored))' }}>{notice}</p>}
+      {error && <p className="mt-3 text-body text-destructive">{error}</p>}
     </section>
   );
 }

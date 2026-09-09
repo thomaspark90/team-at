@@ -242,12 +242,12 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
       {/* 폭 제한 없음 — 손익 요약 열이 많아 화면을 100% 쓴다(2026-08-21 대표 요청) */}
       <div className="w-full px-6 py-8">
         <div className="mb-4 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">월 결산</h1>
-          <Link href="/finance" className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+          <h1 className="m-0 text-display tracking-[-0.5px]">월 결산</h1>
+          <Link href="/finance" className="text-body text-muted-foreground transition-colors hover:text-foreground">
             ← 재무 홈
           </Link>
         </div>
-        <p className="mb-5 mt-0 text-[13px] leading-[1.6] text-muted-foreground">
+        <p className="mb-5 mt-0 text-body leading-[1.6] text-muted-foreground">
           <b>{unit.label}</b>의 월 결산이에요 — 확정하면 입력이 잠기고 그 시점 집계가 결산값으로 저장돼요. 결산 후 분류를 고치면 '결산 확인'에서 차이가 보여요. 미분류
           {unit.store ? '와 지점 미지정 가든 거래' : ''}가 0건인 달만 확정할 수 있고, 확정하면 그 달·그 단위의 지출 자료 분류가
           잠겨요. {allowConfirm ? '' : '(확정 권한은 관리자에게 요청하세요.)'}
@@ -255,7 +255,7 @@ export default async function ClosePage({ searchParams }: { searchParams: { bran
         {/* 지점 뷰의 손익 요약이 조용히 빼는 '지점 미지정' 거래 — 경고 배너(2026-08-22 감사 D12).
             아래 확정 표에는 달별 건수가 있지만, 손익 요약(지출·통장 열)에도 빠져 있음을 여기서 알린다. */}
         {unit.store && totalUnassigned > 0 && (
-          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-[13px]">
+          <div className="mb-5 rounded-md border border-amber-600/40 bg-amber-500/5 px-4 py-3 text-body">
             ⚠️ 지점이 지정되지 않은 가든 거래 {totalUnassigned}건이 아래 손익 요약에서 빠져 있어요. 분류 화면에서
             지점을 지정해 주세요(해당 달은 지정 완료 전까지 확정할 수 없어요).
           </div>

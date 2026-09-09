@@ -58,19 +58,20 @@ CSS 변수 → Tailwind 유틸(`bg-*`, `text-*`, `border-*`)로 노출. 다크 �
 
 폰트: [Freesentation](https://freesentation.blog/) (OFL) — `/public/fonts` 셀프호스팅 woff2, 실사용 웨이트 400/500 두 파일만 로드(각 248KB).
 
-- 기본 웨이트 **400**. 강조는 색 대비 우선 — 웨이트를 쓸 땐 **`font-medium`(500)만** (2026-07-05 확정: 600/700 금지, 활성 탭·선택 pill·합계 행·뱃지 등 상태 강조 전용). 크기(15/22px)가 이미 위계를 만드는 타이틀·큰 숫자·11px 라벨엔 웨이트 안 씀.
+- 기본 웨이트 **400**. 강조는 색 대비 우선 — 웨이트를 쓸 땐 **`font-medium`(500)만** (2026-07-05 확정: 600/700 금지, 활성 탭·선택 pill·합계 행·뱃지 등 상태 강조 전용). 크기(title/display)가 이미 위계를 만드는 타이틀·큰 숫자·caption 라벨엔 웨이트 안 씀.
 - 숫자·금액·테이블 셀에 `.tabular`(tabular-nums).
-- 캡션/라벨: `.caption` 또는 `text-[11px] uppercase tracking-[0.06em] text-muted-foreground`.
+- 캡션/라벨: `.caption` 또는 `text-caption uppercase tracking-[0.06em] text-muted-foreground`.
 
-**폰트 크기는 5단계 램프만 사용** (2026-07-05 확정, Figma 가이드와 동기):
+**폰트 크기는 4단계 램프만 사용** (2026-09-09 대표 확정 — 종류가 너무 많아 미니멀하지 않고 가독성이 떨어진다는 지적으로 5단계(32/22/15/13/11)+잡다한 12·14·16·18·20을 접음. `tailwind.config.ts` `fontSize` 토큰):
 
-| 크기 | 용도 |
-|------|------|
-| Display(`text-5xl` 등) | 브랜드/히어로 |
-| `text-[22px]` | 페이지 타이틀 · KPI 큰 숫자 |
-| `text-[15px]` | 카드·섹션 타이틀 |
-| `text-[13px]` | 본문 · UI 기본(버튼·인풋·테이블·탭) |
-| `text-[11px]` | 캡션 · 라벨 · 보조 |
+| 토큰 | 크기 | 용도 |
+|------|------|------|
+| `text-display` | 28px | 페이지 타이틀 · KPI 큰 숫자 |
+| `text-title` | 20px | 카드·섹션 타이틀 · 상단 내비 |
+| `text-body` | 15px | 본문 · UI 기본(버튼·인풋·테이블·탭) |
+| `text-caption` | 12px | 캡션 · 라벨 · 보조 |
+
+`text-[Npx]` 직접 지정 금지. 브랜드/히어로 Display(`text-5xl` 등)만 예외.
 
 램프 외 크기 금지 — 발견 시 위 표로 스냅 (예외는 §7).
 
@@ -81,7 +82,7 @@ CSS 변수 → Tailwind 유틸(`bg-*`, `text-*`, `border-*`)로 노출. 다크 �
 | 클래스 | = |
 |--------|---|
 | `.ta-card` | `rounded-md border border-border bg-card p-6`. 페이지 최상위 섹션에는 쓰지 않는다(§1·§7) — 모달·팝오버 등 플로팅 패널, `/install`·`/s/[token]` 같은 화면 중앙 단일 카드(포커스드 단일 액션 페이지) 정도로 한정. 스탭밀(`/studio`)·가든(`/garden`)에서 그래도 쓸 땐 `bg-background`(흰색) 오버라이드(2026-07-06). |
-| `.ta-input` | `h-9 rounded-md border border-input bg-transparent px-3 text-[13px] …` (input/select/textarea) |
+| `.ta-input` | `h-9 rounded-md border border-input bg-transparent px-3 text-body …` (input/select/textarea) |
 | `.ta-btn` | 아웃라인 버튼 (h-9, border, hover:bg-accent) |
 | `.ta-btn-primary` | 다크 프라이머리 버튼 (h-9, bg-primary) |
 | `.ta-label` | 섹션 캡션 (uppercase, muted, 11px) |
@@ -92,8 +93,8 @@ CSS 변수 → Tailwind 유틸(`bg-*`, `text-*`, `border-*`)로 노출. 다크 �
 
 ## 5. 테이블 (midday 핵심 룩)
 
-- 헤더행: `text-[11px] uppercase tracking-[0.04em] text-muted-foreground`, 셀 `px-3 py-2`.
-- 바디 셀: `px-3 py-2 text-[13px] text-foreground`, 행 구분 `border-t border-border`.
+- 헤더행: `text-caption uppercase tracking-[0.04em] text-muted-foreground`, 셀 `px-3 py-2`.
+- 바디 셀: `px-3 py-2 text-body text-foreground`, 행 구분 `border-t border-border`.
 - 금액 열: `text-right tabular`. hover 행: `hover:bg-accent`. 컴팩트 유지.
 
 ---

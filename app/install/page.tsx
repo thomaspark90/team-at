@@ -9,23 +9,23 @@ export const metadata: Metadata = { title: '앱 설치 방법' };
 const Step = ({ n, children }: { n: number; children: React.ReactNode }) => (
   <li style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
     <span
-      className="tabular text-[11px] text-muted-foreground"
+      className="tabular text-caption text-muted-foreground"
       style={{ flexShrink: 0, width: 18, textAlign: 'right' }}
     >
       {n}.
     </span>
-    <span className="text-[13px] text-foreground">{children}</span>
+    <span className="text-body text-foreground">{children}</span>
   </li>
 );
 
 const Card = ({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) => (
   <div className="ta-card bg-background" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
     <div>
-      <h2 className="text-[15px] font-medium text-foreground" style={{ margin: 0 }}>
+      <h2 className="text-title font-medium text-foreground" style={{ margin: 0 }}>
         {title}
       </h2>
       {sub && (
-        <p className="text-[13px] text-muted-foreground" style={{ margin: '2px 0 0' }}>
+        <p className="text-body text-muted-foreground" style={{ margin: '2px 0 0' }}>
           {sub}
         </p>
       )}
@@ -43,10 +43,10 @@ export default function InstallPage() {
         <div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-team-at.png" alt="TEAM at" className="mb-6 h-6 w-auto dark:invert" />
-          <h1 className="text-[22px] font-medium text-foreground" style={{ margin: 0 }}>
+          <h1 className="text-display font-medium text-foreground" style={{ margin: 0 }}>
             앱 설치 방법
           </h1>
-          <p className="text-[13px] text-muted-foreground" style={{ margin: '6px 0 0', lineHeight: 1.7 }}>
+          <p className="text-body text-muted-foreground" style={{ margin: '6px 0 0', lineHeight: 1.7 }}>
             team-at은 앱스토어 없이 브라우저에서 바로 설치하는 웹앱입니다. 설치하면 홈 화면 아이콘으로
             일반 앱처럼 열리고, 알림도 받을 수 있어요. 먼저{' '}
             <span className="text-foreground">team-at-apps.vercel.app</span> 에 접속한 뒤 기기에 맞는
@@ -101,7 +101,7 @@ export default function InstallPage() {
           </Step>
         </Card>
 
-        <p className="text-[13px] text-muted-foreground" style={{ margin: 0, lineHeight: 1.7 }}>
+        <p className="text-body text-muted-foreground" style={{ margin: 0, lineHeight: 1.7 }}>
           설치가 안 되거나 로그인이 막히면 관리자에게 문의해 주세요.{' '}
           <Link href="/" className="underline hover:text-foreground">
             로그인 화면으로 →

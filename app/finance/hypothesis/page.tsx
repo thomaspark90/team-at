@@ -140,12 +140,12 @@ export default async function HypothesisPage({ searchParams }: { searchParams: {
       <FinanceNav role={role} />
       <div className="mx-auto max-w-[1100px] px-6 py-8">
         <div className="mb-1 flex items-baseline justify-between">
-          <h1 className="m-0 text-[22px] tracking-[-0.5px]">가설</h1>
-          <Link href={`/finance/metrics?unit=${unit.id}`} className="text-[13px] text-muted-foreground transition-colors hover:text-foreground">
+          <h1 className="m-0 text-display tracking-[-0.5px]">가설</h1>
+          <Link href={`/finance/metrics?unit=${unit.id}`} className="text-body text-muted-foreground transition-colors hover:text-foreground">
             지표로 →
           </Link>
         </div>
-        <p className="mb-5 max-w-[820px] text-[13px] text-muted-foreground">
+        <p className="mb-5 max-w-[820px] text-body text-muted-foreground">
           <b>{unit.label}</b> — 현장에서 “이럴 것이다”라고 믿는 것을 우리 데이터로 확인하는 곳이에요. 결론은
           사람이 적지 않고 <b>매번 숫자에서 다시 만들어요</b> — 자료가 쌓이면 판정이 바뀝니다. 그래서 카드마다
           <b> 한계</b>를 같이 적어요.
@@ -153,13 +153,13 @@ export default async function HypothesisPage({ searchParams }: { searchParams: {
         </p>
 
         {cards.length === 0 ? (
-          <div className="rounded-md border border-border bg-muted/40 px-4 py-6 text-[13px] text-muted-foreground">
+          <div className="rounded-md border border-border bg-muted/40 px-4 py-6 text-body text-muted-foreground">
             이 단위에는 아직 검증할 자료가 없어요. 가든 지점은 <Link href="/garden/weather" className="underline">날씨 분석</Link>을
             한 번 열어 계산을 돌리면 카드가 생겨요.
           </div>
         ) : (
           <>
-            <div className="mb-6 flex flex-wrap gap-x-6 gap-y-2 rounded-md bg-muted/40 px-4 py-3 text-[13px]">
+            <div className="mb-6 flex flex-wrap gap-x-6 gap-y-2 rounded-md bg-muted/40 px-4 py-3 text-body">
               {(['refuted', 'confirmed', 'mixed', 'insufficient'] as Verdict[])
                 .filter((v) => counts[v])
                 .map((v) => (
@@ -174,13 +174,13 @@ export default async function HypothesisPage({ searchParams }: { searchParams: {
               {cards.map((c) => (
                 <section key={c.id} className="rounded-md border border-border p-5">
                   <div className="mb-2 flex flex-wrap items-center gap-3">
-                    <span className={`rounded-full px-2.5 py-0.5 text-[12px] ${BADGE[c.verdict]}`}>{VERDICT_LABEL[c.verdict]}</span>
-                    <h2 className="m-0 text-[16px] font-medium">“{c.claim}”</h2>
-                    <span className="text-[12px] text-muted-foreground">{c.origin}</span>
+                    <span className={`rounded-full px-2.5 py-0.5 text-caption ${BADGE[c.verdict]}`}>{VERDICT_LABEL[c.verdict]}</span>
+                    <h2 className="m-0 text-title font-medium">“{c.claim}”</h2>
+                    <span className="text-caption text-muted-foreground">{c.origin}</span>
                   </div>
-                  <p className="m-0 mb-4 text-[14px]">{c.headline}</p>
+                  <p className="m-0 mb-4 text-body">{c.headline}</p>
                   <div className="mb-4 overflow-hidden rounded-md border border-border">
-                    <table className="w-full border-collapse text-[13px]">
+                    <table className="w-full border-collapse text-body">
                       <tbody>
                         {c.numbers.map((n) => (
                           <tr key={n.label} className="border-b border-border/50 last:border-0">
@@ -191,7 +191,7 @@ export default async function HypothesisPage({ searchParams }: { searchParams: {
                       </tbody>
                     </table>
                   </div>
-                  <div className="flex flex-col gap-1.5 text-[12px]">
+                  <div className="flex flex-col gap-1.5 text-caption">
                     {c.rule && (
                       <p className="m-0">
                         <b className="text-foreground">그래서 </b>

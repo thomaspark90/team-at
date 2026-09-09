@@ -63,7 +63,7 @@ export default function TabNav() {
                   key={tab.href}
                   aria-disabled="true"
                   title="접근 권한이 없어요"
-                  className="shrink-0 cursor-not-allowed whitespace-nowrap px-2.5 py-1.5 text-[13px] text-muted-foreground/40 sm:px-3"
+                  className="shrink-0 cursor-not-allowed whitespace-nowrap px-2.5 py-1.5 text-body text-muted-foreground/40 sm:px-3"
                 >
                   {tab.label}
                 </span>
@@ -82,7 +82,7 @@ export default function TabNav() {
                 href={tab.href}
                 aria-current={active ? 'page' : undefined}
                 title={tab.desc}
-                className={`shrink-0 whitespace-nowrap px-2.5 py-1.5 text-[13px] transition-colors sm:px-3 ${
+                className={`shrink-0 whitespace-nowrap px-2.5 py-1.5 text-body transition-colors sm:px-3 ${
                   active
                     ? 'font-medium text-foreground underline decoration-foreground/30 underline-offset-[10px]'
                     : 'text-muted-foreground hover:text-foreground'
@@ -99,7 +99,7 @@ export default function TabNav() {
           <ThemeToggle />
           <button
             onClick={handleLogout}
-            className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+            className="text-caption text-muted-foreground transition-colors hover:text-foreground"
           >
             로그아웃
           </button>
@@ -142,7 +142,7 @@ export default function TabNav() {
                   <span
                     key={tab.href}
                     aria-disabled="true"
-                    className="cursor-not-allowed py-2 text-[20px] leading-snug tracking-[-0.3px] text-foreground/25"
+                    className="cursor-not-allowed py-2 text-title leading-snug tracking-[-0.3px] text-foreground/25"
                   >
                     {tab.label}
                   </span>
@@ -161,7 +161,7 @@ export default function TabNav() {
                   href={tab.href}
                   aria-current={active ? 'page' : undefined}
                   onClick={() => setMenuOpen(false)}
-                  className={`py-2 text-[20px] leading-snug tracking-[-0.3px] transition-colors ${
+                  className={`py-2 text-title leading-snug tracking-[-0.3px] transition-colors ${
                     active ? 'font-medium text-foreground' : 'text-foreground/55 hover:text-foreground'
                   }`}
                 >
@@ -176,12 +176,12 @@ export default function TabNav() {
 
           {/* 하단 유틸리티 — 헤어라인 구분의 조용한 행들 */}
           <div className="flex items-center justify-between border-t border-border py-3.5">
-            <span className="text-[13px] text-muted-foreground">테마</span>
+            <span className="text-body text-muted-foreground">테마</span>
             <ThemeOptions />
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center justify-between border-t border-border py-3.5 text-left text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+            className="flex items-center justify-between border-t border-border py-3.5 text-left text-body text-muted-foreground transition-colors hover:text-foreground"
           >
             로그아웃
             <span aria-hidden>→</span>
