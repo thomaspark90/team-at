@@ -98,7 +98,7 @@ export default async function RawPage({ searchParams }: { searchParams: Record<s
           href="/finance/originals"
           className="text-body text-muted-foreground transition-colors hover:text-foreground"
         >
-          원본 자료함 →
+          원본 자료함 ›
         </Link>
       }
     >

@@ -928,7 +928,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           className="ta-btn"
           style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 13, flexShrink: 0, textDecoration: 'none' }}
         >
-          판매가 설정 열기 →
+          판매가 설정 열기 ›
         </Link>
       </div>
     </div>
@@ -955,15 +955,15 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           </div>
 
           {/* ICE / HOT 전환 — 같은 원두의 다른 타입 레시피로 이동 */}
-          <div className="inline-flex gap-1 rounded-md border border-border p-1" style={{ margin: '24px 0' }}>
+          <div className="inline-flex gap-1 ta-seg" style={{ margin: '24px 0' }}>
             {BREW_TYPES.map((bt) => {
               const on = draft.brewType === bt;
               return (
                 <button
                   key={bt}
                   onClick={() => !on && openEditor(draft.beanKey, draft.bean, bt)}
-                  className={`rounded-sm px-3 py-1 text-body transition-colors ${
-                    on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  className={`ta-seg-item px-3 py-1 text-body transition-colors ${
+                    on ? 'ta-seg-on' : ''
                   }`}
                 >
                   {btLabel(bt)}

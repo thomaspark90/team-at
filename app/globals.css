@@ -190,6 +190,10 @@
   .ta-seg-on {
     @apply bg-background font-medium text-foreground shadow-soft-sm;
   }
+  /* 설명문·안내문 폭 — 컨테이너가 1400 이라 문단은 따로 72자에서 접는다(2026-09-10) */
+  .ta-prose {
+    @apply max-w-[72ch];
+  }
   .ta-label {
     @apply mb-3 block text-caption uppercase tracking-[0.06em] text-muted-foreground;
   }

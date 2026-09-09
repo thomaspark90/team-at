@@ -264,7 +264,7 @@ export default function RawTable({
           href={`/api/finance/raw/export?${rawQueryToParams(query)}`}
           className="ml-auto text-body text-muted-foreground underline transition-colors hover:text-foreground"
         >
-          CSV 내려받기 →
+          CSV 내려받기 ›
         </a>
       </div>
 

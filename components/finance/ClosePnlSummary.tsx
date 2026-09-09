@@ -165,7 +165,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                         <b className="text-foreground">회수 시차</b> (매달 ±수백만~±1,900만) — 카드 입금 1~2일 밀림 +
                         식권대장 정산이 가끔 한 달 건너뛰어 다음 달에 두 달치가 합산 입금.
                         {unitId === 'staffmeal' && (
-                          <> 예: 2025-11 +1,876만(10월 말 식권 대량판매 현금이 11월 초 입금), 2025-12 −1,025만 →
+                          <> 예: 2025-11 +1,876만(10월 말 식권 대량판매 현금이 11월 초 입금), 2025-12 −1,025만 ›
                           2026-01 +1,197만(정산 한 달 건너뜀), 2026-06 −1,556만 → 2026-07 +1,112만(같은 패턴).</>
                         )}
                       </li>
@@ -270,7 +270,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                                     className="underline hover:text-foreground"
                                     title="카드대금 인출 건들 — 표시 금액은 인출에서 네이버페이·쿠팡 수집분을 뺀 몫이라 목록 합계와는 달라요. 카드 명세를 올려 분류하면 사라져요."
                                   >
-                                    보기→
+                                    보기 ›
                                   </Link>
                                 </dd>
                               </div>
@@ -285,7 +285,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                                     className="underline hover:text-foreground"
                                     title="아직 계정이 없는 지출 — 누르면 분류 화면에 필터된 상태로 열려요"
                                   >
-                                    분류→
+                                    분류 ›
                                   </Link>
                                 </dd>
                               </div>
@@ -300,7 +300,7 @@ export default function ClosePnlSummary({ rows, unitId }: { rows: PnlSummaryRow[
                                     className="underline hover:text-foreground"
                                     title="용도를 판단하지 못해 보류한 지출 건들"
                                   >
-                                    보기→
+                                    보기 ›
                                   </Link>
                                 </dd>
                               </div>

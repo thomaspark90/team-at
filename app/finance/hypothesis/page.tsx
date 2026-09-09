@@ -148,7 +148,7 @@ export default async function HypothesisPage({ searchParams }: { searchParams: {
       }
       actions={
         <Link href={`/finance/metrics?unit=${unit.id}`} className="text-body text-muted-foreground transition-colors hover:text-foreground">
-          지표로 →
+          지표로 ›
         </Link>
       }
     >

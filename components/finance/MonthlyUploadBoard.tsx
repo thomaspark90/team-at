@@ -215,7 +215,7 @@ export default function MonthlyUploadBoard({
           )}
         </h2>
       </div>
-      <p className="mt-1 text-body text-muted-foreground">
+      <p className="ta-prose mt-1 text-body text-muted-foreground">
         {readOnly ? (
           <>
             이 달에 필요한 자료가 다 들어왔는지 확인하는 화면이에요. 점선 칸 = 아직 없는 자료 — 누르면{' '}
@@ -268,7 +268,7 @@ export default function MonthlyUploadBoard({
                         ) : (
                           <>
                             <b className="tabular-nums text-foreground">{st?.count ?? 0}건</b>
-                            {st?.done ? ' 자동 수집' : ' 수집 전'} · 분류 보기 →
+                            {st?.done ? ' 자동 수집' : ' 수집 전'} · 분류 보기 ›
                           </>
                         )}
                         {!readOnly && (
@@ -306,7 +306,7 @@ export default function MonthlyUploadBoard({
                       <span className="flex items-center gap-2 text-caption text-muted-foreground">
                         {st.count > 0 && `${st.count}건`}
                         {st.via === 'auto' ? ' · 자동 반영' : st.at ? ` · ${fmtDay(st.at)}` : ''}
-                        <span>· 내역 →</span>
+                        <span>· 내역 ›</span>
                         {!readOnly &&
                           (cardAnchor ? (
                             <a
@@ -346,7 +346,7 @@ export default function MonthlyUploadBoard({
                       <span className="text-right text-caption">
                         <span className="font-medium text-amber-600">{st.range ?? '일부'}만 올라옴</span>
                         <span className="block text-caption text-muted-foreground">
-                          {readOnly ? '자료 입력에서 이어서 →' : busy ? '읽는 중…' : '이어서 업로드 →'}
+                          {readOnly ? '자료 입력에서 이어서 ›' : busy ? '읽는 중…' : '이어서 업로드 ›'}
                         </span>
                       </span>
                     </>
@@ -369,14 +369,14 @@ export default function MonthlyUploadBoard({
                     <span className="text-body font-medium">{s.label}</span>
                     <span className="text-caption text-muted-foreground">
                       {readOnly
-                        ? '없음 — 자료 입력에서 올리기 →'
+                        ? '없음 — 자료 입력에서 올리기 ›'
                         : busy
                           ? '읽는 중…'
                           : !slots
                             ? '확인 중…'
                             : cardAnchor
                               ? '아래 정산 연결에서 올리기 ↓'
-                              : '업로드 →'}
+                              : '업로드 ›'}
                     </span>
                   </>
                 );
@@ -416,7 +416,7 @@ export default function MonthlyUploadBoard({
                         <span className="text-muted-foreground">{meta.label}</span>
                       </span>
                       <span className="text-caption text-muted-foreground">
-                        {p.days}일 · {won(p.supply)} · {readOnly ? '손익 보기 →' : '위 업로더에서 추가 ↑'}
+                        {p.days}일 · {won(p.supply)} · {readOnly ? '손익 보기 ›' : '위 업로더에서 추가 ↑'}
                       </span>
                     </Link>
                   );
@@ -430,7 +430,7 @@ export default function MonthlyUploadBoard({
                     <ActionBadge />
                     <span className="text-body font-medium">{meta.label}</span>
                     <span className="text-caption text-muted-foreground">
-                      {readOnly ? '없음 — 자료 입력에서 올리기 →' : '없음 — 위 POS 업로더에서 올리기 ↑'}
+                      {readOnly ? '없음 — 자료 입력에서 올리기 ›' : '없음 — 위 POS 업로더에서 올리기 ↑'}
                     </span>
                   </Link>
                 );
@@ -460,7 +460,7 @@ export default function MonthlyUploadBoard({
                     <ActionBadge n={classify.sources} />
                     <span className="text-body font-medium">지출 자료 분류</span>
                     <span className="text-caption text-muted-foreground">
-                      미분류 <b className="tabular-nums text-foreground">{classify.total}건</b> · 분류하기 →
+                      미분류 <b className="tabular-nums text-foreground">{classify.total}건</b> · 분류하기 ›
                     </span>
                   </Link>
                 ))}
@@ -480,7 +480,7 @@ export default function MonthlyUploadBoard({
                   >
                     <ActionBadge />
                     <span className="text-body font-medium">월 확정</span>
-                    <span className="text-caption text-muted-foreground">미확정 — 확정하기 →</span>
+                    <span className="text-caption text-muted-foreground">미확정 — 확정하기 ›</span>
                   </Link>
                 ))}
             </div>
@@ -521,7 +521,7 @@ export default function MonthlyUploadBoard({
                 — 그 사이 거래가 빠졌을 수 있어요. 은행에서 전체 기간을 다시 내려받아 확인하세요.
               </p>
             ) : (
-              <p className="mt-2 text-body text-muted-foreground">
+              <p className="ta-prose mt-2 text-body text-muted-foreground">
                 잔액 연속성은 판정하지 못했어요 (여러 계좌가 섞였거나 정렬이 다른 파일이에요).
               </p>
             )

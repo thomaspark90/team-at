@@ -262,7 +262,7 @@ export default function AccessControl() {
   };
 
   if (users === null) {
-    return <p className="text-body text-muted-foreground">불러오는 중…</p>;
+    return <p className="ta-prose text-body text-muted-foreground">불러오는 중…</p>;
   }
 
   return (
@@ -270,7 +270,7 @@ export default function AccessControl() {
       <h2 className="text-title font-medium" style={{ margin: '0 0 4px' }}>
         페이지 접근 권한
       </h2>
-      <p className="text-body text-muted-foreground" style={{ margin: '0 0 24px', lineHeight: 1.6 }}>
+      <p className="ta-prose text-body text-muted-foreground" style={{ margin: '0 0 24px', lineHeight: 1.6 }}>
         계정별로 접근할 수 있는 화면을 지정합니다. 끈 항목은 나비에서 숨겨지고, 주소로 직접 접근해도 서버에서
         차단됩니다. 대표 계정은 항상 전체 접근이라 목록에 없습니다.
       </p>
@@ -280,7 +280,7 @@ export default function AccessControl() {
         </p>
       )}
       {users.length === 0 && (
-        <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
+        <p className="ta-prose text-body text-muted-foreground" style={{ margin: 0 }}>
           표시할 사용자가 없습니다.
         </p>
       )}
@@ -344,7 +344,7 @@ export default function AccessControl() {
                     Staff Meal 하위 탭
                   </p>
                   {!studioOn && (
-                    <p className="text-body text-muted-foreground" style={{ margin: '4px 0 0' }}>
+                    <p className="ta-prose text-body text-muted-foreground" style={{ margin: '4px 0 0' }}>
                       Staff Meal 접근이 꺼져 있어 하위 탭 설정은 적용되지 않습니다.
                     </p>
                   )}
@@ -372,7 +372,7 @@ export default function AccessControl() {
                     Garden Service 하위 탭
                   </p>
                   {!gardenOn && (
-                    <p className="text-body text-muted-foreground" style={{ margin: '4px 0 0' }}>
+                    <p className="ta-prose text-body text-muted-foreground" style={{ margin: '4px 0 0' }}>
                       Garden Service 접근이 꺼져 있어 하위 탭 설정은 적용되지 않습니다.
                     </p>
                   )}
@@ -401,7 +401,7 @@ export default function AccessControl() {
                     className="border-t border-border"
                     style={{ marginTop: 32, paddingTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
                   >
-                    <p className="text-body text-muted-foreground" style={{ margin: 0, lineHeight: 1.5 }}>
+                    <p className="ta-prose text-body text-muted-foreground" style={{ margin: 0, lineHeight: 1.5 }}>
                       {isExternal(u.email)
                         ? '삭제하면 계정·권한이 지워지고 허용 목록에서도 빠져 로그인이 차단됩니다.'
                         : '삭제해도 팀 도메인 계정은 구글 로그인하면 다시 생성됩니다(그때는 전체 접근). 완전 차단은 워크스페이스에서 계정을 정지하세요.'}
@@ -437,7 +437,7 @@ export default function AccessControl() {
         <p className="ta-label" style={{ marginBottom: 4 }}>
           이메일로 계정 추가 (사전 등록)
         </p>
-        <p className="text-body text-muted-foreground" style={{ margin: '0 0 16px', lineHeight: 1.6 }}>
+        <p className="ta-prose text-body text-muted-foreground" style={{ margin: '0 0 16px', lineHeight: 1.6 }}>
           아직 로그인한 적 없는 인원도 이메일로 미리 등록해 권한을 걸어둘 수 있어요. @{TEAM_DOMAIN} 외
           이메일(gmail 등)은 허용 목록에 함께 등록돼 로그인이 열립니다. 같은 이메일로 구글 로그인하면
           등록된 계정에 자동 연결돼요. <b>권한을 따로 끄지 않으면 전체 접근</b>이니, 추가 직후 열리는
@@ -477,7 +477,7 @@ export default function AccessControl() {
 
         {allowed.length > 0 && (
           <div style={{ marginTop: 24 }}>
-            <p className="text-body text-muted-foreground" style={{ margin: '0 0 6px' }}>
+            <p className="ta-prose text-body text-muted-foreground" style={{ margin: '0 0 6px' }}>
               외부 이메일 허용 목록 — 해제하면 계정·권한 설정은 남고 로그인만 막혀요.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

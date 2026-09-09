@@ -108,7 +108,7 @@ export default function ReceiptEnrich() {
           <div className="text-muted-foreground">
             카드 {done.matchedGroups}건을 품목으로 나눔 · 품목 {done.inserted}건 추가{done.duplicates ? ` · 중복 ${done.duplicates}건 건너뜀` : ''}
             {done.note && ` · ${done.note}`} ·{' '}
-            <a href="/finance/classify?source=card" className="text-foreground underline">지출 자료 분류에서 지정 →</a>
+            <a href="/finance/classify?source=card" className="text-foreground underline">지출 자료 분류에서 지정 ›</a>
           </div>
         </div>
       )}

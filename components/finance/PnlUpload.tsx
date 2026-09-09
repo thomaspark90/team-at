@@ -389,7 +389,7 @@ export default function PnlUpload({ fixedUnitKey }: { fixedUnitKey?: string }) {
           </div>
           <div className="text-muted-foreground">
             공급가액 매출 <b className="text-foreground">{won(done.supply)}</b> · {done.inserted}개 집계행{done.excludedRows ? ` · 식권·상품권 ${done.excludedRows}건 제외` : ''} ·{' '}
-            <a href={`/finance/pnl?ym=${done.ym}`} className="text-foreground underline">관리손익 보기 →</a>
+            <a href={`/finance/pnl?ym=${done.ym}`} className="text-foreground underline">관리손익 보기 ›</a>
           </div>
           {done.duplicateYms.length > 0 && (
             <div className="mt-1 text-muted-foreground">

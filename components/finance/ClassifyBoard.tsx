@@ -144,7 +144,7 @@ export default function ClassifyBoard({ ym }: { ym: string }) {
               href={allClassified ? '/finance/close' : `/finance/classify?ym=${ym}&unclassified=1`}
               className={`rounded-lg px-3 py-1.5 text-body font-medium ${allClassified ? 'bg-foreground text-background' : 'border border-border text-muted-foreground hover:text-foreground'}`}
             >
-              {allClassified ? '월 확정하러 가기 →' : '분류하러 가기 →'}
+              {allClassified ? '월 확정하러 가기 ›' : '분류하러 가기 ›'}
             </Link>
           )}
         </div>

@@ -136,11 +136,11 @@ export default async function ClassifyPage({
       actions={
         <>
           <Link href="/finance/uploads" className="text-body text-muted-foreground transition-colors hover:text-foreground">
-            자료 이력 →
+            자료 이력 ›
           </Link>
           {role === 'admin' && (
             <Link href={settingsHref} className="text-body text-muted-foreground transition-colors hover:text-foreground">
-              설정(계정과목) →
+              설정(계정과목) ›
             </Link>
           )}
         </>

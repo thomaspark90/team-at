@@ -65,7 +65,7 @@ export default function IngestHealthCard({ health, infra, compact = false }: { h
   return (
     <section>
       <h2 className="m-0 text-title font-medium">자동 수집 상태</h2>
-      <p className="mt-1 text-body text-muted-foreground">
+      <p className="ta-prose mt-1 text-body text-muted-foreground">
         로컬 수집기(매일 19시)의 마지막 수신 기록이에요. {STALE_HOURS}시간 넘게 소식이 없으면 지연으로 표시합니다.
       </p>
       {/* 박스 안의 박스는 시각적 소음 — 상태는 색 점이 이미 전달하므로 보더 없는 행으로 (2026-08-08) */}

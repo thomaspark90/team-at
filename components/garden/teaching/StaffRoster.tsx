@@ -136,12 +136,12 @@ export default function StaffRoster({ me, onChange }: { me: TeachingMe; onChange
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4">
           <h2 className="text-title">지점 근무자</h2>
-          <div className="flex rounded-md border border-border p-1">
+          <div className="flex ta-seg">
             {STORES.map((s) => (
               <button
                 key={s.id}
                 onClick={() => setStore(s.id)}
-                className={`rounded-sm px-3 py-1 text-body ${store === s.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                className={`ta-seg-item px-3 py-1 text-body ${store === s.id ? 'ta-seg-on' : ''}`}
               >
                 {s.label}
               </button>
@@ -158,7 +158,7 @@ export default function StaffRoster({ me, onChange }: { me: TeachingMe; onChange
           {adding ? '닫기' : '+ 근무자'}
         </button>
       </div>
-      <p className="text-body text-muted-foreground">
+      <p className="ta-prose text-body text-muted-foreground">
         이름만으로 등록됩니다(로그인 없음). 등록하면 교육 일정의 교육 대상으로 고를 수 있고, 배우고 싶은 것·순위·메모를 여기서 대신 적으면
         티칭 스태프의 일정 카드에 보입니다. 본인이 직접 고치게 하려면 설정 › 간편 계정에서 로그인을 열어주세요.
       </p>
@@ -181,9 +181,9 @@ export default function StaffRoster({ me, onChange }: { me: TeachingMe; onChange
       {error && <p className="ta-error text-body">{error}</p>}
 
       {staff === null ? (
-        <p className="text-body text-muted-foreground">불러오는 중…</p>
+        <p className="ta-prose text-body text-muted-foreground">불러오는 중…</p>
       ) : staff.length === 0 ? (
-        <p className="text-body text-muted-foreground">등록된 근무자가 없어요. '+ 근무자'로 이름을 넣어주세요.</p>
+        <p className="ta-prose text-body text-muted-foreground">등록된 근무자가 없어요. '+ 근무자'로 이름을 넣어주세요.</p>
       ) : (
         <ul className="divide-y divide-border">
           {staff.map((p) => {
@@ -214,7 +214,7 @@ export default function StaffRoster({ me, onChange }: { me: TeachingMe; onChange
                 {!editing && (
                   <div className="space-y-1 text-body">
                     {open.length === 0 ? (
-                      <p className="text-muted-foreground">배우고 싶은 것 미입력</p>
+                      <p className="ta-prose text-muted-foreground">배우고 싶은 것 미입력</p>
                     ) : (
                       <p>
                         {open.map((w, i) => (
@@ -226,7 +226,7 @@ export default function StaffRoster({ me, onChange }: { me: TeachingMe; onChange
                         ))}
                       </p>
                     )}
-                    {p.note && <p className="text-muted-foreground">메모 · {p.note}</p>}
+                    {p.note && <p className="ta-prose text-muted-foreground">메모 · {p.note}</p>}
                     {p.recentComments.length > 0 && (
                       <ul className="space-y-0.5 pt-1 text-caption">
                         {p.recentComments.map((c, i) => (

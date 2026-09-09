@@ -727,7 +727,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
                 disabled={submitting}
                 className="flex-[2] rounded-xl bg-foreground py-2.5 text-body font-medium text-background disabled:opacity-60"
               >
-                {submitting ? '등록 중…' : pendingParsed.length ? '등록 · 다음 장 →' : '확인 — 송금 대기에 등록'}
+                {submitting ? '등록 중…' : pendingParsed.length ? '등록 · 다음 장 ›' : '확인 — 송금 대기에 등록'}
               </button>
             </div>
           </div>
@@ -740,7 +740,7 @@ export default function TransferPanel({ role, email, mode }: Props) {
           <h2 className="m-0 text-title font-medium">{isDashboard ? '송금 현황' : '송금 내역'}</h2>
           {isDashboard ? (
             <Link href="/dashboard/history" className="text-body text-muted-foreground hover:text-foreground">
-              전체 내역 →
+              전체 내역 ›
             </Link>
           ) : (
             <div className="flex gap-1 rounded-lg border border-border p-0.5 text-body">

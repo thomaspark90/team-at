@@ -47,7 +47,7 @@ export default async function OriginalsPage({ searchParams }: { searchParams: { 
       }
       actions={
         <Link href="/finance/uploads" className="text-body text-muted-foreground transition-colors hover:text-foreground">
-          자료 이력 →
+          자료 이력 ›
         </Link>
       }
     >

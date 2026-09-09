@@ -180,9 +180,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
   const countOf = (t: BoardType) => (cards ?? []).filter((c) => c.type === t).length;
 
   const chip = (active: boolean): string =>
-    `rounded-full border px-2.5 py-1 text-body transition-colors ${
-      active ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:text-foreground'
-    }`;
+    `ta-seg-item ${active ? 'ta-seg-on' : ''}`;
 
   if (cards === null) {
     return <p className="text-body text-muted-foreground">작업 보드를 불러오는 중…</p>;
@@ -258,8 +256,8 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
         </button>
       </div>
       {teamOpen && (<>
-      {/* 필터 */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {/* 필터 — 세그먼트 컨트롤(2026-09-10 옛 칩 교체) */}
+      <div className="ta-seg flex-wrap">
         <button onClick={() => setFilter('all')} className={chip(filter === 'all')}>
           전체 <span className="tabular" style={{ opacity: 0.65 }}>{cards.length}</span>
         </button>

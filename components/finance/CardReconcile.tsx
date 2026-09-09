@@ -99,7 +99,7 @@ export default function CardReconcile({ brand = 'garden' }: { brand?: Brand }) {
           <div className="mb-1 text-foreground">✓ 저장 완료{saved.linked ? ' · 정산 연결됨' : ' · 미연결(결제 대기)'}</div>
           <div className="text-body text-muted-foreground">
             {won(saved.saved).replace('₩', '')}건 저장 · 중복 {saved.duplicates}건 건너뜀 · 카테고리는 직접 지정해요(학습된 가맹점은 미리 선택돼요) ·{' '}
-            <a href="/finance/classify?source=card" className="text-foreground underline">지출 자료 분류에서 지정 →</a>
+            <a href="/finance/classify?source=card" className="text-foreground underline">지출 자료 분류에서 지정 ›</a>
           </div>
         </div>
       )}

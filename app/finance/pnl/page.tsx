@@ -137,24 +137,8 @@ async function PnlBody({
 
   return (
     <>
-      {/* 월 선택 + 업로드 */}
-      <div className="mb-10 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {yms.map((ym) => (
-            <Link
-              key={ym}
-              href={`/finance/pnl?ym=${ym}&unit=${unitId}`}
-              aria-current={ym === selectedYm ? 'page' : undefined}
-              className={`rounded-md border px-3 py-1.5 text-body transition-colors ${
-                ym === selectedYm
-                  ? 'border-foreground font-medium text-foreground'
-                  : 'border-border text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {fmtYm(ym)}
-            </Link>
-          ))}
-        </div>
+      {/* 업로드 — 월 선택은 왼쪽 연·월 사이드바(MonthShell, 좁은 화면은 상단 스트립)가 한다. 같은 일을 하던 월 알약 줄은 제거(2026-09-10) */}
+      <div className="mb-10 flex justify-end">
         <PnlUpload />
       </div>
 
@@ -172,7 +156,7 @@ async function PnlBody({
             ⚠️ 이 달 <b>미분류 지출 {won(p.unclassified)}</b>이 손익에 잡혀 있어요. 분류하면 지표가 정확해져요.
           </span>
           <Link href={`/finance/classify?ym=${selectedYm}&unclassified=1`} className="whitespace-nowrap underline">
-            미분류 분류하러 →
+            미분류 분류하러 ›
           </Link>
         </div>
       )}
@@ -187,7 +171,7 @@ async function PnlBody({
             href={`/finance/upload/${unitId}#card`}
             className="whitespace-nowrap underline"
           >
-            명세 올리고 연결하러 →
+            명세 올리고 연결하러 ›
           </Link>
         </div>
       )}
@@ -199,7 +183,7 @@ async function PnlBody({
             분류 화면에서 지점을 지정하거나 건별 분할로 나눠주세요.
           </span>
           <Link href={`/finance/classify?ym=${selectedYm}&brand=garden`} className="whitespace-nowrap underline">
-            지점 지정하러 →
+            지점 지정하러 ›
           </Link>
         </div>
       )}
@@ -218,7 +202,7 @@ async function PnlBody({
             아래 입력란에서 채워주세요.
           </span>
           <a href="#pnl-inputs" className="whitespace-nowrap underline">
-            입력란으로 →
+            입력란으로 ›
           </a>
         </div>
       )}

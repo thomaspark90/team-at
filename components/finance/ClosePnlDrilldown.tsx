@@ -104,7 +104,7 @@ export default function ClosePnlDrilldown({ ym, unitId, colSpan }: { ym: string;
             <div className="mb-1.5 flex items-baseline justify-between gap-3">
               <span className="text-caption font-medium text-foreground">{ym} 관리손익 (부가세·수수료 제외 기준)</span>
               <Link href={`/finance/pnl?unit=${unitId}&ym=${ym}`} className="whitespace-nowrap text-caption underline hover:text-foreground">
-                관리손익 자세히 →
+                관리손익 자세히 ›
               </Link>
             </div>
             {data.sales.gross === 0 && (

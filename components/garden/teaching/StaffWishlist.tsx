@@ -76,7 +76,7 @@ export default function StaffWishlist({ me, onChange }: { me: TeachingMe; onChan
     <div className="space-y-12">
       <div>
         <h1 className="text-display font-medium">교육</h1>
-        <p className="mt-1 text-body text-muted-foreground">
+        <p className="ta-prose mt-1 text-body text-muted-foreground">
           {me.profile?.name}님, 매니저에게 배우고 싶은 걸 골라두세요. 매니저가 출근하는 날 이 목록을 보고 준비합니다.
         </p>
       </div>
@@ -84,7 +84,7 @@ export default function StaffWishlist({ me, onChange }: { me: TeachingMe; onChan
       <section className="space-y-3">
         <span className="ta-label">매니저 출근 예정</span>
         {me.shifts.length === 0 ? (
-          <p className="text-body text-muted-foreground">아직 등록된 일정이 없어요.</p>
+          <p className="ta-prose text-body text-muted-foreground">아직 등록된 일정이 없어요.</p>
         ) : (
           <ul className="flex flex-wrap gap-x-6 gap-y-2 text-body">
             {me.shifts.slice(0, 8).map((s) => {

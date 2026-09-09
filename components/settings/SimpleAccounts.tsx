@@ -159,7 +159,7 @@ export default function SimpleAccounts() {
             className={
               size === 'md'
                 ? `ta-btn ${on ? 'bg-primary text-primary-foreground hover:opacity-90' : ''}`
-                : `rounded-md border px-2 py-0.5 text-caption ${on ? 'border-foreground' : 'border-border text-muted-foreground'}`
+                : `rounded-md px-2 py-0.5 text-caption shadow-soft-sm transition-colors ${on ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground'}`
             }
           >
             {s.short}
@@ -173,7 +173,7 @@ export default function SimpleAccounts() {
     <section className="min-w-0 space-y-8">
       <div>
         <h2 className="text-title font-medium" style={{ margin: '0 0 4px' }}>간편 계정</h2>
-        <p className="text-body text-muted-foreground">
+        <p className="ta-prose text-body text-muted-foreground">
           스탭·매니저는 구글 계정 대신 <b>이름 + 숫자 6자리</b>로 로그인합니다. 로그인 화면에서 본인이 가입 신청하면 아래
           승인 대기에 뜨고, 여기서 직접 발급할 수도 있어요. 기본 권한은 가든 섹션의 교육 탭이고 더 넓힐 땐 아래 페이지 접근 권한에서 조정하세요.
           <b>코멘트 열람</b>을 켜면 모든 일정의 교육 코멘트를 볼 수 있어요(티칭 스태프는 자기 일정 코멘트는 항상 봅니다).
@@ -185,7 +185,7 @@ export default function SimpleAccounts() {
           <p>
             <b>{issued.name}</b>의 임시 비밀번호 <span className="tabular text-display">{issued.pin}</span>
           </p>
-          <p className="text-muted-foreground">
+          <p className="ta-prose text-muted-foreground">
             지금 본인에게 알려주세요. 이 화면을 떠나면 다시 볼 수 없고, 첫 로그인 때 본인이 새 비밀번호로 바꿉니다.{' '}
             <button className="underline underline-offset-2" onClick={() => setIssued(null)}>확인했어요</button>
           </p>
@@ -198,7 +198,7 @@ export default function SimpleAccounts() {
             <h3 className="text-title">
               승인 대기 <span className="text-caption text-muted-foreground tabular">{pending.length}명</span>
             </h3>
-            <p className="text-body text-muted-foreground">본인이 로그인 화면에서 신청한 계정입니다. 역할·지점을 지정해 승인하면 바로 로그인할 수 있고, 이메일을 적었으면 승인 안내 메일이 갑니다.</p>
+            <p className="ta-prose text-body text-muted-foreground">본인이 로그인 화면에서 신청한 계정입니다. 역할·지점을 지정해 승인하면 바로 로그인할 수 있고, 이메일을 적었으면 승인 안내 메일이 갑니다.</p>
           </div>
           <ul className="space-y-3">
             {pending.map((r) => {
@@ -245,9 +245,9 @@ export default function SimpleAccounts() {
       {error && <p className="ta-error text-body">{error}</p>}
 
       {rows === null ? (
-        <p className="text-body text-muted-foreground">불러오는 중…</p>
+        <p className="ta-prose text-body text-muted-foreground">불러오는 중…</p>
       ) : active.length === 0 ? (
-        <p className="text-body text-muted-foreground">아직 발급한 계정이 없어요.</p>
+        <p className="ta-prose text-body text-muted-foreground">아직 발급한 계정이 없어요.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -317,7 +317,7 @@ export default function SimpleAccounts() {
         </button>
         {rolesOpen && (
           <div className="space-y-4">
-            <p className="text-body text-muted-foreground">
+            <p className="ta-prose text-body text-muted-foreground">
               <b>교육 운영</b>이 켜진 역할은 매니저 화면(출근 일정·지점 집계·교육함 기록)을 보고, 꺼진 역할은 스탭 화면(위시리스트)을 봅니다.
               스탭·매니저는 기본 역할이라 이름만 바꿀 수 있어요.
             </p>

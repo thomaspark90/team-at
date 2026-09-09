@@ -312,7 +312,7 @@ export default function MonthlyCloseManager({
                           }
                           className="ta-btn text-body"
                         >
-                          {r.unclassified > 0 ? '미분류 분류 →' : '지점 지정 →'}
+                          {r.unclassified > 0 ? '미분류 분류 ›' : '지점 지정 ›'}
                         </Link>
                       ) : canConfirm ? (
                         <button onClick={() => requestConfirm(r.ym)} className="ta-btn-primary text-body">

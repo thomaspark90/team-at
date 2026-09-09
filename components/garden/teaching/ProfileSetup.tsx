@@ -30,7 +30,7 @@ export default function ProfileSetup({ onDone }: { onDone: () => void }) {
     <div className="max-w-[420px] space-y-8">
       <div>
         <h1 className="text-display font-medium">교육</h1>
-        <p className="mt-1 text-body text-muted-foreground">
+        <p className="ta-prose mt-1 text-body text-muted-foreground">
           처음이시네요. 매니저가 알아볼 수 있게 이름과 근무 지점을 알려주세요.
         </p>
       </div>

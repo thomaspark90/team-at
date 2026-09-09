@@ -19,7 +19,7 @@ export default function GardenCalibrationPage() {
         {/* 페이지 제목은 내비 활성 탭이 이미 알려줘서 생략(2026-08-09) */}
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <a href="/garden/calibration/report" className="text-body underline text-muted-foreground hover:text-foreground">
-            2026-07-16 기준선 리포트 보기 →
+            2026-07-16 기준선 리포트 보기 ›
           </a>
         </div>
 

@@ -949,14 +949,14 @@ export default function ClassifyPanel({
         {/* 출처 종류(banks)는 데이터에 따라 늘어난다 — 세그먼트가 화면 폭을 넘으면
             줄바꿈 대신 가로 스크롤(2026-08-09, 회계 내비와 동일 패턴). */}
         <div className="min-w-0 max-w-full overflow-x-auto scrollbar-hide">
-          <div className="inline-flex w-max gap-1 rounded-md border border-border p-1">
+          <div className="inline-flex w-max gap-1 ta-seg">
             {['all', ...banks].map((b) => {
               const on = filterBank === b;
               return (
                 <button
                   key={b}
                   onClick={() => setFilterBank(b)}
-                  className={`shrink-0 rounded-sm px-3 py-1 text-body ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`ta-seg-item shrink-0 px-3 py-1 text-body ${on ? 'ta-seg-on' : ''}`}
                 >
                   {b === 'all' ? '전체 출처' : bankSourceLabel(b)}
                 </button>
@@ -1067,7 +1067,7 @@ export default function ClassifyPanel({
         {!lockedBrand && !fixedUnit && (
           // 회계 단위 필터 — 브랜드+지점 2단을 한 줄로 통합(2026-08-03). 클릭 1번에 brand·store 동시 설정.
           // '가든 미지정' = 아직 지점이 안 찍힌 가든 공용(통장·카드) 거래 — 지점 지정·분할로 정리 대상.
-          <div className="inline-flex flex-wrap gap-1 rounded-md border border-border p-1">
+          <div className="inline-flex flex-wrap gap-1 ta-seg">
             {[
               { label: '전체', brand: 'all', store: 'all' },
               { label: '스탭밀', brand: 'staffmeal', store: 'all' },
@@ -1084,7 +1084,7 @@ export default function ClassifyPanel({
                     setBrandFilter(brand);
                     setStoreFilter(store);
                   }}
-                  className={`rounded-sm px-3 py-1 text-body ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`ta-seg-item px-3 py-1 text-body ${on ? 'ta-seg-on' : ''}`}
                 >
                   {label}
                 </button>
@@ -1094,7 +1094,7 @@ export default function ClassifyPanel({
         )}
         {!fixedUnit && lockedBrand === 'garden' && (
           // 가든 스코프 멤버 — 지점 단위만 선택(브랜드는 가든 고정).
-          <div className="inline-flex flex-wrap gap-1 rounded-md border border-border p-1">
+          <div className="inline-flex flex-wrap gap-1 ta-seg">
             {[
               { v: 'all', label: '전체 지점' },
               { v: 'yangjae', label: '가든서비스(양재천점)' },
@@ -1104,7 +1104,7 @@ export default function ClassifyPanel({
               <button
                 key={v}
                 onClick={() => setStoreFilter(v)}
-                className={`rounded-sm px-3 py-1 text-body ${storeFilter === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                className={`ta-seg-item px-3 py-1 text-body ${storeFilter === v ? 'ta-seg-on' : ''}`}
               >
                 {label}
               </button>
@@ -1490,7 +1490,7 @@ export default function ClassifyPanel({
             <button
               disabled={curPage === 1}
               onClick={() => setPage(curPage - 1)}
-              className="rounded-sm px-2.5 py-1 text-muted-foreground transition-colors enabled:hover:text-foreground disabled:opacity-40"
+              className="ta-seg-item px-2.5 py-1 text-muted-foreground transition-colors enabled:hover:text-foreground disabled:opacity-40"
             >
               ← 이전
             </button>
@@ -1501,7 +1501,7 @@ export default function ClassifyPanel({
                   {i > 0 && arr[i - 1] !== p - 1 && <span className="text-muted-foreground">…</span>}
                   <button
                     onClick={() => setPage(p)}
-                    className={`min-w-[30px] rounded-sm px-2 py-1 tabular-nums ${
+                    className={`min-w-[30px] ta-seg-item px-2 py-1 tabular-nums ${
                       p === curPage ? 'bg-primary font-medium text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
@@ -1512,9 +1512,9 @@ export default function ClassifyPanel({
             <button
               disabled={curPage === totalPages}
               onClick={() => setPage(curPage + 1)}
-              className="rounded-sm px-2.5 py-1 text-muted-foreground transition-colors enabled:hover:text-foreground disabled:opacity-40"
+              className="ta-seg-item px-2.5 py-1 text-muted-foreground transition-colors enabled:hover:text-foreground disabled:opacity-40"
             >
-              다음 →
+              다음 ›
             </button>
             <span className="ml-2 text-caption text-muted-foreground">
               {won(pageStart + 1)}–{won(Math.min(pageStart + PAGE_SIZE, filtered.length))} / {won(filtered.length)}건

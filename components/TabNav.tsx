@@ -180,7 +180,7 @@ export default function TabNav() {
             className="flex items-center justify-between border-t border-border py-3.5 text-left text-body text-muted-foreground transition-colors hover:text-foreground"
           >
             로그아웃
-            <span aria-hidden>→</span>
+            <span aria-hidden>›</span>
           </button>
 
           <div className="flex-1" />

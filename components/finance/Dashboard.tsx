@@ -568,15 +568,15 @@ export default function Dashboard({
 
   const toggle = (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="inline-flex gap-1 rounded-md border border-border p-1">
+      <div className="inline-flex gap-1 ta-seg">
         {(['month', 'week'] as Unit[]).map((u) => {
           const on = unit === u;
           return (
             <button
               key={u}
               onClick={() => setUnit(u)}
-              className={`rounded-sm px-3 py-1 text-body transition-colors ${
-                on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+              className={`ta-seg-item px-3 py-1 text-body transition-colors ${
+                on ? 'ta-seg-on' : ''
               }`}
             >
               {u === 'month' ? '월 단위' : '주 단위 (W)'}

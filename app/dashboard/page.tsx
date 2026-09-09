@@ -152,7 +152,7 @@ export default async function AccountingDashboardPage({ searchParams }: { search
             확인 전용(2026-08-01 대표 지시) — 업로드는 각 단위의 자료 입력 페이지에서. */}
         {isStaff && (
           <section className="pt-6">
-            <h2 className="m-0 mb-4 text-title">월별 자료 현황</h2>
+            {/* 제목은 MonthlyUploadBoard 가 '브랜드 · 월별 자료 현황'으로 그린다 — 여기 또 달지 않는다(2026-09-10 중복 제거) */}
             <MonthShell initialTodos={initialTodos} brand={unit.brand}>
               <AccountingBoards fixedBrand={unit.brand} unitId={unit.id} mode="status" />
             </MonthShell>

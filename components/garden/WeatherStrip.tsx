@@ -279,7 +279,7 @@ export default function WeatherStrip({ compact = false }: { compact?: boolean })
             </>
           )}
           <Link href="/garden/weather" className="underline underline-offset-2 hover:text-foreground">
-            판매 분석 →
+            판매 분석 ›
           </Link>
         </span>
       </div>

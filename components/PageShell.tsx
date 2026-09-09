@@ -39,7 +39,7 @@ export default function PageShell({
             <div className="min-w-0">
               <h1 className="m-0 text-display">{title}</h1>
               {/* div — 부제 자리에 날씨 한 줄 같은 블록 컴포넌트도 들어온다(p 안에 section 금지) */}
-              {subtitle && <div className="mt-2 text-body text-muted-foreground">{subtitle}</div>}
+              {subtitle && <div className="ta-prose mt-2 text-body text-muted-foreground">{subtitle}</div>}
             </div>
             {actions && <div className="flex shrink-0 items-center gap-3">{actions}</div>}
           </header>

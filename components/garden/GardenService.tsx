@@ -376,15 +376,15 @@ export default function GardenService() {
             {/* 구매 용량 — 500g/1000g 프리셋 + 직접 입력 (잔당 재료비 계산 기준) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
               <span className="text-caption text-muted-foreground" style={{ flexShrink: 0 }}>구매 용량</span>
-              <div className="inline-flex gap-1 rounded-md border border-border p-1" style={{ flexShrink: 0 }}>
+              <div className="inline-flex gap-1 ta-seg" style={{ flexShrink: 0 }}>
                 {[500, 1000].map((g) => {
                   const on = settings.capacityG === g;
                   return (
                     <button
                       key={g}
                       onClick={() => setNum('capacityG', g)}
-                      className={`rounded-sm px-2.5 py-1 text-body transition-colors ${
-                        on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                      className={`ta-seg-item px-2.5 py-1 text-body transition-colors ${
+                        on ? 'ta-seg-on' : ''
                       }`}
                     >
                       {g}g
@@ -413,15 +413,15 @@ export default function GardenService() {
                 style={{ flex: 1, minWidth: 0 }}
               />
               {/* 로스터리별 공급가 안내 방식(부가세 포함/별도)에 맞춰 선택 */}
-              <div className="inline-flex gap-1 rounded-md border border-border p-1" style={{ flexShrink: 0, alignSelf: 'center' }}>
+              <div className="inline-flex gap-1 ta-seg" style={{ flexShrink: 0, alignSelf: 'center' }}>
                 {([false, true] as boolean[]).map((v) => {
                   const on = !!settings.vatIncluded === v;
                   return (
                     <button
                       key={String(v)}
                       onClick={() => setSettings((s) => ({ ...s, vatIncluded: v }))}
-                      className={`rounded-sm px-2.5 py-1 text-body transition-colors ${
-                        on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                      className={`ta-seg-item px-2.5 py-1 text-body transition-colors ${
+                        on ? 'ta-seg-on' : ''
                       }`}
                       title={v ? '입력한 공급가를 부가세 포함가로 계산' : '입력한 공급가에 부가세 10%를 더해 계산'}
                     >

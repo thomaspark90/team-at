@@ -82,23 +82,23 @@ export default function ManagerBoard({ me }: { me: TeachingMe }) {
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-md border border-border p-1">
+          <div className="flex ta-seg">
             {STORES.map((s) => (
               <button
                 key={s.id}
                 onClick={() => setStore(s.id)}
-                className={`rounded-sm px-4 py-1.5 text-body ${store === s.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                className={`ta-seg-item px-4 py-1.5 text-body ${store === s.id ? 'ta-seg-on' : ''}`}
               >
                 {s.label}
               </button>
             ))}
           </div>
-          <div className="flex rounded-md border border-border p-1">
+          <div className="flex ta-seg">
             {([['wish', `요청 ${openTotal}`], ['log', `기록 ${board?.sessions.length ?? 0}`]] as const).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`rounded-sm px-4 py-1.5 text-body tabular ${tab === key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                className={`ta-seg-item px-4 py-1.5 text-body tabular ${tab === key ? 'ta-seg-on' : ''}`}
               >
                 {label}
               </button>

@@ -104,7 +104,7 @@ export default function InstallPage() {
         <p className="text-body text-muted-foreground" style={{ margin: 0, lineHeight: 1.7 }}>
           설치가 안 되거나 로그인이 막히면 관리자에게 문의해 주세요.{' '}
           <Link href="/" className="underline hover:text-foreground">
-            로그인 화면으로 →
+            로그인 화면으로 ›
           </Link>
         </p>
       </div>

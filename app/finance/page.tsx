@@ -236,7 +236,7 @@ function TodoRow({ done, text, href, cta }: { done: boolean; text: string; href:
         <span className={done ? 'text-muted-foreground' : 'text-foreground'}>{text}</span>
       </span>
       <Link href={href} className="ta-btn h-8 px-3 text-body">
-        {cta} →
+        {cta} ›
       </Link>
     </div>
   );

@@ -232,14 +232,14 @@ export default function UploadPanel({
       <div className="flex flex-col gap-8">
         <div>
           <label className="ta-label">은행</label>
-          <div className="inline-flex gap-1 rounded-md border border-border p-1">
+          <div className="inline-flex gap-1 ta-seg">
             {BANKS.map((b) => {
               const on = bank === b.value;
               return (
                 <button
                   key={b.value}
                   onClick={() => setBank(b.value)}
-                  className={`rounded-sm px-4 py-1.5 text-body ${on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`ta-seg-item px-4 py-1.5 text-body ${on ? 'ta-seg-on' : ''}`}
                 >
                   {b.label}
                 </button>
@@ -434,7 +434,7 @@ export default function UploadPanel({
               <div className="mb-1 text-foreground">✓ 이미 모두 저장된 거래예요</div>
               <div className="text-body text-muted-foreground">
                 올린 파일의 {won(agg.totalRows)}건은 전부 중복(이미 저장됨)이라 새로 저장할 게 없어요. 분류는{' '}
-                <a href="/finance/classify" className="text-foreground underline">지출 자료 분류 →</a> 에서 하세요.
+                <a href="/finance/classify" className="text-foreground underline">지출 자료 분류 ›</a> 에서 하세요.
               </div>
             </div>
           )}

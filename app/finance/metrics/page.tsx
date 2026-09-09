@@ -336,7 +336,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: { un
             </Link>
           ) : (
             <Link href="/finance/metrics?unit=all" className="text-body text-muted-foreground transition-colors hover:text-foreground">
-              전사 통합 →
+              전사 통합 ›
             </Link>
           )}
           <Link href="/finance" className="text-body text-muted-foreground transition-colors hover:text-foreground">

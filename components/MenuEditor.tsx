@@ -40,15 +40,14 @@ export default function MenuEditor({ story, onChange }: Props) {
   return (
     <div className="flex flex-col gap-8">
       {/* 모드 탭 */}
-      <div className="flex gap-1 rounded-md border border-border p-1">
+      <div className="flex gap-1 ta-seg">
         {(['fixed', 'manual'] as const).map((mode) => (
           <button
             key={mode}
             onClick={() => setMode(mode)}
-            className={`flex-1 rounded-sm py-2 text-body transition-colors ${
+            className={`ta-seg-item flex-1 py-2 text-body transition-colors ${
               story.inputMode === mode
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'ta-seg-on' : ''
             }`}
           >
             {mode === 'fixed' ? '카테고리 고정' : '직접 입력'}
