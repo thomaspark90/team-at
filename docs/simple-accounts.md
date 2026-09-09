@@ -21,6 +21,10 @@
 - 본인 로그인이 필요해지면 설정 › 간편 계정 › **로그인 열기(비밀번호 발급)** → `simple_login=true, roster_only=false`.
 - 명부 등록 계정 삭제는 명부에서(가입·발급 계정은 설정에서). API: `/api/garden-teaching/staff`.
 
+## 시간 칸별 참여 인원 (2026-09-09)
+- 일정 카드의 시간 칸마다 참여 스탭을 고른다(`teaching_shift_slot_trainees`). 대표만 편집(칸 옆 이름 칩), 티칭 스태프는 이름만 본다.
+- 일정의 교육 대상 = 일정 단위 지정 ∪ 칸 지정. 헤더 "→ 이름들"·세부 정보·전날 20시 푸시 모두 이 합집합 기준. 둘 다 비면 지점 스탭 전원.
+
 ## 교육 탭 (`/garden/teaching`)
 - 역할은 `finance.profiles.role` → `profile_roles.key`. 대표(OWNER)·finance admin 은 항상 관리 화면.
 - 구글 팀 계정이 처음 열면 이름·지점 등록(스탭). 매니저로 올리려면 설정 › 간편 계정에서 역할 변경.
