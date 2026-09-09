@@ -46,9 +46,16 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --number-colored: 140 100% 31%; /* #009e35 — 초록 숫자(양수/수입 강조용) */
-    --border: 45 5% 85%;
+    --border: 45 5% 91%; /* 2026-09-09 소프트 UI: 남는 구분선은 한 톤 더 옅게 — 면(그림자)이 주 구획 수단 */
     --input: 240 5.9% 90%;
     --ring: 240 5.9% 10%;
+
+    /* 소프트 UI(뉴모피즘) 그림자 — 2026-09-09 대표 결정. 흰 바탕 유지, 패널은 바탕과 같은 색이고
+       아주 연한 그림자 두 개(우하단 어둡게·좌상단 밝게)로만 떠 보인다. 보더는 쓰지 않는다.
+       흰 바탕에선 밝은 쪽이 거의 안 보이지만 회색 배경(bg-muted 등) 위에선 살아난다. */
+    --shadow-soft: 6px 6px 16px hsl(45 8% 78% / 0.42), -6px -6px 16px hsl(0 0% 100% / 0.9);
+    --shadow-soft-sm: 3px 3px 8px hsl(45 8% 78% / 0.38), -3px -3px 8px hsl(0 0% 100% / 0.9);
+    --shadow-inset: inset 3px 3px 6px hsl(45 8% 78% / 0.42), inset -3px -3px 6px hsl(0 0% 100% / 0.9);
     /* radius: 전 스케일 10px 통일(2026-08-01) — tailwind.config borderRadius와 동기 유지 */
     --radius-sm: 10px;
     --radius-md: 10px;
@@ -97,9 +104,13 @@
     --destructive: 359 100% 61%;
     --destructive-foreground: 0 0% 100%;
     --number-colored: 140 100% 31%; /* #009e35 */
-    --border: 0 0% 11%;
+    --border: 0 0% 13%;
     --input: 0 0% 11%;
     --ring: 240 4.9% 83.9%;
+
+    --shadow-soft: 6px 6px 16px hsl(0 0% 0% / 0.55), -6px -6px 16px hsl(0 0% 100% / 0.035);
+    --shadow-soft-sm: 3px 3px 8px hsl(0 0% 0% / 0.5), -3px -3px 8px hsl(0 0% 100% / 0.035);
+    --shadow-inset: inset 3px 3px 6px hsl(0 0% 0% / 0.55), inset -3px -3px 6px hsl(0 0% 100% / 0.035);
 
     --chart-grid-stroke: #1d1d1d;
     --chart-axis-text: #666666;
@@ -163,19 +174,33 @@
  */
 @layer components {
   .ta-card {
-    @apply rounded-md border border-border bg-card p-6;
+    @apply rounded-md bg-background p-6 shadow-soft;
+  }
+  /* 소프트 UI 패널 — 페이지 안 정보 덩어리 하나. 보더 없이 그림자로만 뜬다(DESIGN_SYSTEM §1 Surface, not border). */
+  .ta-panel {
+    @apply rounded-md bg-background p-5 shadow-soft;
+  }
+  /* 세그먼트 컨트롤 — 파인 트랙 위에 떠 있는 선택 칩. 브랜드·지점·기간 전환용. */
+  .ta-seg {
+    @apply inline-flex items-center gap-0.5 rounded-md bg-background p-1 shadow-inset;
+  }
+  .ta-seg-item {
+    @apply whitespace-nowrap rounded-md px-3 py-1 text-body text-muted-foreground transition-colors hover:text-foreground;
+  }
+  .ta-seg-on {
+    @apply bg-background font-medium text-foreground shadow-soft-sm;
   }
   .ta-label {
     @apply mb-3 block text-caption uppercase tracking-[0.06em] text-muted-foreground;
   }
   .ta-input {
-    @apply h-9 rounded-md border border-input bg-transparent px-3 text-body text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring;
+    @apply h-9 rounded-md border border-transparent bg-background px-3 text-body text-foreground shadow-inset outline-none transition-colors placeholder:text-muted-foreground focus:border-ring;
   }
   .ta-btn {
-    @apply inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-body text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-9 items-center justify-center gap-2 rounded-md bg-background px-4 text-body text-foreground shadow-soft-sm transition-shadow hover:shadow-soft active:shadow-inset disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
   }
   .ta-btn-primary {
-    @apply inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-body text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-body text-primary-foreground shadow-soft-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50;
   }
   /* 에러 문구 공통색 — 컴포넌트별 하드코딩(#c0392b·text-red-500 등) 대체, 다크에서 한 단계 밝게 */
   .ta-error {

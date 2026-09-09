@@ -1,159 +1,81 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { UNITS, unitOf, type UnitId } from '@/lib/finance/types';
+import LocalNav from '@/components/nav/LocalNav';
+import NavLink from '@/components/nav/NavLink';
+import NavMenu from '@/components/nav/NavMenu';
+import SegmentControl from '@/components/nav/SegmentControl';
 
-// 회계 내비 — 2단 구조 (2026-07-31 대표 지시):
-//   1단: 회계 단위 선택 — 스탭밀 | 가든서비스(양재천점) | 가든서비스(판교점)
-//   2단: 선택된 단위 소속 메뉴, 두 줄 — ① 회계 홈 | 송금 요청·송금 설정 | 월 확정·설정 ② 자료 입력~원본 자료함(장부 공정)
+// 회계 로컬 내비 — 한 줄(2026-09-09 소프트 UI 내비 통합; 이전엔 단위 필 + 메뉴 2줄 = 3단):
+//   [세그먼트: 스탭밀 | 양재 | 판교 | 개인]  회계 홈 · 자료 입력 · 전처리 ▾ · 지출 분류 · 송금 ▾ · 월 결산 · 더 보기 ▾
 // 단위는 URL(?unit= 또는 /finance/upload/[unit])로 전달되고, 모든 메뉴 링크가 단위를 실어 나른다.
+// 개인 단위 = 손익 제외 사적 지출 정리 전용(분류만). 브랜드 스코프 멤버(scoped) = 단위 없이 분류+송금만.
 
-const UNIT_TAB_LABEL: Record<UnitId, string> = {
-  staffmeal: '스탭밀',
-  yangjae: '가든서비스(양재천점)',
-  pangyo: '가든서비스(판교점)',
-  personal: '개인',
-};
+const UNIT_SHORT: Record<UnitId, string> = { staffmeal: '스탭밀', yangjae: '가든 양재', pangyo: '가든 판교', personal: '개인' };
 
 export default function AccountingNav({ role, scoped = false }: { role: string | null; scoped?: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isStaff = ['admin', 'classifier'].includes(role ?? '');
+  const isAdmin = role === 'admin';
 
   // 현재 단위: 업로드 경로 세그먼트 > ?unit= > 기본 스탭밀
   const uploadMatch = pathname.match(/^\/finance\/upload\/([^/]+)/);
-  const unit =
-    unitOf(uploadMatch?.[1]) ?? unitOf(searchParams.get('unit')) ?? UNITS[0];
-
-  // 단위 전환 — 지금 보고 있는 페이지를 유지한 채 단위만 바꾼다.
-  // 개인 단위는 지출 분류 화면 전용(자료입력·월확정·POS 개념 없음)이라 항상 분류로 보낸다.
-  const unitHref = (id: UnitId) =>
-    id === 'personal'
-      ? '/finance/classify?unit=personal'
-      : uploadMatch
-      ? `/finance/upload/${id}`
-      : `${pathname}?unit=${id}`;
-
+  const unit = unitOf(uploadMatch?.[1]) ?? unitOf(searchParams.get('unit')) ?? UNITS[0];
   const u = unit.id;
   const isPersonal = u === 'personal';
-  const HOME = [{ href: '/dashboard', label: '회계 홈' }];
-  const TRANSFER = [
-    { href: '/dashboard/transfer', label: '송금 요청' },
-    { href: '/dashboard/history', label: '송금 설정' },
-  ];
-  const BOOKKEEPING = [
-    { href: `/finance/upload/${u}`, label: '자료 입력' },
-    { href: '/finance/raw', label: '로우데이터' },
-    { href: '/finance/prep/expense', label: '전처리1 지출' },
-    { href: '/finance/prep/expense-detail', label: '전처리2 지출구분' },
-    { href: '/finance/prep/revenue', label: '전처리3 매출' },
-    { href: '/finance/prep/menu', label: '전처리4 메뉴' },
-    { href: '/finance/prep/hours', label: '전처리5 시간대' },
-    { href: '/finance/classify', label: '지출 자료 분류' },
-    { href: '/finance/uploads', label: '자료 이력' },
-    { href: '/finance/originals', label: '원본 자료함' },
-  ];
-  const CLOSING = [{ href: '/finance/close', label: '월 결산' }];
-  const ADMIN = [{ href: '/finance/categories', label: '설정' }];
 
-  // 개인 단위 — 손익 제외 사적 지출 정리 전용. 자료입력·월확정·설정 없이 분류만.
-  const PERSONAL = [{ href: '/finance/classify', label: '개인 지출 분류' }];
-
-  // 브랜드 스코프 멤버 — 단위 탭 없이(서버 리다이렉트로 강제) 분류+송금만
-  // 메뉴는 줄 단위로 구성한다(2026-08-20 대표 지시) — 1줄: 홈·송금·확정·설정, 2줄: 장부 공정(자료 입력~원본 자료함)
-  const menuRows: { href: string; label: string }[][][] = scoped
-    ? [[[{ href: '/finance/classify', label: '지출 자료 분류' }], TRANSFER]]
-    : isPersonal
-    ? [[PERSONAL]]
-    : isStaff
-    ? [
-        [HOME, TRANSFER, [...CLOSING, ...(role === 'admin' ? ADMIN : [])]],
-        [BOOKKEEPING],
-      ]
-    : [[HOME, TRANSFER]];
-
-  // 링크에 단위 실어 보내기 — 업로드 경로는 세그먼트에 이미 포함
+  // 단위 전환 — 지금 보고 있는 페이지를 유지한 채 단위만 바꾼다. 개인은 항상 분류로.
+  const unitHref = (id: UnitId) =>
+    id === 'personal' ? '/finance/classify?unit=personal' : uploadMatch ? `/finance/upload/${id}` : `${pathname}?unit=${id}`;
   const withUnit = (href: string) => (href.startsWith('/finance/upload/') ? href : `${href}?unit=${u}`);
-  const isActive = (href: string) => {
-    if (href.startsWith('/finance/upload/')) return !!uploadMatch;
-    return pathname === href;
-  };
+  const isActive = (href: string) => (href.startsWith('/finance/upload/') ? !!uploadMatch : pathname === href);
+  const link = (href: string, label: string) => ({ href: withUnit(href), label, active: isActive(href) });
 
-  return (
-    <nav className="border-b border-border bg-card/40">
-      {/* 1단: 회계 단위 — 모바일에서 줄바꿈 대신 가로 스크롤 한 줄(2026-08-08 대표 지시).
-          w-max + mx-auto: 넓으면 가운데 정렬, 좁으면 왼쪽부터 시작해 끝까지 스크롤 가능
-          (overflow 상태에서 justify-center 를 쓰면 앞쪽 탭이 잘려 접근 불가). */}
-      {!scoped && (
-        <div className="mx-auto max-w-[1680px] overflow-x-auto px-6 pt-3">
-          <div className="mx-auto flex w-max items-center gap-2">
-            {UNITS.map((x) => {
-              const on = x.id === u;
-              return (
-                <Link
-                  key={x.id}
-                  href={unitHref(x.id)}
-                  aria-current={on ? 'page' : undefined}
-                  className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1 text-body transition-colors ${
-                    on
-                      ? 'bg-foreground font-medium text-background'
-                      : 'border border-border text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {UNIT_TAB_LABEL[x.id]}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      {/* 2단: 선택된 단위의 메뉴 — 데스크톱은 줄 단위 가운데 정렬, 모바일은 같은 줄 구성을
-          각각 가로 스크롤(2026-08-09) — 항목이 많아 3줄까지 늘어나던 문제 해소. */}
-      <div className="mx-auto hidden max-w-[1680px] flex-col gap-y-2 px-6 py-3 sm:flex">
-        {menuRows.map((row, ri) => (
-          <div key={ri} className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-            {row.map((group, gi) => (
-              <span key={gi} className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                {gi > 0 && <span className="select-none text-caption text-border">|</span>}
-                {group.map(({ href, label }) => (
-                  <NavLink key={href} href={withUnit(href)} active={isActive(href)} label={label} />
-                ))}
-              </span>
-            ))}
-          </div>
-        ))}
-      </div>
-      <div className="flex flex-col gap-2 py-3 sm:hidden">
-        {menuRows.map((row, ri) => (
-          <div key={ri} className="scrollbar-hide overflow-x-auto px-6">
-            <div className="flex w-max items-center gap-x-5">
-              {row.map((group, gi) => (
-                <span key={gi} className="flex shrink-0 items-center gap-x-5">
-                  {gi > 0 && <span className="select-none text-caption text-border">|</span>}
-                  {group.map(({ href, label }) => (
-                    <NavLink key={href} href={withUnit(href)} active={isActive(href)} label={label} />
-                  ))}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </nav>
+  const PREP = [
+    link('/finance/raw', '로우데이터'),
+    link('/finance/prep/expense', '1 지출'),
+    link('/finance/prep/expense-detail', '2 지출구분'),
+    link('/finance/prep/revenue', '3 매출'),
+    link('/finance/prep/menu', '4 메뉴'),
+    link('/finance/prep/hours', '5 시간대'),
+  ];
+  const TRANSFER = [link('/dashboard/transfer', '송금 요청'), link('/dashboard/history', '송금 설정')];
+  const MORE = [link('/finance/uploads', '자료 이력'), link('/finance/originals', '원본 자료함'), ...(isAdmin ? [link('/finance/categories', '설정')] : [])];
+
+  const lead = !scoped && (
+    <SegmentControl
+      ariaLabel="회계 단위"
+      value={u}
+      items={UNITS.map((x) => ({ id: x.id, label: UNIT_SHORT[x.id], href: unitHref(x.id) }))}
+    />
   );
-}
 
-function NavLink({ href, active, label }: { href: string; active: boolean; label: string }) {
+  if (scoped) {
+    return (
+      <LocalNav width="max-w-[1680px]">
+        <NavLink {...link('/finance/classify', '지출 자료 분류')} />
+        <NavMenu label="송금" items={TRANSFER} />
+      </LocalNav>
+    );
+  }
+  if (isPersonal) {
+    return (
+      <LocalNav width="max-w-[1680px]" lead={lead}>
+        <NavLink {...link('/finance/classify', '개인 지출 분류')} />
+      </LocalNav>
+    );
+  }
   return (
-    <Link
-      href={href}
-      aria-current={active ? 'page' : undefined}
-      className={`whitespace-nowrap text-body transition-colors ${
-        active ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
-      }`}
-    >
-      {label}
-    </Link>
+    <LocalNav width="max-w-[1680px]" lead={lead}>
+      <NavLink {...link('/dashboard', '회계 홈')} />
+      {isStaff && <NavLink {...link(`/finance/upload/${u}`, '자료 입력')} />}
+      {isStaff && <NavMenu label="전처리" items={PREP} />}
+      {isStaff && <NavLink {...link('/finance/classify', '지출 분류')} />}
+      <NavMenu label="송금" items={TRANSFER} />
+      {isStaff && <NavLink {...link('/finance/close', '월 결산')} />}
+      {isStaff && <NavMenu label="더 보기" items={MORE} />}
+    </LocalNav>
   );
 }

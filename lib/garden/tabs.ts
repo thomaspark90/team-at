@@ -27,6 +27,18 @@ export const GARDEN_TAB_GROUPS: GardenTab[][] = [
 ];
 
 export const GARDEN_TABS: GardenTab[] = GARDEN_TAB_GROUPS.flat();
+
+// 내비 한 줄 구성(2026-09-09 대표 결정: 탭 14개 → 작업 보드 + 묶음 3 + 교육 + 설정).
+// 묶음은 화면 표시 전용 — 권한 키·경로는 위 GARDEN_TAB_GROUPS 그대로. 항목은 key 로 참조한다.
+export type GardenNavEntry = { label: string; keys: string[] };
+export const GARDEN_NAV: GardenNavEntry[] = [
+  { label: '작업 보드', keys: ['dashboard'] },
+  { label: '운영', keys: ['pricing', 'saleprice', 'calibration'] },
+  { label: '레시피', keys: ['recipes', 'recommended', 'beancard', 'words'] },
+  { label: '분석', keys: ['sales', 'weather', 'reviews'] },
+  { label: '교육', keys: ['teaching'] },
+  { label: '설정', keys: ['settings'] },
+];
 export const GARDEN_TAB_KEYS = GARDEN_TABS.map((t) => t.key);
 
 /** 현재 경로가 어느 탭인지 판정 — 대시보드는 정확히, 나머지는 하위 경로 포함. */

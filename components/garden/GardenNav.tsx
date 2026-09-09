@@ -1,24 +1,26 @@
 'use client';
 
-import Link from 'next/link';
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { GARDEN_TAB_GROUPS, WORDS_CHANGED_EVENT, tabForPath } from '@/lib/garden/tabs';
+import { GARDEN_NAV, GARDEN_TABS, WORDS_CHANGED_EVENT, tabForPath } from '@/lib/garden/tabs';
 import { REVIEWS_CHANGED_EVENT } from '@/lib/garden/review-constants';
 import { fetchMyAccess } from '@/lib/access/tab-access-client';
+import LocalNav from '@/components/nav/LocalNav';
+import NavLink from '@/components/nav/NavLink';
+import NavMenu from '@/components/nav/NavMenu';
 
-// 가든 하위 내비게이션 — /garden 하위 페이지 상단에 노출 (FinanceNav와 동일 문법)
-// 설정의 '가든 탭 권한'에서 사용자별로 허용된 탭만 보여주고, 미허용 경로는 허용 탭으로 돌려보낸다.
+// 가든 로컬 내비 — 한 줄: 작업 보드 · 운영 ▾ · 레시피 ▾ · 분석 ▾ · 교육 · 설정 (구성은 lib/garden/tabs.ts GARDEN_NAV).
+// 2026-09-09 탭 14개 나열 → 묶음으로 접음(소프트 UI 내비 통합). 권한·배지·리다이렉트 동작은 이전과 같다:
+//  · 설정의 '가든 탭 권한'에서 허용된 탭만 활성, 미허용은 흐리게 자리 유지(왜 못 가는지 보이게).
+//  · 미허용 경로 직접 접근 → 첫 허용 탭으로.
+//  · 배지: 네이버 리뷰(처리 필요)·판매가 설정(책정 대기)·제철 단어(검수 대기). 묶음 라벨엔 합계.
 export default function GardenNav() {
   const pathname = usePathname();
   const router = useRouter();
   // undefined = 로딩 중, null = 전체 허용
   const [allowed, setAllowed] = useState<string[] | null | undefined>(undefined);
-  // 네이버 리뷰 탭 배지 — 액션 필요 건수. 부가 정보라 실패해도 조용히 스킵
   const [reviewCount, setReviewCount] = useState(0);
-  // 판매가 설정 탭 배지 — 책정 대기(판매가 미책정) 발주 건수
   const [unpricedCount, setUnpricedCount] = useState(0);
-  // 제철 단어 탭 배지 — 검수 대기(pending) 단어 건수
   const [pendingWords, setPendingWords] = useState(0);
 
   useEffect(() => {
@@ -34,7 +36,6 @@ export default function GardenNav() {
         .then((j) => setReviewCount(j.count ?? 0))
         .catch(() => {});
     refresh();
-    // 인박스에서 처리(승인·건너뛰기 등)하면 페이지 이동 없이도 배지를 갱신한다
     window.addEventListener(REVIEWS_CHANGED_EVENT, refresh);
     return () => window.removeEventListener(REVIEWS_CHANGED_EVENT, refresh);
   }, [allowed, pathname]);
@@ -55,7 +56,6 @@ export default function GardenNav() {
         .then((j) => setPendingWords(j.count ?? 0))
         .catch(() => {});
     refresh();
-    // 제철 단어 화면에서 검수하면 페이지 이동 없이도 배지를 갱신한다
     window.addEventListener(WORDS_CHANGED_EVENT, refresh);
     return () => window.removeEventListener(WORDS_CHANGED_EVENT, refresh);
   }, [allowed, pathname]);
@@ -65,64 +65,38 @@ export default function GardenNav() {
     if (!Array.isArray(allowed)) return;
     const current = tabForPath(pathname);
     if (current && !allowed.includes(current.key)) {
-      const first = GARDEN_TAB_GROUPS.flat().find((t) => allowed.includes(t.key));
+      const first = GARDEN_TABS.find((t) => allowed.includes(t.key));
       router.replace(first?.href ?? '/');
     }
   }, [allowed, pathname, router]);
 
   const visible = (key: string) => !Array.isArray(allowed) || allowed.includes(key);
+  const badgeOf = (key: string) =>
+    key === 'reviews' ? reviewCount : key === 'saleprice' ? unpricedCount : key === 'words' ? pendingWords : 0;
+  const current = tabForPath(pathname);
 
+  const itemOf = (key: string) => {
+    const t = GARDEN_TABS.find((x) => x.key === key)!;
+    return {
+      href: t.href,
+      label: t.label,
+      title: t.desc,
+      active: current?.key === key,
+      disabled: !visible(key),
+      badge: visible(key) ? badgeOf(key) : 0,
+    };
+  };
+
+  // 설정도 같은 줄 끝에 — 오른쪽 슬롯은 모바일에서 숨겨져 설정에 못 들어가게 된다
   return (
-    <nav className="border-b border-border bg-card/40">
-      {/* 링크를 한 컨테이너에 평탄화 — 그룹 div로 감싸면 그룹 통째로 줄바꿈돼 모바일에서
-          '대시보드' 혼자 한 줄을 차지하는 식으로 4줄까지 늘어났다. 구분선은 데스크톱 전용.
-          미허용 탭도 지우지 않고 비활성 텍스트로 그대로 둔다(2026-08-09) — 어떤 메뉴가
-          있는지, 왜 못 들어가는지 알 수 있게. 클릭 불가 + 배지 없음(어차피 카운트 fetch를
-          안 하니 0). */}
-      <div className="mx-auto flex max-w-[1100px] flex-wrap items-center justify-start gap-x-4 gap-y-2 px-4 py-3 sm:justify-center sm:gap-x-5 sm:gap-y-1.5 sm:px-6">
-        {GARDEN_TAB_GROUPS.map((tabs, i) => (
-          <Fragment key={tabs[0].key}>
-            {i > 0 && <span aria-hidden className="hidden h-3 w-px bg-border sm:block" />}
-            {tabs.map(({ key, href, label, desc }) => {
-              if (!visible(key)) {
-                return (
-                  <span
-                    key={href}
-                    aria-disabled="true"
-                    title={desc ? `${desc} — 접근 권한이 없어요` : '접근 권한이 없어요'}
-                    className="inline-flex cursor-not-allowed items-center gap-1 whitespace-nowrap text-body text-muted-foreground/40"
-                  >
-                    {label}
-                  </span>
-                );
-              }
-              const active = pathname === href;
-              const badge =
-                key === 'reviews' ? reviewCount
-                : key === 'saleprice' ? unpricedCount
-                : key === 'words' ? pendingWords
-                : 0;
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  aria-current={active ? 'page' : undefined}
-                  className={`inline-flex items-center gap-1 whitespace-nowrap text-body transition-colors ${
-                    active ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {label}
-                  {badge > 0 && (
-                    <span className="inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-amber-500 px-1 text-caption font-medium leading-none text-white">
-                      {badge > 999 ? '999+' : badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </Fragment>
-        ))}
-      </div>
-    </nav>
+    <LocalNav>
+      {GARDEN_NAV.map((e) =>
+        e.keys.length === 1 ? (
+          <NavLink key={e.label} {...itemOf(e.keys[0])} />
+        ) : (
+          <NavMenu key={e.label} label={e.label} items={e.keys.map(itemOf)} />
+        ),
+      )}
+    </LocalNav>
   );
 }

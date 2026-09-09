@@ -48,9 +48,9 @@ export default function TabNav() {
   };
 
   return (
-    // relative — 모바일 햄버거 패널(absolute)이 헤더 바로 아래에 겹쳐 뜨는 기준
-    <header className="relative border-b border-border bg-background">
-      <div className={`mx-auto flex h-12 items-center justify-between gap-2 px-4 sm:gap-6 sm:px-6 ${wide ? 'max-w-[1680px]' : 'max-w-[1100px]'}`}>
+    // sticky + 반투명 블러(2026-09-09 소프트 UI): 전역 바 44px 한 줄, 아래 로컬 내비는 그림자로 구분. 모바일 패널(absolute)의 기준이기도 하다
+    <header className="sticky top-0 z-30 border-b border-border/70 bg-background/85 backdrop-blur">
+      <div className={`mx-auto flex h-11 items-center justify-between gap-2 px-4 sm:gap-6 sm:px-6 ${wide ? 'max-w-[1680px]' : 'max-w-[1100px]'}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-team-at.png" alt="TEAM at" className="h-6 w-auto shrink-0 dark:invert" />
 
@@ -83,9 +83,7 @@ export default function TabNav() {
                 aria-current={active ? 'page' : undefined}
                 title={tab.desc}
                 className={`shrink-0 whitespace-nowrap px-2.5 py-1.5 text-body transition-colors sm:px-3 ${
-                  active
-                    ? 'font-medium text-foreground underline decoration-foreground/30 underline-offset-[10px]'
-                    : 'text-muted-foreground hover:text-foreground'
+                  active ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {tab.label}
@@ -129,7 +127,7 @@ export default function TabNav() {
       <nav
         aria-label="모바일 메뉴"
         aria-hidden={!menuOpen}
-        className={`absolute left-0 right-0 top-full z-40 h-[calc(100dvh-3rem)] overflow-y-auto bg-background/95 shadow-2xl backdrop-blur-sm transition-all duration-200 ease-out sm:hidden ${
+        className={`absolute left-0 right-0 top-full z-40 h-[calc(100dvh-2.75rem)] overflow-y-auto bg-background/95 shadow-2xl backdrop-blur-sm transition-all duration-200 ease-out sm:hidden ${
           menuOpen ? 'visible translate-y-0 opacity-100' : 'invisible -translate-y-2 opacity-0'
         }`}
       >

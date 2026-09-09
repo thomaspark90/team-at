@@ -1,9 +1,10 @@
 # team-at — Design System
 
 > **레퍼런스**: [midday.ai](https://midday.ai) 의 디자인 토큰을 그대로 이식.
-> 따뜻한 무채색(크림 카드) · Freesentation · radius 10px 통일 · **장식적 액센트 컬러 없음**(상태 신호 2색은 예외 — §1).
+> 따뜻한 무채색 · Freesentation · radius 12px 통일 · **장식적 액센트 컬러 없음**(상태 신호 2색은 예외 — §1).
 > 소스: github.com/midday-ai/midday (`packages/ui/src/globals.css`) HSL 값 기준.
 > 2026-08-08~09 전면 재정비: 카드 해체(One line per layer) · 폰트 5단계 램프 전체 적용 · 여백 리듬 확정.
+> **2026-09-09 소프트 UI 전환(대표 결정)**: 애플식 미니멀을 목표로 "Border, not shadow" → **"Surface, not border"**. 흰 바탕은 그대로 두고, 면은 보더가 아니라 아주 연한 그림자 두 개(뉴모피즘)로 만든다. 내비는 전역 한 줄 + 로컬 한 줄. 제목 두 단계만 키우고 자간을 조인다(웨이트 규칙은 유지).
 
 ---
 
@@ -13,8 +14,8 @@
 |--------|------|
 | **Warm monochrome** | 흑·백·그레이 + **따뜻한 크림 카드**(`45 18% 96%`). 장식적 컬러 액센트 없음. |
 | **Type** | Freesentation(한글·라틴 커버). 기본 400, 강조는 **색 대비**(muted↔foreground) 우선 + 꼭 필요할 때만 **500(medium)**. 600/700 금지. |
-| **Rounded & compact** | radius **`10px` 전 스케일 통일**(2026-08-01 결정, `tailwind.config.ts` — sm/md/lg/xl/2xl/3xl 전부 10px, `rounded-full`만 예외). pill(둥근 배지·칩)은 여전히 `rounded-full`로 별도. 큰 그림자 금지, 데이터 밀도 우선. **예외**: 높이 40~70px 안팎의 얇은 바 차트 막대는 `rounded-t`(10px)를 쓰면 알약처럼 보인다(2026-08-09 확인, `SalesSummary`/`MenuSalesReport`/`ReviewSalesReport`) — `style={{ borderRadius: '2px 2px 0 0' }}`로 고정 지정. |
-| **Border, not shadow** | 면 구분은 그림자가 아니라 `border-border`. |
+| **Rounded & compact** | radius **`12px` 전 스케일 통일**(2026-08-01 결정 10px → 2026-09-09 소프트 UI 전환으로 12px, `tailwind.config.ts` — sm/md/lg/xl/2xl/3xl 전부 12px, `rounded-full`만 예외). pill(둥근 배지·칩)은 여전히 `rounded-full`로 별도. 큰 그림자 금지, 데이터 밀도 우선. **예외**: 높이 40~70px 안팎의 얇은 바 차트 막대는 `rounded-t`(10px)를 쓰면 알약처럼 보인다(2026-08-09 확인, `SalesSummary`/`MenuSalesReport`/`ReviewSalesReport`) — `style={{ borderRadius: '2px 2px 0 0' }}`로 고정 지정. |
+| **Surface, not border** | (2026-09-09, 이전 "Border, not shadow" 대체) 면은 보더가 아니라 **소프트 그림자**로 만든다. 패널은 바탕과 같은 흰색이고 `shadow-soft`(우하단 연한 그림자 + 좌상단 밝은 그림자)로만 떠 보인다. 눌린 것(인풋·세그먼트 트랙)은 `shadow-inset`. 큰 그림자·색 있는 그림자 금지 — 값은 `globals.css` `--shadow-soft / --shadow-soft-sm / --shadow-inset` 하나로 통일, 임의 `shadow-md/lg` 금지. 남는 헤어라인(`border-border`)은 목록 행 구분·테이블에만, 색은 한 톤 옅어짐(`45 5% 91%`). |
 | **One line per layer** | 선은 한 계층만. 페이지 최상위 섹션은 카드 박스 대신 **가로 구분선**(`divide-y divide-border`)과 여백으로 구획(§7). 그리드 셀·정적 정보 박스는 보더 없이 `bg-muted/40` 면으로. 보더 유지 대상: 점선(업로드 등 어포던스) · 인터랙티브 요소(버튼·인풋·클릭 가능한 내비 카드) · 상태색 보더(선택/활성 신호) · 플로팅 오버레이(모달·드롭다운·툴팁) · 테이블 · 차트 내부. `ta-card`는 이제 페이지 섹션이 아니라 이런 예외(오버레이·독립형 카드)에만 쓴다. |
 | **Signal = 상태색 2종 한정** | 장식적 컬러는 없지만, **상태 신호**는 두 색으로 표준화: `emerald`(완료·정상) / `amber`(지연·미분류·확인 필요). 진짜 오류·삭제·음수는 `destructive` 토큰(`text-destructive`/`bg-destructive`) — 원시 `red-500`/`red-600` 등 직접 색상 클래스 금지, 반드시 토큰 경유. |
 
@@ -66,8 +67,8 @@ CSS 변수 → Tailwind 유틸(`bg-*`, `text-*`, `border-*`)로 노출. 다크 �
 
 | 토큰 | 크기 | 용도 |
 |------|------|------|
-| `text-display` | 28px | 페이지 타이틀 · KPI 큰 숫자 |
-| `text-title` | 20px | 카드·섹션 타이틀 · 상단 내비 |
+| `text-display` | 34px · 자간 -0.02em | 페이지 타이틀 · KPI 큰 숫자 (2026-09-09 28→34) |
+| `text-title` | 22px · 자간 -0.015em | 카드·섹션 타이틀 · 상단 내비 (2026-09-09 20→22) |
 | `text-body` | 15px | 본문 · UI 기본(버튼·인풋·테이블·탭) |
 | `text-caption` | 12px | 캡션 · 라벨 · 보조 |
 
@@ -81,13 +82,17 @@ CSS 변수 → Tailwind 유틸(`bg-*`, `text-*`, `border-*`)로 노출. 다크 �
 
 | 클래스 | = |
 |--------|---|
-| `.ta-card` | `rounded-md border border-border bg-card p-6`. 페이지 최상위 섹션에는 쓰지 않는다(§1·§7) — 모달·팝오버 등 플로팅 패널, `/install`·`/s/[token]` 같은 화면 중앙 단일 카드(포커스드 단일 액션 페이지) 정도로 한정. 스탭밀(`/studio`)·가든(`/garden`)에서 그래도 쓸 땐 `bg-background`(흰색) 오버라이드(2026-07-06). |
-| `.ta-input` | `h-9 rounded-md border border-input bg-transparent px-3 text-body …` (input/select/textarea) |
-| `.ta-btn` | 아웃라인 버튼 (h-9, border, hover:bg-accent) |
-| `.ta-btn-primary` | 다크 프라이머리 버튼 (h-9, bg-primary) |
+| `.ta-panel` | `rounded-md bg-background p-5 shadow-soft` — 페이지 안 정보 덩어리 하나(주 패널·보조 패널). 2026-09-09 신설. |
+| `.ta-seg` / `.ta-seg-item` / `.ta-seg-on` | 세그먼트 컨트롤 — 파인 트랙(`shadow-inset`) 위 선택 칩(`shadow-soft-sm`). 브랜드·지점·기간 전환. 컴포넌트 `components/nav/SegmentControl.tsx`. |
+| `.ta-card` | `rounded-md bg-background p-6 shadow-soft`(2026-09-09 보더 제거). 페이지 최상위 섹션에는 쓰지 않는다(§1·§7) — 모달·팝오버 등 플로팅 패널, `/install`·`/s/[token]` 같은 화면 중앙 단일 카드(포커스드 단일 액션 페이지) 정도로 한정. 스탭밀(`/studio`)·가든(`/garden`)에서 그래도 쓸 땐 `bg-background`(흰색) 오버라이드(2026-07-06). |
+| `.ta-input` | `h-9 rounded-md bg-background shadow-inset px-3 text-body …` — 눌린 면, 보더는 포커스 때만 (input/select/textarea) |
+| `.ta-btn` | 떠 있는 버튼 (h-9, `shadow-soft-sm`, hover 시 `shadow-soft`, 누르면 `shadow-inset`) |
+| `.ta-btn-primary` | 다크 프라이머리 버튼 (h-9, bg-primary + `shadow-soft-sm`). **한 화면에 하나**가 목표 — 나머지 행동은 텍스트 링크 + › |
 | `.ta-label` | 섹션 캡션 (uppercase, muted, 11px) |
 
-세그먼트 토글: `rounded-md border border-border p-1` + 활성 `bg-primary text-primary-foreground rounded-sm`.
+세그먼트 토글: `.ta-seg` 계열(위)로 통일 — 이전의 `border p-1 + bg-primary 활성` 패턴은 새로 쓰지 않는다.
+
+**내비게이션(2026-09-09)**: 전역 `TabNav` 44px 한 줄(sticky·반투명 블러·헤어라인) + 섹션별 로컬 내비 한 줄(`components/nav/LocalNav.tsx`, 아래로 `shadow-soft-sm`). 로컬 내비 안은 `NavLink`(단일)·`NavMenu`(묶음 드롭다운)·`SegmentControl`(브랜드·지점)만 쓴다. 바를 더 쌓지 않는다 — 항목이 넘치면 묶음으로 접는다. 가든 묶음 구성은 `lib/garden/tabs.ts` `GARDEN_NAV`.
 
 ---
 
@@ -117,6 +122,8 @@ CSS 변수 → Tailwind 유틸(`bg-*`, `text-*`, `border-*`)로 노출. 다크 �
 
 - 장식적 컬러 액센트(예: 블루 `#0099FF`), pill 라운드, 인라인 `fontFamily`/`fontWeight`/`boxShadow`, 하드코딩 hex.
 - 원시 `text-red-*`/`bg-red-*` 등 색상 유틸 직접 사용 — 오류·삭제·음수는 반드시 `destructive` 토큰 경유(§1·§2).
-- 페이지 최상위 섹션에 보더 있는 카드 박스(`ta-card`류) — §1 One line per layer, §4 예외 참고.
+- 페이지 최상위 섹션에 보더 있는 카드 박스 — §1 Surface, not border. 면이 필요하면 `.ta-panel`(그림자), 아니면 여백.
+- 임의 그림자(`shadow-md/lg/xl`, 인라인 boxShadow) — 소프트 UI 토큰 3종(`shadow-soft / soft-sm / inset`)만.
+- 내비 바를 2단 이상 쌓기 — 로컬 내비 한 줄 안에서 묶음(`NavMenu`)으로 접는다.
 - 램프 밖 폰트 크기(`text-[10/12/14/16/17/18/20/21px]`, `text-sm`, `text-xs`) — §3 5단계로 스냅. 차트 내부·아이콘 글리프·특수 목적의 대형 편집형 타이포(예: 모바일 전체화면 메뉴, `BrewTimer.tsx`의 추출 경과 시간 64px·현재 단계 28px·완료 22px — 스톱워치 성격상 램프보다 큰 표시가 필요)는 케이스별 예외로 남을 수 있으나 기본은 램프.
 - `components/StoryPreview.tsx`(카페 스토리 출력물), 원두카드 인쇄 시트(`BeanCardPrint.tsx`의 `bc-*` 영역)는 이 시스템 대상 아님 — 별도 브랜드/출력물 비주얼.
