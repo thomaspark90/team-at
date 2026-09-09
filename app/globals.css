@@ -186,6 +186,27 @@
   }
 }
 
+/*
+ * 전역 폰트 스케일 ×1.2 (2026-09-09 대표 지시 "너무 작다").
+ * 앱의 글자 크기가 px 고정 유틸(text-[13px] 등, 126개 파일)로 박혀 있어 rem 조정이 먹지 않는다 —
+ * 소스를 일괄 치환하는 대신 여기서 클래스별로 1.2배를 덮어쓴다(여백·높이는 그대로, 글자만).
+ * 배율은 --font-scale 하나로 조절. 아래 iOS 16px 규칙보다 앞에 두어 모바일 입력 확대 방지는 유지.
+ */
+:root {
+  --font-scale: 1.2;
+}
+.text-\[11px\], .caption, .gs-row, .ta-label { font-size: calc(11px * var(--font-scale)); }
+.text-\[12px\] { font-size: calc(12px * var(--font-scale)); }
+.text-\[13px\], .ta-input, .ta-btn, .ta-btn-primary { font-size: calc(13px * var(--font-scale)); }
+.text-\[14px\] { font-size: calc(14px * var(--font-scale)); }
+.text-\[15px\] { font-size: calc(15px * var(--font-scale)); }
+.text-\[16px\] { font-size: calc(16px * var(--font-scale)); }
+.text-\[18px\] { font-size: calc(18px * var(--font-scale)); }
+.text-\[20px\] { font-size: calc(20px * var(--font-scale)); }
+.text-\[22px\] { font-size: calc(22px * var(--font-scale)); }
+.text-\[32px\] { font-size: calc(32px * var(--font-scale)); }
+.text-2xl { font-size: calc(24px * var(--font-scale)); }
+
 /* 네이티브 드롭다운 대비 개선 — optgroup 그룹 헤더(재료비(원가) 등)가 기본 흐린 회색이라
    다크 팝업에서 잘 안 보인다. 전경색으로 올려 라이트/다크 모두에서 뚜렷하게(흰색·검정에 가깝게) */
 select optgroup {
