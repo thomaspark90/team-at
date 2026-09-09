@@ -17,7 +17,7 @@ export type StaffDetail = {
   wishes: { topicKey: string; priority: number | null; received: boolean }[];
   note: string;
 };
-export type ShiftSlot = { hour: number; note: string }; // 9 = 09:00 칸
+export type ShiftSlot = { hour: number; note: string; trainees: { userId: string; name: string }[] }; // 9 = 09:00 칸
 export type Shift = {
   id: number;
   managerId: string;

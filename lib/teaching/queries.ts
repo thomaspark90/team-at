@@ -91,6 +91,7 @@ export interface ShiftTrainee {
 export interface ShiftSlot {
   hour: number; // 9 = 09:00 칸
   note: string;
+  trainees: { userId: string; name: string }[]; // 이 시간에 참여할 스탭(대표 지정)
 }
 
 export interface ShiftRow {
@@ -118,19 +119,29 @@ export async function upcomingShifts(svc: SupabaseClient, fromYmd: string, toYmd
   const { data } = await q;
   const rows = data ?? [];
   const shiftIds = rows.map((s) => s.id as number);
-  const [{ data: tr }, { data: slotRows }] = shiftIds.length
+  const [{ data: tr }, { data: slotRows }, { data: slotTr }] = shiftIds.length
     ? await Promise.all([
         svc.from('teaching_shift_trainees').select('shift_id, user_id').in('shift_id', shiftIds),
         svc.from('teaching_shift_slots').select('shift_id, hour, note').in('shift_id', shiftIds).order('hour'),
+        svc.from('teaching_shift_slot_trainees').select('shift_id, hour, user_id').in('shift_id', shiftIds),
       ])
-    : [{ data: [] as { shift_id: number; user_id: string }[] }, { data: [] as { shift_id: number; hour: number; note: string }[] }];
-  const slotsOf = new Map<number, ShiftSlot[]>();
+    : [
+        { data: [] as { shift_id: number; user_id: string }[] },
+        { data: [] as { shift_id: number; hour: number; note: string }[] },
+        { data: [] as { shift_id: number; hour: number; user_id: string }[] },
+      ];
+  // 시간 칸 = 메모 칸 ∪ 인원 칸 (메모 없이 인원만 있는 시간도 칸으로 나온다)
+  const slotKey = (sid: number, h: number) => `${sid}:${h}`;
+  const slotMap = new Map<string, ShiftSlot & { shiftId: number }>();
   for (const r of slotRows ?? []) {
-    const list = slotsOf.get(r.shift_id as number) ?? [];
-    list.push({ hour: r.hour as number, note: r.note as string });
-    slotsOf.set(r.shift_id as number, list);
+    slotMap.set(slotKey(r.shift_id as number, r.hour as number), { shiftId: r.shift_id as number, hour: r.hour as number, note: r.note as string, trainees: [] });
   }
-  const traineeIds = Array.from(new Set((tr ?? []).map((t) => t.user_id as string)));
+  for (const r of slotTr ?? []) {
+    const k = slotKey(r.shift_id as number, r.hour as number);
+    if (!slotMap.has(k)) slotMap.set(k, { shiftId: r.shift_id as number, hour: r.hour as number, note: '', trainees: [] });
+  }
+  // 일정의 교육 대상 = 일정 단위 지정 ∪ 시간 칸 지정 (세부 정보·전날 알림·헤더가 모두 이 합집합을 쓴다)
+  const traineeIds = Array.from(new Set([...(tr ?? []).map((t) => t.user_id as string), ...(slotTr ?? []).map((t) => t.user_id as string)]));
   const [profiles, received, { data: wishRows }] = await Promise.all([
     profileMap(svc, [...rows.map((s) => s.manager_id as string), ...traineeIds]),
     lastReceivedMap(svc, traineeIds),
@@ -146,8 +157,29 @@ export async function upcomingShifts(svc: SupabaseClient, fromYmd: string, toYmd
     list.push({ key: w.topic_key as string, priority: (w.priority as number | null) ?? null });
     openTopicsOf.set(w.user_id as string, list);
   }
+  // 시간 칸 인원 이름 채우기
+  for (const r of slotTr ?? []) {
+    const p = profiles.get(r.user_id as string);
+    if (!p) continue;
+    slotMap.get(slotKey(r.shift_id as number, r.hour as number))?.trainees.push({ userId: p.user_id, name: p.display_name });
+  }
+  const slotsOf = new Map<number, ShiftSlot[]>();
+  Array.from(slotMap.values()).forEach((v) => {
+    const list = slotsOf.get(v.shiftId) ?? [];
+    list.push({ hour: v.hour, note: v.note, trainees: v.trainees.sort((x, y) => x.name.localeCompare(y.name, 'ko')) });
+    slotsOf.set(v.shiftId, list);
+  });
+  Array.from(slotsOf.values()).forEach((list) => list.sort((x, y) => x.hour - y.hour));
+
   const traineesOf = new Map<number, ShiftTrainee[]>();
-  for (const t of tr ?? []) {
+  const seenPair = new Set<string>();
+  const allPairs = [
+    ...(tr ?? []).map((t) => ({ shift_id: t.shift_id as number, user_id: t.user_id as string })),
+    ...(slotTr ?? []).map((t) => ({ shift_id: t.shift_id as number, user_id: t.user_id as string })),
+  ];
+  for (const t of allPairs) {
+    if (seenPair.has(`${t.shift_id}:${t.user_id}`)) continue;
+    seenPair.add(`${t.shift_id}:${t.user_id}`);
     const p = profiles.get(t.user_id as string);
     if (!p) continue; // 승인 취소·삭제된 계정은 조용히 제외
     const list = traineesOf.get(t.shift_id as number) ?? [];

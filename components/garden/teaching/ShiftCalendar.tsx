@@ -130,7 +130,7 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
             </label>
           </div>
           <div>
-            <span className="ta-label">교육 대상 · {storeLabel(store)}</span>
+            <span className="ta-label">교육 대상 · {storeLabel(store)} <span className="normal-case tracking-normal">(비워 두고 저장 후 시간 칸마다 고를 수도 있어요)</span></span>
             {storeStaff.length === 0 ? (
               <p className="text-caption text-muted-foreground">승인된 스탭 없음 — 지점 전원에게 알림</p>
             ) : (
@@ -163,7 +163,7 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
       {mine.length === 0 ? (
         <p className="text-body text-muted-foreground">{isAdmin ? '잡힌 일정 없음' : '잡힌 일정 없음 — 대표가 등록하면 여기에 뜹니다'}</p>
       ) : (
-        <ShiftSchedule shifts={mine} today={me.today} isAdmin={isAdmin} onRemove={remove} onSlotSaved={onChange} />
+        <ShiftSchedule shifts={mine} today={me.today} isAdmin={isAdmin} staff={me.staff} onRemove={remove} onSlotSaved={onChange} />
       )}
       {!open && error && <p className="ta-error text-body">{error}</p>}
     </div>
