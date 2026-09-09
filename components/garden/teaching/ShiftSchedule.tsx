@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { fmtMd, fmtRange } from '@/lib/teaching/kst';
-import { topicLabel } from '@/lib/teaching/topics';
 import { STORES } from '@/lib/types';
 import { api, type Shift, type TeachingMe } from './types';
 
 // 티칭 일정 세로 시간표 — 일정 하나가 한 블록: 날짜(요일)·지점·시간·티칭 스태프·교육 대상 헤더 아래
 // 시작~종료를 한 시간 칸으로 세로 나열. 대표는 칸 안에 바로 적고(blur/Enter 저장), 티칭 스태프는 읽기만.
 //  · 시간 미정 일정은 칸 없이 '시간 미정'만. 시작만 있으면 시작~20:00, 종료만 있으면 06:00~종료.
-//  · 헤더의 요청 주제 줄 = 교육 대상 스탭이 아직 못 받은 위시(뭘 준비할지).
+//  · 인원별 배우고 싶은 것·순위는 여기 안 보인다(2026-09-09 대표: 불필요) — 지점 근무자 명부에서 본다.
 //  · 시간 칸마다 참여 인원을 따로 고른다(2026-09-09 대표 지시: 전원이 다 들으면 매장 운영에 구멍·불필요한 교육).
 //    대표는 칸 옆 이름 칩을 눌러 넣고 빼고, 티칭 스태프는 이름만 본다. 헤더 교육 대상은 칸 인원의 합집합.
 //  · 장식색 없음(DESIGN_SYSTEM §1) — 첫 블록(=다음 일정)과 오늘 날짜만 emerald(시안 A: '다음 일정' 문장을 이 강조가 대신한다).
@@ -152,7 +151,6 @@ export default function ShiftSchedule({
         const noteOf = (h: number) => slotOf(h)?.note ?? '';
         const candidates = staff.filter((p) => p.stores.includes(s.store)).map((p) => ({ userId: p.userId, name: p.name }));
         const names = s.trainees.map((t) => t.name).join(', ');
-        const topics = Array.from(new Set(s.trainees.flatMap((t) => t.openTopics))).map(topicLabel);
         const isNext = i === 0 || s.date === today;
 
         return (
@@ -170,31 +168,6 @@ export default function ShiftSchedule({
                 </button>
               )}
             </div>
-            {/* 교육 대상별 세부 — 이름: ①②③ 순위 주제 먼저, 나머지 흐리게 (명부에서 대표가 적은 정보) */}
-            {s.trainees.some((t) => t.openTopics.length > 0) ? (
-              <ul className="space-y-0.5 text-caption">
-                {s.trainees.map((t) => (
-                  <li key={t.userId}>
-                    <span className="text-foreground">{t.name}</span>
-                    <span className="text-muted-foreground"> · </span>
-                    {t.openTopics.length === 0 ? (
-                      <span className="text-muted-foreground">배우고 싶은 것 미입력</span>
-                    ) : (
-                      t.openTopics.map((k, j) => (
-                        <span key={k}>
-                          {j > 0 && <span className="text-muted-foreground"> · </span>}
-                          {t.priorities[k] && <span className="mr-0.5 text-foreground">{['①', '②', '③'][t.priorities[k] - 1]}</span>}
-                          <span className={t.priorities[k] ? 'text-foreground' : 'text-muted-foreground'}>{topicLabel(k)}</span>
-                        </span>
-                      ))
-                    )}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              topics.length > 0 && <p className="text-caption text-muted-foreground">배우고 싶어 하는 것 · {topics.join(' · ')}</p>
-            )}
-
             {/* 시간 칸 — 세로 */}
             {hours.length > 0 && (
               <ol className="divide-y divide-border">
