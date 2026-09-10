@@ -17,7 +17,8 @@ export async function GET() {
     a.svc.from('teaching_notes').select('note, updated_at').eq('user_id', a.userId).maybeSingle(),
     lastReceivedMap(a.svc, [a.userId]),
     // 지난 2주까지 — 티칭 스태프가 교육 뒤에 코멘트를 남길 수 있게(운영 권한만 과거를 본다)
-    upcomingShifts(a.svc, canManage(a) ? addDays(today, -14) : today, addDays(today, 42)),
+    // 앞으로 180일 — 6주(42일)였을 땐 그 뒤 날짜로 저장하면 화면에 안 떠 '저장 실패'로 보였다(2026-09-10 대표 제보)
+    upcomingShifts(a.svc, canManage(a) ? addDays(today, -14) : today, addDays(today, 180)),
     profileMap(a.svc),
   ]);
 

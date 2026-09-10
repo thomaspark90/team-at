@@ -15,6 +15,10 @@ import ShiftSchedule from './ShiftSchedule';
 //  · 전날 20시 교육 대상(지정 없으면 지점 스탭 전원)과 티칭 스태프 본인에게 푸시가 나간다.
 
 const storeLabel = (id: string) => STORES.find((s) => s.id === id)?.label ?? id;
+// 시각 선택지 — 06:00~22:00, 30분 단위(2026-09-10 대표 지시: 분은 00·30만). 브라우저 time 입력은 오전/오후까지 다 쳐야
+// 값이 잡혀 비어 있는 채로 저장되는 일이 잦았다 → 셀렉트로 교체.
+const TIME_OPTIONS: string[] = [];
+for (let h = 6; h <= 22; h++) for (const m of ['00', '30']) TIME_OPTIONS.push(`${String(h).padStart(2, '0')}:${m}`);
 
 export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChange: () => void }) {
   const isAdmin = me.role === 'admin';
@@ -118,11 +122,21 @@ export default function ShiftCalendar({ me, onChange }: { me: TeachingMe; onChan
             </label>
             <label className="block">
               <span className="ta-label">시작</span>
-              <input type="time" className="ta-input tabular" value={startTime} step={600} onChange={(e) => setStartTime(e.target.value)} />
+              <select className="ta-input tabular" value={startTime} onChange={(e) => setStartTime(e.target.value)}>
+                <option value="">미정</option>
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
             </label>
             <label className="block">
               <span className="ta-label">종료</span>
-              <input type="time" className="ta-input tabular" value={endTime} step={600} onChange={(e) => setEndTime(e.target.value)} />
+              <select className="ta-input tabular" value={endTime} onChange={(e) => setEndTime(e.target.value)}>
+                <option value="">미정</option>
+                {TIME_OPTIONS.filter((t) => !startTime || t > startTime).map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
             </label>
             <label className="block">
               <span className="ta-label">지점</span>
