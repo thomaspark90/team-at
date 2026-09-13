@@ -245,6 +245,8 @@ export default function WeatherStrip({ compact = false }: { compact?: boolean })
           .ws2-bob, .ws2-surf-a, .ws2-surf-b, .ws-sun-glow, .ws-snow-a, .ws-snow-b { animation: none; }
         }
         /* 달력 관습 색 — 토요일 파랑, 일요일·공휴일 빨강. 다크 모드는 한 단계 밝게 */
+        .ws-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+        @media (min-width: 900px) { .ws-grid { grid-template-columns: repeat(8, 1fr); } }
         .ws-day-red { color: hsl(0 72% 45%); }
         .ws-day-blue { color: hsl(217 75% 48%); }
         .dark .ws-day-red { color: hsl(0 84% 68%); }
@@ -297,7 +299,8 @@ export default function WeatherStrip({ compact = false }: { compact?: boolean })
           )}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+      {/* 16일 카드 — 가로 스크롤은 맥에서 스크롤바가 안 보여 6일만 있는 줄 알았다(2026-09-13 대표 지적) → 8열 2줄 그리드로 전부 노출 */}
+      <div className="ws-grid">
         {(visible ?? Array.from({ length: 16 })).map((day: ForecastDay | undefined, i) => {
           if (!day) {
             return (

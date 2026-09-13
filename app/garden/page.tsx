@@ -18,6 +18,7 @@ export default function GardenPage() {
     <PageShell
       nav={<GardenNav />}
       title="작업 보드"
+      subtitleWide
       subtitle={
         <>
           <WeatherStrip compact />
