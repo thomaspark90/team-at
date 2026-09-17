@@ -723,19 +723,24 @@ export default function Dashboard({
   const hasOther = ranked.length > CAT_MAX;
   const topKeys = hasOther ? ranked.slice(0, CAT_MAX - 1) : ranked;
   const otherKeys = hasOther ? ranked.slice(CAT_MAX - 1) : [];
-  const barKeys = hasOther ? [...topKeys, '기타'] : topKeys;
-  const colorOf = (k: string, i: number) => (k === '기타' || k === UNCLASSIFIED ? CAT_OTHER : CAT[i]);
-  // 매출 막대는 공급가액(revenue) — 지출이 순액이라 같은 기준으로 세워야 비교가 된다(2026-09-17).
+  // 매출 막대는 총액(VAT 포함, POS 화면과 같은 숫자). 지출 항목은 순액이라, 매출에 실린 부가세
+  // (총액 − 공급가액 = 공급가액의 10%)를 '부가세' 세부항목으로 스택 맨 위에 얹어 높이를 맞춘다(2026-09-17 대표 지시).
+  const VAT_KEY = '부가세';
+  const vatOf = (m: MonthAgg) => Math.max(0, m.revenueGross - m.revenue);
+  const barKeys = [...(hasOther ? [...topKeys, '기타'] : topKeys), VAT_KEY];
+  const colorOf = (k: string, i: number) => (k === VAT_KEY ? LINE : k === '기타' || k === UNCLASSIFIED ? CAT_OTHER : CAT[i]);
   const barData = visMonths.map((m) => {
-    const row: Record<string, number | string> = { p: fmtP(m.ym), 매출: m.revenue, 총지출: m.cogs + m.sga };
+    const vat = vatOf(m);
+    const row: Record<string, number | string> = { p: fmtP(m.ym), 매출: m.revenueGross, 총지출: m.cogs + m.sga + vat };
     for (const k of topKeys) row[k] = m.expense[k] || 0;
     if (hasOther) row['기타'] = otherKeys.reduce((s, k) => s + (m.expense[k] || 0), 0);
+    row[VAT_KEY] = vat;
     return row;
   });
   // 항목별 비중 — 최근(가장 최신) 달 기준 구성비. 색은 전체기간 순위로 고정(엔티티→색), 리스트는 그 달 값으로 정렬.
   const lastValueOf = (k: string) =>
-    k === '기타' ? otherKeys.reduce((s, kk) => s + (last.expense[kk] || 0), 0) : last.expense[k] || 0;
-  const lastExpenseTotal = last.cogs + last.sga;
+    k === VAT_KEY ? vatOf(last) : k === '기타' ? otherKeys.reduce((s, kk) => s + (last.expense[kk] || 0), 0) : last.expense[k] || 0;
+  const lastExpenseTotal = last.cogs + last.sga + vatOf(last);
   const breakdown = barKeys
     .map((k, i) => {
       const value = lastValueOf(k);
@@ -1092,7 +1097,7 @@ export default function Dashboard({
       {...fullProps('expense')}
       onReorder={reorderChart}
       title="지출 구분"
-      subtitle={`월별 카테고리 지출(누적) 옆에 매출(공급가액) 막대 · 오른쪽은 ${breakdownLabel} 구성비`}
+      subtitle={`월별 카테고리 지출(누적, 매출 부가세 포함) 옆에 매출(VAT 포함, POS 기준) 막대 · 오른쪽은 ${breakdownLabel} 구성비`}
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-center">
         <div className="min-w-0 flex-1">
@@ -1118,12 +1123,12 @@ export default function Dashboard({
         </div>
         <div className="w-full shrink-0 md:w-[230px]">
           <div className="mb-2 flex items-center justify-between gap-2 border-b border-border pb-1.5 text-caption">
-            <span className="text-muted-foreground">매출(공급가액)</span>
-            <span className="tabular text-foreground">{won(last.revenue)}</span>
+            <span className="text-muted-foreground">매출(VAT 포함)</span>
+            <span className="tabular text-foreground">{won(last.revenueGross)}</span>
           </div>
           <div className="mb-2 flex items-center justify-between gap-2 text-caption">
             <span className="text-muted-foreground">지출 ÷ 매출</span>
-            <span className="tabular font-medium text-foreground">{last.revenue > 0 ? `${((lastExpenseTotal / last.revenue) * 100).toFixed(1)}%` : '—'}</span>
+            <span className="tabular font-medium text-foreground">{last.revenueGross > 0 ? `${((lastExpenseTotal / last.revenueGross) * 100).toFixed(1)}%` : '—'}</span>
           </div>
           <ul className="flex flex-col gap-1.5">
             {breakdown.map((b) => (
