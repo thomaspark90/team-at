@@ -107,9 +107,11 @@ function LoanDot(props: any) {
   );
 }
 
-function ChartTooltip({ active, payload, label, fmt, share }: any) {
+function ChartTooltip({ active, payload, label, fmt, share, shareSkip }: any) {
   if (!active || !payload?.length) return null;
-  const total = share ? payload.reduce((s: number, p: any) => s + (Number(p.value) || 0), 0) : 0;
+  // shareSkip: 비중 합계에 넣지 않는 키(예: 지출 스택 옆에 세운 '매출' 막대)
+  const skip: string[] = shareSkip ?? [];
+  const total = share ? payload.reduce((s: number, p: any) => s + (skip.includes(p.name) ? 0 : Number(p.value) || 0), 0) : 0;
   return (
     <div className="rounded-md border border-border bg-background px-2.5 py-1.5 text-caption shadow-none">
       <div className="mb-1 text-muted-foreground">{label}</div>
@@ -121,7 +123,7 @@ function ChartTooltip({ active, payload, label, fmt, share }: any) {
           </span>
           <span className="flex items-baseline gap-2">
             <span>{fmt ? fmt(p.value, p.name) : p.value}</span>
-            {share && total > 0 && (
+            {share && total > 0 && !skip.includes(p.name) && (
               <span className="w-[42px] text-right text-muted-foreground">{((Number(p.value) / total) * 100).toFixed(1)}%</span>
             )}
           </span>
@@ -723,8 +725,9 @@ export default function Dashboard({
   const otherKeys = hasOther ? ranked.slice(CAT_MAX - 1) : [];
   const barKeys = hasOther ? [...topKeys, '기타'] : topKeys;
   const colorOf = (k: string, i: number) => (k === '기타' || k === UNCLASSIFIED ? CAT_OTHER : CAT[i]);
+  // 매출 막대는 공급가액(revenue) — 지출이 순액이라 같은 기준으로 세워야 비교가 된다(2026-09-17).
   const barData = visMonths.map((m) => {
-    const row: Record<string, number | string> = { p: fmtP(m.ym), 총지출: m.cogs + m.sga };
+    const row: Record<string, number | string> = { p: fmtP(m.ym), 매출: m.revenue, 총지출: m.cogs + m.sga };
     for (const k of topKeys) row[k] = m.expense[k] || 0;
     if (hasOther) row['기타'] = otherKeys.reduce((s, k) => s + (m.expense[k] || 0), 0);
     return row;
@@ -1089,7 +1092,7 @@ export default function Dashboard({
       {...fullProps('expense')}
       onReorder={reorderChart}
       title="지출 구분"
-      subtitle={`월별 카테고리 지출(누적) · 오른쪽은 ${breakdownLabel} 구성비`}
+      subtitle={`월별 카테고리 지출(누적) 옆에 매출(공급가액) 막대 · 오른쪽은 ${breakdownLabel} 구성비`}
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-center">
         <div className="min-w-0 flex-1">
@@ -1098,8 +1101,11 @@ export default function Dashboard({
               <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
               <XAxis dataKey="p" tick={axisTick} stroke={AXIS} />
               <YAxis tickFormatter={manwon} tick={axisTick} stroke={AXIS} width={48} />
-              <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} share />} />
+              <Tooltip content={<ChartTooltip fmt={(v: number) => won(Number(v))} share shareSkip={['매출']} />} />
               {isPast && unit === 'month' && <ReferenceLine x={focusP} stroke={LINE2} strokeDasharray="2 4" />}
+              <Bar dataKey="매출" stackId="rev" fill={LINE} fillOpacity={0.12} stroke={LINE} strokeWidth={1}>
+                <LabelList dataKey="매출" position="top" offset={30} formatter={wonLabel} style={pointLabel} />
+              </Bar>
               {barKeys.map((k, i) => (
                 <Bar key={k} dataKey={k} stackId="a" fill={colorOf(k, i)} stroke={CAT_SURFACE} strokeWidth={1}>
                   {i === barKeys.length - 1 && (
@@ -1111,6 +1117,14 @@ export default function Dashboard({
           </ResponsiveContainer>
         </div>
         <div className="w-full shrink-0 md:w-[230px]">
+          <div className="mb-2 flex items-center justify-between gap-2 border-b border-border pb-1.5 text-caption">
+            <span className="text-muted-foreground">매출(공급가액)</span>
+            <span className="tabular text-foreground">{won(last.revenue)}</span>
+          </div>
+          <div className="mb-2 flex items-center justify-between gap-2 text-caption">
+            <span className="text-muted-foreground">지출 ÷ 매출</span>
+            <span className="tabular font-medium text-foreground">{last.revenue > 0 ? `${((lastExpenseTotal / last.revenue) * 100).toFixed(1)}%` : '—'}</span>
+          </div>
           <ul className="flex flex-col gap-1.5">
             {breakdown.map((b) => (
               <li key={b.name} className="flex items-center gap-2 text-caption">
