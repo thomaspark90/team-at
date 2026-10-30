@@ -318,7 +318,7 @@ export default function RecipeBoard() {
                     className="rounded-md bg-background shadow-soft"
                     style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '20px 24px', cursor: 'pointer', minWidth: 0 }}
                   >
-                    <span className="text-title font-medium" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span className="text-title font-medium" style={{ flex: 1, minWidth: 0, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
                       {g.bean}
                     </span>
                     <button
@@ -528,7 +528,8 @@ function BoardCard({
         style={{ flexShrink: 0, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 6, backgroundImage: flavorGradient(tasting) ?? undefined }}
       >
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-          <p className="text-title font-medium" style={{ flex: 1, minWidth: 0, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {/* 원두명은 자르지 않고 줄바꿈 — 한글은 어절 단위(keep-all) */}
+          <p className="text-title font-medium" style={{ flex: 1, minWidth: 0, margin: 0, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
             {g.bean}
           </p>
           {/* 소진 — 못 팔게 되면 필터 커피 아카이브로 (레시피·이력·평가는 유지, 레시피 탭에서 되돌릴 수 있음) */}
