@@ -1,3 +1,5 @@
+import { roundUpPrice } from '@/lib/pricing';
+
 // 잔당 재료비 구간별 권장 배수 — 판매가 설정 화면 참고표용 (2026-10-30 대표 결정).
 // 고가 원두는 일반 배수(4~5.5)로는 판매가가 과해져 재료비가 오를수록 배수를 낮춘다.
 // 아직 책정 산식(lib/pricing.ts)에는 연결하지 않은 참고값 — 구간 사이 재료비 처리(계단/보간) 미정.
@@ -25,8 +27,8 @@ export const GUIDE_MULTS = Array.from({ length: 17 }, (_, i) => 2 + i * 0.25);
 export const bandForCost = (cost: number): PriceBand =>
   PRICE_BANDS.filter((b) => cost >= b.cost).at(-1) ?? PRICE_BANDS[0];
 
-// 판매가는 lib/pricing 과 같이 100원 단위 올림
-export const guidePrice = (cost: number, mult: number) => Math.ceil((cost * mult) / 100) * 100;
+// 판매가는 lib/pricing 과 같은 단위(500원) 올림
+export const guidePrice = (cost: number, mult: number) => roundUpPrice(cost * mult);
 
 // 재료비 → 1kg 매입가(VAT 별도) 환산 — 기본 설정(수율 90%·도징 20g·VAT 1.1) 기준
 export const kgPriceForCost = (cost: number) => (cost * 900) / 20 / 1.1;
@@ -59,3 +61,7 @@ export const cleanActiveCells = (raw: unknown): ActiveCells => {
 /** 발주 기록 재료비가 따를 참고표 행 — 계단식(해당 재료비 이하 중 가장 높은 행, 1,500원 미만은 첫 행) */
 export const guideRowForCost = (cost: number): number =>
   GUIDE_COSTS.filter((c) => cost >= c).at(-1) ?? GUIDE_COSTS[0];
+
+/** 권장 배수 범위 — 초록 칸의 최솟값~최댓값 (중간 회색 칸은 범위 판정에서 무시). 초록 칸이 없으면 null */
+export const bandRange = (mults: number[]): { lo: number; hi: number } | null =>
+  mults.length ? { lo: Math.min(...mults), hi: Math.max(...mults) } : null;

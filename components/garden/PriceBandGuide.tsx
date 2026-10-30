@@ -85,7 +85,7 @@ export default function PriceBandGuide({ onChange }: { onChange?: (cells: Active
     <div className="min-w-0">
       <p className="ta-label">참고표 · 재료비별 권장 배수</p>
       <p className="text-caption text-muted-foreground" style={{ margin: '0 0 12px' }}>
-        세로 = 잔당 재료비(원) · 가로 = 배수 · 칸 = 판매가(원, 100원 올림) / 원가율 · 잔당 이익(원). 초록 = 권장 · 회색 = 비활성 — 칸을 클릭해 바꿀 수 있어요(모두에게 저장).
+        세로 = 잔당 재료비(원) · 가로 = 배수 · 칸 = 판매가(원, 500원 올림) / 원가율 · 잔당 이익(원). 초록 = 권장 · 회색 = 비활성 — 칸을 클릭해 바꿀 수 있어요(모두에게 저장).
         <br />
         ≈ kg = 그 재료비가 나오는 1kg 매입가(VAT 별도, 수율 90%·20g 기준).
       </p>

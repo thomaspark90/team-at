@@ -3,7 +3,7 @@ import type { PurchaseRecord } from '@/lib/types';
 import { purchaseRecords } from '@/lib/blob-records';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
-import { normalize, computePricing, priceAtMult, DEFAULT_SETTINGS } from '@/lib/pricing';
+import { normalize, computePricing, costPerCup, priceAtMult, DEFAULT_SETTINGS, PRICE_UNIT } from '@/lib/pricing';
 import { requireGardenTab } from '@/lib/access/guard';
 import { kakaoNotifyJobs } from '@/lib/kakao-notify';
 import { topicEmails } from '@/lib/garden-notify-topics-server';
@@ -169,7 +169,16 @@ export async function PATCH(req: Request) {
   const record = (await purchaseRecords.readAll()).find((r) => r.id === body.id);
   if (!record) return NextResponse.json({ error: '발주 기록을 찾을 수 없습니다.' }, { status: 404 });
 
-  if (body.chosenMult == null) {
+  if (body.chosenPrice != null) {
+    // 판매가 직접 확정(500원 단위 후보 중 선택) — 배수는 판매가 ÷ 재료비 실제 배수로 기록
+    const price = Number(body.chosenPrice);
+    if (!Number.isFinite(price) || price <= 0 || price % PRICE_UNIT !== 0 || price > 1_000_000) {
+      return NextResponse.json({ error: '판매가가 올바르지 않습니다.' }, { status: 400 });
+    }
+    const cost = costPerCup(record.purchasePrice, { ...DEFAULT_SETTINGS, ...record.settings });
+    record.chosenPrice = price;
+    record.chosenMult = cost > 0 ? Math.round((price / cost) * 100) / 100 : null;
+  } else if (body.chosenMult == null) {
     record.chosenMult = null;
     record.chosenPrice = null;
   } else {

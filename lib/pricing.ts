@@ -10,8 +10,10 @@ export const DEFAULT_SETTINGS: PricingSettings = {
   vatIncluded: false,
 };
 
-// 시트와 동일하게 100원 단위 올림(ceil)
-const round100 = (n: number) => Math.ceil(n / 100) * 100;
+// 판매가 단위 — 매장에서 500원 단위로 판매한다 (2026-10-30 대표 결정, 이전엔 시트와 같은 100원)
+export const PRICE_UNIT = 500;
+// 판매가 단위 올림(ceil) — 원가율이 배수 기준보다 높아지지 않게 항상 올린다
+export const roundUpPrice = (n: number) => Math.ceil(n / PRICE_UNIT) * PRICE_UNIT;
 
 // 한글/유니코드 정규화 (맥 자모 분리 방지) + 비교용 소문자·공백제거
 export const normalize = (s: string) =>
@@ -28,9 +30,9 @@ export function costPerCup(purchasePrice: number, s: PricingSettings): number {
   return (grossPrice / actual) * s.doseG;
 }
 
-// 배수 → 100원 단위 판매가
+// 배수 → 판매가 단위(500원) 올림 판매가
 export function priceAtMult(purchasePrice: number, mult: number, s: PricingSettings): number {
-  return round100(costPerCup(purchasePrice, s) * mult);
+  return roundUpPrice(costPerCup(purchasePrice, s) * mult);
 }
 
 export interface PricingResult {
