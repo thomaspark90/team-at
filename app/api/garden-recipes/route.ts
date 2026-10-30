@@ -12,7 +12,7 @@ import { requireGardenTab } from '@/lib/access/guard';
 // 기록별 blob 저장(lib/blob-records) — 레시피 1건 = 파일 1개라 서로 다른 레시피를
 // 동시에 저장해도 유실이 없다. (같은 레시피 동시 수정은 여전히 마지막 저장이 이긴다)
 
-export async function GET() {
+export async function GET(req: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -21,6 +21,15 @@ export async function GET() {
   {
     const denied = await requireGardenTab(supabase, user, ['recipes', 'dashboard', 'recommended', 'beancard']);
     if (denied) return denied;
+  }
+
+  // 나비 배지용 경량 응답 — 레시피 미설정 원두 수 (발주 기록은 있는데 레시피가 하나도 없는 원두,
+  // 작업 보드 '레시피 미설정 원두' 카드와 같은 기준)
+  if (new URL(req.url).searchParams.get('scope') === 'unset-count') {
+    const [purchases, recipes] = await Promise.all([purchaseRecords.readAll(), dripRecipeRecords.readAll()]);
+    const has = new Set(recipes.map((r) => r.beanKey));
+    const count = new Set(purchases.map((r) => normalize(r.bean)).filter((k) => !has.has(k))).size;
+    return NextResponse.json({ count });
   }
 
   return NextResponse.json(await dripRecipeRecords.readAll());
