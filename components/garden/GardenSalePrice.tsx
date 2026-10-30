@@ -27,6 +27,11 @@ const SPREAD_BELOW = 0.25;
 const SPREAD_ABOVE = 0.75;
 const FALLBACK_BAND = { lo: 4, hi: 5.5 }; // 참고표 행에 권장 칸이 하나도 없을 때
 const EPS = 1e-9;
+// 숨긴 원두는 이 기간 안에 다시 보이기를 안 하면 '숨긴 원두' 목록에서도 빠진다 (기록은 유지)
+const DISMISS_KEEP_DAYS = 14;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const dismissDaysLeft = (rec: PurchaseRecord) =>
+  rec.priceDismissed ? Math.ceil((Date.parse(rec.priceDismissed.at) + DISMISS_KEEP_DAYS * DAY_MS - Date.now()) / DAY_MS) : 0;
 // 권장 배수 강조 — 하단 참고표의 초록 칸과 같은 색 (재료비 행 기준, 2026-10-30)
 const HIGHLIGHT = 'rgba(132, 204, 22, 0.16)';
 // 선택 칸 강조 — 연두(라임). 투명도를 높여 뒤 텍스트 가독 유지. 라이트/다크 공통 리터럴.
@@ -142,11 +147,11 @@ export default function GardenSalePrice() {
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [purchases]
   );
-  // X로 숨긴 미책정 기록 — 하단 '숨긴 원두'에서 다시 보이기
+  // X로 숨긴 미책정 기록 — 하단 '숨긴 원두'에서 다시 보이기 (숨긴 지 14일 지나면 목록에서도 뺀다)
   const dismissed = useMemo(
     () =>
       purchases
-        .filter((r) => r.chosenPrice == null && r.priceDismissed)
+        .filter((r) => r.chosenPrice == null && r.priceDismissed && dismissDaysLeft(r) > 0)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [purchases]
   );
@@ -227,6 +232,9 @@ export default function GardenSalePrice() {
                     <span className="text-body text-muted-foreground" style={{ minWidth: 0 }}>
                       {rec.bean}
                       <span className="text-caption tabular"> · {fmtDate(rec.createdAt)} · 재료비 {won(rec.costPerCup)}</span>
+                    </span>
+                    <span className="text-caption text-muted-foreground tabular" style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                      {dismissDaysLeft(rec)}일 남음
                     </span>
                     <button
                       onClick={() => setDismissed(rec, false)}
@@ -380,7 +388,7 @@ function RecordPricer({
               onClick={onDismiss}
               disabled={busy}
               aria-label={`${rec.bean} 미책정 목록에서 숨기기`}
-              title="미책정 목록에서 숨기기 (기록은 남고, 아래 '숨긴 원두'에서 다시 보이기)"
+              title="미책정 목록에서 숨기기 (기록은 남고, 14일 안에 아래 '숨긴 원두'에서 다시 보이기 가능)"
               className="text-muted-foreground hover:text-foreground"
               style={{ position: 'absolute', top: 0, right: 0, width: 28, height: 28, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}
             >
