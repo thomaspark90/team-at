@@ -34,7 +34,7 @@ export type GardenNavEntry = { label: string; keys: string[] };
 export const GARDEN_NAV: GardenNavEntry[] = [
   { label: '작업 보드', keys: ['dashboard'] },
   { label: '커피(필터)', keys: ['pricing', 'saleprice', 'calibration', 'beancard'] }, // 2026-10-30 '운영'→'커피(필터)', 원두카드를 레시피에서 이동
-  { label: '레시피', keys: ['recipes', 'recommended', 'words'] },
+  { label: '레시피', keys: ['recipes', 'recommended'] }, // 제철 단어는 2026-10-30 메뉴에서 제거 (페이지·권한 키는 유지)
   { label: '분석', keys: ['sales', 'weather', 'reviews'] },
   { label: '교육', keys: ['teaching'] },
   { label: '설정', keys: ['settings'] },
