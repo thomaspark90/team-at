@@ -55,3 +55,7 @@ export const cleanActiveCells = (raw: unknown): ActiveCells => {
     }),
   );
 };
+
+/** 발주 기록 재료비가 따를 참고표 행 — 계단식(해당 재료비 이하 중 가장 높은 행, 1,500원 미만은 첫 행) */
+export const guideRowForCost = (cost: number): number =>
+  GUIDE_COSTS.filter((c) => cost >= c).at(-1) ?? GUIDE_COSTS[0];

@@ -25,10 +25,16 @@ const OFF_FILL = 'hsl(var(--muted) / 0.5)';
 
 const n = (v: number) => Math.round(v).toLocaleString('ko-KR');
 
-export default function PriceBandGuide() {
+// onChange — 화면의 다른 부분(미책정 카드 권장 강조)이 같은 칸 상태를 쓰도록 변경을 알린다
+export default function PriceBandGuide({ onChange }: { onChange?: (cells: ActiveCells) => void }) {
   const [cells, setCells] = useState<ActiveCells>(defaultActiveCells);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    onChange?.(cells);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cells]);
 
   useEffect(() => {
     fetch('/api/garden-price-bands', { cache: 'no-store' })

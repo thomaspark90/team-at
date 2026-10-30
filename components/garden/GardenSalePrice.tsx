@@ -5,6 +5,7 @@ import type { PricingSettings, PurchaseRecord } from '@/lib/types';
 import { DEFAULT_SETTINGS, normalize, priceAtMult } from '@/lib/pricing';
 import { fmtDate } from '@/lib/garden/format';
 import PriceBandGuide from './PriceBandGuide';
+import { defaultActiveCells, guideRowForCost, type ActiveCells } from '@/lib/garden/price-bands';
 
 // 판매가 설정 전용 화면 — 발주(GardenService)에서 저장된 기록의 판매가를 책정·공유한다.
 // 발주와 권한이 분리돼 있어(saleprice 탭) 책정 담당자만 이 화면을 쓴다.
@@ -21,9 +22,10 @@ const C = {
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 
-// 스프레드로 보여줄 배수 (3.0 ~ 7.0, 0.5 단위 — 가로 스와이프)
-const SPREAD = [3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7];
-const HIGHLIGHT = C.accent; // 권장 구간(배수 minMult~maxMult) 강조색 (무채색)
+// 스프레드로 보여줄 배수 (2.0 ~ 7.0, 0.25 단위 — 가로 스와이프). 참고표 권장 구간이 2.0까지 내려간다
+const SPREAD = Array.from({ length: 21 }, (_, i) => 2 + i * 0.25);
+// 권장 배수 강조 — 하단 참고표의 초록 칸과 같은 색 (재료비 행 기준, 2026-10-30)
+const HIGHLIGHT = 'rgba(132, 204, 22, 0.16)';
 // 선택 칸 강조 — 연두(라임). 투명도를 높여 뒤 텍스트 가독 유지. 라이트/다크 공통 리터럴.
 const SELECT_BORDER = 'rgba(132, 204, 22, 0.55)';
 const SELECT_FILL = 'rgba(132, 204, 22, 0.14)';
@@ -40,6 +42,8 @@ export default function GardenSalePrice() {
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  // 하단 참고표의 권장 칸 상태 — 참고표가 불러오거나 클릭으로 바꾸면 onChange 로 갱신된다
+  const [bandCells, setBandCells] = useState<ActiveCells>(defaultActiveCells);
 
   const refresh = async () => {
     const res = await fetch('/api/purchases', { cache: 'no-store' });
@@ -165,6 +169,7 @@ export default function GardenSalePrice() {
                 key={rec.id}
                 rec={rec}
                 pick={picks[rec.id] ?? null}
+                bandCells={bandCells}
                 onPick={(m) => setPicks((p) => ({ ...p, [rec.id]: m }))}
                 onDecide={(m) => decide(rec, m)}
                 busy={busyId === rec.id}
@@ -235,6 +240,7 @@ export default function GardenSalePrice() {
                           <RecordPricer
                             rec={rec}
                             pick={picks[rec.id] ?? rec.chosenMult}
+                            bandCells={bandCells}
                             onPick={(m) => setPicks((p) => ({ ...p, [rec.id]: m }))}
                             onDecide={(m) => decide(rec, m)}
                             onClear={() => decide(rec, null)}
@@ -254,7 +260,7 @@ export default function GardenSalePrice() {
 
       {/* 참고표 — 재료비 구간별 권장 배수 (고가 원두는 배수를 낮춘다) */}
       <div className="min-w-0 pt-[54px]">
-        <PriceBandGuide />
+        <PriceBandGuide onChange={setBandCells} />
       </div>
       </div>
     </div>
@@ -265,6 +271,7 @@ export default function GardenSalePrice() {
 function RecordPricer({
   rec,
   pick,
+  bandCells,
   onPick,
   onDecide,
   onClear,
@@ -273,6 +280,7 @@ function RecordPricer({
 }: {
   rec: PurchaseRecord;
   pick: number | null;
+  bandCells: ActiveCells;
   onPick: (m: number) => void;
   onDecide: (m: number) => void;
   onClear?: () => void;
@@ -280,6 +288,10 @@ function RecordPricer({
   compact?: boolean; // 책정 완료 목록 안 재책정 — 요약줄 생략
 }) {
   const s = recSettings(rec);
+  // 권장 배수 = 참고표에서 이 기록 재료비가 속한 행의 초록 칸
+  const bandRow = guideRowForCost(rec.costPerCup);
+  const recMults = bandCells[String(bandRow)] ?? [];
+  const hi = (m: number) => recMults.includes(m);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
       {!compact && (
@@ -309,21 +321,21 @@ function RecordPricer({
         >
           <Cell label>배수</Cell>
           {SPREAD.map((m) => (
-            <Cell key={`h${m}`} pos="top" hi={m >= s.minMult && m <= s.maxMult} selected={pick === m} onClick={() => onPick(m)}>
-              {m.toFixed(1)}×
+            <Cell key={`h${m}`} pos="top" hi={hi(m)} selected={pick === m} onClick={() => onPick(m)}>
+              {m.toFixed(2)}×
             </Cell>
           ))}
 
           <Cell label>판매가</Cell>
           {SPREAD.map((m) => (
-            <Cell key={`p${m}`} pos="mid" hi={m >= s.minMult && m <= s.maxMult} selected={pick === m} onClick={() => onPick(m)}>
+            <Cell key={`p${m}`} pos="mid" hi={hi(m)} selected={pick === m} onClick={() => onPick(m)}>
               {won(priceAtMult(rec.purchasePrice, m, s))}
             </Cell>
           ))}
 
           <Cell label>원가율</Cell>
           {SPREAD.map((m) => (
-            <Cell key={`r${m}`} pos="bottom" hi={m >= s.minMult && m <= s.maxMult} muted selected={pick === m} onClick={() => onPick(m)}>
+            <Cell key={`r${m}`} pos="bottom" hi={hi(m)} muted selected={pick === m} onClick={() => onPick(m)}>
               {/* 이론값(100/배수)이 아니라 100원 올림 반영 실제 원가율 — 저장 기록·대시보드와 같은 산식 */}
               {Math.round((rec.costPerCup / priceAtMult(rec.purchasePrice, m, s)) * 100)}%
             </Cell>
@@ -331,7 +343,11 @@ function RecordPricer({
         </div>
       </div>
       <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
-        강조 칸 = 권장 구간(배수 {s.minMult}~{s.maxMult}) · 배수를 클릭해 책정 판매가를 고르세요
+        초록 칸 = 권장 배수
+        {recMults.length
+          ? `(${recMults[0].toFixed(2)}~${recMults[recMults.length - 1].toFixed(2)}×, 아래 참고표 재료비 ${bandRow.toLocaleString('ko-KR')}원 행 기준)`
+          : `(참고표 재료비 ${bandRow.toLocaleString('ko-KR')}원 행에 권장 칸 없음)`}{' '}
+        · 배수를 클릭해 책정 판매가를 고르세요
       </p>
 
       <div style={{ display: 'flex', gap: 8 }}>
