@@ -1,6 +1,6 @@
 import { del, get, list, put } from '@vercel/blob';
 import type { GrindMeasurement } from '@/lib/grind-measurements';
-import type { PurchaseRecord, DripRecipe } from '@/lib/types';
+import type { PurchaseRecord, DripRecipe, BrewFeedback } from '@/lib/types';
 import type { GardenTodo } from '@/lib/garden-todos';
 import type { AlignmentEvent } from '@/lib/grinder-alignments';
 
@@ -164,4 +164,11 @@ export const dripRecipeRecords = blobCollection<StoredDripRecipe>({
   legacyPath: 'data/garden-recipes.json',
   legacyKey: 'recipes',
   normalize: (r) => (r.id ? r : { ...r, id: crypto.randomUUID() }),
+});
+
+// 추출 평가 — 신설 컬렉션(구 단일 JSON 없음)
+export const brewFeedbackRecords = blobCollection<BrewFeedback>({
+  name: 'garden-brew-feedback',
+  legacyPath: 'data/garden-brew-feedback.json',
+  legacyKey: 'feedback',
 });

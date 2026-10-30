@@ -123,6 +123,24 @@ export interface PangyoMeshChange {
 // 레시피 이전 버전 스냅샷 — 덮어쓰기 저장 시 직전 값을 보관 (자체 이력은 없음)
 export type DripRecipeSnapshot = Omit<DripRecipe, 'beanKey' | 'brewType' | 'bean' | 'history'>;
 
+// 추출 평가 한 건 — 레시피로 내린 뒤 스탭이 남기는 칩 의견 (태블릿 레시피 보드).
+// 레시피를 자동으로 바꾸지 않는다 — 담당자가 모아 보고 레시피 탭에서 직접 수정.
+export interface BrewFeedback {
+  id: string;
+  createdAt: string; // ISO
+  createdBy?: string; // 로그인 계정 이메일 (공용 태블릿이면 같은 계정일 수 있어 staffName 이 실제 작성자)
+  staffName: string; // 이름 토글로 고른 스탭
+  store: StoreId; // 내린 지점 — 그라인더가 달라 지점별로 따로 집계
+  beanKey: string;
+  bean: string;
+  brewType: BrewType;
+  recipeVersion: string; // 평가 당시 레시피 updatedAt — 레시피가 바뀌면 이전 버전 의견과 구분
+  issues: string[]; // 개선 필요 칩 id (lib/garden/brew-feedback.ts)
+  baseMesh: number | null; // 평가 당시 그 지점 분쇄도
+  nextMesh: number | null; // 다음 분쇄도 제안 (슬라이더) — baseMesh 없으면 null
+  memo: string;
+}
+
 export interface RecipeStore {
   recipes: DripRecipe[];
 }

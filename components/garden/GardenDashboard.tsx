@@ -581,7 +581,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                     onClick={() => setArchived(g.beanKey, g.bean, !archived)}
                     className="text-caption text-muted-foreground hover:text-foreground"
                     style={{ ...ghostBtn, flexShrink: 0 }}
-                    title={archived ? '레시피 탭으로 되돌리기' : '레시피 탭에서 빼고 보관함으로 (레시피·이력 유지)'}
+                    title={archived ? '레시피 탭으로 되돌리기' : '레시피 탭에서 빼고 필터 커피 아카이브로 (레시피·이력 유지)'}
                   >
                     {archived ? '보관 해제' : '보관'}
                   </button>
@@ -1204,7 +1204,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             </div>
           ))}
 
-          {/* 보관함 — 보관한 원두 카드. 펼쳐서 보고 '보관 해제'로 되돌린다 */}
+          {/* 필터 커피 아카이브(구 보관함) — 보관·소진 처리한 원두 카드. 펼쳐서 보고 '보관 해제'로 되돌린다 */}
           {!loading && archivedGroups.length > 0 && (
             <div className="min-w-0">
               <button
@@ -1212,11 +1212,26 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                 className="text-body text-muted-foreground hover:text-foreground"
                 style={{ ...ghostBtn, marginBottom: archiveOpen ? 24 : 0 }}
               >
-                보관함 {archivedGroups.length} {archiveOpen ? '▴' : '▾'}
+                필터 커피 아카이브 {archivedGroups.length} {archiveOpen ? '▴' : '▾'}
               </button>
+              {/* 국가별 묶음 — 국가 가나다순·기타 맨 뒤 (위 국가 섹션과 같은 규칙) */}
               {archiveOpen && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px 12px' }}>
-                  {archivedGroups.map(renderBeanCard)}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+                  {Array.from(
+                    archivedGroups.reduce((m, g) => m.set(countryOf(g.bean), [...(m.get(countryOf(g.bean)) ?? []), g]), new Map<string, BeanGroup[]>())
+                  )
+                    .sort(([a], [b]) => (a === ETC ? 1 : b === ETC ? -1 : a.localeCompare(b, 'ko')))
+                    .map(([country, groups]) => (
+                      <div key={country} className="min-w-0">
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 16 }}>
+                          <h4 className="text-body font-medium text-foreground" style={{ margin: 0 }}>{country}</h4>
+                          <span className="text-caption text-muted-foreground">{groups.length}종</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px 12px' }}>
+                          {groups.map(renderBeanCard)}
+                        </div>
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
