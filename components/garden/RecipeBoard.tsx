@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { BeanMeta, BrewFeedback, BrewType, DripRecipe, PurchaseRecord, StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import { normalize } from '@/lib/pricing';
+import { flavorGradient } from '@/lib/flavor-colors';
 import BrewFeedbackPanel from '@/components/garden/BrewFeedbackPanel';
 import SegmentControl from '@/components/nav/SegmentControl';
 import { toast } from '@/components/Toast';
@@ -521,45 +522,56 @@ function BoardCard({
   const mineCurrent = mine.filter((f) => f.recipeVersion === r.updatedAt).length;
   return (
     <div className="rounded-md bg-background shadow-soft" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
+      {/* 헤더 — 테이스팅 노트 색 그라데이션(카운터컬처 플레이버 휠 차용) + 원두명 + 노트. 스크롤해도 고정 */}
+      <div
+        className="bg-muted"
+        style={{ flexShrink: 0, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 6, backgroundImage: flavorGradient(tasting) ?? undefined }}
+      >
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+          <p className="text-title font-medium" style={{ flex: 1, minWidth: 0, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {g.bean}
+          </p>
+          {/* 소진 — 못 팔게 되면 필터 커피 아카이브로 (레시피·이력·평가는 유지, 레시피 탭에서 되돌릴 수 있음) */}
+          {archived ? (
+            <button
+              onClick={onArchive}
+              className="text-caption text-muted-foreground hover:text-foreground"
+              style={{ ...plainBtn, flexShrink: 0 }}
+              title="레시피 보드로 되돌리기"
+            >
+              되돌리기
+            </button>
+          ) : confirmArchive ? (
+            <span className="text-caption" style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+              <span className="text-muted-foreground">아카이브로 보낼까요?</span>
+              <button onClick={onArchive} className="text-foreground underline" style={plainBtn}>
+                확인
+              </button>
+              <button onClick={() => setConfirmArchive(false)} className="text-muted-foreground hover:text-foreground" style={plainBtn}>
+                취소
+              </button>
+            </span>
+          ) : (
+            <button
+              onClick={() => setConfirmArchive(true)}
+              className="text-caption text-muted-foreground hover:text-foreground"
+              style={{ ...plainBtn, flexShrink: 0 }}
+              title="원두 소진 — 필터 커피 아카이브로 보내기"
+            >
+              소진
+            </button>
+          )}
+        </div>
+        {tasting && (
+          <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
+            {tasting}
+          </p>
+        )}
+      </div>
       {/* 레시피 + 접힌 추출 평가가 한 스크롤 — 평가를 펼치면 카드 안에서 아래로 이어진다 */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* flex: 1 — 추출비·추출 시간을 흰 영역 맨 아래에 붙이기 위해 높이를 채운다 */}
         <div style={{ flex: 1, padding: '24px 24px 28px', display: 'flex', flexDirection: 'column', gap: 28 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-            <p className="text-title font-medium" style={{ flex: 1, minWidth: 0, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {g.bean}
-            </p>
-            {/* 소진 — 못 팔게 되면 필터 커피 아카이브로 (레시피·이력·평가는 유지, 레시피 탭에서 되돌릴 수 있음) */}
-            {archived ? (
-              <button
-                onClick={onArchive}
-                className="text-caption text-muted-foreground hover:text-foreground"
-                style={{ ...plainBtn, flexShrink: 0 }}
-                title="레시피 보드로 되돌리기"
-              >
-                되돌리기
-              </button>
-            ) : confirmArchive ? (
-              <span className="text-caption" style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
-                <span className="text-muted-foreground">아카이브로 보낼까요?</span>
-                <button onClick={onArchive} className="text-foreground underline" style={plainBtn}>
-                  확인
-                </button>
-                <button onClick={() => setConfirmArchive(false)} className="text-muted-foreground hover:text-foreground" style={plainBtn}>
-                  취소
-                </button>
-              </span>
-            ) : (
-              <button
-                onClick={() => setConfirmArchive(true)}
-                className="text-caption text-muted-foreground hover:text-foreground"
-                style={{ ...plainBtn, flexShrink: 0 }}
-                title="원두 소진 — 필터 커피 아카이브로 보내기"
-              >
-                소진
-              </button>
-            )}
-          </div>
 
           {/* ICE/HOT 전환은 레시피가 하나뿐이어도 같은 모양으로 — 카드 간 줄 맞춤. 없는 타입은 흐리게·비활성 */}
           <div className="ta-seg" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
@@ -600,13 +612,6 @@ function BoardCard({
                 );
               })}
             </div>
-          )}
-
-          {/* 테이스팅 노트 — 원두명 아래에서 푸어링 아래로 이동 (2026-10-30 대표 지시) */}
-          {tasting && (
-            <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
-              {tasting}
-            </p>
           )}
 
           {r.notes && (
