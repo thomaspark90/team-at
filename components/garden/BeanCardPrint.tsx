@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PurchaseRecord, RoasteryAssets } from '@/lib/types';
 import { fmtDate } from '@/lib/garden/format';
+import { normalize } from '@/lib/pricing';
+import BeanCardScan, { type BeanCardScanResult } from './BeanCardScan';
 
 // 원두카드 인쇄 — GS 필터 원두 인포 카드(일러스트 원본)를 웹으로 재현.
 // A4 세로 1장 = 3×3 카드 9장 + 재단선(+). 발주 기록으로 프리필하고 인쇄 전 수정 가능.
@@ -59,15 +61,15 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
     }
   };
 
-  const translateEn = async () => {
-    if (translating || !beanKo.trim()) return;
+  const translateEn = async (ko: string = beanKo) => {
+    if (translating || !ko.trim()) return;
     setTranslating(true);
     setTranslateMsg(null);
     try {
       const res = await fetch('/api/garden-bean-translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bean: beanKo.trim() }),
+        body: JSON.stringify({ bean: ko.trim() }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? '영문 변환에 실패했어요.');
@@ -101,6 +103,40 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
     [records]
   );
 
+  // 스크린샷 인식 결과 — 맞는 발주 기록을 불러온 뒤(프리필 이후) 덮어쓰도록 잠시 보관
+  const pendingScan = useRef<{ recordId: string; scan: BeanCardScanResult } | null>(null);
+
+  // 인식 결과를 카드 칸에 반영 — 노트는 스크린샷 우선. 원두명은 발주 기록과 맞으면 기록 표기 유지
+  // (AI가 띄어쓰기를 바꿔 읽기도 해서), 없을 때만 스크린샷 표기. 영문명이 비면 AI 영문 변환
+  const applyScan = (x: BeanCardScanResult, hasEn: boolean, keepName = false) => {
+    if (x.beanName && !keepName) setBeanKo(x.beanName);
+    if (x.tastingNotes) setNotes(splitNotes(x.tastingNotes));
+    if (x.roastery) setRoastery((cur) => cur || x.roastery!);
+    if (!hasEn && x.beanName) translateEn(x.beanName);
+  };
+
+  // 스크린샷 원두명과 같은 발주 기록(공백·대소문자 무시, 최근 발주 우선)을 찾아 불러오고 노트를 반영
+  const onScan = (x: BeanCardScanResult): string => {
+    const key = (v: string) => normalize(v).replace(/\s+/g, '');
+    const name = x.beanName ? key(x.beanName) : '';
+    const match = name
+      ? (sortedRecords.find((r) => key(r.bean) === name) ??
+        sortedRecords.find((r) => {
+          const k = key(r.bean);
+          return k.length >= 4 && name.length >= 4 && (k.includes(name) || name.includes(k));
+        }))
+      : undefined;
+    if (match && match.id !== selectedId) {
+      pendingScan.current = { recordId: match.id, scan: x };
+      setSelectedId(match.id);
+    } else {
+      applyScan(x, !!beanEn.trim(), !!match);
+    }
+    return match
+      ? `✓ 발주 기록 '${match.bean}'(${fmtDate(match.createdAt)})을 불러와 스크린샷 노트로 카드를 채웠어요.`
+      : '✓ 일치하는 발주 기록이 없어 카드 칸에만 채웠어요. 로스터리를 확인하세요.';
+  };
+
   // 기록 로드 시 1회 프리필 — 노트는 원본 카드처럼 두 줄로 나눠 보여주기 좋게 쉼표 중간에서 줄바꿈
   useEffect(() => {
     if (!record) return;
@@ -108,6 +144,11 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
     setBeanEn(record.beanEn ?? '');
     setBeanKo(record.bean ?? '');
     setNotes(splitNotes(record.tastingNotes ?? ''));
+    if (pendingScan.current?.recordId === record.id) {
+      applyScan(pendingScan.current.scan, !!record.beanEn?.trim(), true);
+      pendingScan.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record]);
 
   const asset = assets[roastery] ?? {};
@@ -145,6 +186,9 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
               </option>
             ))}
           </select>
+
+          {/* 스크린샷(원두명·노트) → AI 인식 → 맞는 발주 기록 불러오기 + 카드 칸 채우기 */}
+          <BeanCardScan onResult={onScan} />
 
           {/* 되돌리기 — 이 발주의 레시피가 잘못됐으면 레시피 담당자에게 재검토를 요청 */}
           {record && (
@@ -191,7 +235,7 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
               />
               {/* 한글 원두명 → 영문 표기 AI 변환 */}
               <button
-                onClick={translateEn}
+                onClick={() => translateEn()}
                 disabled={translating || !beanKo.trim()}
                 className="ta-btn"
                 style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 13, flexShrink: 0 }}

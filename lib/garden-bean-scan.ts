@@ -9,8 +9,16 @@ export interface BeanScanExtraction {
   tastingNotes: string | null; // 테이스팅 노트 (쉼표 구분)
 }
 
-const PROMPT = `이 이미지는 커피 원두 봉투(패키지) 사진이야. 라벨이 기울거나 일부만 보일 수 있어.
-봉투에 인쇄된 정보만 읽어서 아래 JSON 스키마로만 답해. 보이지 않는 항목은 null.
+// 이미지 종류별 머리말 — bag: 원두봉투 사진(발주 화면), text: 원두명·노트가 적힌 표/메모 스크린샷(원두카드 화면)
+export type BeanScanSource = 'bag' | 'text';
+const PROMPT_HEAD: Record<BeanScanSource, string> = {
+  bag: `이 이미지는 커피 원두 봉투(패키지) 사진이야. 라벨이 기울거나 일부만 보일 수 있어.
+봉투에 인쇄된 정보만 읽어서 아래 JSON 스키마로만 답해. 보이지 않는 항목은 null.`,
+  text: `이 이미지는 커피 원두 이름과 테이스팅 노트가 적힌 스프레드시트 행·메모·메뉴판 등의 스크린샷이야(원두 봉투 사진일 수도 있어).
+이미지에 적힌 글자만 그대로 읽어서 아래 JSON 스키마로만 답해. 원두명·노트는 표기를 바꾸지 말고 적힌 그대로. 보이지 않는 항목은 null.`,
+};
+
+const PROMPT_FIELDS = `
 - bean_name: 산지 국가·지역·품종·가공방식을 포함한 원두 이름 (한국어로, 예: "에티오피아 게뎁 워시드"). 로스팅사 이름은 제외.
 - roastery: 로스팅사/브랜드 이름 (예: "언스페셜티", "프릳츠")
 - weight_g: 봉투에 표기된 용량을 그램 숫자로 (예: 200, 1000. "1kg"→1000)
@@ -28,11 +36,13 @@ const MODELS = [
 export async function extractBeanBagInfo(
   imageBase64: string,
   mimeType: string,
-  apiKey: string
+  apiKey: string,
+  source: BeanScanSource = 'bag'
 ): Promise<BeanScanExtraction> {
+  const prompt = PROMPT_HEAD[source] + PROMPT_FIELDS; // bag 은 기존 프롬프트와 글자 그대로 같다
   const body = JSON.stringify({
     contents: [
-      { parts: [{ inline_data: { mime_type: mimeType, data: imageBase64 } }, { text: PROMPT }] },
+      { parts: [{ inline_data: { mime_type: mimeType, data: imageBase64 } }, { text: prompt }] },
     ],
     generationConfig: {
       response_mime_type: 'application/json',
@@ -67,7 +77,9 @@ export async function extractBeanBagInfo(
     throw new Error(`AI 사용량 한도에 걸렸어요. 잠시 후 다시 시도해주세요. (${lastError})`);
   }
 
-  const raw = JSON.parse(text) as Record<string, unknown>;
+  // 표·여러 행 스크린샷이면 모델이 배열로 답하기도 한다 — 첫 행을 쓴다
+  const parsed = JSON.parse(text) as unknown;
+  const raw = ((Array.isArray(parsed) ? parsed[0] : parsed) ?? {}) as Record<string, unknown>;
   const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
   const num = (v: unknown) => {
     const n = typeof v === 'number' ? v : Number(String(v ?? '').replace(/[^\d.]/g, ''));

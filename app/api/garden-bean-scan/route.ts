@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { extractBeanBagInfo } from '@/lib/garden-bean-scan';
+import { extractBeanBagInfo, type BeanScanSource } from '@/lib/garden-bean-scan';
 import { logActivity } from '@/lib/finance/activity';
 import { checkAiQuota } from '@/lib/access/rate-limit';
 import { archiveOriginal } from '@/lib/finance/original-archive';
@@ -8,7 +8,7 @@ import { archiveOriginal } from '@/lib/finance/original-archive';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-// 원두봉투 사진 → Gemini 추출 → 원두 정보(원두명·로스팅사·용량·배전도·노트) 미리보기 반환.
+// 원두봉투 사진(또는 원두명·노트가 적힌 스크린샷, source=text) → Gemini 추출 → 원두 정보(원두명·로스팅사·용량·배전도·노트) 미리보기 반환.
 // 저장은 사용자가 폼에서 확인·수정 후 기존 /api/purchases POST 로.
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -35,7 +35,8 @@ export async function POST(req: Request) {
 
   try {
     const base64 = Buffer.from(await file.arrayBuffer()).toString('base64');
-    const extraction = await extractBeanBagInfo(base64, file.type, key);
+    const source: BeanScanSource = form.get('source') === 'text' ? 'text' : 'bag';
+    const extraction = await extractBeanBagInfo(base64, file.type, key, source);
     // 원본 보관 — 인식 결과가 틀려도 사진은 남아 나중에 다시 볼 수 있게
     await archiveOriginal(supabase, user, file, { area: 'bean-scan', note: extraction.beanName ?? undefined });
     await logActivity(supabase, user, '원두봉투 AI 인식', extraction.beanName ?? '(원두명 미인식)');
