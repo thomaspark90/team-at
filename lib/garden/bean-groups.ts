@@ -14,7 +14,7 @@ export const countryOf = (bean: string) => {
 };
 
 // 보관 여부 — 보관 이후 같은 원두 발주가 새로 들어왔으면 자동 해제로 본다
-export const isBeanArchived = (meta: BeanMeta | undefined, latest: PurchaseRecord | undefined) => {
+export const isBeanArchived = (meta: BeanMeta | undefined, latest: Pick<PurchaseRecord, 'createdAt'> | undefined) => {
   const at = meta?.archivedAt;
   if (!at) return false;
   return !(latest && latest.createdAt.localeCompare(at) > 0);

@@ -6,7 +6,7 @@ import type { GrinderProfiles, GrindPoint } from '@/lib/grinder-calibration';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { requireGardenTab } from '@/lib/access/guard';
-import { latestAlignmentDate, kstDate } from '@/lib/grinder-alignments';
+import { dropStaleProfiles } from '@/lib/grinder-alignments';
 import { alignmentRecords } from '@/lib/blob-records';
 
 const DATA_PATH = 'data/garden-grinders.json';
@@ -48,17 +48,8 @@ export async function GET() {
 
   const store = await readStore();
 
-  // 얼라인먼트 이후에 저장된 측정점만 유효 — 얼라인 이전 피팅이 '확정 환산'으로
-  // 계속 표시되는 것을 막는다(모든 소비 화면에 일괄 적용). updatedAt이 없는 구 데이터도
-  // 해당 지점에 얼라인 기록이 있으면 무효 처리한다.
-  const events = await readAlignments();
-  for (const id of STORE_IDS) {
-    const p = store.profiles[id];
-    if (!p) continue;
-    const lastAlign = latestAlignmentDate(events, id);
-    if (!lastAlign) continue;
-    if (!p.updatedAt || kstDate(p.updatedAt) < lastAlign) delete store.profiles[id];
-  }
+  // 얼라인먼트 이후 측정만 유효 (lib/grinder-alignments dropStaleProfiles)
+  dropStaleProfiles(store.profiles, await readAlignments());
   return NextResponse.json(store.profiles);
 }
 

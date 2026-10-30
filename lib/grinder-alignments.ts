@@ -70,3 +70,20 @@ export function isPostAlignment(events: AlignmentEvent[], store: StoreId, isoDat
   if (!last) return true;
   return kstDate(isoDateTime) >= last;
 }
+
+// 얼라인먼트 이후에 저장된 측정 프로파일만 남긴다 — 얼라인 이전 피팅이 '확정 환산'으로
+// 계속 표시되는 것을 막는다(모든 소비 화면에 일괄 적용). updatedAt이 없는 구 데이터도
+// 해당 지점에 얼라인 기록이 있으면 무효 처리한다. profiles 를 직접 고친다.
+export function dropStaleProfiles<P extends { updatedAt?: string }>(
+  profiles: Partial<Record<StoreId, P>>,
+  events: AlignmentEvent[]
+): Partial<Record<StoreId, P>> {
+  for (const id of Object.keys(profiles) as StoreId[]) {
+    const p = profiles[id];
+    if (!p) continue;
+    const lastAlign = latestAlignmentDate(events, id);
+    if (!lastAlign) continue;
+    if (!p.updatedAt || kstDate(p.updatedAt) < lastAlign) delete profiles[id];
+  }
+  return profiles;
+}

@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import type { BeanMeta, BrewFeedback, BrewType, DripRecipe, PurchaseRecord, StoreId } from '@/lib/types';
+import type { BeanMeta, BrewFeedback, BrewType, DripRecipe, StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
-import { normalize } from '@/lib/pricing';
 import { flavorGradient } from '@/lib/flavor-colors';
 import BrewFeedbackPanel from '@/components/garden/BrewFeedbackPanel';
 import SegmentControl from '@/components/nav/SegmentControl';
@@ -22,6 +21,18 @@ import { ETC, countryOf, isBeanArchived } from '@/lib/garden/bean-groups';
 const PER_PAGE = 3;
 const STORE_KEY = 'garden-board-store'; // 기기별 지점 기억
 const STAFF_KEY = 'garden-board-staff'; // 공용 태블릿 — 마지막으로 고른 이름 기억
+const CACHE_KEY = 'garden-recipe-board-cache-v1'; // 마지막 보드 응답 — 다음 열 때 즉시 그리기용
+
+// /api/garden-recipe-board 응답
+interface BoardData {
+  recipes: DripRecipe[];
+  beans: BeanMeta[];
+  latestPurchaseAt: Record<string, string>;
+  grinderProfiles: GrinderProfiles;
+  alignments: AlignmentEvent[];
+  feedback: BrewFeedback[];
+  staffNames: string[];
+}
 const BREW_TYPES: BrewType[] = ['ice', 'hot'];
 const btOf = (r: DripRecipe): BrewType => r.brewType ?? 'ice';
 const meshFmt = (n: number) => n.toFixed(1);
@@ -48,7 +59,7 @@ interface BoardBean {
 export default function RecipeBoard() {
   const [recipes, setRecipes] = useState<DripRecipe[]>([]);
   const [beanMetas, setBeanMetas] = useState<BeanMeta[]>([]);
-  const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
+  const [latestPurchaseAt, setLatestPurchaseAt] = useState<Record<string, string>>({}); // 원두별 마지막 발주 시각
   const [grinderProfiles, setGrinderProfiles] = useState<GrinderProfiles>({});
   const [alignments, setAlignments] = useState<AlignmentEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,37 +92,44 @@ export default function RecipeBoard() {
     localStorage.setItem(STORE_KEY, id);
   };
 
+  // 첫 로딩 — 보드 전용 묶음 API 한 번(/api/garden-recipe-board). 마지막 응답을 기기에 캐시해 두고
+  // 다음에 열 때는 캐시로 즉시 그린 뒤 새 응답으로 조용히 바꾼다(태블릿은 같은 화면을 반복해서 연다).
   useEffect(() => {
-    // 추출 평가·스탭 명단은 부가 정보 — 실패해도 레시피는 보인다
-    fetch('/api/garden-brew-feedback', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setFeedback)
-      .catch(() => {});
-    fetch('/api/garden-options', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : { staffNames: [] }))
-      .then((j) => setStaffNames(j.staffNames ?? []))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
+    const apply = (d: BoardData) => {
+      setRecipes(d.recipes ?? []);
+      setBeanMetas(d.beans ?? []);
+      setLatestPurchaseAt(d.latestPurchaseAt ?? {});
+      setGrinderProfiles(d.grinderProfiles ?? {});
+      setAlignments(d.alignments ?? []);
+      setFeedback(d.feedback ?? []);
+      setStaffNames(d.staffNames ?? []);
+    };
+    let cached = false;
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (raw) {
+        apply(JSON.parse(raw) as BoardData);
+        cached = true;
+        setLoading(false);
+      }
+    } catch {
+      localStorage.removeItem(CACHE_KEY);
+    }
     (async () => {
       try {
-        const [rRes, bRes, pRes, gRes] = await Promise.all([
-          fetch('/api/garden-recipes', { cache: 'no-store' }),
-          fetch('/api/garden-beans', { cache: 'no-store' }),
-          fetch('/api/purchases', { cache: 'no-store' }),
-          fetch('/api/garden-grinders', { cache: 'no-store' }),
-        ]);
-        if (!rRes.ok) throw new Error();
-        setRecipes(await rRes.json());
-        if (bRes.ok) setBeanMetas(await bRes.json());
-        if (pRes.ok) setPurchases(await pRes.json());
-        if (gRes.ok) setGrinderProfiles(await gRes.json());
-        // 얼라인먼트는 판교 분쇄도 표기용 부가 정보 — 실패해도 조용히 넘어간다
-        const aRes = await fetch('/api/garden-grinder-alignments', { cache: 'no-store' }).catch(() => null);
-        if (aRes?.ok) setAlignments(await aRes.json());
+        const res = await fetch('/api/garden-recipe-board', { cache: 'no-store' });
+        if (!res.ok) throw new Error();
+        const d = (await res.json()) as BoardData;
+        apply(d);
+        setFailed(false);
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(d));
+        } catch {
+          // 저장 공간 부족 등 — 캐시는 선택 사항
+        }
       } catch {
-        setFailed(true);
+        // 캐시로 그리고 있으면 그대로 둔다(오프라인·일시 장애). 캐시도 없을 때만 실패 표시
+        if (!cached) setFailed(true);
       }
       setLoading(false);
     })();
@@ -121,12 +139,6 @@ export default function RecipeBoard() {
   // 보드엔 보관하지 않은 것(beans), 아카이브 화면엔 보관한 것(archivedBeans)
   const [beans, archivedBeans] = useMemo(() => {
     const metaByBean = new Map(beanMetas.map((b) => [b.beanKey, b]));
-    const latestByBean = new Map<string, PurchaseRecord>();
-    for (const r of purchases) {
-      const k = normalize(r.bean);
-      const cur = latestByBean.get(k);
-      if (!cur || r.createdAt.localeCompare(cur.createdAt) > 0) latestByBean.set(k, r);
-    }
     const m = new Map<string, BoardBean>();
     for (const r of recipes) {
       const g = m.get(r.beanKey) ?? { beanKey: r.beanKey, bean: r.bean, ice: null, hot: null, latestUpdate: '' };
@@ -143,9 +155,12 @@ export default function RecipeBoard() {
       if (ca !== cb) return ca === ETC ? 1 : cb === ETC ? -1 : ca.localeCompare(cb, 'ko');
       return b.latestUpdate.localeCompare(a.latestUpdate);
     });
-    const archived = (g: BoardBean) => isBeanArchived(metaByBean.get(g.beanKey), latestByBean.get(g.beanKey));
+    const archived = (g: BoardBean) => {
+      const at = latestPurchaseAt[g.beanKey];
+      return isBeanArchived(metaByBean.get(g.beanKey), at ? { createdAt: at } : undefined);
+    };
     return [all.filter((g) => !archived(g)), all.filter(archived)];
-  }, [recipes, beanMetas, purchases]);
+  }, [recipes, beanMetas, latestPurchaseAt]);
 
   // 아카이브 국가별 묶음 — 이미 국가순으로 정렬돼 있어 순서대로 쌓는다
   const archiveSections = useMemo(() => {
@@ -522,7 +537,7 @@ function BoardCard({
   const mineCurrent = mine.filter((f) => f.recipeVersion === r.updatedAt).length;
   return (
     <div className="rounded-md bg-background shadow-soft" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
-      {/* 헤더 — 테이스팅 노트 색 그라데이션(카운터컬처 플레이버 휠 차용) + 원두명 + 노트. 스크롤해도 고정 */}
+      {/* 헤더 — 테이스팅 노트 색 그라데이션(카운터컬처 플레이버 휠 차용) + 원두명. 스크롤해도 고정 */}
       <div
         className="bg-muted"
         style={{ flexShrink: 0, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 6, backgroundImage: flavorGradient(tasting) ?? undefined }}
@@ -563,11 +578,6 @@ function BoardCard({
             </button>
           )}
         </div>
-        {tasting && (
-          <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
-            {tasting}
-          </p>
-        )}
       </div>
       {/* 레시피 + 접힌 추출 평가가 한 스크롤 — 평가를 펼치면 카드 안에서 아래로 이어진다 */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -589,7 +599,8 @@ function BoardCard({
             ))}
           </div>
 
-          <div className="tabular" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, rowGap: 4 }}>
+          {/* 2칸 × 2줄 — 한 줄 4칸은 빡빡하고 '분쇄도(EK43)'가 잘려서 (2026-10-30 대표 지시) */}
+          <div className="tabular" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', columnGap: 16, rowGap: 20 }}>
             <Stat label="도징량" value={r.doseG != null ? `${r.doseG}g` : null} />
             <Stat label="추출량" value={r.waterG != null ? `${r.waterG}g` : null} />
             <Stat label="온도" value={r.tempC != null ? `${r.tempC}°C` : null} />
@@ -621,9 +632,18 @@ function BoardCard({
             </p>
           )}
 
+          {/* 테이스팅 노트 — 푸어링과 추출비 사이 빈 공간 정중앙 (2026-10-30 대표 지시) */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {tasting && (
+              <p className="text-body text-muted-foreground" style={{ margin: 0, textAlign: 'center', wordBreak: 'keep-all' }}>
+                {tasting}
+              </p>
+            )}
+          </div>
+
           {/* 추출비·추출 시간 — 흰 영역 맨 아래 정렬, 같은 크기 */}
           {(ratio || r.totalTime) && (
-            <div className="tabular text-body" style={{ marginTop: 'auto', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+            <div className="tabular text-body" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
               <span>{ratio && `추출비: ${ratio}`}</span>
               <span>{r.totalTime && `추출 시간: ${r.totalTime}`}</span>
             </div>
