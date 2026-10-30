@@ -44,6 +44,7 @@ export default function GardenSalePrice() {
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [showDismissed, setShowDismissed] = useState(false); // X로 숨긴 미책정 원두 펼침
   // 하단 참고표의 권장 칸 상태 — 참고표가 불러오거나 클릭으로 바꾸면 onChange 로 갱신된다
   const [bandCells, setBandCells] = useState<ActiveCells>(defaultActiveCells);
 
@@ -83,6 +84,27 @@ export default function GardenSalePrice() {
     }
   };
 
+  // 미책정 목록에서 숨기기(X)/다시 보이기 — 기록은 남기고 대기열에서만 뺀다
+  const setDismissed = async (rec: PurchaseRecord, dismissed: boolean) => {
+    if (busyId) return;
+    setBusyId(rec.id);
+    setError('');
+    try {
+      const res = await fetch('/api/purchases', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: rec.id, dismissed }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error ?? '저장에 실패했어요.');
+      setPurchases((prev) => prev.map((r) => (r.id === rec.id ? j : r)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '저장에 실패했어요.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   // 판매가 공유 링크 생성 → 모바일은 공유시트, 그 외 클립보드 복사 (카톡방 공지용)
   const sharePurchase = async (rec: PurchaseRecord) => {
     if (sharingId) return;
@@ -116,7 +138,15 @@ export default function GardenSalePrice() {
   const unpriced = useMemo(
     () =>
       purchases
-        .filter((r) => r.chosenPrice == null)
+        .filter((r) => r.chosenPrice == null && !r.priceDismissed)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [purchases]
+  );
+  // X로 숨긴 미책정 기록 — 하단 '숨긴 원두'에서 다시 보이기
+  const dismissed = useMemo(
+    () =>
+      purchases
+        .filter((r) => r.chosenPrice == null && r.priceDismissed)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [purchases]
   );
@@ -175,9 +205,41 @@ export default function GardenSalePrice() {
                 bandCells={bandCells}
                 onPick={(m) => setPicks((p) => ({ ...p, [rec.id]: m }))}
                 onDecide={(m) => decide(rec, m)}
+                onDismiss={() => setDismissed(rec, true)}
                 busy={busyId === rec.id}
               />
             ))}
+          </div>
+        )}
+        {dismissed.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <button
+              onClick={() => setShowDismissed((v) => !v)}
+              className="text-caption text-muted-foreground hover:text-foreground"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              숨긴 원두 {dismissed.length}건 {showDismissed ? '접기' : '보기'}
+            </button>
+            {showDismissed && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                {dismissed.map((rec) => (
+                  <div key={rec.id} className="gs-row">
+                    <span className="text-body text-muted-foreground" style={{ minWidth: 0 }}>
+                      {rec.bean}
+                      <span className="text-caption tabular"> · {fmtDate(rec.createdAt)} · 재료비 {won(rec.costPerCup)}</span>
+                    </span>
+                    <button
+                      onClick={() => setDismissed(rec, false)}
+                      disabled={busyId === rec.id}
+                      className="text-muted-foreground hover:text-foreground"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, flexShrink: 0 }}
+                    >
+                      다시 보이기
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -278,6 +340,7 @@ function RecordPricer({
   onPick,
   onDecide,
   onClear,
+  onDismiss,
   busy,
   compact,
 }: {
@@ -287,6 +350,7 @@ function RecordPricer({
   onPick: (m: number) => void;
   onDecide: (m: number) => void;
   onClear?: () => void;
+  onDismiss?: () => void; // 미책정 목록에서 숨기기(X)
   busy: boolean;
   compact?: boolean; // 책정 완료 목록 안 재책정 — 요약줄 생략
 }) {
@@ -310,7 +374,19 @@ function RecordPricer({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
       {!compact && (
-        <div>
+        <div style={{ position: 'relative', paddingRight: onDismiss ? 36 : 0 }}>
+          {onDismiss && (
+            <button
+              onClick={onDismiss}
+              disabled={busy}
+              aria-label={`${rec.bean} 미책정 목록에서 숨기기`}
+              title="미책정 목록에서 숨기기 (기록은 남고, 아래 '숨긴 원두'에서 다시 보이기)"
+              className="text-muted-foreground hover:text-foreground"
+              style={{ position: 'absolute', top: 0, right: 0, width: 28, height: 28, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}
+            >
+              <span className="text-title">×</span>
+            </button>
+          )}
           <p className="text-body text-foreground" style={{ margin: 0 }}>
             {rec.bean}
             {rec.roastery && <span className="text-caption text-muted-foreground"> · {rec.roastery}</span>}

@@ -910,7 +910,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
   // 판매가 미책정 카드 — 발주는 됐는데 판매가가 아직 없는 기록. 책정은 권한이 분리된
   // '판매가 설정' 탭(saleprice) 담당이라 여기서는 건수·원두명만 보여주고 링크로 유도한다.
-  const unpriced = purchases.filter((r) => r.chosenPrice == null);
+  const unpriced = purchases.filter((r) => r.chosenPrice == null && !r.priceDismissed); // X로 숨긴 건 제외
   const unpricedCard = unpriced.length > 0 && (
     <div className="ta-panel min-w-0">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>

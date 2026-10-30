@@ -51,6 +51,7 @@ export interface PurchaseRecord {
   chosenPrice: number | null; // 선택한 배수의 책정 판매가
   createdBy?: string; // 저장한 사람 이메일 (구 기록엔 없음)
   priceReview?: StageReview; // 레시피 담당자가 요청한 판매가 재검토
+  priceDismissed?: StageReview; // 판매가 설정 화면에서 X로 미책정 목록에서 숨김 (기록은 유지, 다시 보이기 가능)
   recipeReview?: StageReview; // 원두카드 담당자가 요청한 레시피 재검토
 }
 

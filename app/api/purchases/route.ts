@@ -27,7 +27,7 @@ export async function GET(req: Request) {
 
   // 나비 배지용 경량 응답 — 판매가 미책정 건수만 (매 페이지 로드에 전체 레코드를 내리지 않게)
   if (new URL(req.url).searchParams.get('scope') === 'unpriced-count') {
-    const count = (await purchaseRecords.readAll()).filter((r) => r.chosenPrice == null).length;
+    const count = (await purchaseRecords.readAll()).filter((r) => r.chosenPrice == null && !r.priceDismissed).length;
     return NextResponse.json({ count });
   }
 
@@ -168,6 +168,14 @@ export async function PATCH(req: Request) {
   const body = await req.json();
   const record = (await purchaseRecords.readAll()).find((r) => r.id === body.id);
   if (!record) return NextResponse.json({ error: '발주 기록을 찾을 수 없습니다.' }, { status: 404 });
+
+  // 미책정 목록에서 숨기기/다시 보이기 — 판매가는 건드리지 않는다 (기록 삭제 아님)
+  if (typeof body.dismissed === 'boolean') {
+    record.priceDismissed = body.dismissed ? { by: user.email ?? '', at: new Date().toISOString() } : undefined;
+    await purchaseRecords.writeOne(record);
+    await logActivity(supabase, user, '가든서비스 판매가 미책정 숨김', `${record.bean} · ${body.dismissed ? '숨김' : '다시 보이기'}`);
+    return NextResponse.json(record);
+  }
 
   if (body.chosenPrice != null) {
     // 판매가 직접 확정(500원 단위 후보 중 선택) — 배수는 판매가 ÷ 재료비 실제 배수로 기록
