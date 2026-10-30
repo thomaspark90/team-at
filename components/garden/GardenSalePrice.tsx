@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { PricingSettings, PurchaseRecord } from '@/lib/types';
 import { DEFAULT_SETTINGS, normalize, priceAtMult } from '@/lib/pricing';
 import { fmtDate } from '@/lib/garden/format';
+import PriceBandGuide from './PriceBandGuide';
 
 // 판매가 설정 전용 화면 — 발주(GardenService)에서 저장된 기록의 판매가를 책정·공유한다.
 // 발주와 권한이 분리돼 있어(saleprice 탭) 책정 담당자만 이 화면을 쓴다.
@@ -250,6 +251,11 @@ export default function GardenSalePrice() {
           </div>
         </div>
       )}
+
+      {/* 참고표 — 재료비 구간별 권장 배수 (고가 원두는 배수를 낮춘다) */}
+      <div className="min-w-0 pt-[54px]">
+        <PriceBandGuide />
+      </div>
       </div>
     </div>
   );
