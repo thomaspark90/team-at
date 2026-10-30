@@ -12,6 +12,7 @@ import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import { convertDial, pangyoDialText } from '@/lib/grinder-calibration';
 import { latestAlignmentDate, type AlignmentEvent } from '@/lib/grinder-alignments';
 import { ETC, countryOf, isBeanArchived } from '@/lib/garden/bean-groups';
+import { recipesForStore } from '@/lib/garden/recipe-store';
 
 // 태블릿 레시피 보드 — 매장 태블릿(가로)에서 레시피 카드 3장을 한 화면에, 좌우 스와이프로 3장씩 넘긴다.
 // 추출용 카드(M2, 2026-10-30): ICE/HOT 전환 · 스펙(이 지점 분쇄도) · 푸어링 · 추출비, 맨 아래 접힌 추출 평가.
@@ -53,6 +54,7 @@ interface BoardBean {
   bean: string;
   ice: DripRecipe | null;
   hot: DripRecipe | null;
+  fallback: Partial<Record<BrewType, boolean>>; // 판교 화면에서 양재천 레시피를 대신 보여주는 슬롯
   latestUpdate: string;
 }
 
@@ -140,9 +142,11 @@ export default function RecipeBoard() {
   const [beans, archivedBeans] = useMemo(() => {
     const metaByBean = new Map(beanMetas.map((b) => [b.beanKey, b]));
     const m = new Map<string, BoardBean>();
-    for (const r of recipes) {
-      const g = m.get(r.beanKey) ?? { beanKey: r.beanKey, bean: r.bean, ice: null, hot: null, latestUpdate: '' };
+    // 지점별 레시피(판교에 없는 슬롯은 양재천 레시피로 대체)
+    for (const { recipe: r, fallback } of recipesForStore(recipes, store)) {
+      const g = m.get(r.beanKey) ?? { beanKey: r.beanKey, bean: r.bean, ice: null, hot: null, fallback: {}, latestUpdate: '' };
       g[btOf(r)] = r;
+      if (fallback) g.fallback[btOf(r)] = true;
       if (r.updatedAt.localeCompare(g.latestUpdate) > 0) {
         g.latestUpdate = r.updatedAt;
         g.bean = r.bean;
@@ -160,7 +164,7 @@ export default function RecipeBoard() {
       return isBeanArchived(metaByBean.get(g.beanKey), at ? { createdAt: at } : undefined);
     };
     return [all.filter((g) => !archived(g)), all.filter(archived)];
-  }, [recipes, beanMetas, latestPurchaseAt]);
+  }, [recipes, beanMetas, latestPurchaseAt, store]);
 
   // 아카이브 국가별 묶음 — 이미 국가순으로 정렬돼 있어 순서대로 쌓는다
   const archiveSections = useMemo(() => {
@@ -213,7 +217,8 @@ export default function RecipeBoard() {
   );
   // 이 지점 분쇄도 — 표기 문자열 + 슬라이더 기준 수치(판교 잠정 범위·재측정 필요면 수치 없음)
   const storeMesh = (r: DripRecipe): { text: string | null; value: number | null } => {
-    if (store === 'yangjae') {
+    // 그 지점 레시피면 grindMesh 가 곧 그 지점 다이얼. 판교 화면의 양재천 대체 레시피만 환산한다
+    if (store === 'yangjae' || r.store === 'pangyo') {
       return r.grindMesh != null ? { text: meshFmt(r.grindMesh), value: r.grindMesh } : { text: r.grind || null, value: null };
     }
     if (r.pangyoMesh != null) return { text: meshFmt(r.pangyoMesh), value: r.pangyoMesh };
@@ -488,6 +493,14 @@ export default function RecipeBoard() {
   );
 }
 
+// 노트를 두 줄로 — 쉼표 목록을 앞 절반 / 뒤 절반으로 나눈다(홀수면 윗줄이 하나 더). 쉼표가 없으면 한 줄
+const tastingLines = (t: string): string[] => {
+  const items = t.split(/[,，·]/).map((x) => x.trim()).filter(Boolean);
+  if (items.length < 2) return [t];
+  const half = Math.ceil(items.length / 2);
+  return [items.slice(0, half).join(', '), items.slice(half).join(', ')];
+};
+
 const plainBtn: React.CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' };
 
 const navBtn: React.CSSProperties = {
@@ -533,6 +546,7 @@ function BoardCard({
   if (!r) return null;
   const ratio = r.doseG && r.waterG ? `1:${(r.waterG / r.doseG).toFixed(1)}` : null;
   const mesh = storeMesh(r);
+  const isFallback = !!g.fallback[bt];
   const mine = feedback.filter((f) => f.beanKey === g.beanKey && f.brewType === bt && f.store === store);
   const mineCurrent = mine.filter((f) => f.recipeVersion === r.updatedAt).length;
   return (
@@ -599,6 +613,12 @@ function BoardCard({
             ))}
           </div>
 
+          {isFallback && (
+            <p className="text-caption text-muted-foreground" style={{ margin: '-12px 0 0' }}>
+              판교 레시피 없음 · 양재천 레시피 기준(분쇄도는 판교 환산)
+            </p>
+          )}
+
           {/* 2칸 × 2줄 — 한 줄 4칸은 빡빡하고 '분쇄도(EK43)'가 잘려서 (2026-10-30 대표 지시) */}
           <div className="tabular" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', columnGap: 16, rowGap: 20 }}>
             <Stat label="도징량" value={r.doseG != null ? `${r.doseG}g` : null} />
@@ -635,8 +655,12 @@ function BoardCard({
           {/* 테이스팅 노트 — 푸어링과 추출비 사이 빈 공간 정중앙 (2026-10-30 대표 지시) */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {tasting && (
-              <p className="text-body text-muted-foreground" style={{ margin: 0, textAlign: 'center', wordBreak: 'keep-all' }}>
-                {tasting}
+              <p className="text-body text-muted-foreground" style={{ margin: 0, textAlign: 'center', lineHeight: 1.8, wordBreak: 'keep-all' }}>
+                {tastingLines(tasting).map((line, i) => (
+                  <span key={i} style={{ display: 'block' }}>
+                    {line}
+                  </span>
+                ))}
               </p>
             )}
           </div>

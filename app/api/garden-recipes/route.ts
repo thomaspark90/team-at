@@ -8,6 +8,8 @@ import { logActivity } from '@/lib/finance/activity';
 import { notifyGardenEvent } from '@/lib/notify';
 import { readGardenTopics } from '@/lib/garden-notify-topics-server';
 import { requireGardenTab } from '@/lib/access/guard';
+import { STORES, type StoreId } from '@/lib/types';
+import { sameRecipeSlot } from '@/lib/garden/recipe-store';
 
 // 기록별 blob 저장(lib/blob-records) — 레시피 1건 = 파일 1개라 서로 다른 레시피를
 // 동시에 저장해도 유실이 없다. (같은 레시피 동시 수정은 여전히 마지막 저장이 이긴다)
@@ -36,8 +38,11 @@ export async function GET(req: Request) {
 }
 
 const brewTypeOf = (v: unknown) => (v === 'hot' ? 'hot' : 'ice') as 'ice' | 'hot';
+// 지점 — 안 보내면 양재천(지점 분리 이전 클라이언트·기록 호환)
+const storeOf = (v: unknown): StoreId => (v === 'pangyo' ? 'pangyo' : 'yangjae');
+const storeShort = (s: StoreId) => STORES.find((x) => x.id === s)?.short ?? s;
 
-// 레시피 저장(업서트): beanKey+brewType 기준 — { beanKey, brewType, bean, doseG, waterG, pours, tempC, grind, totalTime, notes }
+// 레시피 저장(업서트): beanKey+brewType+store 기준 — { beanKey, brewType, store, bean, doseG, waterG, pours, tempC, grind, totalTime, notes }
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -67,9 +72,12 @@ export async function POST(req: Request) {
 
   const all = await dripRecipeRecords.readAll();
   const brewType = brewTypeOf(body.brewType);
+  const store = storeOf(body.store);
   const recipe: DripRecipe = {
     beanKey: body.beanKey,
     brewType,
+    // 양재천은 필드를 비워 둔다 — 기존 기록과 같은 모양(store 없음 = 양재천)
+    ...(store === 'pangyo' ? { store } : {}),
     bean: body.bean,
     doseG: body.doseG ?? null,
     waterG: body.waterG ?? null,
@@ -83,8 +91,7 @@ export async function POST(req: Request) {
     updatedAt: new Date().toISOString(),
     updatedBy: user.email ?? '',
   };
-  const same = (r: DripRecipe) => r.beanKey === recipe.beanKey && brewTypeOf(r.brewType) === brewType;
-  const prev = all.find(same);
+  const prev = all.find((r) => sameRecipeSlot(r, recipe.beanKey, brewType, store));
   const isNew = !prev;
   recipe.id = prev?.id ?? crypto.randomUUID(); // 업서트 — 기존 기록의 id 를 이어받아 같은 파일에 덮어쓴다
   // 최초 등록 시점 보존 — 구 기록(createdAt 없음)은 이력 최초 저장 시각으로 백필
@@ -99,8 +106,9 @@ export async function POST(req: Request) {
   } else {
     recipe.history = [];
   }
-  // 판교 수동 보정 유지 — 단, 양재천 기준 분쇄도가 바뀌면 보정이 낡은 값이 되므로 자동값으로 복귀
-  if (prev) {
+  // 판교 수동 보정 유지 — 단, 양재천 기준 분쇄도가 바뀌면 보정이 낡은 값이 되므로 자동값으로 복귀.
+  // 보정값은 양재천 레시피에만 있다(판교 레시피가 아직 없을 때 판교 화면이 쓰는 대체 표기).
+  if (prev && store === 'yangjae') {
     const baseChanged = (prev.grindMesh ?? null) !== (recipe.grindMesh ?? null);
     if (baseChanged && prev.pangyoMesh != null) {
       recipe.pangyoMesh = null;
@@ -138,7 +146,7 @@ export async function POST(req: Request) {
     supabase,
     user,
     isNew ? '가든서비스 레시피 등록' : '가든서비스 레시피 수정',
-    `${recipe.bean} ${brewType.toUpperCase()}` +
+    `${recipe.bean} ${brewType.toUpperCase()} · ${storeShort(store)}` +
       (recipe.doseG != null && recipe.waterG != null
         ? ` · ${recipe.doseG}g : ${recipe.waterG}g`
         : '')
@@ -151,7 +159,7 @@ export async function POST(req: Request) {
     if (emails.length > 0) {
       const by = (user.email ?? '').split('@')[0];
       const summary =
-        `${recipe.bean} ${brewType.toUpperCase()}` +
+        `${recipe.bean} ${brewType.toUpperCase()} · ${storeShort(store)}` +
         (recipe.doseG != null && recipe.waterG != null ? ` · ${recipe.doseG}g : ${recipe.waterG}g` : '') +
         (recipe.grindMesh != null ? ` · 분쇄도 ${recipe.grindMesh}` : '');
       await notifyGardenEvent(supabase, {
@@ -188,16 +196,16 @@ export async function DELETE(req: Request) {
     if (denied) return denied;
   }
 
-  const { beanKey, brewType: bt } = await req.json();
+  const { beanKey, brewType: bt, store: st } = await req.json();
   const brewType = brewTypeOf(bt);
-  const same = (r: DripRecipe) => r.beanKey === beanKey && brewTypeOf(r.brewType) === brewType;
-  const removed = (await dripRecipeRecords.readAll()).find(same);
+  const store = storeOf(st);
+  const removed = (await dripRecipeRecords.readAll()).find((r) => sameRecipeSlot(r, beanKey, brewType, store));
   if (removed) await dripRecipeRecords.deleteOne(removed.id);
   await logActivity(
     supabase,
     user,
     '가든서비스 레시피 삭제',
-    removed ? `${removed.bean} ${brewType.toUpperCase()}` : null
+    removed ? `${removed.bean} ${brewType.toUpperCase()} · ${storeShort(store)}` : null
   );
   return NextResponse.json({ ok: true });
 }

@@ -10,10 +10,12 @@ import { flavorGradient } from '@/lib/flavor-colors';
 import BrewTimer from '@/components/garden/BrewTimer';
 import { toast } from '@/components/Toast';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
-import { pangyoDialText } from '@/lib/grinder-calibration';
+import { convertDial, pangyoDialText } from '@/lib/grinder-calibration';
 import { latestAlignmentDate, type AlignmentEvent } from '@/lib/grinder-alignments';
 import { fmtDate } from '@/lib/garden/format';
 import { ETC, countryOf, isBeanArchived } from '@/lib/garden/bean-groups';
+import { recipeChanges, recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
+import SegmentControl from '@/components/nav/SegmentControl';
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 
@@ -71,6 +73,7 @@ interface Draft {
   beanKey: string;
   bean: string;
   brewType: BrewType;
+  store: StoreId; // 레시피 지점 — 판교 레시피의 분쇄도는 판교 EK43 다이얼
   presetId: string;
   doseG: string;
   tempC: string;
@@ -101,6 +104,7 @@ const draftFromRecipe = (r: DripRecipe): Draft => ({
   beanKey: r.beanKey,
   bean: r.bean,
   brewType: btOf(r),
+  store: r.store ?? 'yangjae',
   presetId: r.presetId ?? '',
   doseG: r.doseG != null ? String(r.doseG) : '',
   tempC: r.tempC != null ? String(r.tempC) : '',
@@ -114,7 +118,7 @@ const draftFromRecipe = (r: DripRecipe): Draft => ({
 });
 
 // 새 레시피 — 해당 타입의 매장 기준 프리셋으로 채워서 시작
-const presetDraft = (beanKey: string, bean: string, brewType: BrewType): Draft => {
+const presetDraft = (beanKey: string, bean: string, brewType: BrewType, store: StoreId): Draft => {
   const presetId = housePresetId(brewType);
   const p = presetById(presetId);
   const a = applyPreset(p!);
@@ -122,6 +126,7 @@ const presetDraft = (beanKey: string, bean: string, brewType: BrewType): Draft =
     beanKey,
     bean,
     brewType,
+    store,
     presetId,
     doseG: String(a.doseG),
     tempC: a.tempC != null ? String(a.tempC) : '',
@@ -169,6 +174,17 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   const [deletingBean, setDeletingBean] = useState<string | null>(null);
   // 국가 필터 칩 (recipes 모드)
   const [selectedCountry, setSelectedCountry] = useState('전체');
+  // 레시피 지점 — 태블릿 레시피 보드와 같은 기기 저장값을 공유(한 기기 = 한 매장)
+  const [store, setStore] = useState<StoreId>('yangjae');
+  useEffect(() => {
+    const saved = localStorage.getItem('garden-board-store');
+    if (saved === 'pangyo' || saved === 'yangjae') setStore(saved);
+  }, []);
+  const pickStore = (id: string) => {
+    setStore(id as StoreId);
+    localStorage.setItem('garden-board-store', id);
+    setDraft(null); // 다른 지점 레시피를 편집 중이면 닫는다 — 엉뚱한 지점에 저장되는 것 방지
+  };
   // 보관함 펼침 (recipes 모드)
   const [archiveOpen, setArchiveOpen] = useState(false);
   // 되돌리기 — 판매가가 잘못됐으면 판매가 담당자에게 재검토를 요청 (beanKey 단위로 노트 입력창 하나만 연다)
@@ -234,10 +250,18 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     return m;
   }, [purchases]);
 
+  // 선택 지점 레시피 — 판교에 아직 없는 슬롯은 양재천 레시피로 대신 보여준다(fallbackIds)
+  const storeView = useMemo(() => recipesForStore(recipes, store), [recipes, store]);
+  const fallbackIds = useMemo(
+    () => new Set(storeView.filter((x) => x.fallback).map((x) => x.recipe.id ?? '')),
+    [storeView]
+  );
+  const isFallback = (r: DripRecipe) => fallbackIds.has(r.id ?? '');
+
   // 레시피가 하나라도 있는 원두 — ICE/HOT 슬롯으로 묶고 최신 업데이트순
   const beanGroups = useMemo(() => {
     const m = new Map<string, BeanGroup>();
-    for (const r of recipes) {
+    for (const { recipe: r } of storeView) {
       const g = m.get(r.beanKey) ?? { beanKey: r.beanKey, bean: r.bean, ice: null, hot: null, latestUpdate: '' };
       g[btOf(r)] = r;
       if (r.updatedAt.localeCompare(g.latestUpdate) > 0) {
@@ -247,7 +271,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       m.set(r.beanKey, g);
     }
     return Array.from(m.values()).sort((a, b) => b.latestUpdate.localeCompare(a.latestUpdate));
-  }, [recipes]);
+  }, [storeView]);
 
   const tastingByBean = useMemo(
     () => new Map(beanMetas.map((b) => [b.beanKey, b.tasting])),
@@ -340,8 +364,15 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   const openEditor = (beanKey: string, bean: string, brewType: BrewType) => {
     // 다른 편집을 열면 이전 ICE→HOT 연결은 무효 — 남아 있으면 나중에 엉뚱한 HOT 편집이 이어진다
     setChainHotFor(null);
-    const existing = recipes.find((r) => r.beanKey === beanKey && btOf(r) === brewType);
-    const base = existing ? draftFromRecipe(existing) : presetDraft(beanKey, bean, brewType);
+    const existing = recipes.find((r) => sameRecipeSlot(r, beanKey, brewType, store));
+    // 판교 레시피가 아직 없으면 양재천 레시피를 바탕으로 판교 레시피를 새로 만든다 — 분쇄도는 판교 값(보정 > 확정 환산)
+    const yangjae = store === 'pangyo' && !existing ? recipes.find((r) => sameRecipeSlot(r, beanKey, brewType, 'yangjae')) : undefined;
+    let base: Draft;
+    if (existing) base = draftFromRecipe(existing);
+    else if (yangjae) {
+      const pg = yangjae.pangyoMesh ?? (yangjae.grindMesh != null ? convertDial(grinderProfiles, 'yangjae', 'pangyo', yangjae.grindMesh) : null);
+      base = { ...draftFromRecipe(yangjae), store: 'pangyo', grindMesh: pg != null ? meshFmt(pg) : '' };
+    } else base = presetDraft(beanKey, bean, brewType, store);
     setDraft({ ...base, tasting: tastingByBean.get(beanKey) ?? '' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -365,7 +396,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       updatedAt: s.updatedAt,
       updatedBy: s.updatedBy,
     });
-    setDraft({ ...base, tasting: tastingByBean.get(beanKey) ?? '' });
+    setDraft({ ...base, store, tasting: tastingByBean.get(beanKey) ?? '' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -446,6 +477,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       body: JSON.stringify({
         beanKey: draft.beanKey,
         brewType: draft.brewType,
+        store: draft.store,
         bean: draft.bean,
         doseG: num(draft.doseG),
         waterG: waterG > 0 ? waterG : null,
@@ -477,7 +509,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     // 미설정 원두에서 시작한 경우 ICE 저장 후 같은 원두의 HOT 편집으로 자동 전환
     if (draft.brewType === 'ice' && chainHotFor === draft.beanKey) {
       setChainHotFor(null);
-      setDraft({ ...presetDraft(draft.beanKey, draft.bean, 'hot'), tasting: draft.tasting });
+      setDraft({ ...presetDraft(draft.beanKey, draft.bean, 'hot', draft.store), tasting: draft.tasting });
       setSaving(false);
       toast('ICE 레시피 저장 완료 — 이어서 HOT 레시피를 설정하세요.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -491,11 +523,11 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   // 낙관적 삭제 — 화면에서 먼저 빼고, 서버 실패 시 되돌린다 (서버 왕복 + 전체 재조회로 ~3초 걸리던 대기 제거)
   const deleteRecipe = async (beanKey: string, brewType: BrewType) => {
     const prev = recipes;
-    setRecipes((rs) => rs.filter((r) => !(r.beanKey === beanKey && btOf(r) === brewType)));
+    setRecipes((rs) => rs.filter((r) => !sameRecipeSlot(r, beanKey, brewType, store)));
     const res = await fetch('/api/garden-recipes', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ beanKey, brewType }),
+      body: JSON.stringify({ beanKey, brewType, store }),
     }).catch(() => null);
     if (!res?.ok) {
       setRecipes(prev);
@@ -507,7 +539,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
   // 매장 기준 레시피로 초기화 (현재 타입 기준)
   const resetToHouse = () =>
-    setDraft((d) => (d ? { ...presetDraft(d.beanKey, d.bean, d.brewType), tasting: d.tasting } : d));
+    setDraft((d) => (d ? { ...presetDraft(d.beanKey, d.bean, d.brewType, d.store), tasting: d.tasting } : d));
 
   // 분쇄도 ±0.1 — 미설정이면 타입별 매장 기준값에서 시작
   const adjMesh = (delta: number) =>
@@ -776,13 +808,16 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                       >
                         수정
                       </button>
-                      <button
-                        onClick={() => deleteRecipe(g.beanKey, bt)}
-                        className="text-caption text-muted-foreground hover:text-foreground"
-                        style={ghostBtn}
-                      >
-                        삭제
-                      </button>
+                      {/* 양재천 레시피를 대신 보여주는 중이면 삭제 숨김 — 판교 화면에서 양재천 레시피가 지워지지 않게 */}
+                      {!isFallback(r) && (
+                        <button
+                          onClick={() => deleteRecipe(g.beanKey, bt)}
+                          className="text-caption text-muted-foreground hover:text-foreground"
+                          style={ghostBtn}
+                        >
+                          삭제
+                        </button>
+                      )}
                     </span>
                   ) : (
                     <button
@@ -795,6 +830,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                   )}
                 </div>
 
+                {r && isFallback(r) && (
+                  <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
+                    판교 레시피가 아직 없어 양재천 레시피를 보여줘요 — 「수정」하면 판교 레시피가 따로 생겨요
+                  </p>
+                )}
+
                 {r && (
                   <>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -802,10 +843,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                       <SpecRow label="총 물량" value={r.waterG != null ? `${r.waterG}g` : null} />
                       <SpecRow label="물 온도" value={r.tempC != null ? `${r.tempC}°C` : null} />
                       {r.grindMesh != null ? (
-                        <>
-                          <SpecRow label="분쇄도 · 양재천 EK43" value={meshFmt(r.grindMesh)} />
+                        isFallback(r) ? (
+                          // 판교 화면 · 판교 레시피 없음 — 양재천 값의 판교 환산 + 지점 수동 보정
                           <PangyoMeshRow recipe={r} autoText={pangyoMeshText(r.grindMesh)} onSaved={refresh} />
-                        </>
+                        ) : (
+                          <SpecRow label={`분쇄도 · ${store === 'pangyo' ? '판교' : '양재천'} EK43`} value={meshFmt(r.grindMesh)} />
+                        )
                       ) : (
                         <SpecRow label="분쇄도" value={r.grind || null} />
                       )}
@@ -868,10 +911,14 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                     {/* 이전 버전 목록 — 복원은 편집 폼에 불러온 뒤 저장해야 반영 */}
                     {openHistory.has(`${g.beanKey}:${bt}`) && (r.history?.length ?? 0) > 0 && (
                       <div className="rounded-md bg-muted/40" style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {r.history!.map((s, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, minWidth: 0 }}>
+                        {/* 각 줄 = 그 버전으로 저장된 시점 + 바로 다음 버전에서 바뀐 점(최신 줄은 현재 레시피와 비교) */}
+                        {r.history!.map((s, i) => {
+                          const next = i === 0 ? r : r.history![i - 1];
+                          const changes = recipeChanges(s, next);
+                          return (
+                          <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 11, minWidth: 0 }}>
                             <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>{fmtDate(s.updatedAt)}</span>
-                            <span className="tabular text-foreground" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <span className="tabular text-foreground" style={{ minWidth: 0 }}>
                               {[
                                 s.doseG != null ? `${s.doseG}g` : null,
                                 s.waterG != null ? `${s.waterG}g` : null,
@@ -881,6 +928,11 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                               ]
                                 .filter(Boolean)
                                 .join(' · ')}
+                              {changes.length > 0 && (
+                                <span className="text-muted-foreground" style={{ display: 'block' }}>
+                                  → {fmtDate(next.updatedAt)}{next.updatedBy ? ` ${next.updatedBy.split('@')[0]}` : ''} 수정: {changes.join(' · ')}
+                                </span>
+                              )}
                             </span>
                             <span style={{ flex: 1 }} />
                             <button
@@ -892,7 +944,8 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                               복원
                             </button>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </>
@@ -977,7 +1030,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
         <div className="min-w-0">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <p className="ta-label" style={{ marginBottom: 0 }}>
-              {draft.bean} — {btLabel(draft.brewType)} 레시피
+              {draft.bean} — {STORES.find((x) => x.id === draft.store)?.short} {btLabel(draft.brewType)} 레시피
             </p>
             <button
               onClick={resetToHouse}
@@ -1029,7 +1082,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
               options={withCurStr(TIME_OPTS, draft.totalTime)}
             />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-              <span className="text-caption text-muted-foreground">분쇄도 (Mesh · EK43 양재천)</span>
+              <span className="text-caption text-muted-foreground">분쇄도 (Mesh · EK43 {draft.store === 'pangyo' ? '판교' : '양재천'})</span>
               <div className="rounded-md border border-input" style={{ display: 'flex', alignItems: 'center', height: 36 }}>
                 <button onClick={() => adjMesh(-0.1)} className="text-muted-foreground hover:text-foreground" style={meshBtn} title="0.1 곱게">
                   ‹
@@ -1041,12 +1094,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                   ›
                 </button>
               </div>
-              {draft.grindMesh && pangyoMeshText(Number(draft.grindMesh)) === '재측정 필요' && (
+              {draft.store === 'yangjae' && draft.grindMesh && pangyoMeshText(Number(draft.grindMesh)) === '재측정 필요' && (
                 <p className="text-body text-muted-foreground" style={{ margin: '4px 0 0' }}>
                   판교점 EK43 메쉬 — 재얼라인 이후 재측정 필요 (6/8/10 프로토콜 측정을 올려주세요)
                 </p>
               )}
-              {draft.grindMesh && pangyoMeshText(Number(draft.grindMesh)) != null && pangyoMeshText(Number(draft.grindMesh)) !== '재측정 필요' && (
+              {draft.store === 'yangjae' && draft.grindMesh && pangyoMeshText(Number(draft.grindMesh)) != null && pangyoMeshText(Number(draft.grindMesh)) !== '재측정 필요' && (
                 <span className="tabular text-caption text-muted-foreground">
                   판교점 EK43 메쉬 ≈ {pangyoMeshText(Number(draft.grindMesh))}
                 </span>
@@ -1147,6 +1200,19 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       {section === 'recipes' && (
         <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
           {loading && <p className="text-body text-muted-foreground">불러오는 중…</p>}
+          {/* 지점 — 레시피는 지점별(2026-10-30). 기기에 기억돼 레시피 보드와 공유 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <SegmentControl
+              items={[...STORES].reverse().map((s) => ({ id: s.id, label: s.label }))}
+              value={store}
+              onSelect={pickStore}
+              ariaLabel="레시피 지점"
+            />
+            <span className="text-caption text-muted-foreground">
+              {store === 'pangyo' ? '판교 레시피 — 없는 원두는 양재천 레시피를 보여줘요' : '양재천 레시피'}
+            </span>
+          </div>
+
           {/* 태블릿 레시피 보드 — 3장씩 좌우 스와이프로 넘겨 보는 매장용 화면 */}
           {!loading && activeGroups.length > 0 && (
             <Link href="/garden/recipes/board" className="text-body text-muted-foreground underline hover:text-foreground" style={{ alignSelf: 'flex-start' }}>

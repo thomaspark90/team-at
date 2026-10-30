@@ -40,3 +40,25 @@ describe('추출 평가 — 표기·집계', () => {
     expect(s.avgMesh).toBeCloseTo(7.033, 2);
   });
 });
+
+import { recipeChanges, recipesForStore } from '@/lib/garden/recipe-store';
+import type { DripRecipe } from '@/lib/types';
+
+describe('레시피 지점 분리', () => {
+  const base = { bean: 'B', doseG: 20, waterG: 190, tempC: 92, grind: '', totalTime: '3:30', notes: '', updatedAt: '' };
+  const yj = { ...base, beanKey: 'b', brewType: 'ice', grindMesh: 7.1 } as DripRecipe;
+  const pgHot = { ...base, beanKey: 'b', brewType: 'hot', store: 'pangyo', grindMesh: 8.0 } as DripRecipe;
+  it('양재천 화면은 store 없는 기존 기록만', () => {
+    expect(recipesForStore([yj, pgHot], 'yangjae').map((x) => x.recipe)).toEqual([yj]);
+  });
+  it('판교 화면은 판교 레시피 + 없는 슬롯은 양재천 대체', () => {
+    const v = recipesForStore([yj, pgHot], 'pangyo');
+    expect(v).toContainEqual({ recipe: pgHot, fallback: false });
+    expect(v).toContainEqual({ recipe: yj, fallback: true });
+  });
+  it('이력 변경점', () => {
+    const a = { doseG: 20, waterG: 190, tempC: 92, grindMesh: 7.1, totalTime: '3:30', pours: [{ water: 35, label: '뜸' }, { water: 50 }] };
+    const b = { ...a, grindMesh: 7.0, pours: [{ water: 35, label: '뜸' }, { water: 55 }], waterG: 195 };
+    expect(recipeChanges(a, b)).toEqual(['분쇄도 7.1→7.0', '1차 50→55g', '추출량 190→195g']);
+  });
+});

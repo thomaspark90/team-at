@@ -31,7 +31,8 @@ export async function POST(req: Request) {
   }
 
   const recipe = (await dripRecipeRecords.readAll()).find(
-    (r: DripRecipe) => r.beanKey === beanKey && brewTypeOf(r.brewType) === brewType
+    // 보정은 양재천 레시피에 붙는다(판교 레시피가 없을 때의 판교 표기) — 판교 레시피 자체는 grindMesh 를 직접 수정
+    (r: DripRecipe) => r.beanKey === beanKey && brewTypeOf(r.brewType) === brewType && (r.store ?? 'yangjae') === 'yangjae'
   );
   if (!recipe) return NextResponse.json({ error: '레시피를 찾을 수 없습니다.' }, { status: 404 });
 
