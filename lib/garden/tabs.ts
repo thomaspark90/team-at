@@ -33,8 +33,8 @@ export const GARDEN_TABS: GardenTab[] = GARDEN_TAB_GROUPS.flat();
 export type GardenNavEntry = { label: string; keys: string[] };
 export const GARDEN_NAV: GardenNavEntry[] = [
   { label: '작업 보드', keys: ['dashboard'] },
-  { label: '운영', keys: ['pricing', 'saleprice', 'calibration'] },
-  { label: '레시피', keys: ['recipes', 'recommended', 'beancard', 'words'] },
+  { label: '커피(필터)', keys: ['pricing', 'saleprice', 'calibration', 'beancard'] }, // 2026-10-30 '운영'→'커피(필터)', 원두카드를 레시피에서 이동
+  { label: '레시피', keys: ['recipes', 'recommended', 'words'] },
   { label: '분석', keys: ['sales', 'weather', 'reviews'] },
   { label: '교육', keys: ['teaching'] },
   { label: '설정', keys: ['settings'] },
