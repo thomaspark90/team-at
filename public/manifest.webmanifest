@@ -4,7 +4,7 @@
   "description": "카페 운영 도구 — 스탭밀 이미지 · 드립 판매가 산출",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#FFFFFF",
   "theme_color": "#1C1B19",
   "icons": [

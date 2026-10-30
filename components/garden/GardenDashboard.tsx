@@ -13,6 +13,7 @@ import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import { pangyoDialText } from '@/lib/grinder-calibration';
 import { latestAlignmentDate, type AlignmentEvent } from '@/lib/grinder-alignments';
 import { fmtDate } from '@/lib/garden/format';
+import { ETC, countryOf, isBeanArchived } from '@/lib/garden/bean-groups';
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 
@@ -131,18 +132,6 @@ const presetDraft = (beanKey: string, bean: string, brewType: BrewType): Draft =
     notesHint: a.notes,
     tasting: '', // openEditor에서 원두 공통 노트로 채움
   };
-};
-
-// 원두명에서 국가 추출 — 필터 레시피 화면의 국가별 그룹핑용 (구 GardenRecipes에서 이식)
-const COUNTRIES = [
-  '에티오피아', '케냐', '콜롬비아', '브라질', '과테말라', '온두라스', '파나마', '페루',
-  '코스타리카', '엘살바도르', '니카라과', '볼리비아', '에콰도르', '르완다', '부룬디',
-  '인도네시아', '예멘', '멕시코', '인도', '베트남', '탄자니아', '우간다', '파푸아뉴기니', '중국',
-];
-const ETC = '기타';
-const countryOf = (bean: string) => {
-  const b = normalize(bean);
-  return COUNTRIES.find((c) => b.includes(normalize(c))) ?? ETC;
 };
 
 // 원두 하나 = ICE/HOT 레시피 슬롯 한 쌍
@@ -269,12 +258,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   const stockOfBean = (beanKey: string, storeId: StoreId) => stockOf(metaByBean.get(beanKey), storeId);
 
   // 보관 여부 — 보관 이후 같은 원두 발주가 새로 들어왔으면 자동 해제로 본다
-  const isArchived = (beanKey: string) => {
-    const at = metaByBean.get(beanKey)?.archivedAt;
-    if (!at) return false;
-    const latest = latestByBean.get(beanKey);
-    return !(latest && latest.createdAt.localeCompare(at) > 0);
-  };
+  const isArchived = (beanKey: string) => isBeanArchived(metaByBean.get(beanKey), latestByBean.get(beanKey));
   const [activeGroups, archivedGroups] = useMemo(
     () => [beanGroups.filter((g) => !isArchived(g.beanKey)), beanGroups.filter((g) => isArchived(g.beanKey))],
     // eslint-disable-next-line react-hooks/exhaustive-deps -- isArchived 는 metaByBean·latestByBean 만 참조
@@ -1163,6 +1147,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       {section === 'recipes' && (
         <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
           {loading && <p className="text-body text-muted-foreground">불러오는 중…</p>}
+          {/* 태블릿 레시피 보드 — 3장씩 좌우 스와이프로 넘겨 보는 매장용 화면 */}
+          {!loading && activeGroups.length > 0 && (
+            <Link href="/garden/recipes/board" className="text-body text-muted-foreground underline hover:text-foreground" style={{ alignSelf: 'flex-start' }}>
+              태블릿 레시피 보드로 보기 →
+            </Link>
+          )}
           {/* 새 발주 원두 — 레시피 미설정이면 상단에서 바로 설정 유도 */}
           {!loading && unsetCard}
           {!loading && activeGroups.length === 0 && unsetBeans.length === 0 && (
