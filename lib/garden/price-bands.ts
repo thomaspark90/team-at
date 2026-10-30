@@ -30,3 +30,28 @@ export const guidePrice = (cost: number, mult: number) => Math.ceil((cost * mult
 
 // 재료비 → 1kg 매입가(VAT 별도) 환산 — 기본 설정(수율 90%·도징 20g·VAT 1.1) 기준
 export const kgPriceForCost = (cost: number) => (cost * 900) / 20 / 1.1;
+
+// 참고표 칸 단위 권장 상태 — 판매가 설정 화면에서 칸을 클릭해 켜고 끈다 (서버 저장)
+// key = 재료비(원) 문자열, value = 활성(권장) 배수 목록
+export type ActiveCells = Record<string, number[]>;
+
+/** 저장값이 없을 때의 기본 — PRICE_BANDS 구간을 칸으로 펼친 것 */
+export const defaultActiveCells = (): ActiveCells =>
+  Object.fromEntries(
+    GUIDE_COSTS.map((cost) => {
+      const b = bandForCost(cost);
+      return [String(cost), GUIDE_MULTS.filter((m) => m >= b.minMult && m <= b.maxMult)];
+    }),
+  );
+
+/** 축에 있는 칸만 남기고 정렬·중복 제거 — 저장 전후 정규화 */
+export const cleanActiveCells = (raw: unknown): ActiveCells => {
+  const src = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  return Object.fromEntries(
+    GUIDE_COSTS.map((cost) => {
+      const arr = Array.isArray(src[String(cost)]) ? (src[String(cost)] as unknown[]) : [];
+      const ms = GUIDE_MULTS.filter((m) => arr.some((v) => Number(v) === m));
+      return [String(cost), ms];
+    }),
+  );
+};
