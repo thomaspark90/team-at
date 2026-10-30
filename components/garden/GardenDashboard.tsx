@@ -180,6 +180,8 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   const [deletingBean, setDeletingBean] = useState<string | null>(null);
   // 국가 필터 칩 (recipes 모드)
   const [selectedCountry, setSelectedCountry] = useState('전체');
+  // 보관함 펼침 (recipes 모드)
+  const [archiveOpen, setArchiveOpen] = useState(false);
   // 되돌리기 — 판매가가 잘못됐으면 판매가 담당자에게 재검토를 요청 (beanKey 단위로 노트 입력창 하나만 연다)
   const [priceReviewOpenFor, setPriceReviewOpenFor] = useState<string | null>(null);
   const [priceReviewNote, setPriceReviewNote] = useState('');
@@ -266,6 +268,19 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   const metaByBean = useMemo(() => new Map(beanMetas.map((b) => [b.beanKey, b])), [beanMetas]);
   const stockOfBean = (beanKey: string, storeId: StoreId) => stockOf(metaByBean.get(beanKey), storeId);
 
+  // 보관 여부 — 보관 이후 같은 원두 발주가 새로 들어왔으면 자동 해제로 본다
+  const isArchived = (beanKey: string) => {
+    const at = metaByBean.get(beanKey)?.archivedAt;
+    if (!at) return false;
+    const latest = latestByBean.get(beanKey);
+    return !(latest && latest.createdAt.localeCompare(at) > 0);
+  };
+  const [activeGroups, archivedGroups] = useMemo(
+    () => [beanGroups.filter((g) => !isArchived(g.beanKey)), beanGroups.filter((g) => isArchived(g.beanKey))],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isArchived 는 metaByBean·latestByBean 만 참조
+    [beanGroups, metaByBean, latestByBean]
+  );
+
   // 레시피 분쇄도(양재천 EK43 기준) → 판교 EK43 표기 — 피팅 준비 시 확정값,
   // 아니면 2026-07-16 실측 오프셋 기반 잠정 범위(*)로 폴백.
   // 오프셋 측정일 이후 얼라인이 있으면 낡은 범위 대신 '재측정 필요'를 표시한다.
@@ -284,11 +299,11 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     return `${p.text}${p.provisional ? '*' : ''}`;
   };
 
-  // 국가별 섹션 (recipes 모드) — 모든 레시피 원두(재고 유무 무관), 국가 가나다순 · '기타' 맨 뒤,
+  // 국가별 섹션 (recipes 모드) — 보관하지 않은 레시피 원두(재고 유무 무관), 국가 가나다순 · '기타' 맨 뒤,
   // 국가 안에서는 beanGroups의 최신 업데이트순 유지
   const countrySections = useMemo(() => {
     const byCountry = new Map<string, BeanGroup[]>();
-    for (const g of beanGroups) {
+    for (const g of activeGroups) {
       const c = countryOf(g.bean);
       byCountry.set(c, [...(byCountry.get(c) ?? []), g]);
     }
@@ -297,7 +312,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       a.country === ETC ? 1 : b.country === ETC ? -1 : a.country.localeCompare(b.country, 'ko')
     );
     return list;
-  }, [beanGroups]);
+  }, [activeGroups]);
 
   // 발주 기록엔 있지만 레시피가 하나도 없는 원두
   const unsetBeans = useMemo(() => {
@@ -411,6 +426,26 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       return;
     }
     refresh();
+  };
+
+  // 보관/해제 — 낙관적 반영, 실패 시 되돌림. 레시피·이력은 그대로 두고 레시피 탭에서만 뺀다
+  const setArchived = async (beanKey: string, bean: string, archived: boolean) => {
+    const prev = beanMetas;
+    const at = archived ? new Date().toISOString() : null;
+    setBeanMetas((ms) =>
+      ms.some((m) => m.beanKey === beanKey)
+        ? ms.map((m) => (m.beanKey === beanKey ? { ...m, archivedAt: at } : m))
+        : [...ms, { beanKey, bean, tasting: '', archivedAt: at, updatedAt: at ?? '' }]
+    );
+    const res = await fetch('/api/garden-beans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ beanKey, bean, archived }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      setBeanMetas(prev);
+      toast(archived ? '보관에 실패했어요. 다시 시도해 주세요.' : '보관 해제에 실패했어요. 다시 시도해 주세요.', 'error');
+    }
   };
 
   const saveDraft = async () => {
@@ -552,6 +587,20 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                   <span className={`tabular text-caption ${levelCls}`} style={{ flexShrink: 0 }} title={`등록 ${fmtDate(regAt)}`}>
                     D+{n}
                   </span>
+                );
+              })()}
+              {/* 보관 — 소진된 원두를 지우지 않고 보관함으로 */}
+              {(() => {
+                const archived = isArchived(g.beanKey);
+                return (
+                  <button
+                    onClick={() => setArchived(g.beanKey, g.bean, !archived)}
+                    className="text-caption text-muted-foreground hover:text-foreground"
+                    style={{ ...ghostBtn, flexShrink: 0 }}
+                    title={archived ? '레시피 탭으로 되돌리기' : '레시피 탭에서 빼고 보관함으로 (레시피·이력 유지)'}
+                  >
+                    {archived ? '보관 해제' : '보관'}
+                  </button>
                 );
               })()}
             </span>
@@ -1116,7 +1165,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           {loading && <p className="text-body text-muted-foreground">불러오는 중…</p>}
           {/* 새 발주 원두 — 레시피 미설정이면 상단에서 바로 설정 유도 */}
           {!loading && unsetCard}
-          {!loading && beanGroups.length === 0 && unsetBeans.length === 0 && (
+          {!loading && activeGroups.length === 0 && unsetBeans.length === 0 && (
             <p className="text-body text-muted-foreground">
               아직 레시피가 설정된 원두가 없어요. 가격 세팅에서 원두를 발주하면 여기에서 레시피를 만들 수
               있어요.
@@ -1165,7 +1214,25 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             </div>
           ))}
 
-          {!loading && beanGroups.length > 0 && (
+          {/* 보관함 — 보관한 원두 카드. 펼쳐서 보고 '보관 해제'로 되돌린다 */}
+          {!loading && archivedGroups.length > 0 && (
+            <div className="min-w-0">
+              <button
+                onClick={() => setArchiveOpen((o) => !o)}
+                className="text-body text-muted-foreground hover:text-foreground"
+                style={{ ...ghostBtn, marginBottom: archiveOpen ? 24 : 0 }}
+              >
+                보관함 {archivedGroups.length} {archiveOpen ? '▴' : '▾'}
+              </button>
+              {archiveOpen && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px 12px' }}>
+                  {archivedGroups.map(renderBeanCard)}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!loading && activeGroups.length > 0 && (
             <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
               판교 분쇄도는 지점 캘리브레이션 실측 기반 메쉬 값입니다. <strong>*</strong>는 잠정 범위(메쉬 실측 전),
               &lsquo;재측정 필요&rsquo;는 재얼라인 이후 새 측정이 아직 없다는 뜻입니다 —{' '}

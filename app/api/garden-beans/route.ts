@@ -42,8 +42,8 @@ export async function GET() {
 
 const STORE_IDS = STORES.map((s) => s.id);
 
-// 원두 메타 업서트: { beanKey, bean, tasting?, stockByStore?, soldoutStores? } — 안 보낸 필드는 기존 값 유지.
-// stockByStore는 지점 단위 병합(한 지점만 보내도 됨). 노트도 없고 전 지점 재고 100%면 엔트리 제거.
+// 원두 메타 업서트: { beanKey, bean, tasting?, stockByStore?, soldoutStores?, archived? } — 안 보낸 필드는 기존 값 유지.
+// stockByStore는 지점 단위 병합(한 지점만 보내도 됨). 노트도 없고 전 지점 재고 100%이고 보관도 아니면 엔트리 제거.
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -80,9 +80,17 @@ export async function POST(req: Request) {
     for (const id of STORE_IDS) stockByStore[id] = body.soldoutStores.includes(id) ? 0 : 100;
   }
 
+  // 보관 — true 면 지금 시각으로 보관, false 면 해제, 안 보내면 기존 값 유지
+  const archiveTouched = typeof body.archived === 'boolean';
+  const archivedAt = archiveTouched
+    ? body.archived
+      ? new Date().toISOString()
+      : null
+    : prev?.archivedAt ?? null;
+
   const allFull = STORE_IDS.every((id) => stockByStore[id] === 100);
   const rest = store.beans.filter((b) => b.beanKey !== body.beanKey);
-  if (tasting || !allFull) {
+  if (tasting || !allFull || archivedAt) {
     const meta: BeanMeta = {
       beanKey: body.beanKey,
       bean: body.bean,
@@ -90,6 +98,7 @@ export async function POST(req: Request) {
       stockByStore,
       // 구버전 호환 — 재고 0% 지점을 소진으로 함께 기록
       soldoutStores: STORE_IDS.filter((id) => stockByStore[id] === 0),
+      archivedAt,
       updatedAt: new Date().toISOString(),
       updatedBy: user.email ?? '',
     };
@@ -103,12 +112,16 @@ export async function POST(req: Request) {
   await logActivity(
     supabase,
     user,
-    stockChanged
+    archiveTouched
+      ? archivedAt
+        ? '가든서비스 원두 보관'
+        : '가든서비스 원두 보관 해제'
+      : stockChanged
       ? '가든서비스 원두 재고량 변경'
       : tasting
         ? '가든서비스 테이스팅 노트 저장'
         : '가든서비스 테이스팅 노트 삭제',
-    stockChanged ? `${body.bean} · ${stockLabel}` : body.bean
+    stockChanged && !archiveTouched ? `${body.bean} · ${stockLabel}` : body.bean
   );
 
   // 재고가 20% 또는 0%로 '내려간' 지점 → 지정 수신자에게 이메일+웹푸시 (실패해도 저장은 유지)
