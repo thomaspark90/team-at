@@ -469,17 +469,19 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     toast('레시피를 저장했어요.');
   };
 
+  // 낙관적 삭제 — 화면에서 먼저 빼고, 서버 실패 시 되돌린다 (서버 왕복 + 전체 재조회로 ~3초 걸리던 대기 제거)
   const deleteRecipe = async (beanKey: string, brewType: BrewType) => {
+    const prev = recipes;
+    setRecipes((rs) => rs.filter((r) => !(r.beanKey === beanKey && btOf(r) === brewType)));
     const res = await fetch('/api/garden-recipes', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ beanKey, brewType }),
     }).catch(() => null);
     if (!res?.ok) {
+      setRecipes(prev);
       toast('레시피 삭제에 실패했어요. 다시 시도해 주세요.', 'error');
-      return;
     }
-    refresh();
   };
 
   const setD = (key: keyof Draft, v: string) => setDraft((d) => (d ? { ...d, [key]: v } : d));
