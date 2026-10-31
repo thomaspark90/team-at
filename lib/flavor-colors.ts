@@ -8,7 +8,7 @@ interface FlavorCategory {
 
 const CATEGORIES: FlavorCategory[] = [
   // 플로럴 — 핑크
-  { color: '#E17BA4', keywords: ['플로럴', '꽃', '백합', '릴리', '자스민', '재스민', '장미', '라벤더', '엘더플라워', '히비스커스', 'floral', 'jasmine', 'rose'] },
+  { color: '#E17BA4', keywords: ['플로럴', '꽃', '블라썸', '블로썸', '백합', '릴리', '자스민', '재스민', '장미', '라벤더', '엘더플라워', '히비스커스', 'floral', 'jasmine', 'rose'] },
   // 레드베리·체리 — 레드
   { color: '#C94057', keywords: ['딸기', '라즈베리', '크랜베리', '크렌베리', '체리', '레드베리', '석류', 'berry', 'cherry'] },
   // 다크베리·포도·자두 — 퍼플
@@ -26,7 +26,7 @@ const CATEGORIES: FlavorCategory[] = [
   // 티라이크·홍차 — 브루드 티 앰버
   { color: '#B4703A', keywords: ['홍차', '티라이크', '얼그레이', '우롱', '루이보스', 'tea'] },
   // 허브·그린 — 그린
-  { color: '#6B9E5F', keywords: ['허브', '민트', '그린', '녹차', '세이지', '풀향', 'herb', 'mint'] },
+  { color: '#6B9E5F', keywords: ['허브', '민트', '그린', '녹차', '세이지', '풀향', '레몬그라스', '타임', '로즈마리', '바질', 'herb', 'mint', 'thyme'] },
   // 초콜릿·코코아 — 다크 브라운
   { color: '#6F4A2F', keywords: ['초콜릿', '초코', '코코아', '카카오', 'chocolate', 'cocoa'] },
   // 캐러멜·단맛 — 앰버
@@ -37,20 +37,42 @@ const CATEGORIES: FlavorCategory[] = [
   { color: '#A34A2A', keywords: ['시나몬', '계피', '정향', '넛맥', '생강', '스파이스', 'spice', 'cinnamon'] },
 ];
 
-// 노트에서 매칭된 카테고리 색을 등장 순서대로 (중복 제거)
-export function flavorColors(tasting: string): string[] {
-  const t = tasting.normalize('NFC').toLowerCase();
-  if (!t.trim()) return [];
-  const hits: { color: string; at: number }[] = [];
+// 노트 하나의 색 — 한국어 복합 노트는 뒤쪽 말이 본체라('오렌지 블라썸'=꽃, '레몬그라스'=허브, '오렌지 시럽'=단맛)
+// 매칭된 키워드 중 가장 뒤에서 끝나는 것을, 같으면 더 긴 것을 고른다('청포도' > '포도'). (2026-10-31)
+function noteColor(note: string): string | null {
+  const n = note.normalize('NFC').toLowerCase();
+  let best: { color: string; end: number; len: number } | null = null;
   for (const cat of CATEGORIES) {
-    let at = -1;
     for (const kw of cat.keywords) {
-      const i = t.indexOf(kw.toLowerCase());
-      if (i >= 0 && (at < 0 || i < at)) at = i;
+      const k = kw.toLowerCase();
+      const i = n.lastIndexOf(k);
+      if (i < 0) continue;
+      const end = i + k.length;
+      if (!best || end > best.end || (end === best.end && k.length > best.len)) best = { color: cat.color, end, len: k.length };
     }
-    if (at >= 0) hits.push({ color: cat.color, at });
   }
-  return hits.sort((a, b) => a.at - b.at).map((h) => h.color);
+  return best?.color ?? null;
+}
+
+// 노트 목록(쉼표 구분) → 노트 순서대로 색 (중복 제거)
+export function flavorColors(tasting: string): string[] {
+  const out: string[] = [];
+  for (const note of tasting.split(/[,，·]/).map((x) => x.trim()).filter(Boolean)) {
+    const c = noteColor(note);
+    if (c && !out.includes(c)) out.push(c);
+  }
+  return out;
+}
+
+// 같은 계열 이웃 색 — 색상환에서 살짝 돌리고 조금 밝게. 대표색 한 장도 단색으로 보이지 않게 그라데이션을 만든다.
+function neighbor(hex: string, hueShift = 28, lightUp = 8): string {
+  const r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+  let h = 0;
+  const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  if (d !== 0) h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  h = (h * 60 + 360 + hueShift) % 360;
+  return `hsl(${Math.round(h)} ${Math.round(sat * 100)}% ${Math.min(90, Math.round(l * 100) + lightUp)}%`;
 }
 
 // 색에 쓰는 노트 수 — 앞 노트 3개만(2026-10-31 대표 지시). 노트가 많을수록 색이 섞여
@@ -64,7 +86,8 @@ export function flavorGradient(tasting: string): string | null {
   const head = tasting.split(/[,，·]/).map((x) => x.trim()).filter(Boolean).slice(0, GRADIENT_NOTES).join(', ');
   const cs = flavorColors(head);
   if (cs.length === 0) return null;
-  const base = `linear-gradient(0deg, ${cs[0]}80, ${cs[0]}80)`;
+  // 대표색 → 같은 계열 이웃 색으로 흐르는 그라데이션(단색 금지, 2026-10-31 대표 지시)
+  const base = `linear-gradient(120deg, ${cs[0]}8C 0%, ${neighbor(cs[0])} / 0.45) 100%)`;
   const glowAt = ['100% 0%', '70% 120%'];
   const glows = cs.slice(1).map((c, i) => `radial-gradient(circle at ${glowAt[i]}, ${c}8C 0%, ${c}00 55%)`);
   return [...glows, base].join(', ');

@@ -80,7 +80,7 @@ describe('헤더 색 — 앞 노트 3개만', () => {
 describe('헤더 색 B안 — 대표색 + 포인트', () => {
   it('맨 아래 레이어는 1번째 노트 색 한 장', () => {
     const g = flavorGradient('오렌지, 크렌베리, 사과')!;
-    expect(g.endsWith('linear-gradient(0deg, #F5A62380, #F5A62380)')).toBe(true);
+    expect(g).toContain('linear-gradient(120deg, #F5A6238C 0%, hsl('); // 대표색 → 이웃 색 그라데이션(단색 아님)
     expect(g.match(/radial-gradient/g)?.length).toBe(2);
   });
   it('백도는 복숭아 계열', () => {
@@ -97,4 +97,17 @@ describe('원두 노트 — 레시피 편집 > 발주 노트', () => {
   it('편집한 노트가 우선', () => expect(resolveTasting(m({ tasting: '자두', tastingEdited: true }), '자두, 홍차')).toBe('자두'));
   it('편집으로 모두 지우면 빈 값 유지', () => expect(resolveTasting(m({ tasting: '', tastingEdited: true }), '자두')).toBe(''));
   it('구 기록(플래그 없음)의 노트도 우선', () => expect(resolveTasting(m({ tasting: '백합' }), '자두')).toBe('백합'));
+});
+
+describe('헤더 색 — 복합 노트·단색 방지', () => {
+  it('오렌지 블라썸=꽃, 레몬그라스=허브, 라임=시트러스', () => {
+    expect(flavorColors('오렌지 블라썸, 레몬그라스, 라임')).toEqual(['#E17BA4', '#6B9E5F', '#F5A623']);
+  });
+  it('청포도는 포도(퍼플)가 아니라 청포도(그린)', () => {
+    expect(flavorColors('청포도')).toEqual(['#A3C24B']);
+  });
+  it('색이 하나여도 단색이 아닌 그라데이션', () => {
+    const g = flavorGradient('자두')!;
+    expect(g.startsWith('linear-gradient(120deg, #7C4D8F8C 0%, hsl(')).toBe(true);
+  });
 });
