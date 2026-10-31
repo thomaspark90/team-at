@@ -725,7 +725,8 @@ function Stat({ label, value, warn = false }: { label: string; value: string | n
     <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
       <div
         className={warn ? 'text-body text-amber-600 dark:text-amber-500' : 'text-display'}
-        style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.1 }}
+        // 보드 큰 숫자는 display(34px)보다 한 단계 작게 28px — 2026-10-31 대표 지정(폰트 램프 예외, 보드 전용)
+        style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.1, ...(warn ? {} : { fontSize: 28 }) }}
       >
         {value ?? '—'}
       </div>
