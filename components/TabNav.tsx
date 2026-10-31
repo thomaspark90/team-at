@@ -19,6 +19,16 @@ export default function TabNav() {
   const [isAdmin, setIsAdmin] = useState(false);
   // 모바일 햄버거 메뉴 — 좁은 화면에서 섹션·테마·로그아웃을 패널로 정리(2026-08-08)
   const [menuOpen, setMenuOpen] = useState(false);
+  // 로그인한 계정 — 로그아웃 아래에 표시. 매장 태블릿처럼 여러 계정을 돌려 쓰는 기기에서
+  // 지금 어떤 계정인지(권한이 왜 이런지) 바로 알 수 있게 (2026-10-31)
+  const [email, setEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => setEmail(data.user?.email ?? null))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     // GardenNav와 같은 응답을 쓰므로 공유 캐시로 중복 fetch를 없앤다
@@ -93,12 +103,20 @@ export default function TabNav() {
         {/* 데스크톱 — 테마 드롭다운 + 로그아웃 */}
         <div className="hidden shrink-0 items-center gap-3 sm:flex">
           <ThemeToggle />
-          <button
-            onClick={handleLogout}
-            className="text-caption text-muted-foreground transition-colors hover:text-foreground"
-          >
-            로그아웃
-          </button>
+          {/* 로그아웃 + 그 아래 로그인 계정 — 44px 바 안에 두 줄로 */}
+          <div className="flex flex-col items-end" style={{ lineHeight: 1.2 }}>
+            <button
+              onClick={handleLogout}
+              className="text-caption text-muted-foreground transition-colors hover:text-foreground"
+            >
+              로그아웃
+            </button>
+            {email && (
+              <span className="text-caption text-muted-foreground/70" title="로그인한 계정" style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {email}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* 모바일 — 햄버거 버튼 */}
@@ -182,6 +200,11 @@ export default function TabNav() {
             로그아웃
             <span aria-hidden>›</span>
           </button>
+          {email && (
+            <span className="-mt-1.5 break-all pb-2 text-caption text-muted-foreground/70" title="로그인한 계정">
+              {email}
+            </span>
+          )}
 
           <div className="flex-1" />
         </div>
