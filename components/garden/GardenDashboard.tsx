@@ -17,6 +17,10 @@ import { ETC, countryOf, isBeanArchived } from '@/lib/garden/bean-groups';
 import { recipeChanges, recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
 import SegmentControl from '@/components/nav/SegmentControl';
 
+// 카드 헤더의 지점별 재고량 칩(판교 100% · 양재천 100%) — 2026-10-31 대표 지시로 '일단' 숨김.
+// 재고 데이터·알림 로직은 그대로라 true 로 바꾸면 바로 복구된다.
+const SHOW_STOCK_CHIPS = false;
+
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 
 const BREW_TYPES: BrewType[] = ['ice', 'hot'];
@@ -620,6 +624,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                 );
               })()}
             </span>
+            {SHOW_STOCK_CHIPS && (
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
               {/* 지점별 재고량 칩 — 누르면 100~0% 선택. 20% 이하 주의색(amber, §1 상태색 토큰) */}
               {STORES.map((s) => {
@@ -672,6 +677,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                 );
               })}
             </span>
+            )}
           </div>
           {/* 테이스팅 노트(좌) + 판매가/재료비율(우) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

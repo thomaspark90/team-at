@@ -76,3 +76,14 @@ describe('헤더 색 — 앞 노트 3개만', () => {
     expect(flavorColors('크렌베리')).toEqual(['#C94057']);
   });
 });
+
+describe('헤더 색 B안 — 대표색 + 포인트', () => {
+  it('맨 아래 레이어는 1번째 노트 색 한 장', () => {
+    const g = flavorGradient('오렌지, 크렌베리, 사과')!;
+    expect(g.endsWith('linear-gradient(0deg, #F5A62380, #F5A62380)')).toBe(true);
+    expect(g.match(/radial-gradient/g)?.length).toBe(2);
+  });
+  it('백도는 복숭아 계열', () => {
+    expect(flavorColors('백도')).toEqual(['#F49E6D']);
+  });
+});

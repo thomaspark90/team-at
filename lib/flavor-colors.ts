@@ -22,7 +22,7 @@ const CATEGORIES: FlavorCategory[] = [
   // 사과·배·청포도 — 그린 옐로
   { color: '#A3C24B', keywords: ['사과', '청사과', '배', '청포도', '키위', 'apple', 'pear'] },
   // 복숭아·살구 (핵과) — 피치
-  { color: '#F49E6D', keywords: ['복숭아', '살구', '천도', '넥타린', 'peach', 'apricot'] },
+  { color: '#F49E6D', keywords: ['복숭아', '백도', '황도', '살구', '천도', '넥타린', 'peach', 'apricot'] },
   // 티라이크·홍차 — 브루드 티 앰버
   { color: '#B4703A', keywords: ['홍차', '티라이크', '얼그레이', '우롱', '루이보스', 'tea'] },
   // 허브·그린 — 그린
@@ -53,16 +53,19 @@ export function flavorColors(tasting: string): string[] {
   return hits.sort((a, b) => a.at - b.at).map((h) => h.color);
 }
 
-// 그라데이션에 쓰는 노트 수 — 앞 노트 3개만(2026-10-31 대표 지시). 노트가 많을수록 색이 섞여
-// 카드마다 비슷한 탁한 무지개가 되던 문제 — 대표 노트 3개 색만 써서 원두별 차이가 보이게.
+// 색에 쓰는 노트 수 — 앞 노트 3개만(2026-10-31 대표 지시). 노트가 많을수록 색이 섞여
+// 카드마다 비슷한 탁한 무지개가 되던 문제.
 const GRADIENT_NOTES = 3;
 
-// 헤더 밴드용 그라데이션 — 반투명(알파)로 깔아 muted 배경·텍스트 가독 유지.
-// 색 1개면 좌→우로 옅어지는 워시, 여러 개면 노트 순서대로 이어지는 그라데이션.
+// 헤더 배경 — B안 '대표색 한 장 + 포인트'(2026-10-31 대표 선택). 1번째 노트 색을 헤더 전체에 깔고,
+// 2·3번째 색은 모서리(오른쪽 위·아래)의 은은한 빛 번짐으로만 얹는다 — 카드 한 장 = 대표색 하나로 구분되게.
+// 반환값은 backgroundImage 여러 겹(위 레이어가 먼저). 알파 0x80(50%)·0x8C(55%)는 글자 가독 기준.
 export function flavorGradient(tasting: string): string | null {
   const head = tasting.split(/[,，·]/).map((x) => x.trim()).filter(Boolean).slice(0, GRADIENT_NOTES).join(', ');
   const cs = flavorColors(head);
   if (cs.length === 0) return null;
-  const stops = cs.length === 1 ? [`${cs[0]}66`, `${cs[0]}14`] : cs.map((c) => `${c}59`);
-  return `linear-gradient(90deg, ${stops.join(', ')})`;
+  const base = `linear-gradient(0deg, ${cs[0]}80, ${cs[0]}80)`;
+  const glowAt = ['100% 0%', '70% 120%'];
+  const glows = cs.slice(1).map((c, i) => `radial-gradient(circle at ${glowAt[i]}, ${c}8C 0%, ${c}00 55%)`);
+  return [...glows, base].join(', ');
 }
