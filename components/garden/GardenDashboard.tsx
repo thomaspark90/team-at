@@ -13,9 +13,10 @@ import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import { convertDial, pangyoDialText } from '@/lib/grinder-calibration';
 import { latestAlignmentDate, type AlignmentEvent } from '@/lib/grinder-alignments';
 import { fmtDate } from '@/lib/garden/format';
-import { ETC, countryOf, isBeanArchived } from '@/lib/garden/bean-groups';
+import { ETC, countryOf, isBeanArchived, resolveTasting } from '@/lib/garden/bean-groups';
 import { recipeChanges, recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
 import SegmentControl from '@/components/nav/SegmentControl';
+import TastingNoteEditor from '@/components/garden/TastingNoteEditor';
 
 // 카드 헤더의 지점별 재고량 칩(판교 100% · 양재천 100%) — 2026-10-31 대표 지시로 '일단' 숨김.
 // 재고 데이터·알림 로직은 그대로라 true 로 바꾸면 바로 복구된다.
@@ -277,10 +278,23 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     return Array.from(m.values()).sort((a, b) => b.latestUpdate.localeCompare(a.latestUpdate));
   }, [storeView]);
 
-  const tastingByBean = useMemo(
-    () => new Map(beanMetas.map((b) => [b.beanKey, b.tasting])),
-    [beanMetas]
-  );
+  // 테이스팅 노트 — 레시피에서 직접 쓴 노트(garden-beans)가 우선, 없으면 발주 때 입력한 노트를 그대로 쓴다
+  // (2026-10-31 대표 지시: 발주 노트를 레시피에서 다시 입력하지 않게). 발주 노트는 원두별 가장 최근 입력분.
+  const tastingByBean = useMemo(() => {
+    const m = new Map<string, string>();
+    const at = new Map<string, string>();
+    for (const r of purchases) {
+      const t = r.tastingNotes?.trim();
+      if (!t) continue;
+      const k = normalize(r.bean);
+      if (!at.has(k) || r.createdAt.localeCompare(at.get(k)!) > 0) {
+        at.set(k, r.createdAt);
+        m.set(k, t);
+      }
+    }
+    for (const b of beanMetas) m.set(b.beanKey, resolveTasting(b, m.get(b.beanKey)));
+    return m;
+  }, [beanMetas, purchases]);
   // 지점별 재고량 — stockByStore 우선, 구버전 소진 기록은 0%/100%로 해석
   const metaByBean = useMemo(() => new Map(beanMetas.map((b) => [b.beanKey, b])), [beanMetas]);
   const stockOfBean = (beanKey: string, storeId: StoreId) => stockOf(metaByBean.get(beanKey), storeId);
@@ -1163,16 +1177,11 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             </div>
           </div>
 
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 24 }}>
-            <span className="text-caption text-muted-foreground">테이스팅 노트 (ICE/HOT 공통)</span>
-            <input
-              type="text"
-              value={draft.tasting}
-              onChange={(e) => setD('tasting', e.target.value)}
-              placeholder="예: 자두 · 홍차 · 긴 단맛"
-              className="ta-input w-full"
-            />
-          </label>
+          {/* 테이스팅 노트 — 발주 때 입력한 노트가 그대로 채워져 있고, 칩으로 더하거나 지운다 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 24 }}>
+            <span className="text-caption text-muted-foreground">테이스팅 노트 (ICE/HOT 공통 · 발주 때 노트에서 시작)</span>
+            <TastingNoteEditor value={draft.tasting} onChange={(v) => setD('tasting', v)} />
+          </div>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 24 }}>
             <span className="text-caption text-muted-foreground">메모</span>

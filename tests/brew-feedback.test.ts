@@ -87,3 +87,14 @@ describe('헤더 색 B안 — 대표색 + 포인트', () => {
     expect(flavorColors('백도')).toEqual(['#F49E6D']);
   });
 });
+
+import { resolveTasting } from '@/lib/garden/bean-groups';
+import type { BeanMeta } from '@/lib/types';
+
+describe('원두 노트 — 레시피 편집 > 발주 노트', () => {
+  const m = (x: Partial<BeanMeta>) => ({ beanKey: 'b', bean: 'B', tasting: '', updatedAt: '', ...x }) as BeanMeta;
+  it('편집한 적 없으면 발주 노트', () => expect(resolveTasting(undefined, '자두, 홍차')).toBe('자두, 홍차'));
+  it('편집한 노트가 우선', () => expect(resolveTasting(m({ tasting: '자두', tastingEdited: true }), '자두, 홍차')).toBe('자두'));
+  it('편집으로 모두 지우면 빈 값 유지', () => expect(resolveTasting(m({ tasting: '', tastingEdited: true }), '자두')).toBe(''));
+  it('구 기록(플래그 없음)의 노트도 우선', () => expect(resolveTasting(m({ tasting: '백합' }), '자두')).toBe('백합'));
+});

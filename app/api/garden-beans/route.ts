@@ -67,6 +67,8 @@ export async function POST(req: Request) {
   const store = await readStore();
   const prev = store.beans.find((b) => b.beanKey === body.beanKey);
   const tasting = body.tasting !== undefined ? String(body.tasting).trim() : prev?.tasting ?? '';
+  // 노트를 한 번이라도 직접 저장하면(빈 값 포함) 발주 노트 대신 이 값을 쓴다 — 노트를 지운 상태도 유지되게
+  const tastingEdited = body.tasting !== undefined ? true : prev?.tastingEdited ?? false;
 
   // 현재 재고(구버전 소진 기록 포함)에서 출발해 요청 값을 지점 단위로 병합
   const stockByStore: Partial<Record<StoreId, number>> = {};
@@ -93,11 +95,12 @@ export async function POST(req: Request) {
 
   const allFull = STORE_IDS.every((id) => stockByStore[id] === 100);
   const rest = store.beans.filter((b) => b.beanKey !== body.beanKey);
-  if (tasting || !allFull || archivedAt) {
+  if (tasting || tastingEdited || !allFull || archivedAt) {
     const meta: BeanMeta = {
       beanKey: body.beanKey,
       bean: body.bean,
       tasting,
+      tastingEdited,
       stockByStore,
       // 구버전 호환 — 재고 0% 지점을 소진으로 함께 기록
       soldoutStores: STORE_IDS.filter((id) => stockByStore[id] === 0),

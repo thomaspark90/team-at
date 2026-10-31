@@ -190,6 +190,7 @@ export interface BeanMeta {
   beanKey: string; // normalize(원두명) — upsert 키
   bean: string; // 표시용 원두명
   tasting: string; // 테이스팅 노트 (산미·단맛·향 표현)
+  tastingEdited?: boolean; // 레시피에서 노트를 직접 편집함 — true 면 비어 있어도 이 값을 쓰고, 아니면 발주 때 노트를 대신 쓴다
   stockByStore?: Partial<Record<StoreId, number>>; // 지점별 재고량 % (100/80/…/0) — 없으면 100
   soldoutStores?: StoreId[]; // 구버전 호환 — 포함된 지점은 재고 0%로 해석
   status?: BeanStatus; // 구버전 호환 — soldout이면 전 지점 재고 0%로 해석

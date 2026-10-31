@@ -47,11 +47,24 @@ export async function GET() {
     const k = normalize(p.bean);
     if (!latestPurchaseAt[k] || p.createdAt.localeCompare(latestPurchaseAt[k]) > 0) latestPurchaseAt[k] = p.createdAt;
   }
+  // 발주 때 입력한 테이스팅 노트 — 원두별 가장 최근 입력분(레시피 노트가 없을 때 화면이 대신 쓴다)
+  const purchaseTasting: Record<string, string> = {};
+  const tastingAt: Record<string, string> = {};
+  for (const p of purchases) {
+    const t = p.tastingNotes?.trim();
+    if (!t) continue;
+    const k = normalize(p.bean);
+    if (!tastingAt[k] || p.createdAt.localeCompare(tastingAt[k]) > 0) {
+      tastingAt[k] = p.createdAt;
+      purchaseTasting[k] = t;
+    }
+  }
 
   return NextResponse.json({
     recipes,
     beans: beans?.beans ?? [],
     latestPurchaseAt,
+    purchaseTasting,
     grinderProfiles: dropStaleProfiles(grinders?.profiles ?? {}, alignments),
     alignments,
     feedback,

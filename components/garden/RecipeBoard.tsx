@@ -11,7 +11,7 @@ import { toast } from '@/components/Toast';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import { convertDial, pangyoDialText } from '@/lib/grinder-calibration';
 import { latestAlignmentDate, type AlignmentEvent } from '@/lib/grinder-alignments';
-import { ETC, countryOf, isBeanArchived } from '@/lib/garden/bean-groups';
+import { ETC, countryOf, isBeanArchived, resolveTasting } from '@/lib/garden/bean-groups';
 import { recipesForStore } from '@/lib/garden/recipe-store';
 
 // 태블릿 레시피 보드 — 매장 태블릿(가로)에서 레시피 카드 3장을 한 화면에, 좌우 스와이프로 3장씩 넘긴다.
@@ -29,6 +29,7 @@ interface BoardData {
   recipes: DripRecipe[];
   beans: BeanMeta[];
   latestPurchaseAt: Record<string, string>;
+  purchaseTasting?: Record<string, string>; // 발주 때 입력한 노트(원두별 최신)
   grinderProfiles: GrinderProfiles;
   alignments: AlignmentEvent[];
   feedback: BrewFeedback[];
@@ -62,6 +63,7 @@ export default function RecipeBoard() {
   const [recipes, setRecipes] = useState<DripRecipe[]>([]);
   const [beanMetas, setBeanMetas] = useState<BeanMeta[]>([]);
   const [latestPurchaseAt, setLatestPurchaseAt] = useState<Record<string, string>>({}); // 원두별 마지막 발주 시각
+  const [purchaseTasting, setPurchaseTasting] = useState<Record<string, string>>({});
   const [grinderProfiles, setGrinderProfiles] = useState<GrinderProfiles>({});
   const [alignments, setAlignments] = useState<AlignmentEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +103,7 @@ export default function RecipeBoard() {
       setRecipes(d.recipes ?? []);
       setBeanMetas(d.beans ?? []);
       setLatestPurchaseAt(d.latestPurchaseAt ?? {});
+      setPurchaseTasting(d.purchaseTasting ?? {});
       setGrinderProfiles(d.grinderProfiles ?? {});
       setAlignments(d.alignments ?? []);
       setFeedback(d.feedback ?? []);
@@ -200,7 +203,12 @@ export default function RecipeBoard() {
     toast(archived ? `${bean} — 필터 커피 아카이브로 보냈어요.` : `${bean} — 레시피 보드로 되돌렸어요.`);
   };
 
-  const tastingByBean = useMemo(() => new Map(beanMetas.map((b) => [b.beanKey, b.tasting])), [beanMetas]);
+  // 노트 — 레시피에서 쓴 노트 우선, 없으면 발주 때 입력한 노트 (필터 레시피 탭과 같은 규칙)
+  const tastingByBean = useMemo(() => {
+    const m = new Map(Object.entries(purchaseTasting));
+    for (const b of beanMetas) m.set(b.beanKey, resolveTasting(b, m.get(b.beanKey)));
+    return m;
+  }, [beanMetas, purchaseTasting]);
 
   const pages = useMemo(() => {
     const out: BoardBean[][] = [];

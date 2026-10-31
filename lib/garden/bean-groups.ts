@@ -19,3 +19,10 @@ export const isBeanArchived = (meta: BeanMeta | undefined, latest: Pick<Purchase
   if (!at) return false;
   return !(latest && latest.createdAt.localeCompare(at) > 0);
 };
+
+// 원두 노트 결정 — 레시피에서 직접 편집했으면(빈 값 포함) 그 값, 아니면 레시피 노트 → 발주 때 노트 순 (2026-10-31)
+export const resolveTasting = (meta: BeanMeta | undefined, purchaseNote: string | undefined) => {
+  if (meta?.tastingEdited) return meta.tasting ?? '';
+  if (meta?.tasting?.trim()) return meta.tasting;
+  return purchaseNote?.trim() ?? '';
+};
