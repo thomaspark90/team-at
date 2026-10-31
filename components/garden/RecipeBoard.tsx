@@ -607,21 +607,19 @@ function BoardCard({
         {/* flex: 1 — 추출비·추출 시간을 흰 영역 맨 아래에 붙이기 위해 높이를 채운다 */}
         <div style={{ flex: 1, padding: '24px 24px 28px', display: 'flex', flexDirection: 'column', gap: 28 }}>
 
-          {/* ICE / HOT 글자 전환 — 레시피가 하나뿐이어도 같은 자리(카드 간 줄 맞춤). 없는 타입은 흐리게·비활성 */}
-          <div className="text-caption" style={{ display: 'flex', alignItems: 'baseline', gap: 8, letterSpacing: '0.08em' }}>
-            {BREW_TYPES.map((t, i) => (
-              <span key={t} style={{ display: 'contents' }}>
-                {i > 0 && <span className="text-muted-foreground/50">/</span>}
-                <button
-                  onClick={() => setBt(t)}
-                  disabled={!g[t]}
-                  className={`${t === bt ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'} disabled:cursor-default disabled:opacity-30`}
-                  style={{ ...plainBtn, letterSpacing: 'inherit', padding: '4px 0' }}
-                  title={g[t] ? undefined : `${t.toUpperCase()} 레시피 없음`}
-                >
-                  {t.toUpperCase()}
-                </button>
-              </span>
+          {/* ICE/HOT 세그먼트 — 글자 전환은 잘 안 보여 세그먼트로 복귀, 카드 폭의 절반 크기 (2026-10-31 대표 지시).
+              레시피가 하나뿐이어도 같은 자리(카드 간 줄 맞춤). 없는 타입은 흐리게·비활성 */}
+          <div className="ta-seg" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', width: '50%', alignSelf: 'flex-start' }}>
+            {BREW_TYPES.map((t) => (
+              <button
+                key={t}
+                onClick={() => setBt(t)}
+                disabled={!g[t]}
+                className={`ta-seg-item ${t === bt ? 'ta-seg-on' : ''} disabled:cursor-default disabled:opacity-30`}
+                title={g[t] ? undefined : `${t.toUpperCase()} 레시피 없음`}
+              >
+                {t.toUpperCase()}
+              </button>
             ))}
           </div>
 
