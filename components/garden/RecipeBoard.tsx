@@ -559,14 +559,15 @@ function BoardCard({
   const mineCurrent = mine.filter((f) => f.recipeVersion === r.updatedAt).length;
   return (
     <div className="rounded-md bg-background shadow-soft" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
-      {/* 헤더 — 테이스팅 노트 색 그라데이션(카운터컬처 플레이버 휠 차용) + 원두명. 스크롤해도 고정 */}
-      <div
-        className="bg-muted"
-        style={{ flexShrink: 0, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 6, backgroundImage: flavorGradient(tasting) ?? undefined }}
-      >
+      {/* 헤더(N2 상단, 2026-10-31) — 노트 색은 얇은 띠 하나로만, 아래 흰 바탕에 원두명. 스크롤해도 고정 */}
+      <div style={{ flexShrink: 0, padding: '24px 24px 0', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div
+          className="bg-muted"
+          style={{ height: 6, borderRadius: 999, backgroundImage: flavorGradient(tasting) ?? undefined }}
+        />
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
           {/* 원두명은 자르지 않고 줄바꿈 — 한글은 어절 단위(keep-all) */}
-          <p className="text-title font-medium" style={{ flex: 1, minWidth: 0, margin: 0, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
+          <p className="text-title font-medium" style={{ flex: 1, minWidth: 0, margin: 0, lineHeight: 1.35, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
             {g.bean}
           </p>
           {/* 소진 — 못 팔게 되면 필터 커피 아카이브로 (레시피·이력·평가는 유지, 레시피 탭에서 되돌릴 수 있음) */}
@@ -580,7 +581,7 @@ function BoardCard({
               되돌리기
             </button>
           ) : confirmArchive ? (
-            <span className="text-caption" style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+            <span className="text-caption" style={{ display: 'flex', gap: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>
               <span className="text-muted-foreground">아카이브로 보낼까요?</span>
               <button onClick={onArchive} className="text-foreground underline" style={plainBtn}>
                 확인
@@ -593,7 +594,7 @@ function BoardCard({
             <button
               onClick={() => setConfirmArchive(true)}
               className="text-caption text-muted-foreground hover:text-foreground"
-              style={{ ...plainBtn, flexShrink: 0 }}
+              style={{ ...plainBtn, flexShrink: 0, whiteSpace: 'nowrap' }}
               title="원두 소진 — 필터 커피 아카이브로 보내기"
             >
               소진
@@ -606,18 +607,21 @@ function BoardCard({
         {/* flex: 1 — 추출비·추출 시간을 흰 영역 맨 아래에 붙이기 위해 높이를 채운다 */}
         <div style={{ flex: 1, padding: '24px 24px 28px', display: 'flex', flexDirection: 'column', gap: 28 }}>
 
-          {/* ICE/HOT 전환은 레시피가 하나뿐이어도 같은 모양으로 — 카드 간 줄 맞춤. 없는 타입은 흐리게·비활성 */}
-          <div className="ta-seg" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
-            {BREW_TYPES.map((t) => (
-              <button
-                key={t}
-                onClick={() => setBt(t)}
-                disabled={!g[t]}
-                className={`ta-seg-item ${t === bt ? 'ta-seg-on' : ''} disabled:cursor-default disabled:opacity-30`}
-                title={g[t] ? undefined : `${t.toUpperCase()} 레시피 없음`}
-              >
-                {t.toUpperCase()}
-              </button>
+          {/* ICE / HOT 글자 전환 — 레시피가 하나뿐이어도 같은 자리(카드 간 줄 맞춤). 없는 타입은 흐리게·비활성 */}
+          <div className="text-caption" style={{ display: 'flex', alignItems: 'baseline', gap: 8, letterSpacing: '0.08em' }}>
+            {BREW_TYPES.map((t, i) => (
+              <span key={t} style={{ display: 'contents' }}>
+                {i > 0 && <span className="text-muted-foreground/50">/</span>}
+                <button
+                  onClick={() => setBt(t)}
+                  disabled={!g[t]}
+                  className={`${t === bt ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'} disabled:cursor-default disabled:opacity-30`}
+                  style={{ ...plainBtn, letterSpacing: 'inherit', padding: '4px 0' }}
+                  title={g[t] ? undefined : `${t.toUpperCase()} 레시피 없음`}
+                >
+                  {t.toUpperCase()}
+                </button>
+              </span>
             ))}
           </div>
 
@@ -627,13 +631,13 @@ function BoardCard({
             </p>
           )}
 
-          {/* 2칸 × 2줄 — 한 줄 4칸은 빡빡하고 '분쇄도(EK43)'가 잘려서 (2026-10-30 대표 지시) */}
-          <div className="tabular" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', columnGap: 16, rowGap: 20 }}>
+          {/* 2칸 × 2줄 큰 숫자(N2 상단) — 숫자 위, 라벨은 아래 옅게 */}
+          <div className="tabular" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', columnGap: 16, rowGap: 24 }}>
             <Stat label="도징량" value={r.doseG != null ? `${r.doseG}g` : null} />
             <Stat label="추출량" value={r.waterG != null ? `${r.waterG}g` : null} />
-            <Stat label="온도" value={r.tempC != null ? `${r.tempC}°C` : null} />
+            <Stat label="온도" value={r.tempC != null ? `${r.tempC}°` : null} />
             {/* 지점은 위쪽 바 전환으로 이미 정해져 라벨에서 뺀다 */}
-            <Stat label="분쇄도(EK43)" value={mesh.text} warn={mesh.text === '재측정 필요'} />
+            <Stat label="분쇄도 EK43" value={mesh.text} warn={mesh.text === '재측정 필요'} />
           </div>
 
           {r.pours && r.pours.length > 0 && (
@@ -720,11 +724,14 @@ function BoardCard({
 
 function Stat({ label, value, warn = false }: { label: string; value: string | null; warn?: boolean }) {
   return (
-    <div style={{ minWidth: 0 }}>
-      <div className="text-caption text-muted-foreground" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
-      <div className={warn ? 'text-body text-amber-600 dark:text-amber-500' : 'text-title'} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+    <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div
+        className={warn ? 'text-body text-amber-600 dark:text-amber-500' : 'text-display'}
+        style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.1 }}
+      >
         {value ?? '—'}
       </div>
+      <div className="text-caption text-muted-foreground" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
     </div>
   );
 }
