@@ -27,7 +27,7 @@ const housePresetId = (bt: BrewType) => (bt === 'ice' ? 'house-ice' : 'house-hot
 // ---- 드랍다운 선택지 ----
 const DOSE_OPTS = Array.from({ length: 9 }, (_, i) => 16 + i); // 도징량 16~24g (1g)
 const TEMP_OPTS = [91, 92, 93, 94]; // 물 온도 °C
-const POUR_OPTS = Array.from({ length: 11 }, (_, i) => 30 + i * 5); // 푸어링당 30~80g (5g)
+const POUR_OPTS = Array.from({ length: 17 }, (_, i) => 20 + i * 5); // 푸어링당 20~100g (5g, 2026-10-31 확장)
 const TIME_OPTS = Array.from({ length: 10 }, (_, i) => {
   const s = 150 + i * 10; // 2:30 ~ 4:00 (10초)
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;

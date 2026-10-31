@@ -8,9 +8,9 @@ interface FlavorCategory {
 
 const CATEGORIES: FlavorCategory[] = [
   // 플로럴 — 핑크
-  { color: '#E17BA4', keywords: ['플로럴', '꽃', '자스민', '재스민', '장미', '라벤더', '엘더플라워', '히비스커스', 'floral', 'jasmine', 'rose'] },
+  { color: '#E17BA4', keywords: ['플로럴', '꽃', '백합', '릴리', '자스민', '재스민', '장미', '라벤더', '엘더플라워', '히비스커스', 'floral', 'jasmine', 'rose'] },
   // 레드베리·체리 — 레드
-  { color: '#C94057', keywords: ['딸기', '라즈베리', '크랜베리', '체리', '레드베리', '석류', 'berry', 'cherry'] },
+  { color: '#C94057', keywords: ['딸기', '라즈베리', '크랜베리', '크렌베리', '체리', '레드베리', '석류', 'berry', 'cherry'] },
   // 다크베리·포도·자두 — 퍼플
   { color: '#7C4D8F', keywords: ['자두', '플럼', '블루베리', '블랙베리', '카시스', '블랙커런트', '포도', '건포도', '무화과', 'plum', 'grape', 'fig'] },
   // 와인·발효 — 버건디
@@ -53,10 +53,15 @@ export function flavorColors(tasting: string): string[] {
   return hits.sort((a, b) => a.at - b.at).map((h) => h.color);
 }
 
+// 그라데이션에 쓰는 노트 수 — 앞 노트 3개만(2026-10-31 대표 지시). 노트가 많을수록 색이 섞여
+// 카드마다 비슷한 탁한 무지개가 되던 문제 — 대표 노트 3개 색만 써서 원두별 차이가 보이게.
+const GRADIENT_NOTES = 3;
+
 // 헤더 밴드용 그라데이션 — 반투명(알파)로 깔아 muted 배경·텍스트 가독 유지.
 // 색 1개면 좌→우로 옅어지는 워시, 여러 개면 노트 순서대로 이어지는 그라데이션.
 export function flavorGradient(tasting: string): string | null {
-  const cs = flavorColors(tasting);
+  const head = tasting.split(/[,，·]/).map((x) => x.trim()).filter(Boolean).slice(0, GRADIENT_NOTES).join(', ');
+  const cs = flavorColors(head);
   if (cs.length === 0) return null;
   const stops = cs.length === 1 ? [`${cs[0]}66`, `${cs[0]}14`] : cs.map((c) => `${c}59`);
   return `linear-gradient(90deg, ${stops.join(', ')})`;

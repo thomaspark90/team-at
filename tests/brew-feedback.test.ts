@@ -62,3 +62,17 @@ describe('레시피 지점 분리', () => {
     expect(recipeChanges(a, b)).toEqual(['분쇄도 7.1→7.0', '1차 50→55g', '추출량 190→195g']);
   });
 });
+
+import { flavorColors, flavorGradient } from '@/lib/flavor-colors';
+
+describe('헤더 색 — 앞 노트 3개만', () => {
+  it('4번째 이후 노트 색은 빠진다', () => {
+    const g = flavorGradient('백합, 사과잼, 패션프루츠, 화이트와인, 홍차, 졸인설탕')!;
+    expect(g).toContain('#E17BA4'); // 백합 → 플로럴
+    expect(g).not.toContain('#8E3B54'); // 화이트와인(4번째) 제외
+    expect(g).not.toContain('#B4703A'); // 홍차(5번째) 제외
+  });
+  it('크렌베리 표기도 레드베리', () => {
+    expect(flavorColors('크렌베리')).toEqual(['#C94057']);
+  });
+});
