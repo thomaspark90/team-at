@@ -111,3 +111,21 @@ describe('헤더 색 — 복합 노트·단색 방지', () => {
     expect(g.startsWith('linear-gradient(120deg, #7C4D8F8C 0%, hsl(')).toBe(true);
   });
 });
+
+import { recentDefaults } from '@/lib/garden/recent-defaults';
+
+describe('새 레시피 기본값 — 최근 20개 최빈값', () => {
+  const mk = (i: number, x: Partial<DripRecipe>) =>
+    ({ beanKey: `b${i}`, bean: 'B', brewType: 'ice', grind: '', notes: '', totalTime: '3:00', updatedAt: `2026-10-${String(10 + i).padStart(2, '0')}`, doseG: 20, waterG: 190, tempC: 92, grindMesh: 7.1, pours: [{ water: 35 }, { water: 55 }, { water: 55 }, { water: 45 }], ...x }) as DripRecipe;
+  it('항목별 최빈값, 동률이면 최근 값', () => {
+    const rs = [mk(1, { doseG: 22 }), mk(2, { doseG: 20 }), mk(3, { doseG: 20 }), mk(4, { doseG: 22, tempC: 93 })];
+    const d = recentDefaults(rs, 'ice', 'yangjae')!;
+    expect(d.doseG).toBe(22); // 22 두 번(최근 포함) vs 20 두 번 → 최근
+    expect(d.tempC).toBe(92);
+    expect(d.pours?.map((p) => p.water)).toEqual([35, 55, 55, 45]);
+  });
+  it('다른 지점·타입은 제외, 없으면 null', () => {
+    expect(recentDefaults([mk(1, { store: 'pangyo' })], 'ice', 'yangjae')).toBeNull();
+    expect(recentDefaults([mk(1, {})], 'hot', 'yangjae')).toBeNull();
+  });
+});

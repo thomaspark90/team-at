@@ -15,6 +15,7 @@ import { latestAlignmentDate, type AlignmentEvent } from '@/lib/grinder-alignmen
 import { fmtDate } from '@/lib/garden/format';
 import { ETC, countryOf, isBeanArchived, resolveTasting } from '@/lib/garden/bean-groups';
 import { recipeChanges, recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
+import { recentDefaults } from '@/lib/garden/recent-defaults';
 import SegmentControl from '@/components/nav/SegmentControl';
 import TastingNoteEditor from '@/components/garden/TastingNoteEditor';
 
@@ -378,7 +379,29 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     setChainHotFor(beanKey);
   };
 
-  // 편집 열기 — 기존 레시피가 있으면 불러오고, 없으면 매장 기준 프리셋으로 시작
+  // 새 레시피 기본값 — 같은 지점·타입 최근 20개 레시피의 최빈값(2026-11-01). 항목이 비면 매장 기준 프리셋 값 유지.
+  // 판교 레시피가 아직 없으면 양재천 최근값을 쓰되 분쇄도는 판교 다이얼로 환산(환산 불가면 프리셋).
+  const defaultDraft = (beanKey: string, bean: string, brewType: BrewType, st: StoreId): Draft => {
+    const base = presetDraft(beanKey, bean, brewType, st);
+    let d = recentDefaults(recipes, brewType, st);
+    let grind = d?.grindMesh ?? null;
+    if (!d && st === 'pangyo') {
+      d = recentDefaults(recipes, brewType, 'yangjae');
+      grind = d?.grindMesh != null ? convertDial(grinderProfiles, 'yangjae', 'pangyo', d.grindMesh) : null;
+    }
+    if (!d) return base;
+    return {
+      ...base,
+      presetId: '', // 프리셋이 아니라 최근 레시피 기준
+      doseG: d.doseG != null ? String(d.doseG) : base.doseG,
+      tempC: d.tempC != null ? String(d.tempC) : base.tempC,
+      grindMesh: grind != null ? meshFmt(grind) : base.grindMesh,
+      totalTime: d.totalTime ?? base.totalTime,
+      pours: d.pours ?? base.pours,
+    };
+  };
+
+  // 편집 열기 — 기존 레시피가 있으면 불러오고, 없으면 최근 레시피 기준 기본값으로 시작
   const openEditor = (beanKey: string, bean: string, brewType: BrewType) => {
     // 다른 편집을 열면 이전 ICE→HOT 연결은 무효 — 남아 있으면 나중에 엉뚱한 HOT 편집이 이어진다
     setChainHotFor(null);
@@ -390,7 +413,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     else if (yangjae) {
       const pg = yangjae.pangyoMesh ?? (yangjae.grindMesh != null ? convertDial(grinderProfiles, 'yangjae', 'pangyo', yangjae.grindMesh) : null);
       base = { ...draftFromRecipe(yangjae), store: 'pangyo', grindMesh: pg != null ? meshFmt(pg) : '' };
-    } else base = presetDraft(beanKey, bean, brewType, store);
+    } else base = defaultDraft(beanKey, bean, brewType, store);
     setDraft({ ...base, tasting: tastingByBean.get(beanKey) ?? '' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -527,7 +550,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     // 미설정 원두에서 시작한 경우 ICE 저장 후 같은 원두의 HOT 편집으로 자동 전환
     if (draft.brewType === 'ice' && chainHotFor === draft.beanKey) {
       setChainHotFor(null);
-      setDraft({ ...presetDraft(draft.beanKey, draft.bean, 'hot', draft.store), tasting: draft.tasting });
+      setDraft({ ...defaultDraft(draft.beanKey, draft.bean, 'hot', draft.store), tasting: draft.tasting });
       setSaving(false);
       toast('ICE 레시피 저장 완료 — 이어서 HOT 레시피를 설정하세요.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -557,7 +580,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
   // 매장 기준 레시피로 초기화 (현재 타입 기준)
   const resetToHouse = () =>
-    setDraft((d) => (d ? { ...presetDraft(d.beanKey, d.bean, d.brewType, d.store), tasting: d.tasting } : d));
+    setDraft((d) => (d ? { ...defaultDraft(d.beanKey, d.bean, d.brewType, d.store), tasting: d.tasting } : d));
 
   // 분쇄도 ±0.1 — 미설정이면 타입별 매장 기준값에서 시작
   const adjMesh = (delta: number) =>
@@ -1056,9 +1079,9 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
               onClick={resetToHouse}
               className="text-caption text-muted-foreground hover:text-foreground"
               style={{ ...ghostBtn, flexShrink: 0 }}
-              title={`${btLabel(draft.brewType)} 매장 기준 레시피로 되돌리기`}
+              title={`${btLabel(draft.brewType)} 기본값(최근 레시피 20개에서 가장 많이 쓴 값)으로 되돌리기`}
             >
-              매장 기준으로 초기화
+              기본값으로 초기화
             </button>
           </div>
 
