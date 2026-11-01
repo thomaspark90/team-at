@@ -54,8 +54,12 @@ export async function POST(req: Request) {
   {
     // 재고·테이스팅 변경은 대시보드에서만 이뤄진다 — 쓰기는 해당 탭 권한으로 엄격하게.
     // 보관(소진 → 필터 커피 아카이브)만 보내는 요청은 레시피 보드에서도 오므로 필터 레시피 권한도 허용.
+    // 판매 대기(waiting)도 보드에서 오는 요청이라 같은 규칙
     const archiveOnly =
-      typeof body.archived === 'boolean' && body.tasting === undefined && body.stockByStore == null && body.soldoutStores == null;
+      (typeof body.archived === 'boolean' || body.waiting != null) &&
+      body.tasting === undefined &&
+      body.stockByStore == null &&
+      body.soldoutStores == null;
     const denied = await requireGardenTab(supabase, user, archiveOnly ? ['dashboard', 'recipes'] : 'dashboard');
     if (denied) return denied;
   }
@@ -93,14 +97,23 @@ export async function POST(req: Request) {
       : null
     : prev?.archivedAt ?? null;
 
+  // 판매 대기 — { waiting: { store, on } } 로 지점 하나씩 켜고 끈다. 안 보내면 기존 값 유지
+  const waitingTouched = body.waiting != null && STORE_IDS.includes(body.waiting.store);
+  let waitingStores: StoreId[] = (prev?.waitingStores ?? []).filter((s) => STORE_IDS.includes(s));
+  if (waitingTouched) {
+    const st = body.waiting.store as StoreId;
+    waitingStores = body.waiting.on ? Array.from(new Set([...waitingStores, st])) : waitingStores.filter((s) => s !== st);
+  }
+
   const allFull = STORE_IDS.every((id) => stockByStore[id] === 100);
   const rest = store.beans.filter((b) => b.beanKey !== body.beanKey);
-  if (tasting || tastingEdited || !allFull || archivedAt) {
+  if (tasting || tastingEdited || !allFull || archivedAt || waitingStores.length > 0) {
     const meta: BeanMeta = {
       beanKey: body.beanKey,
       bean: body.bean,
       tasting,
       tastingEdited,
+      waitingStores,
       stockByStore,
       // 구버전 호환 — 재고 0% 지점을 소진으로 함께 기록
       soldoutStores: STORE_IDS.filter((id) => stockByStore[id] === 0),
@@ -118,7 +131,11 @@ export async function POST(req: Request) {
   await logActivity(
     supabase,
     user,
-    archiveTouched
+    waitingTouched
+      ? body.waiting.on
+        ? `가든서비스 원두 판매 대기 · ${STORES.find((s) => s.id === body.waiting.store)?.short}`
+        : `가든서비스 원두 판매 시작 · ${STORES.find((s) => s.id === body.waiting.store)?.short}`
+      : archiveTouched
       ? archivedAt
         ? '가든서비스 원두 보관'
         : '가든서비스 원두 보관 해제'
@@ -127,7 +144,7 @@ export async function POST(req: Request) {
       : tasting
         ? '가든서비스 테이스팅 노트 저장'
         : '가든서비스 테이스팅 노트 삭제',
-    stockChanged && !archiveTouched ? `${body.bean} · ${stockLabel}` : body.bean
+    stockChanged && !archiveTouched && !waitingTouched ? `${body.bean} · ${stockLabel}` : body.bean
   );
 
   // 재고가 20% 또는 0%로 '내려간' 지점 → 지정 수신자에게 이메일+웹푸시 (실패해도 저장은 유지)

@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { BeanMeta, BrewFeedback, BrewType, DripRecipe, StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
-import { flavorGradient } from '@/lib/flavor-colors';
+import { flavorColors, flavorGradient } from '@/lib/flavor-colors';
+import { fmtDate } from '@/lib/garden/format';
 import BrewFeedbackPanel from '@/components/garden/BrewFeedbackPanel';
 import SegmentControl from '@/components/nav/SegmentControl';
 import { toast } from '@/components/Toast';
@@ -13,6 +14,7 @@ import { convertDial, pangyoDialText } from '@/lib/grinder-calibration';
 import { latestAlignmentDate, type AlignmentEvent } from '@/lib/grinder-alignments';
 import { ETC, countryOf, isBeanArchived, resolveTasting } from '@/lib/garden/bean-groups';
 import { recipesForStore } from '@/lib/garden/recipe-store';
+import { brewOnStyle } from '@/lib/garden/brew-colors';
 
 // 태블릿 레시피 보드 — 매장 태블릿(가로)에서 레시피 카드 3장을 한 화면에, 좌우 스와이프로 3장씩 넘긴다.
 // 추출용 카드(M2, 2026-10-30): ICE/HOT 전환 · 스펙(이 지점 분쇄도) · 푸어링 · 추출비, 맨 아래 접힌 추출 평가.
@@ -30,6 +32,7 @@ interface BoardData {
   beans: BeanMeta[];
   latestPurchaseAt: Record<string, string>;
   purchaseTasting?: Record<string, string>; // 발주 때 입력한 노트(원두별 최신)
+  purchaseBean?: Record<string, string>; // 원두별 최근 발주 표기명
   grinderProfiles: GrinderProfiles;
   alignments: AlignmentEvent[];
   feedback: BrewFeedback[];
@@ -64,6 +67,8 @@ export default function RecipeBoard() {
   const [beanMetas, setBeanMetas] = useState<BeanMeta[]>([]);
   const [latestPurchaseAt, setLatestPurchaseAt] = useState<Record<string, string>>({}); // 원두별 마지막 발주 시각
   const [purchaseTasting, setPurchaseTasting] = useState<Record<string, string>>({});
+  const [purchaseBean, setPurchaseBean] = useState<Record<string, string>>({});
+  const [pendingOpen, setPendingOpen] = useState(false); // 위쪽 '준비 중' 목록 펼침
   const [grinderProfiles, setGrinderProfiles] = useState<GrinderProfiles>({});
   const [alignments, setAlignments] = useState<AlignmentEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,6 +111,7 @@ export default function RecipeBoard() {
       setBeanMetas(d.beans ?? []);
       setLatestPurchaseAt(d.latestPurchaseAt ?? {});
       setPurchaseTasting(d.purchaseTasting ?? {});
+      setPurchaseBean(d.purchaseBean ?? {});
       setGrinderProfiles(d.grinderProfiles ?? {});
       setAlignments(d.alignments ?? []);
       setFeedback(d.feedback ?? []);
@@ -144,7 +150,7 @@ export default function RecipeBoard() {
 
   // 레시피 원두 — 필터 레시피 탭과 같은 순서(국가 가나다순·기타 맨 뒤, 국가 안에서는 최신 업데이트순).
   // 보드엔 보관하지 않은 것(beans), 아카이브 화면엔 보관한 것(archivedBeans)
-  const [beans, archivedBeans] = useMemo(() => {
+  const [allLiveBeans, archivedBeans] = useMemo(() => {
     const metaByBean = new Map(beanMetas.map((b) => [b.beanKey, b]));
     const m = new Map<string, BoardBean>();
     // 지점별 레시피(판교에 없는 슬롯은 양재천 레시피로 대체)
@@ -170,6 +176,25 @@ export default function RecipeBoard() {
     };
     return [all.filter((g) => !archived(g)), all.filter(archived)];
   }, [recipes, beanMetas, latestPurchaseAt, store]);
+
+  // 판매 대기 — 이 지점에서 대기로 둔 원두는 보드 카드에서 빼고 위쪽 '대기 N' 목록으로 (지점별, 2026-11-01)
+  const waitingSet = useMemo(
+    () => new Set(beanMetas.filter((m) => m.waitingStores?.includes(store)).map((m) => m.beanKey)),
+    [beanMetas, store]
+  );
+  const beans = useMemo(() => allLiveBeans.filter((g) => !waitingSet.has(g.beanKey)), [allLiveBeans, waitingSet]);
+  const waitingBeans = useMemo(() => allLiveBeans.filter((g) => waitingSet.has(g.beanKey)), [allLiveBeans, waitingSet]);
+  const [waitingOpen, setWaitingOpen] = useState(false);
+
+  // 레시피 준비 중 — 발주는 됐지만 레시피가 아직 하나도 없는 원두(보관한 원두 제외), 최근 발주순 (2안, 2026-11-01)
+  const pendingBeans = useMemo(() => {
+    const has = new Set(recipes.map((r) => r.beanKey));
+    const metaByBean = new Map(beanMetas.map((b) => [b.beanKey, b]));
+    return Object.entries(purchaseBean)
+      .filter(([k]) => !has.has(k) && !isBeanArchived(metaByBean.get(k), latestPurchaseAt[k] ? { createdAt: latestPurchaseAt[k] } : undefined))
+      .map(([beanKey, bean]) => ({ beanKey, bean, orderedAt: latestPurchaseAt[beanKey] ?? '' }))
+      .sort((a, b) => b.orderedAt.localeCompare(a.orderedAt));
+  }, [recipes, beanMetas, purchaseBean, latestPurchaseAt]);
 
   // 아카이브 국가별 묶음 — 이미 국가순으로 정렬돼 있어 순서대로 쌓는다
   const archiveSections = useMemo(() => {
@@ -203,6 +228,29 @@ export default function RecipeBoard() {
       return;
     }
     toast(archived ? `${bean} — 필터 커피 아카이브로 보냈어요.` : `${bean} — 레시피 보드로 되돌렸어요.`);
+  };
+
+  // 판매 대기 / 판매 시작 — 이 지점만. 낙관적 반영, 실패하면 되돌린다
+  const setWaiting = async (beanKey: string, bean: string, on: boolean) => {
+    const prev = beanMetas;
+    const toggle = (list: StoreId[] = []) => (on ? Array.from(new Set([...list, store])) : list.filter((x) => x !== store));
+    setBeanMetas((ms) =>
+      ms.some((m) => m.beanKey === beanKey)
+        ? ms.map((m) => (m.beanKey === beanKey ? { ...m, waitingStores: toggle(m.waitingStores) } : m))
+        : [...ms, { beanKey, bean, tasting: '', waitingStores: toggle(), updatedAt: new Date().toISOString() }]
+    );
+    const res = await fetch('/api/garden-beans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ beanKey, bean, waiting: { store, on } }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      setBeanMetas(prev);
+      toast('저장하지 못했어요. 다시 시도해 주세요.', 'error');
+      return;
+    }
+    const st = STORES.find((x) => x.id === store)?.short ?? '';
+    toast(on ? `${bean} — ${st} 판매 대기로 옮겼어요.` : `${bean} — ${st} 판매를 시작했어요.`);
   };
 
   // 노트 — 레시피에서 쓴 노트 우선, 없으면 발주 때 입력한 노트 (필터 레시피 탭과 같은 규칙)
@@ -278,6 +326,95 @@ export default function RecipeBoard() {
           {view === 'board' ? '레시피 보드' : '필터 커피 아카이브'}
         </h1>
         <span style={{ flex: 1 }} />
+        {/* 판매 대기 — 레시피는 있지만 아직 판매 전. 누르면 목록, 원두를 누르면 크게 보기(레시피 + 추출 평가) */}
+        {view === 'board' && waitingBeans.length > 0 && (
+          <span style={{ position: 'relative' }}>
+            <button
+              onClick={() => {
+                setWaitingOpen((o) => !o);
+                setPendingOpen(false);
+              }}
+              className="tabular text-body text-muted-foreground hover:text-foreground"
+              style={plainBtn}
+              aria-expanded={waitingOpen}
+            >
+              대기 {waitingBeans.length} {waitingOpen ? '▴' : '▾'}
+            </button>
+            {waitingOpen && (
+              <div
+                className="rounded-md bg-background shadow-soft"
+                style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, width: 360, padding: '16px 18px', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 4 }}
+              >
+                <p className="text-caption text-muted-foreground" style={{ margin: '0 0 6px' }}>
+                  판매 대기 — 누르면 레시피를 크게 볼 수 있어요
+                </p>
+                {waitingBeans.map((g) => {
+                  const notes = tastingByBean.get(g.beanKey) ?? '';
+                  const dot = flavorColors(notes)[0];
+                  const bt = (BREW_TYPES.find((t) => g[t]) ?? 'ice') as BrewType;
+                  return (
+                    <button
+                      key={g.beanKey}
+                      onClick={() => {
+                        setWaitingOpen(false);
+                        setFocus({ beanKey: g.beanKey, bt });
+                      }}
+                      className="rounded-md text-left hover:bg-accent"
+                      style={{ ...plainBtn, display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 8px', margin: '0 -8px' }}
+                    >
+                      <span className={dot ? '' : 'bg-muted'} style={{ width: 10, height: 10, borderRadius: 999, marginTop: 6, flexShrink: 0, background: dot }} />
+                      <span style={{ minWidth: 0 }}>
+                        <span className="text-body" style={{ display: 'block', wordBreak: 'keep-all' }}>{g.bean}</span>
+                        {notes && <span className="text-caption text-muted-foreground" style={{ display: 'block', marginTop: 2 }}>{notes}</span>}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </span>
+        )}
+        {/* 레시피 준비 중 — 글자 하나, 누르면 원두명·노트·발주일 목록 */}
+        {view === 'board' && pendingBeans.length > 0 && (
+          <span style={{ position: 'relative' }}>
+            <button
+              onClick={() => {
+                setPendingOpen((o) => !o);
+                setWaitingOpen(false);
+              }}
+              className="tabular text-body text-muted-foreground hover:text-foreground"
+              style={plainBtn}
+              aria-expanded={pendingOpen}
+            >
+              준비 중 {pendingBeans.length} {pendingOpen ? '▴' : '▾'}
+            </button>
+            {pendingOpen && (
+              <div
+                className="rounded-md bg-background shadow-soft"
+                style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, width: 360, padding: '16px 18px', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 12 }}
+              >
+                <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
+                  레시피 준비 중 — 필터 레시피에서 설정하면 보드에 올라와요
+                </p>
+                {pendingBeans.map((p) => {
+                  const notes = tastingByBean.get(p.beanKey) ?? '';
+                  const dot = flavorColors(notes)[0];
+                  return (
+                    <div key={p.beanKey} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <span className={dot ? '' : 'bg-muted'} style={{ width: 10, height: 10, borderRadius: 999, marginTop: 6, flexShrink: 0, background: dot }} />
+                      <div style={{ minWidth: 0 }}>
+                        <p className="text-body" style={{ margin: 0, wordBreak: 'keep-all' }}>{p.bean}</p>
+                        <p className="tabular text-caption text-muted-foreground" style={{ margin: '2px 0 0' }}>
+                          {[notes, p.orderedAt ? `${fmtDate(p.orderedAt).slice(3)} 발주` : ''].filter(Boolean).join(' · ')}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </span>
+        )}
         {view === 'board' && archivedBeans.length > 0 && (
           <button onClick={() => setView('archive')} className="tabular text-body text-muted-foreground hover:text-foreground" style={plainBtn}>
             아카이브 {archivedBeans.length}
@@ -459,6 +596,7 @@ export default function RecipeBoard() {
                   onFeedback={(rec) => setFeedback((xs) => [...xs, rec])}
                   onArchive={() => setArchived(g.beanKey, g.bean, true)}
                   onOpenEval={(bt) => setFocus({ beanKey: g.beanKey, bt })}
+                  onWaiting={(on) => setWaiting(g.beanKey, g.bean, on)}
                 />
               ))}
             </div>
@@ -470,7 +608,8 @@ export default function RecipeBoard() {
       {view === 'board' &&
         focus &&
         (() => {
-          const g = beans.find((x) => x.beanKey === focus.beanKey);
+          const g = allLiveBeans.find((x) => x.beanKey === focus.beanKey);
+          const isWaiting = waitingSet.has(focus.beanKey);
           const r = g?.[focus.bt];
           if (!g || !r) return null;
           const box: React.CSSProperties = { width: 'min(404px, 44vw)', height: 'min(690px, 86dvh)', display: 'flex', minWidth: 0 };
@@ -504,6 +643,11 @@ export default function RecipeBoard() {
                   bt={focus.bt}
                   onBtChange={(bt) => setFocus({ beanKey: g.beanKey, bt })}
                   floating
+                  waiting={isWaiting}
+                  onWaiting={(on) => {
+                    if (!on) setFocus(null); // 판매 시작하면 보드 카드로 돌아간다
+                    setWaiting(g.beanKey, g.bean, on);
+                  }}
                 />
               </div>
               <div onClick={(e) => e.stopPropagation()} style={box}>
@@ -599,6 +743,8 @@ function BoardCard({
   bt: btProp,
   onBtChange,
   floating = false,
+  waiting = false,
+  onWaiting,
 }: {
   g: BoardBean;
   store: StoreId;
@@ -615,6 +761,8 @@ function BoardCard({
   bt?: BrewType; // 크게 띄운 카드 — ICE/HOT 을 평가 카드와 맞추려고 바깥에서 제어
   onBtChange?: (bt: BrewType) => void;
   floating?: boolean; // 어두운 배경 위에 뜬 카드 — 그림자를 절반으로(빛 번짐이 세 보여서)
+  waiting?: boolean; // 이 지점 판매 대기 — '대기'·'소진' 대신 '판매 시작'
+  onWaiting?: (on: boolean) => void;
 }) {
   const types = BREW_TYPES.filter((bt) => g[bt]);
   const [ownBt, setOwnBt] = useState<BrewType>(types[0] ?? 'ice');
@@ -680,7 +828,27 @@ function BoardCard({
                 취소
               </button>
             </span>
+          ) : waiting && onWaiting ? (
+            <button
+              onClick={stop(() => onWaiting(false))}
+              className="text-caption text-foreground underline"
+              style={{ ...plainBtn, flexShrink: 0, whiteSpace: 'nowrap' }}
+              title="이 지점 판매 시작 — 레시피 보드에 올라가요"
+            >
+              판매 시작
+            </button>
           ) : (
+            <span style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
+            {onWaiting && (
+              <button
+                onClick={stop(() => onWaiting(true))}
+                className="text-caption text-muted-foreground hover:text-foreground"
+                style={{ ...plainBtn, whiteSpace: 'nowrap' }}
+                title="이 지점 판매 대기 — 보드에서 빠지고 위쪽 '대기' 목록으로"
+              >
+                대기
+              </button>
+            )}
             <button
               onClick={stop(() => setConfirmArchive(true))}
               className="text-caption text-muted-foreground hover:text-foreground"
@@ -689,6 +857,7 @@ function BoardCard({
             >
               소진
             </button>
+            </span>
           )}
         </div>
       </div>
@@ -706,6 +875,7 @@ function BoardCard({
                 onClick={stop(() => setBt(t))}
                 disabled={!g[t]}
                 className={`ta-seg-item ${t === bt ? 'ta-seg-on' : ''} disabled:cursor-default disabled:opacity-30`}
+                style={t === bt ? brewOnStyle(t) : undefined}
                 title={g[t] ? undefined : `${t.toUpperCase()} 레시피 없음`}
               >
                 {t.toUpperCase()}

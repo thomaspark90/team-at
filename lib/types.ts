@@ -194,6 +194,7 @@ export interface BeanMeta {
   stockByStore?: Partial<Record<StoreId, number>>; // 지점별 재고량 % (100/80/…/0) — 없으면 100
   soldoutStores?: StoreId[]; // 구버전 호환 — 포함된 지점은 재고 0%로 해석
   status?: BeanStatus; // 구버전 호환 — soldout이면 전 지점 재고 0%로 해석
+  waitingStores?: StoreId[]; // 판매 대기 지점 — 레시피는 있지만 아직 판매 전(그 지점 보드에서 '대기'로 빠짐, 2026-11-01)
   archivedAt?: string | null; // 보관 시각 — 레시피 탭에서 빠지고 보관함으로. 이후 새 발주가 들어오면 자동 해제로 간주
   updatedAt: string;
   updatedBy?: string;

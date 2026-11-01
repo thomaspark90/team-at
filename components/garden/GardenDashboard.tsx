@@ -16,6 +16,7 @@ import { fmtDate } from '@/lib/garden/format';
 import { ETC, countryOf, isBeanArchived, resolveTasting } from '@/lib/garden/bean-groups';
 import { recipeChanges, recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
 import { recentDefaults } from '@/lib/garden/recent-defaults';
+import { brewOnStyle } from '@/lib/garden/brew-colors';
 import SegmentControl from '@/components/nav/SegmentControl';
 import TastingNoteEditor from '@/components/garden/TastingNoteEditor';
 
@@ -485,6 +486,26 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   };
 
   // 보관/해제 — 낙관적 반영, 실패 시 되돌림. 레시피·이력은 그대로 두고 레시피 탭에서만 뺀다
+  // 판매 대기 / 판매 시작 — 선택한 지점만(레시피 보드와 같은 저장값). 낙관적 반영, 실패 시 되돌림
+  const setWaiting = async (beanKey: string, bean: string, on: boolean) => {
+    const prev = beanMetas;
+    const toggle = (list: StoreId[] = []) => (on ? Array.from(new Set([...list, store])) : list.filter((x) => x !== store));
+    setBeanMetas((ms) =>
+      ms.some((m) => m.beanKey === beanKey)
+        ? ms.map((m) => (m.beanKey === beanKey ? { ...m, waitingStores: toggle(m.waitingStores) } : m))
+        : [...ms, { beanKey, bean, tasting: '', waitingStores: toggle(), updatedAt: new Date().toISOString() }]
+    );
+    const res = await fetch('/api/garden-beans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ beanKey, bean, waiting: { store, on } }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      setBeanMetas(prev);
+      toast('저장하지 못했어요. 다시 시도해 주세요.', 'error');
+    }
+  };
+
   const setArchived = async (beanKey: string, bean: string, archived: boolean) => {
     const prev = beanMetas;
     const at = archived ? new Date().toISOString() : null;
@@ -644,6 +665,20 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                   <span className={`tabular text-caption ${levelCls}`} style={{ flexShrink: 0 }} title={`등록 ${fmtDate(regAt)}`}>
                     D+{n}
                   </span>
+                );
+              })()}
+              {/* 판매 대기 — 선택한 지점에서 레시피는 있지만 아직 판매 전. 레시피 보드에서 빠지고 '대기' 목록으로 */}
+              {(() => {
+                const waiting = !!metaByBean.get(g.beanKey)?.waitingStores?.includes(store);
+                return (
+                  <button
+                    onClick={() => setWaiting(g.beanKey, g.bean, !waiting)}
+                    className={`text-caption ${waiting ? 'text-foreground underline' : 'text-muted-foreground hover:text-foreground'}`}
+                    style={{ ...ghostBtn, flexShrink: 0 }}
+                    title={waiting ? `${STORES.find((x) => x.id === store)?.short} 판매 시작 — 레시피 보드에 올라가요` : `${STORES.find((x) => x.id === store)?.short} 판매 대기 — 레시피 보드에서 빠지고 '대기' 목록으로`}
+                  >
+                    {waiting ? '대기 중 · 판매 시작' : '대기'}
+                  </button>
                 );
               })()}
               {/* 보관 — 소진된 원두를 지우지 않고 보관함으로 */}
@@ -1096,6 +1131,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                   className={`ta-seg-item px-3 py-1 text-body transition-colors ${
                     on ? 'ta-seg-on' : ''
                   }`}
+                  style={on ? brewOnStyle(bt) : undefined}
                 >
                   {btLabel(bt)}
                 </button>
@@ -1378,12 +1414,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   );
 }
 
-// ICE/HOT 배지 — 장식적 컬러 액센트 없이(§1) 텍스트로만 구분, 진한 단색 칩으로 강조
+// ICE/HOT 배지 — ICE 하늘색 / HOT 갈색 칩(lib/garden/brew-colors, 2026-11-01)
 function BrewBadge({ bt }: { bt: BrewType }) {
   return (
     <span
-      className="rounded-sm bg-foreground text-caption font-medium text-background"
-      style={{ padding: '1px 6px', letterSpacing: '0.05em', flexShrink: 0 }}
+      className="rounded-sm text-caption font-medium"
+      style={{ padding: '1px 6px', letterSpacing: '0.05em', flexShrink: 0, ...brewOnStyle(bt) }}
     >
       {bt.toUpperCase()}
     </span>
