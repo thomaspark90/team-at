@@ -71,6 +71,8 @@ export default function RecipeBoard() {
   const [page, setPage] = useState(0);
   const [view, setView] = useState<'board' | 'archive'>('board'); // 필터 커피 아카이브 화면 전환
   const [openArchived, setOpenArchived] = useState<string | null>(null); // 아카이브에서 크게 펼쳐 본 원두 beanKey
+  // 보드 카드를 누르면 레시피 카드 + 추출 평가 카드를 나란히 띄운다(F1, 2026-11-01)
+  const [focus, setFocus] = useState<{ beanKey: string; bt: BrewType } | null>(null);
   const [archiveTab, setArchiveTab] = useState<ArchiveTab>('전체');
   const [store, setStore] = useState<StoreId>('yangjae');
   const [feedback, setFeedback] = useState<BrewFeedback[]>([]);
@@ -396,6 +398,7 @@ export default function RecipeBoard() {
                   feedback={feedback}
                   onFeedback={(rec) => setFeedback((xs) => [...xs, rec])}
                   archived
+                  floating
                   onArchive={() => {
                     setOpenArchived(null);
                     setArchived(g.beanKey, g.bean, false);
@@ -455,12 +458,71 @@ export default function RecipeBoard() {
                   feedback={feedback}
                   onFeedback={(rec) => setFeedback((xs) => [...xs, rec])}
                   onArchive={() => setArchived(g.beanKey, g.bean, true)}
+                  onOpenEval={(bt) => setFocus({ beanKey: g.beanKey, bt })}
                 />
               ))}
             </div>
           ))}
         </div>
       )}
+
+      {/* 카드 크게 + 추출 평가 — 같은 크기 두 장을 나란히 띄운다. 바깥을 누르면 닫힘 */}
+      {view === 'board' &&
+        focus &&
+        (() => {
+          const g = beans.find((x) => x.beanKey === focus.beanKey);
+          const r = g?.[focus.bt];
+          if (!g || !r) return null;
+          const box: React.CSSProperties = { width: 'min(404px, 44vw)', height: 'min(690px, 86dvh)', display: 'flex', minWidth: 0 };
+          return (
+            <div
+              onClick={() => setFocus(null)}
+              style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, background: 'hsl(var(--foreground) / 0.45)' }}
+            >
+              <button
+                onClick={() => setFocus(null)}
+                className="text-body text-background"
+                style={{ ...plainBtn, position: 'absolute', top: 18, right: 24 }}
+              >
+                닫기 ×
+              </button>
+              <div onClick={(e) => e.stopPropagation()} style={box}>
+                <BoardCard
+                  g={g}
+                  store={store}
+                  tasting={tastingByBean.get(g.beanKey) ?? ''}
+                  storeMesh={storeMesh}
+                  staffNames={staffNames}
+                  staff={staff}
+                  onPickStaff={pickStaff}
+                  feedback={feedback}
+                  onFeedback={(rec) => setFeedback((xs) => [...xs, rec])}
+                  onArchive={() => {
+                    setFocus(null);
+                    setArchived(g.beanKey, g.bean, true);
+                  }}
+                  bt={focus.bt}
+                  onBtChange={(bt) => setFocus({ beanKey: g.beanKey, bt })}
+                  floating
+                />
+              </div>
+              <div onClick={(e) => e.stopPropagation()} style={box}>
+                <EvalCard
+                  store={store}
+                  g={g}
+                  bt={focus.bt}
+                  recipe={r}
+                  baseMesh={storeMesh(r).value}
+                  staffNames={staffNames}
+                  staff={staff}
+                  onPickStaff={pickStaff}
+                  feedback={feedback.filter((f) => f.beanKey === g.beanKey && f.brewType === focus.bt && f.store === store)}
+                  onSaved={(rec) => setFeedback((xs) => [...xs, rec])}
+                />
+              </div>
+            </div>
+          );
+        })()}
 
       {/* 하단 — ‹ 페이지 점 › (마우스·트랙패드용, 터치는 스와이프) */}
       {view === 'board' && pages.length > 1 && (
@@ -533,6 +595,10 @@ function BoardCard({
   onFeedback,
   archived = false,
   onArchive,
+  onOpenEval,
+  bt: btProp,
+  onBtChange,
+  floating = false,
 }: {
   g: BoardBean;
   store: StoreId;
@@ -545,10 +611,15 @@ function BoardCard({
   onFeedback: (rec: BrewFeedback) => void;
   archived?: boolean; // 아카이브 화면 — '소진' 대신 '되돌리기'
   onArchive: () => void;
+  onOpenEval?: (bt: BrewType) => void; // 보드 카드 — 누르면 크게 + 추출 평가 카드
+  bt?: BrewType; // 크게 띄운 카드 — ICE/HOT 을 평가 카드와 맞추려고 바깥에서 제어
+  onBtChange?: (bt: BrewType) => void;
+  floating?: boolean; // 어두운 배경 위에 뜬 카드 — 그림자를 절반으로(빛 번짐이 세 보여서)
 }) {
   const types = BREW_TYPES.filter((bt) => g[bt]);
-  const [bt, setBt] = useState<BrewType>(types[0] ?? 'ice');
-  const [evalOpen, setEvalOpen] = useState(false); // 추출 평가 접어두기(M2) — 내린 뒤 펼친다
+  const [ownBt, setOwnBt] = useState<BrewType>(types[0] ?? 'ice');
+  const bt = btProp ?? ownBt;
+  const setBt = (t: BrewType) => (onBtChange ? onBtChange(t) : setOwnBt(t));
   const [confirmArchive, setConfirmArchive] = useState(false); // 소진 — 실수 방지로 한 번 더 확인
   const r = g[bt] ?? g[types[0]];
   if (!r) return null;
@@ -557,8 +628,27 @@ function BoardCard({
   const isFallback = !!g.fallback[bt];
   const mine = feedback.filter((f) => f.beanKey === g.beanKey && f.brewType === bt && f.store === store);
   const mineCurrent = mine.filter((f) => f.recipeVersion === r.updatedAt).length;
+  // 카드 안 버튼(ICE/HOT·소진 등)은 카드 열기와 겹치지 않게 전파를 막는다
+  const stop = (fn: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    fn();
+  };
   return (
-    <div className="rounded-md bg-background shadow-soft" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, overflow: 'hidden' }}>
+    <div
+      className={`rounded-md bg-background ${floating ? '' : 'shadow-soft'}`}
+      onClick={onOpenEval ? () => onOpenEval(bt) : undefined}
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
+        minHeight: 0,
+        overflow: 'hidden',
+        cursor: onOpenEval ? 'pointer' : undefined,
+        // shadow-soft 의 절반(오프셋·번짐·불투명도 ½) — 어두운 배경 위 흰 빛 번짐이 너무 세서 (2026-11-01)
+        boxShadow: floating ? '3px 3px 8px hsl(45 8% 78% / 0.21), -3px -3px 8px hsl(0 0% 100% / 0.45)' : undefined,
+      }}
+    >
       {/* 헤더(N2 상단, 2026-10-31) — 노트 색은 얇은 띠 하나로만, 아래 흰 바탕에 원두명. 스크롤해도 고정 */}
       <div style={{ flexShrink: 0, padding: '24px 24px 0', display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div
@@ -573,7 +663,7 @@ function BoardCard({
           {/* 소진 — 못 팔게 되면 필터 커피 아카이브로 (레시피·이력·평가는 유지, 레시피 탭에서 되돌릴 수 있음) */}
           {archived ? (
             <button
-              onClick={onArchive}
+              onClick={stop(onArchive)}
               className="text-caption text-muted-foreground hover:text-foreground"
               style={{ ...plainBtn, flexShrink: 0 }}
               title="레시피 보드로 되돌리기"
@@ -583,16 +673,16 @@ function BoardCard({
           ) : confirmArchive ? (
             <span className="text-caption" style={{ display: 'flex', gap: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>
               <span className="text-muted-foreground">아카이브로 보낼까요?</span>
-              <button onClick={onArchive} className="text-foreground underline" style={plainBtn}>
+              <button onClick={stop(onArchive)} className="text-foreground underline" style={plainBtn}>
                 확인
               </button>
-              <button onClick={() => setConfirmArchive(false)} className="text-muted-foreground hover:text-foreground" style={plainBtn}>
+              <button onClick={stop(() => setConfirmArchive(false))} className="text-muted-foreground hover:text-foreground" style={plainBtn}>
                 취소
               </button>
             </span>
           ) : (
             <button
-              onClick={() => setConfirmArchive(true)}
+              onClick={stop(() => setConfirmArchive(true))}
               className="text-caption text-muted-foreground hover:text-foreground"
               style={{ ...plainBtn, flexShrink: 0, whiteSpace: 'nowrap' }}
               title="원두 소진 — 필터 커피 아카이브로 보내기"
@@ -613,7 +703,7 @@ function BoardCard({
             {BREW_TYPES.map((t) => (
               <button
                 key={t}
-                onClick={() => setBt(t)}
+                onClick={stop(() => setBt(t))}
                 disabled={!g[t]}
                 className={`ta-seg-item ${t === bt ? 'ta-seg-on' : ''} disabled:cursor-default disabled:opacity-30`}
                 title={g[t] ? undefined : `${t.toUpperCase()} 레시피 없음`}
@@ -684,37 +774,85 @@ function BoardCard({
           )}
         </div>
 
-        <div className="bg-accent">
-          <button
-            onClick={() => setEvalOpen((o) => !o)}
-            className="text-body text-foreground"
-            aria-expanded={evalOpen}
-            style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            <span>추출 평가 남기기</span>
-            <span className="tabular text-muted-foreground">
-              {mineCurrent > 0 && `의견 ${mineCurrent} `}
-              {evalOpen ? '▴' : '▾'}
-            </span>
-          </button>
-          {evalOpen && (
-            <div style={{ padding: '4px 24px 28px' }}>
-              <BrewFeedbackPanel
-                store={store}
-                beanKey={g.beanKey}
-                bean={g.bean}
-                brewType={bt}
-                recipe={r}
-                baseMesh={mesh.value}
-                staffNames={staffNames}
-                staff={staff}
-                onPickStaff={onPickStaff}
-                feedback={mine}
-                onSaved={onFeedback}
-              />
-            </div>
-          )}
-        </div>
+        {/* 추출 평가 — 누르면 카드 크게 + 평가 카드(보드). 크게 띄운 카드·아카이브에선 바를 숨긴다 */}
+        {onOpenEval && (
+          <div className="bg-accent">
+            <button
+              onClick={stop(() => onOpenEval(bt))}
+              className="text-body text-foreground"
+              style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              <span>추출 평가 남기기</span>
+              <span className="tabular text-muted-foreground">
+                {mineCurrent > 0 && `의견 ${mineCurrent} `}›
+              </span>
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 추출 평가 카드 — 크게 띄운 레시피 카드 옆, 같은 크기. 내용은 BrewFeedbackPanel 그대로
+function EvalCard({
+  store,
+  g,
+  bt,
+  recipe,
+  baseMesh,
+  staffNames,
+  staff,
+  onPickStaff,
+  feedback,
+  onSaved,
+}: {
+  store: StoreId;
+  g: BoardBean;
+  bt: BrewType;
+  recipe: DripRecipe;
+  baseMesh: number | null;
+  staffNames: string[];
+  staff: string;
+  onPickStaff: (name: string) => void;
+  feedback: BrewFeedback[];
+  onSaved: (rec: BrewFeedback) => void;
+}) {
+  return (
+    <div
+      className="rounded-md bg-background"
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
+        minHeight: 0,
+        overflow: 'hidden',
+        boxShadow: '3px 3px 8px hsl(45 8% 78% / 0.21), -3px -3px 8px hsl(0 0% 100% / 0.45)',
+      }}
+    >
+      <div style={{ flexShrink: 0, padding: '24px 24px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+        <p className="text-title font-medium" style={{ margin: 0 }}>
+          추출 평가
+        </p>
+        <span className="text-caption text-muted-foreground" style={{ whiteSpace: 'nowrap' }}>
+          {STORES.find((s) => s.id === store)?.short} · {bt.toUpperCase()}
+        </span>
+      </div>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px 24px' }}>
+        <BrewFeedbackPanel
+          store={store}
+          beanKey={g.beanKey}
+          bean={g.bean}
+          brewType={bt}
+          recipe={recipe}
+          baseMesh={baseMesh}
+          staffNames={staffNames}
+          staff={staff}
+          onPickStaff={onPickStaff}
+          feedback={feedback}
+          onSaved={onSaved}
+        />
       </div>
     </div>
   );
