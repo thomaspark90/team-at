@@ -11,6 +11,9 @@ export interface PriceBand {
 }
 
 export const PRICE_BANDS: PriceBand[] = [
+  // 재료비 1,000원대 — 1,500원 행을 쓰면 권장 칸이 2개뿐이라(4.0~5.0× × 1,000원 ≈ 500원 단위 2칸) 따로 둠.
+  // 싼 원두일수록 배수를 높게 — 기본 4.5~6.0×, 판매가 설정 참고표에서 칸을 눌러 조정 (2026-11-02)
+  { cost: 1000, minMult: 4.5, maxMult: 6 },
   { cost: 1500, minMult: 4, maxMult: 5.5 }, // 기존 일반 구간 유지
   { cost: 2000, minMult: 3.5, maxMult: 5 },
   { cost: 2500, minMult: 3, maxMult: 4.5 },
@@ -19,11 +22,11 @@ export const PRICE_BANDS: PriceBand[] = [
   { cost: 4000, minMult: 2, maxMult: 3 }, // 4,000원 이상
 ];
 
-// 참고표 축 — 재료비 1,500~5,000원(500원 단위) × 배수 2.00~6.00(0.25 단위)
-export const GUIDE_COSTS = Array.from({ length: 8 }, (_, i) => 1500 + i * 500);
+// 참고표 축 — 재료비 1,000~5,000원(500원 단위) × 배수 2.00~6.00(0.25 단위). 1,000원 행은 2026-11-02 추가
+export const GUIDE_COSTS = Array.from({ length: 9 }, (_, i) => 1000 + i * 500);
 export const GUIDE_MULTS = Array.from({ length: 17 }, (_, i) => 2 + i * 0.25);
 
-/** 재료비가 속한 권장 구간 (해당 재료비 이하 중 가장 높은 구간, 1,500원 미만은 첫 구간) */
+/** 재료비가 속한 권장 구간 (해당 재료비 이하 중 가장 높은 구간, 1,000원 미만은 첫 구간) */
 export const bandForCost = (cost: number): PriceBand =>
   PRICE_BANDS.filter((b) => cost >= b.cost).at(-1) ?? PRICE_BANDS[0];
 
@@ -46,11 +49,14 @@ export const defaultActiveCells = (): ActiveCells =>
     }),
   );
 
-/** 축에 있는 칸만 남기고 정렬·중복 제거 — 저장 전후 정규화 */
+/** 축에 있는 칸만 남기고 정렬·중복 제거 — 저장 전후 정규화.
+ *  저장값에 아예 없는 행(나중에 추가된 1,000원 행 등)은 기본 구간으로 채운다 — 빈 행이면 권장 칸이 사라지므로 */
 export const cleanActiveCells = (raw: unknown): ActiveCells => {
   const src = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const defaults = defaultActiveCells();
   return Object.fromEntries(
     GUIDE_COSTS.map((cost) => {
+      if (!(String(cost) in src)) return [String(cost), defaults[String(cost)]];
       const arr = Array.isArray(src[String(cost)]) ? (src[String(cost)] as unknown[]) : [];
       const ms = GUIDE_MULTS.filter((m) => arr.some((v) => Number(v) === m));
       return [String(cost), ms];
@@ -58,7 +64,7 @@ export const cleanActiveCells = (raw: unknown): ActiveCells => {
   );
 };
 
-/** 발주 기록 재료비가 따를 참고표 행 — 계단식(해당 재료비 이하 중 가장 높은 행, 1,500원 미만은 첫 행) */
+/** 발주 기록 재료비가 따를 참고표 행 — 계단식(해당 재료비 이하 중 가장 높은 행, 1,000원 미만은 첫 행) */
 export const guideRowForCost = (cost: number): number =>
   GUIDE_COSTS.filter((c) => cost >= c).at(-1) ?? GUIDE_COSTS[0];
 

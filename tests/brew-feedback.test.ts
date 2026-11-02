@@ -129,3 +129,15 @@ describe('새 레시피 기본값 — 최근 20개 최빈값', () => {
     expect(recentDefaults([mk(1, {})], 'hot', 'yangjae')).toBeNull();
   });
 });
+
+import { cleanActiveCells, guideRowForCost, bandRange } from '@/lib/garden/price-bands';
+
+describe('판매가 참고표 — 1,000원 행', () => {
+  it('재료비 1,027원은 1,000원 행', () => expect(guideRowForCost(1027)).toBe(1000));
+  it('1,500원 이상은 기존 행 그대로', () => expect(guideRowForCost(1600)).toBe(1500));
+  it('저장값에 없는 1,000원 행은 기본 4.5~6.0×로 채움, 기존 행 저장값은 유지', () => {
+    const c = cleanActiveCells({ '1500': [4, 4.25, 4.5, 4.75, 5] });
+    expect(bandRange(c['1000'])).toEqual({ lo: 4.5, hi: 6 });
+    expect(bandRange(c['1500'])).toEqual({ lo: 4, hi: 5 });
+  });
+});
