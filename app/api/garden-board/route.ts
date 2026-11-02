@@ -6,7 +6,8 @@ import { readGardenTopics } from '@/lib/garden-notify-topics-server';
 import { purchaseRecords, grindMeasurementRecords, gardenTodoRecords, staffmealTodoRecords, alignmentRecords, dripRecipeRecords } from '@/lib/blob-records';
 import { normalize } from '@/lib/pricing';
 import { STORES } from '@/lib/types';
-import type { DripRecipe } from '@/lib/types';
+import type { BeanMetaStore, DripRecipe } from '@/lib/types';
+import { isBeanArchived } from '@/lib/garden/bean-groups';
 import type { GardenTodo } from '@/lib/garden-todos';
 import { fitDialToMicron } from '@/lib/grinder-calibration';
 import type { AlignmentEvent } from '@/lib/grinder-alignments';
@@ -76,7 +77,7 @@ export async function GET(req: Request) {
   const owns = (emails: string[]) => emails.map((e) => e.toLowerCase()).includes(me);
 
   const isGarden = scope === 'garden';
-  const [purchases, recipes, measurements, todos, profiles, mealsStore, alignEvents] =
+  const [purchases, recipes, measurements, todos, profiles, mealsStore, alignEvents, beanStore] =
     await Promise.all([
       isGarden ? purchaseRecords.readAll().catch(() => []) : [],
       isGarden ? dripRecipeRecords.readAll().catch(() => [] as DripRecipe[]) : [],
@@ -86,6 +87,7 @@ export async function GET(req: Request) {
       isGarden ? readJson<{ profiles: GrinderProfiles }>('data/garden-grinders.json') : null,
       isGarden ? null : readJson<{ records: StaffMealRecord[] }>('data/staffmeals.json'),
       isGarden ? alignmentRecords.readAll().catch(() => [] as AlignmentEvent[]) : [],
+      isGarden ? readJson<BeanMetaStore>('data/garden-beans.json') : null,
     ]);
 
   // ── 스탭밀 : 오늘 인스타 스토리 메뉴 등록 ──
@@ -125,8 +127,10 @@ export async function GET(req: Request) {
     if (!cur || p.createdAt.localeCompare(cur.createdAt) > 0) latestByBean.set(k, p);
   }
   const recipeOwners = topics.recipeNew ?? [];
+  // 아카이브한 원두(재발주 전)는 레시피를 지웠어도 처리 끝난 것으로 본다 — 아카이브 '기록 삭제' 후 할 일로 되살아나지 않게
+  const metaByBean = new Map((beanStore?.beans ?? []).map((b) => [b.beanKey, b]));
   for (const [key, p] of Array.from(latestByBean.entries())) {
-    const hasRecipe = recipeKeys.has(key);
+    const hasRecipe = recipeKeys.has(key) || isBeanArchived(metaByBean.get(key), p);
     const d = daysAgo(p.createdAt);
     cards.push({
       id: `order:${p.id}`,

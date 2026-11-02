@@ -345,11 +345,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   // 발주 기록엔 있지만 레시피가 하나도 없는 원두
   const unsetBeans = useMemo(() => {
     const has = new Set(recipes.map((r) => r.beanKey));
+    // 아카이브한 원두(재발주 전)는 제외 — 아카이브에서 레시피를 지워도 미설정으로 되살아나지 않게
     return Array.from(latestByBean.entries())
-      .filter(([k]) => !has.has(k))
+      .filter(([k, rec]) => !has.has(k) && !isBeanArchived(metaByBean.get(k), rec))
       .map(([, rec]) => rec)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [latestByBean, recipes]);
+  }, [latestByBean, recipes, metaByBean]);
 
   // 미설정 원두 목록에서 제거 — 최신 건만 지우면 이전 발주가 다시 노출되므로 해당 원두 기록 전체 삭제
   const deleteUnsetBean = async (rec: PurchaseRecord) => {

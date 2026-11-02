@@ -10,6 +10,19 @@ import { readGardenTopics } from '@/lib/garden-notify-topics-server';
 import { requireGardenTab } from '@/lib/access/guard';
 import { STORES, type StoreId } from '@/lib/types';
 import { sameRecipeSlot } from '@/lib/garden/recipe-store';
+import { isBeanArchived } from '@/lib/garden/bean-groups';
+import { get } from '@vercel/blob';
+import type { BeanMetaStore } from '@/lib/types';
+
+async function readBeanStore(): Promise<BeanMetaStore | null> {
+  const res = await get('data/garden-beans.json', { access: 'private', useCache: false });
+  if (!res) return null;
+  try {
+    return JSON.parse(await new Response(res.stream).text()) as BeanMetaStore;
+  } catch {
+    return null;
+  }
+}
 
 // 기록별 blob 저장(lib/blob-records) — 레시피 1건 = 파일 1개라 서로 다른 레시피를
 // 동시에 저장해도 유실이 없다. (같은 레시피 동시 수정은 여전히 마지막 저장이 이긴다)
@@ -28,9 +41,22 @@ export async function GET(req: Request) {
   // 나비 배지용 경량 응답 — 레시피 미설정 원두 수 (발주 기록은 있는데 레시피가 하나도 없는 원두,
   // 작업 보드 '레시피 미설정 원두' 카드와 같은 기준)
   if (new URL(req.url).searchParams.get('scope') === 'unset-count') {
-    const [purchases, recipes] = await Promise.all([purchaseRecords.readAll(), dripRecipeRecords.readAll()]);
+    const [purchases, recipes, beanStore] = await Promise.all([
+      purchaseRecords.readAll(),
+      dripRecipeRecords.readAll(),
+      readBeanStore(),
+    ]);
     const has = new Set(recipes.map((r) => r.beanKey));
-    const count = new Set(purchases.map((r) => normalize(r.bean)).filter((k) => !has.has(k))).size;
+    // 아카이브한 원두(재발주 전)는 미설정으로 세지 않는다 — 아카이브에서 레시피를 지운 경우
+    const metaByBean = new Map((beanStore?.beans ?? []).map((b) => [b.beanKey, b]));
+    const latest = new Map<string, string>();
+    for (const p of purchases) {
+      const k = normalize(p.bean);
+      if (!latest.has(k) || p.createdAt.localeCompare(latest.get(k)!) > 0) latest.set(k, p.createdAt);
+    }
+    const count = Array.from(latest.entries()).filter(
+      ([k, at]) => !has.has(k) && !isBeanArchived(metaByBean.get(k), { createdAt: at })
+    ).length;
     return NextResponse.json({ count });
   }
 
@@ -196,7 +222,15 @@ export async function DELETE(req: Request) {
     if (denied) return denied;
   }
 
-  const { beanKey, brewType: bt, store: st } = await req.json();
+  const { beanKey, brewType: bt, store: st, all } = await req.json();
+  // 아카이브 '기록 삭제' — 그 원두의 레시피 전부(ICE·HOT, 모든 지점)와 수정 이력. 발주 기록·추출 평가는 남긴다
+  if (all === true) {
+    if (!beanKey) return NextResponse.json({ error: '원두 정보가 없습니다.' }, { status: 400 });
+    const targets = (await dripRecipeRecords.readAll()).filter((r) => r.beanKey === beanKey);
+    for (const r of targets) await dripRecipeRecords.deleteOne(r.id);
+    await logActivity(supabase, user, '가든서비스 아카이브 기록 삭제', `${targets[0]?.bean ?? beanKey} · 레시피 ${targets.length}개`);
+    return NextResponse.json({ ok: true, removed: targets.length });
+  }
   const brewType = brewTypeOf(bt);
   const store = storeOf(st);
   const removed = (await dripRecipeRecords.readAll()).find((r) => sameRecipeSlot(r, beanKey, brewType, store));

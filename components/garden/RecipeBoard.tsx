@@ -230,6 +230,22 @@ export default function RecipeBoard() {
     toast(archived ? `${bean} — 필터 커피 아카이브로 보냈어요.` : `${bean} — 레시피 보드로 되돌렸어요.`);
   };
 
+  // 아카이브 '기록 삭제' — 그 원두 레시피 전부(ICE·HOT·모든 지점)와 이력. 발주·추출 평가는 남는다. 되돌릴 수 없음
+  const deleteRecord = async (beanKey: string, bean: string) => {
+    const res = await fetch('/api/garden-recipes', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ beanKey, all: true }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      toast('삭제하지 못했어요. 다시 시도해 주세요.', 'error');
+      return;
+    }
+    setOpenArchived(null);
+    setRecipes((rs) => rs.filter((r) => r.beanKey !== beanKey));
+    toast(`${bean} — 아카이브 기록을 삭제했어요.`);
+  };
+
   // 판매 대기 / 판매 시작 — 이 지점만. 낙관적 반영, 실패하면 되돌린다
   const setWaiting = async (beanKey: string, bean: string, on: boolean) => {
     const prev = beanMetas;
@@ -483,7 +499,7 @@ export default function RecipeBoard() {
                     onClick={() => setOpenArchived(g.beanKey)}
                     onKeyDown={(e) => e.key === 'Enter' && setOpenArchived(g.beanKey)}
                     className="rounded-md bg-background shadow-soft"
-                    style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '20px 24px', cursor: 'pointer', minWidth: 0 }}
+                    style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '20px 24px', cursor: 'pointer', minWidth: 0, outline: 'none' }}
                   >
                     <span className="text-title font-medium" style={{ flex: 1, minWidth: 0, wordBreak: 'keep-all', overflowWrap: 'anywhere' }}>
                       {g.bean}
@@ -519,7 +535,7 @@ export default function RecipeBoard() {
             >
               <div
                 onClick={(e) => e.stopPropagation()}
-                style={{ width: 'min(420px, 92vw)', height: 'min(640px, 88dvh)', display: 'flex', flexDirection: 'column', gap: 8 }}
+                style={{ width: 'min(420px, 92vw)', height: 'min(760px, 90dvh)', display: 'flex', flexDirection: 'column', gap: 8 }}
               >
                 <button onClick={() => setOpenArchived(null)} className="text-body text-background" style={{ ...plainBtn, alignSelf: 'flex-end' }}>
                   닫기 ×
@@ -540,6 +556,7 @@ export default function RecipeBoard() {
                     setOpenArchived(null);
                     setArchived(g.beanKey, g.bean, false);
                   }}
+                  onDeleteRecord={() => deleteRecord(g.beanKey, g.bean)}
                 />
               </div>
             </div>
@@ -745,6 +762,7 @@ function BoardCard({
   floating = false,
   waiting = false,
   onWaiting,
+  onDeleteRecord,
 }: {
   g: BoardBean;
   store: StoreId;
@@ -763,6 +781,7 @@ function BoardCard({
   floating?: boolean; // 어두운 배경 위에 뜬 카드 — 그림자를 절반으로(빛 번짐이 세 보여서)
   waiting?: boolean; // 이 지점 판매 대기 — '대기'·'소진' 대신 '판매 시작'
   onWaiting?: (on: boolean) => void;
+  onDeleteRecord?: () => void; // 아카이브 크게 보기 — '기록 삭제'(확인 1회)
 }) {
   const types = BREW_TYPES.filter((bt) => g[bt]);
   const [ownBt, setOwnBt] = useState<BrewType>(types[0] ?? 'ice');
@@ -809,15 +828,37 @@ function BoardCard({
             {g.bean}
           </p>
           {/* 소진 — 못 팔게 되면 필터 커피 아카이브로 (레시피·이력·평가는 유지, 레시피 탭에서 되돌릴 수 있음) */}
-          {archived ? (
-            <button
-              onClick={stop(onArchive)}
-              className="text-caption text-muted-foreground hover:text-foreground"
-              style={{ ...plainBtn, flexShrink: 0 }}
-              title="레시피 보드로 되돌리기"
-            >
-              되돌리기
-            </button>
+          {archived && confirmArchive ? (
+            <span className="text-caption" style={{ display: 'flex', gap: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>
+              <span className="text-destructive">레시피를 완전히 지울까요?</span>
+              <button onClick={stop(() => onDeleteRecord?.())} className="text-destructive underline" style={plainBtn}>
+                삭제
+              </button>
+              <button onClick={stop(() => setConfirmArchive(false))} className="text-muted-foreground hover:text-foreground" style={plainBtn}>
+                취소
+              </button>
+            </span>
+          ) : archived ? (
+            <span style={{ display: 'flex', gap: 12, flexShrink: 0, whiteSpace: 'nowrap' }}>
+              <button
+                onClick={stop(onArchive)}
+                className="text-caption text-muted-foreground hover:text-foreground"
+                style={plainBtn}
+                title="레시피 보드로 되돌리기"
+              >
+                되돌리기
+              </button>
+              {onDeleteRecord && (
+                <button
+                  onClick={stop(() => setConfirmArchive(true))}
+                  className="text-caption text-muted-foreground hover:text-destructive"
+                  style={plainBtn}
+                  title="레시피(ICE·HOT·모든 지점)와 수정 이력 삭제 — 발주 기록·추출 평가는 남아요"
+                >
+                  기록 삭제
+                </button>
+              )}
+            </span>
           ) : confirmArchive ? (
             <span className="text-caption" style={{ display: 'flex', gap: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>
               <span className="text-muted-foreground">아카이브로 보낼까요?</span>
