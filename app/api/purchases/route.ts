@@ -89,7 +89,10 @@ export async function POST(req: Request) {
     r.purchasePrice === record.purchasePrice &&
     (r.settings?.capacityG ?? null) === (record.settings?.capacityG ?? null) &&
     kstDay(r.createdAt) === kstDay(record.createdAt);
-  const replaced = (await purchaseRecords.readAll()).filter(dup);
+  const allRecords = await purchaseRecords.readAll();
+  const replaced = allRecords.filter(dup);
+  // 같은 원두의 이전 발주(같은 날 재저장 제외)가 있으면 재발주 — 원두카드 요청 메일 제목에 표시
+  const reorder = allRecords.some((r) => normalize(r.bean) === normalize(record.bean) && !dup(r));
   // 책정가 없이 재저장해도 이미 책정된 판매가는 잃지 않는다 — 단, 재저장으로 원가가
   // 바뀌었으면(예: VAT 포함 여부 정정) 옛 책정가는 새 원가와 모순이라 상속하지 않는다
   if (record.chosenPrice == null) {
@@ -147,6 +150,35 @@ export async function POST(req: Request) {
       });
     } catch (e) {
       console.error('saleprice request notify 실패:', e);
+    }
+  }
+  // 발주 → 원두카드 제작 담당자(beanCard 토픽)에게 바로 요청 (2026-11-03 대표 지시).
+  // 판매가는 매장에서 카드 위에 수기로 적으므로(입고 후 품질 따라 조정) 가격 없이 원두 정보만 보낸다.
+  // 같은 날 재저장(대체)은 제외. 실패해도 발주 저장은 막지 않는다.
+  if (replaced.length === 0) {
+    try {
+      const by = record.staffName ? `${record.staffName}님` : (user.email ?? '').split('@')[0];
+      await notifyGardenEvent(supabase, {
+        emails: await topicEmails(supabase, 'beanCard'),
+        subject: `[원두카드 요청${reorder ? ' · 재발주' : ''}] ${record.bean}`,
+        html: `
+        <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
+          <p><strong>${record.bean}</strong> 발주가 저장됐어요. 원두카드 제작을 부탁드려요.${reorder ? ' (이전에 발주한 적 있는 원두예요 — 기존 카드가 있으면 그대로 써도 돼요)' : ''}</p>
+          ${record.beanEn ? `<p>영문: ${record.beanEn}</p>` : ''}
+          ${record.roastery ? `<p>로스팅사: ${record.roastery}</p>` : ''}
+          ${record.tastingNotes ? `<p>테이스팅 노트: ${record.tastingNotes}</p>` : ''}
+          <p>판매가는 매장에서 카드에 수기로 적어요 — 디자인에 넣지 않아도 돼요.</p>
+          <p>발주: ${by}</p>
+          <p><a href="${APP_URL}/garden/beancard">원두카드 열기 →</a></p>
+        </div>`,
+        push: {
+          title: `원두카드 제작 요청 · ${record.bean}`,
+          body: `${record.tastingNotes ?? '원두카드 제작을 부탁드려요'} — ${by} 발주`,
+          url: '/garden/beancard',
+        },
+      });
+    } catch (e) {
+      console.error('beancard request notify 실패:', e);
     }
   }
   return NextResponse.json(record);
