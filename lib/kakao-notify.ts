@@ -61,21 +61,12 @@ export const canSendKakaoOrder = (email?: string | null): boolean => {
   return allowed.includes(email.toLowerCase());
 };
 
-const kstDate = (iso: string) => {
-  const d = new Date(new Date(iso).getTime() + 9 * 3600_000);
-  const day = ['일', '월', '화', '수', '목', '금', '토'][d.getUTCDay()];
-  return `${d.getUTCMonth() + 1}.${d.getUTCDate()}(${day})`;
-};
-
 // 단톡방에 올라갈 발주 메시지 — 매입가·재료비 등 내부 원가 정보는 넣지 않는다.
+// 매장에서 직접 보내던 대화체 그대로(2026-11-03): 받을 지점을 넣어 로스터리가 배송지를 되묻지 않게 한다.
+const STORE_NAME = { pangyo: '판교점', yangjae: '양재천점' } as const;
+const amountOf = (g?: number) => (!g ? '' : g % 1000 === 0 ? `${g / 1000}kg` : `${g}g`);
 export function buildOrderMessage(r: PurchaseRecord): string {
-  const lines = [
-    '📦 원두 발주',
-    `· 원두: ${r.roastery ? `${r.roastery} · ` : ''}${r.bean}`,
-    `· 용량: ${r.settings?.capacityG ?? '?'}g`,
-  ];
-  if (r.roastDate) lines.push(`· 로스팅: ${r.roastDate}`); // 수령 전엔 없음 — 그 줄 생략
-  if (r.staffName) lines.push(`· 발주자: ${r.staffName}님`);
-  lines.push(`· 발주일: ${kstDate(r.orderDate ?? r.createdAt)}`);
-  return lines.join('\n');
+  const to = r.store ? `${STORE_NAME[r.store]}으로 ` : '';
+  const amount = amountOf(r.settings?.capacityG);
+  return `대표님 안녕하세요.\n${to}${r.bean}${amount ? ` ${amount}` : ''} 발주 부탁드립니다.`;
 }

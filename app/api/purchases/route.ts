@@ -71,6 +71,7 @@ export async function POST(req: Request) {
     // 로스팅 날짜는 발주 시점엔 모른다 — 수령 후 /api/purchases/receive 로 기재
     roastDate: body.roastDate ? String(body.roastDate) : undefined,
     staffName: body.staffName ? String(body.staffName).trim() : undefined,
+    store: body.store === 'pangyo' || body.store === 'yangjae' ? body.store : undefined,
     tastingNotes: body.tastingNotes ? String(body.tastingNotes).trim() : undefined,
     purchasePrice,
     settings,

@@ -5,6 +5,7 @@ import type { PurchaseRecord } from '@/lib/types';
 import { PRICE_UNIT, normalize, roundUpPrice } from '@/lib/pricing';
 import { fmtDate } from '@/lib/garden/format';
 import PriceBandGuide from './PriceBandGuide';
+import { useKakaoOrder } from './KakaoOrder';
 import { bandRange, defaultActiveCells, guideRowForCost, type ActiveCells } from '@/lib/garden/price-bands';
 
 // 판매가 설정 전용 화면 — 발주(GardenService)에서 저장된 기록의 판매가를 책정·공유한다.
@@ -52,6 +53,8 @@ export default function GardenSalePrice() {
   const [showDismissed, setShowDismissed] = useState(false); // X로 숨긴 미책정 원두 펼침
   // 하단 참고표의 권장 칸 상태 — 참고표가 불러오거나 클릭으로 바꾸면 onChange 로 갱신된다
   const [bandCells, setBandCells] = useState<ActiveCells>(defaultActiveCells);
+  // 발주 카톡 — 발주 권한 없는 스탭(판교)이 저장한 원두를 판매가 정하면서 바로 보낼 수 있게 (2026-11-03)
+  const kakao = useKakaoOrder();
 
   const refresh = async () => {
     const res = await fetch('/api/purchases', { cache: 'no-store' });
@@ -212,6 +215,7 @@ export default function GardenSalePrice() {
                 onDecide={(m) => decide(rec, m)}
                 onDismiss={() => setDismissed(rec, true)}
                 busy={busyId === rec.id}
+                orderButton={kakao.button(rec)}
               />
             ))}
           </div>
@@ -291,6 +295,7 @@ export default function GardenSalePrice() {
                             <span className="text-muted-foreground"> ({Math.round((rec.costPerCup / rec.chosenPrice!) * 100)}%)</span>
                           </span>
                         </span>
+                        {kakao.button(rec)}
                         <button
                           onClick={() => {
                             setOpenId(openId === rec.id ? null : rec.id);
@@ -335,6 +340,7 @@ export default function GardenSalePrice() {
       <div className="min-w-0 pt-[54px]">
         <PriceBandGuide onChange={setBandCells} />
       </div>
+      {kakao.modal}
       </div>
     </div>
   );
@@ -351,6 +357,7 @@ function RecordPricer({
   onDismiss,
   busy,
   compact,
+  orderButton,
 }: {
   rec: PurchaseRecord;
   pick: number | null;
@@ -361,6 +368,7 @@ function RecordPricer({
   onDismiss?: () => void; // 미책정 목록에서 숨기기(X)
   busy: boolean;
   compact?: boolean; // 책정 완료 목록 안 재책정 — 요약줄 생략
+  orderButton?: React.ReactNode; // 발주 카톡 [발주] — 허용 계정에만 (KakaoOrder)
 }) {
   // 권장 배수 = 참고표에서 이 기록 재료비가 속한 행의 초록 칸 범위(최솟값~최댓값)
   const cost = rec.costPerCup;
@@ -405,6 +413,8 @@ function RecordPricer({
             {` · 매입 ${won(rec.purchasePrice)}`}
             {rec.settings?.vatIncluded && 'ㆍVAT포함'}
             {` · 재료비 ${won(rec.costPerCup)}`}
+            {rec.store && ` · ${rec.store === 'pangyo' ? '판교' : '양재천'}`}
+            {orderButton && <span style={{ marginLeft: 10 }}>{orderButton}</span>}
           </p>
         </div>
       )}

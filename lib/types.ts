@@ -42,6 +42,7 @@ export interface PurchaseRecord {
   roastDate?: string; // 로스팅 날짜 YYYY-MM-DD — 발주 시점엔 모르고, 택배 수령 후 [수령]으로 기재
   tastingNotes?: string; // 테이스팅 노트 — 원두카드 인쇄용 (구 기록엔 없음)
   staffName?: string; // 발주한 스탭이름 — 'OOO님'으로 표시 (구 기록엔 없음)
+  store?: StoreId; // 받을 지점 — 발주 카톡 문구용 (2026-11-03 도입, 구 기록엔 없음)
   purchasePrice: number; // 구매가 (구매 용량 기준)
   settings: PricingSettings; // 당시 설정 스냅샷
   costPerCup: number; // 당시 잔당 재료비

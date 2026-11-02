@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { GardenOptions, PricingSettings, PurchaseRecord } from '@/lib/types';
+import type { GardenOptions, PricingSettings, PurchaseRecord, StoreId } from '@/lib/types';
 import { DEFAULT_SETTINGS, computePricing, normalize } from '@/lib/pricing';
 import { toast } from '@/components/Toast';
 import { fmtDate } from '@/lib/garden/format';
+import { useKakaoOrder } from './KakaoOrder';
 import { bandRange, defaultActiveCells, guideRowForCost, type ActiveCells } from '@/lib/garden/price-bands';
 
 // 인라인 스타일에서 참조할 midday 토큰 (HSL 변수)
@@ -32,7 +33,13 @@ export default function GardenService() {
   // 발주 날짜 — 기본 오늘(KST). 로스팅 날짜는 발주 시점엔 모르므로 수령 후 [수령] 버튼으로 기재
   const [orderDate, setOrderDate] = useState(() => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10));
   const [receivingId, setReceivingId] = useState<string | null>(null); // [수령] 클릭한 기록 — 날짜 입력창 노출
-  const [staffName, setStaffName] = useState(''); // 발주한 스탭이름 — 기록에 'OOO님'으로 표시
+  const [staffName, setStaffName] = useState('');
+  // 받을 지점 — 발주 카톡 문구에 들어간다(로스터리가 매번 배송지를 물어서, 2026-11-03).
+  // 기본값은 이 기기의 지점 선택(레시피 탭·보드와 같은 localStorage 키)
+  const [store, setStore] = useState<StoreId>('yangjae');
+  useEffect(() => {
+    if (localStorage.getItem('garden-board-store') === 'pangyo') setStore('pangyo');
+  }, []); // 발주한 스탭이름 — 기록에 'OOO님'으로 표시
   // 드롭다운 명단(스탭이름·로스팅사) — 설정에서 관리, 새 이름 저장 시 자동 추가
   const [options, setOptions] = useState<GardenOptions>({ staffNames: [], roasteries: [] });
   const [price, setPrice] = useState<number>(0);
@@ -42,19 +49,8 @@ export default function GardenService() {
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [purchasesLoaded, setPurchasesLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
-  // 카톡 발주 알림 — 허용 계정에만 [발주] 버튼 노출, jobs 는 기록별 전송 상태(pending|sent|failed)
-  const [kakao, setKakao] = useState<{ allowed: boolean; jobs: Record<string, string> }>({ allowed: false, jobs: {} });
-  const [kakaoSending, setKakaoSending] = useState<string | null>(null);
-  // 발주 미리보기 카드 — 문구를 고쳐서 보낼 수 있다. 방은 서버 매핑 고정(오전송 방지).
-  const [kakaoPreview, setKakaoPreview] = useState<{ recId: string; bean: string; room: string; message: string } | null>(null);
-
-  // 미리보기 모달 Escape 닫기 — 배경 클릭과 같은 동작을 키보드에도 연다
-  useEffect(() => {
-    if (!kakaoPreview) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setKakaoPreview(null);
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [kakaoPreview]);
+  // 카톡 발주 [발주] 버튼·미리보기 — components/garden/KakaoOrder (판매가 설정 화면과 공유)
+  const kakao = useKakaoOrder();
 
   const refreshPurchases = async () => {
     const res = await fetch('/api/purchases', { cache: 'no-store' });
@@ -66,9 +62,6 @@ export default function GardenService() {
     fetch('/api/garden-options', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => j && setOptions({ staffNames: j.staffNames ?? [], roasteries: j.roasteries ?? [] }));
-    fetch('/api/kakao-notify', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => j && setKakao({ allowed: !!j.allowed, jobs: j.jobs ?? {} }));
   }, []);
 
   // 잔존율·투입량이 0이면(입력창 비움) 재료비 0원·판매가 0원이 그대로 저장되므로 결과 자체를 막는다
@@ -115,6 +108,7 @@ export default function GardenService() {
         tastingNotes: tastingNotes.trim() || undefined,
         roastery: roastery.trim() || undefined,
         orderDate: orderDate || undefined,
+        store,
         staffName: staffName.trim() || undefined,
         purchasePrice: price,
         settings,
@@ -153,49 +147,6 @@ export default function GardenService() {
     refreshPurchases();
   };
 
-  // [발주] 1단계 — 서버가 만든 전송 문구를 미리보기 카드로 연다. 담당자가 문구를 고칠 수 있다.
-  const openKakaoPreview = async (rec: PurchaseRecord) => {
-    if (kakaoSending) return;
-    setKakaoSending(rec.id);
-    try {
-      const pv = await fetch(`/api/kakao-notify?purchaseId=${encodeURIComponent(rec.id)}`, { cache: 'no-store' });
-      const pj = await pv.json().catch(() => null);
-      if (!pv.ok || !pj?.message) {
-        toast(pj?.error ?? '미리보기를 불러오지 못했습니다.', 'error');
-        return;
-      }
-      setKakaoPreview({ recId: rec.id, bean: rec.bean, room: pj.room, message: pj.message });
-    } finally {
-      setKakaoSending(null);
-    }
-  };
-
-  // [발주] 2단계 — 미리보기 카드에서 [전송] 확정. 고친 문구가 그대로 잡에 실린다.
-  const confirmKakaoSend = async () => {
-    if (!kakaoPreview || kakaoSending) return;
-    if (!kakaoPreview.message.trim()) {
-      toast('빈 메시지는 보낼 수 없습니다.', 'error');
-      return;
-    }
-    setKakaoSending(kakaoPreview.recId);
-    try {
-      const res = await fetch('/api/kakao-notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ purchaseId: kakaoPreview.recId, message: kakaoPreview.message.trim() }),
-      });
-      const j = await res.json().catch(() => null);
-      if (res.ok && j?.job) {
-        setKakao((k) => ({ ...k, jobs: { ...k.jobs, [kakaoPreview.recId]: j.job.status } }));
-        setKakaoPreview(null);
-      } else if (j?.error) {
-        toast(j.error, 'error');
-      }
-    } finally {
-      setKakaoSending(null);
-    }
-  };
-
   // [수령] — 택배 도착 후 봉투에 찍힌 로스팅 날짜를 기재한다 (발주 시점엔 알 수 없는 값)
   const receiveBean = async (rec: PurchaseRecord, date: string) => {
     if (!date) return;
@@ -210,15 +161,6 @@ export default function GardenService() {
     }
     setReceivingId(null);
     refreshPurchases();
-  };
-
-  // 버튼 라벨 — 대기(전송기가 아직 안 집어감)와 완료를 구분해 보여준다
-  const kakaoLabel = (status: string | undefined, sending: boolean) => {
-    if (sending) return '…';
-    if (status === 'pending') return '대기중';
-    if (status === 'sent') return '발주됨 ✓';
-    if (status === 'failed') return '실패·재시도';
-    return '발주';
   };
 
   // 발주 기록 — 원두별 그룹(각 그룹 최신순), 그룹은 최근 기록순
@@ -389,6 +331,20 @@ export default function GardenService() {
                 style={{ flex: 1, minWidth: 0 }}
               />
             </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              <span className="text-caption text-muted-foreground" style={{ flexShrink: 0 }}>받을 지점</span>
+              <div className="inline-flex gap-1 ta-seg" style={{ flexShrink: 0 }}>
+                {(['yangjae', 'pangyo'] as StoreId[]).map((id) => (
+                  <button
+                    key={id}
+                    onClick={() => setStore(id)}
+                    className={`ta-seg-item px-2.5 py-1 text-body transition-colors ${store === id ? 'ta-seg-on' : ''}`}
+                  >
+                    {id === 'pangyo' ? '판교' : '양재천'}
+                  </button>
+                ))}
+              </div>
+            </div>
             {/* 구매 용량 — 500g/1000g 프리셋 + 직접 입력 (잔당 재료비 계산 기준) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
               <span className="text-caption text-muted-foreground" style={{ flexShrink: 0 }}>구매 용량</span>
@@ -513,6 +469,7 @@ export default function GardenService() {
                         <div key={rec.id} className="gs-row">
                           <span className="gs-meta">
                             <span className="tabular text-muted-foreground" style={{ width: 64, flexShrink: 0 }}>{fmtDate(rec.orderDate ?? rec.createdAt)}</span>
+                            {rec.store && <span className="text-muted-foreground" style={{ flexShrink: 0 }}>{rec.store === 'pangyo' ? '판교' : '양재천'}</span>}
                             {/* 스탭이름이 있으면 'OOO님' 우선, 없으면 저장 계정(구 기록) */}
                             {(rec.staffName || rec.createdBy) && (
                               <span className="text-muted-foreground" style={{ flexShrink: 0 }}>
@@ -565,18 +522,7 @@ export default function GardenService() {
                               <span className="tabular text-muted-foreground">판매 {won(rec.rangeLow)}~{won(rec.rangeHigh)}</span>
                             )}
                           </span>
-                          {kakao.allowed && (
-                            <button
-                              onClick={() => openKakaoPreview(rec)}
-                              // pending·sent 는 서버가 중복 등록을 막지만, 눌러도 변화가 없어 혼란만 주므로 비활성화
-                              disabled={kakaoSending === rec.id || kakao.jobs[rec.id] === 'pending' || kakao.jobs[rec.id] === 'sent'}
-                              className={kakao.jobs[rec.id] === 'sent' ? 'text-muted-foreground' : 'text-foreground hover:text-foreground'}
-                              style={{ background: 'none', border: 'none', cursor: kakao.jobs[rec.id] === 'sent' ? 'default' : 'pointer', fontSize: 11, flexShrink: 0, padding: 0 }}
-                              title="카톡방에 발주 메시지 전송"
-                            >
-                              {kakaoLabel(kakao.jobs[rec.id], kakaoSending === rec.id)}
-                            </button>
-                          )}
+                          {kakao.button(rec)}
                           <a
                             href={`/garden/beancard?recordId=${rec.id}`}
                             className="text-muted-foreground hover:text-foreground"
@@ -603,50 +549,7 @@ export default function GardenService() {
         )}
       </div>
 
-        {/* 발주 카톡 미리보기 카드 — 문구를 고쳐서 전송할 수 있다. 대상 방은 서버 매핑 고정 */}
-        {kakaoPreview && (
-          <div
-            onClick={() => setKakaoPreview(null)}
-            role="dialog"
-            aria-modal="true"
-            aria-label="발주 메시지 전송"
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4"
-          >
-            <div
-              className="ta-card bg-background max-h-[92vh] w-full overflow-y-auto rounded-t-2xl sm:max-w-[420px] sm:rounded-md"
-              onClick={(e) => e.stopPropagation()}
-              style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
-            >
-              <div>
-                <p className="ta-label" style={{ margin: 0 }}>발주 메시지 전송</p>
-                <p className="text-body text-muted-foreground" style={{ margin: '4px 0 0' }}>
-                  <span className="text-foreground">[{kakaoPreview.room}]</span> 방으로 전송됩니다 — 문구는 자유롭게 고칠 수 있어요
-                </p>
-              </div>
-              <textarea
-                autoFocus
-                value={kakaoPreview.message}
-                onChange={(e) => setKakaoPreview((p) => (p ? { ...p, message: e.target.value } : p))}
-                rows={7}
-                className="ta-input"
-                style={{ width: '100%', minWidth: 0, height: 'auto', padding: 10, fontSize: 13, lineHeight: 1.6, resize: 'vertical', fontFamily: 'inherit' }}
-              />
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button onClick={() => setKakaoPreview(null)} className="ta-btn" style={{ height: 34, paddingLeft: 14, paddingRight: 14 }}>
-                  취소
-                </button>
-                <button
-                  onClick={confirmKakaoSend}
-                  disabled={kakaoSending != null || !kakaoPreview.message.trim()}
-                  className="ta-btn-primary"
-                  style={{ height: 34, paddingLeft: 14, paddingRight: 14 }}
-                >
-                  {kakaoSending ? '전송 중…' : '전송'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {kakao.modal}
       </div>
   );
 }

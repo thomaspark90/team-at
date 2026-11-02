@@ -26,7 +26,7 @@ export async function GET(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   {
-    const denied = await requireGardenTab(supabase, user, 'pricing');
+    const denied = await requireGardenTab(supabase, user, ['pricing', 'saleprice']);
     if (denied) return denied;
   }
   // 허용 계정이 아니면 상태 맵도 주지 않는다 — 버튼 자체가 안 보이므로 필요 없다
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   {
-    const denied = await requireGardenTab(supabase, user, 'pricing');
+    const denied = await requireGardenTab(supabase, user, ['pricing', 'saleprice']);
     if (denied) return denied;
   }
   if (!canSendKakaoOrder(user.email)) {
