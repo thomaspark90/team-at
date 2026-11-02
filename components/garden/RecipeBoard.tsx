@@ -21,8 +21,9 @@ import { brewOnStyle } from '@/lib/garden/brew-colors';
 // 타이머 없음(저울 타이머 사용). 편집은 필터 레시피 탭에서 — 보드는 보기 + 추출 평가만.
 // 넘김은 CSS scroll-snap — 터치 스와이프는 브라우저 기본 동작, 마우스는 ‹ › 버튼.
 
-const PER_PAGE = 3; // 태블릿·PC — 모바일(폭 700px 이하)은 1장 (2026-11-02)
+const PER_PAGE = 3; // 태블릿 가로·PC — 모바일(폭 700px 이하) 1장, 태블릿 세로(701~1023px) 2장 (2026-11-02)
 const MOBILE_QUERY = '(max-width: 700px)';
+const NARROW_QUERY = '(max-width: 1023px)';
 const STORE_KEY = 'garden-board-store'; // 기기별 지점 기억
 const STAFF_KEY = 'garden-board-staff'; // 공용 태블릿 — 마지막으로 고른 이름 기억
 const CACHE_KEY = 'garden-recipe-board-cache-v1'; // 마지막 보드 응답 — 다음 열 때 즉시 그리기용
@@ -279,14 +280,23 @@ export default function RecipeBoard() {
 
   // 모바일이면 한 페이지에 카드 1장 — 3장을 좁은 폭에 넣으면 글자가 세로로 쪼개진다
   const [isMobile, setIsMobile] = useState(false);
+  const [isNarrow, setIsNarrow] = useState(false); // 아이패드 세로 등 — 3장은 너무 좁아 2장
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_QUERY);
-    const on = () => setIsMobile(mq.matches);
+    const nq = window.matchMedia(NARROW_QUERY);
+    const on = () => {
+      setIsMobile(mq.matches);
+      setIsNarrow(nq.matches);
+    };
     on();
     mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
+    nq.addEventListener('change', on);
+    return () => {
+      mq.removeEventListener('change', on);
+      nq.removeEventListener('change', on);
+    };
   }, []);
-  const perPage = isMobile ? 1 : PER_PAGE;
+  const perPage = isMobile ? 1 : isNarrow ? 2 : PER_PAGE;
 
   const pages = useMemo(() => {
     const out: BoardBean[][] = [];
@@ -619,6 +629,10 @@ export default function RecipeBoard() {
                 scrollSnapStop: 'always',
                 display: 'grid',
                 gridTemplateColumns: `repeat(${perPage}, minmax(0, 1fr))`,
+                // 카드 높이 = 내용 높이(같은 페이지에선 가장 긴 카드에 맞춤), 화면이 짧으면 화면 높이까지만 — 넘치면 카드 안 스크롤.
+                // 세로로 긴 화면(아이패드 세로)에서 카드가 끝까지 늘어나 노트 주변이 휑하던 것 해소 (2026-11-02)
+                gridTemplateRows: 'fit-content(100%)',
+                alignContent: 'start',
                 gap: 12,
                 padding: '0 20px 8px',
                 minHeight: 0,

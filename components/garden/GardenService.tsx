@@ -5,6 +5,7 @@ import type { GardenOptions, PricingSettings, PurchaseRecord } from '@/lib/types
 import { DEFAULT_SETTINGS, computePricing, normalize } from '@/lib/pricing';
 import { toast } from '@/components/Toast';
 import { fmtDate } from '@/lib/garden/format';
+import { bandRange, defaultActiveCells, guideRowForCost, type ActiveCells } from '@/lib/garden/price-bands';
 
 // 인라인 스타일에서 참조할 midday 토큰 (HSL 변수)
 const C = {
@@ -79,11 +80,26 @@ export default function GardenService() {
     [price, settings]
   );
 
+  // 권장 배수 = 판매가 설정 참고표에서 재료비가 속한 행의 초록 칸 범위 (2026-11-03, 이전엔 4.0~5.5 고정).
+  // 재료비 행이 바뀔 때만 다시 채우므로, 같은 행 안에서는 아래 ‹ › 로 손본 값이 유지된다.
+  const [bandCells, setBandCells] = useState<ActiveCells>(defaultActiveCells);
+  useEffect(() => {
+    fetch('/api/garden-price-bands', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j?.cells && setBandCells(j.cells));
+  }, []);
+  const bandRow = result ? guideRowForCost(result.costPerCup) : null;
+  useEffect(() => {
+    if (bandRow == null) return;
+    const band = bandRange(bandCells[String(bandRow)] ?? []);
+    if (band) setSettings((s) => ({ ...s, minMult: band.lo, maxMult: band.hi }));
+  }, [bandRow, bandCells]);
+
   const setNum = (key: keyof PricingSettings, v: number) =>
     setSettings((s) => ({ ...s, [key]: v }));
 
   const adjMin = (d: number) =>
-    setSettings((s) => ({ ...s, minMult: clamp(s.minMult + d, 3, s.maxMult) }));
+    setSettings((s) => ({ ...s, minMult: clamp(s.minMult + d, 2, s.maxMult) }));
   const adjMax = (d: number) =>
     setSettings((s) => ({ ...s, maxMult: clamp(s.maxMult + d, s.minMult, 7) }));
 
@@ -442,9 +458,9 @@ export default function GardenService() {
                 </div>
                 <div className="text-caption text-muted-foreground" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span>권장</span>
-                  <Stepper value={settings.minMult} onDec={() => adjMin(-0.5)} onInc={() => adjMin(0.5)} />
+                  <Stepper value={settings.minMult} onDec={() => adjMin(-0.25)} onInc={() => adjMin(0.25)} />
                   <span>~</span>
-                  <Stepper value={settings.maxMult} onDec={() => adjMax(-0.5)} onInc={() => adjMax(0.5)} />
+                  <Stepper value={settings.maxMult} onDec={() => adjMax(-0.25)} onInc={() => adjMax(0.25)} />
                 </div>
               </div>
 
@@ -722,7 +738,7 @@ function Stepper({ value, onDec, onInc }: { value: number; onDec: () => void; on
   return (
     <span className="rounded-md border border-border" style={{ display: 'inline-flex', alignItems: 'center' }}>
       <button onClick={onDec} style={btn}>‹</button>
-      <span className="tabular text-foreground" style={{ minWidth: 28, textAlign: 'center', fontSize: 13 }}>{value.toFixed(1)}</span>
+      <span className="tabular text-foreground" style={{ minWidth: 28, textAlign: 'center', fontSize: 13 }}>{value.toFixed(2)}</span>
       <button onClick={onInc} style={btn}>›</button>
     </span>
   );

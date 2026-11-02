@@ -30,7 +30,8 @@ export async function GET() {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   {
-    const denied = await requireGardenTab(supabase, user, 'saleprice');
+    // 읽기는 발주(pricing) 탭도 허용 — 원두 정보 입력 시 권장 배수를 참고표에서 가져온다 (2026-11-03)
+    const denied = await requireGardenTab(supabase, user, ['saleprice', 'pricing']);
     if (denied) return denied;
   }
   return NextResponse.json({ cells: (await readCells()) ?? defaultActiveCells() });
