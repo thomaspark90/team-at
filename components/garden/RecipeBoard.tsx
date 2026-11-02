@@ -21,7 +21,8 @@ import { brewOnStyle } from '@/lib/garden/brew-colors';
 // 타이머 없음(저울 타이머 사용). 편집은 필터 레시피 탭에서 — 보드는 보기 + 추출 평가만.
 // 넘김은 CSS scroll-snap — 터치 스와이프는 브라우저 기본 동작, 마우스는 ‹ › 버튼.
 
-const PER_PAGE = 3;
+const PER_PAGE = 3; // 태블릿·PC — 모바일(폭 700px 이하)은 1장 (2026-11-02)
+const MOBILE_QUERY = '(max-width: 700px)';
 const STORE_KEY = 'garden-board-store'; // 기기별 지점 기억
 const STAFF_KEY = 'garden-board-staff'; // 공용 태블릿 — 마지막으로 고른 이름 기억
 const CACHE_KEY = 'garden-recipe-board-cache-v1'; // 마지막 보드 응답 — 다음 열 때 즉시 그리기용
@@ -276,11 +277,22 @@ export default function RecipeBoard() {
     return m;
   }, [beanMetas, purchaseTasting]);
 
+  // 모바일이면 한 페이지에 카드 1장 — 3장을 좁은 폭에 넣으면 글자가 세로로 쪼개진다
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_QUERY);
+    const on = () => setIsMobile(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  const perPage = isMobile ? 1 : PER_PAGE;
+
   const pages = useMemo(() => {
     const out: BoardBean[][] = [];
-    for (let i = 0; i < beans.length; i += PER_PAGE) out.push(beans.slice(i, i + PER_PAGE));
+    for (let i = 0; i < beans.length; i += perPage) out.push(beans.slice(i, i + perPage));
     return out;
-  }, [beans]);
+  }, [beans, perPage]);
 
   const latestAligns = useMemo(
     () => ({
@@ -328,10 +340,21 @@ export default function RecipeBoard() {
       style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
     >
       {/* 상단 바 — 돌아가기 · 제목 · 페이지 */}
-      <header style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 20px', flexShrink: 0 }}>
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: isMobile ? 'wrap' : 'nowrap',
+          columnGap: isMobile ? 14 : 16,
+          rowGap: 10,
+          padding: isMobile ? '12px 16px' : '12px 20px',
+          flexShrink: 0,
+          whiteSpace: 'nowrap', // 좁은 폭에서 글자가 한 자씩 세로로 쪼개지지 않게 — 넘치면 줄 단위로 감싼다
+        }}
+      >
         {view === 'board' ? (
           <Link href="/garden/recipes" className="text-body text-muted-foreground hover:text-foreground">
-            ← 필터 레시피
+            {isMobile ? '←' : '← 필터 레시피'}
           </Link>
         ) : (
           <button onClick={() => setView('board')} className="text-body text-muted-foreground hover:text-foreground" style={plainBtn}>
@@ -342,6 +365,8 @@ export default function RecipeBoard() {
           {view === 'board' ? '레시피 보드' : '필터 커피 아카이브'}
         </h1>
         <span style={{ flex: 1 }} />
+        {/* 모바일 — 제목 줄 아래 새 줄에 대기·준비 중·아카이브·지점 */}
+        {isMobile && <span style={{ flexBasis: '100%', height: 0 }} />}
         {/* 판매 대기 — 레시피는 있지만 아직 판매 전. 누르면 목록, 원두를 누르면 크게 보기(레시피 + 추출 평가) */}
         {view === 'board' && waitingBeans.length > 0 && (
           <span style={{ position: 'relative' }}>
@@ -359,7 +384,7 @@ export default function RecipeBoard() {
             {waitingOpen && (
               <div
                 className="rounded-md bg-background shadow-soft"
-                style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, width: 360, padding: '16px 18px', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 4 }}
+                style={{ position: 'absolute', top: 'calc(100% + 10px)', ...(isMobile ? { left: 0 } : { right: 0 }), width: 'min(360px, 88vw)', padding: '16px 18px', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 4 }}
               >
                 <p className="text-caption text-muted-foreground" style={{ margin: '0 0 6px' }}>
                   판매 대기 — 누르면 레시피를 크게 볼 수 있어요
@@ -407,7 +432,7 @@ export default function RecipeBoard() {
             {pendingOpen && (
               <div
                 className="rounded-md bg-background shadow-soft"
-                style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, width: 360, padding: '16px 18px', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 12 }}
+                style={{ position: 'absolute', top: 'calc(100% + 10px)', ...(isMobile ? { left: 0 } : { right: 0 }), width: 'min(360px, 88vw)', padding: '16px 18px', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 12 }}
               >
                 <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
                   레시피 준비 중 — 필터 레시피에서 설정하면 보드에 올라와요
@@ -490,7 +515,7 @@ export default function RecipeBoard() {
                 <h2 className="text-title font-medium" style={{ margin: 0 }}>{country}</h2>
                 <span className="tabular text-caption text-muted-foreground">{groups.length}종</span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${PER_PAGE}, minmax(0, 1fr))`, gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${perPage}, minmax(0, 1fr))`, gap: 12 }}>
                 {groups.map((g) => (
                   <div
                     key={g.beanKey}
@@ -531,13 +556,13 @@ export default function RecipeBoard() {
           return (
             <div
               onClick={() => setOpenArchived(null)}
-              style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'hsl(var(--foreground) / 0.45)' }}
+              style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgb(0 0 0 / 0.5)' }}
             >
               <div
                 onClick={(e) => e.stopPropagation()}
                 style={{ width: 'min(420px, 92vw)', height: 'min(760px, 90dvh)', display: 'flex', flexDirection: 'column', gap: 8 }}
               >
-                <button onClick={() => setOpenArchived(null)} className="text-body text-background" style={{ ...plainBtn, alignSelf: 'flex-end' }}>
+                <button onClick={() => setOpenArchived(null)} className="text-body" style={{ ...plainBtn, alignSelf: 'flex-end', color: '#fff' }}>
                   닫기 ×
                 </button>
                 <BoardCard
@@ -593,7 +618,7 @@ export default function RecipeBoard() {
                 scrollSnapAlign: 'start',
                 scrollSnapStop: 'always',
                 display: 'grid',
-                gridTemplateColumns: `repeat(${PER_PAGE}, minmax(0, 1fr))`,
+                gridTemplateColumns: `repeat(${perPage}, minmax(0, 1fr))`,
                 gap: 12,
                 padding: '0 20px 8px',
                 minHeight: 0,
@@ -629,16 +654,31 @@ export default function RecipeBoard() {
           const isWaiting = waitingSet.has(focus.beanKey);
           const r = g?.[focus.bt];
           if (!g || !r) return null;
-          const box: React.CSSProperties = { width: 'min(404px, 44vw)', height: 'min(690px, 86dvh)', display: 'flex', minWidth: 0 };
+          // 모바일은 두 카드를 위아래로 쌓고 화면 전체를 스크롤
+          const box: React.CSSProperties = isMobile
+            ? { width: '92vw', height: '82dvh', display: 'flex', minWidth: 0, flexShrink: 0 }
+            : { width: 'min(404px, 44vw)', height: 'min(690px, 86dvh)', display: 'flex', minWidth: 0 };
           return (
             <div
               onClick={() => setFocus(null)}
-              style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, background: 'hsl(var(--foreground) / 0.45)' }}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 50,
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: 'center',
+                justifyContent: isMobile ? 'flex-start' : 'center',
+                gap: 16,
+                padding: isMobile ? '56px 0 24px' : 0,
+                overflowY: isMobile ? 'auto' : 'visible',
+                background: 'rgb(0 0 0 / 0.5)',
+              }}
             >
               <button
                 onClick={() => setFocus(null)}
-                className="text-body text-background"
-                style={{ ...plainBtn, position: 'absolute', top: 18, right: 24 }}
+                className="text-body"
+                style={{ ...plainBtn, position: 'absolute', top: 18, right: 24, color: '#fff' }} // 어두운 배경 위 — 다크 모드에서도 흰 글자
               >
                 닫기 ×
               </button>
