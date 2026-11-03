@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DripRecipe, PurchaseRecord } from '@/lib/types';
 import { PRICE_UNIT, normalize, roundUpPrice } from '@/lib/pricing';
 import { fmtDate } from '@/lib/garden/format';
@@ -27,6 +27,10 @@ const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 // 판매가 후보 범위 — 권장 배수 구간 양옆으로 이만큼 더 보여준다 (500원 단위 후보, 가로 스와이프)
 const SPREAD_BELOW = 0.25;
 const SPREAD_ABOVE = 0.75;
+// 판매가 후보표 고정 범위(원, VAT 포함) — 이 범위는 항상 보인다
+const SPREAD_MIN_PRICE = 6000;
+const SPREAD_MAX_PRICE = 15000;
+const PRICE_COL_W = 76; // 판매가 후보 칸 너비(px)
 const FALLBACK_BAND = { lo: 4, hi: 5.5 }; // 참고표 행에 권장 칸이 하나도 없을 때
 const EPS = 1e-9;
 // 숨긴 원두는 이 기간 안에 다시 보이기를 안 하면 '숨긴 원두' 목록에서도 빠진다 (기록은 유지)
@@ -394,19 +398,32 @@ function RecordPricer({
   const band = bandRange(bandCells[String(bandRow)] ?? []);
   const { lo, hi: top } = band ?? FALLBACK_BAND;
   // 판매가 후보 — 권장 구간 양옆까지 500원 단위. 기존 책정가가 범위 밖·단위 밖이면 함께 보여준다
+  // 판매가 후보 — 최소 6,000~15,000원(500원 단위) 전 구간을 좌우 스크롤로 보여주고(2026-11-03 대표 지시),
+  // 권장 구간 양옆 스프레드가 그 밖으로 나가면 그만큼 넓힌다. 초록 칸 = 권장(참고표) 범위.
   const prices: number[] = [];
   if (cost > 0) {
-    const last = roundUpPrice(cost * (top + SPREAD_ABOVE));
-    for (let p = roundUpPrice(cost * Math.max(1, lo - SPREAD_BELOW)); p <= last; p += PRICE_UNIT) prices.push(p);
+    const first = Math.min(SPREAD_MIN_PRICE, roundUpPrice(cost * Math.max(1, lo - SPREAD_BELOW)));
+    const last = Math.max(SPREAD_MAX_PRICE, roundUpPrice(cost * (top + SPREAD_ABOVE)));
+    for (let p = first; p <= last; p += PRICE_UNIT) prices.push(p);
   }
   if (pick != null && !prices.includes(pick)) {
     prices.push(pick);
     prices.sort((a, b) => a - b);
   }
   const multOf = (p: number) => (cost > 0 ? p / cost : 0);
+  const hi = (p: number) => band != null && multOf(p) >= band.lo - EPS && multOf(p) <= band.hi + EPS;
+  // 처음 열 때 초록(권장) 칸이 보이도록 가로 스크롤 — 권장 첫 칸 앞에 한 칸 여유
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const firstHi = prices.findIndex((p) => hi(p));
+  const pickIdx = pick != null ? prices.indexOf(pick) : -1;
+  useEffect(() => {
+    const el = scrollerRef.current;
+    const idx = pickIdx >= 0 ? pickIdx : firstHi;
+    if (el && idx > 0) el.scrollLeft = Math.max(0, (idx - 1) * PRICE_COL_W);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 기록·권장 구간이 바뀔 때만
+  }, [rec.id, firstHi]);
   const iceCost = brewCost(rec, doses.ice.doseG);
   const hotCost = brewCost(rec, doses.hot.doseG);
-  const hi = (p: number) => band != null && multOf(p) >= band.lo - EPS && multOf(p) <= band.hi + EPS;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
       {!compact && (
@@ -440,11 +457,11 @@ function RecordPricer({
       )}
 
       {/* 판매가 후보 표 (가로 스와이프) — 500원 단위 판매가 · 실제 배수 · 원가율 */}
-      <div className="rounded-md border border-border" style={{ overflowX: 'auto', fontSize: 13, WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
+      <div ref={scrollerRef} className="rounded-md border border-border" style={{ overflowX: 'auto', fontSize: 13, WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: `52px repeat(${prices.length}, 76px)`,
+            gridTemplateColumns: `52px repeat(${prices.length}, ${PRICE_COL_W}px)`,
             minWidth: 'max-content',
           }}
         >
