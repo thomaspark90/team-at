@@ -10,7 +10,7 @@ import { STUDIO_TABS, tabForPath as studioTabForPath } from '@/lib/studio/tabs';
 //  2) /api/*     : 로그인 + 팀 도메인 (라우트마다 개별 확인하던 것을 여기서 일괄 강제)
 // 이렇게 두지 않으면 페이지는 막혀도 API 를 직접 호출해 같은 데이터를 가져갈 수 있다.
 
-const PROTECTED = ['/dashboard', '/studio', '/garden', '/finance', '/settings', '/account'];
+const PROTECTED = ['/dashboard', '/studio', '/garden', '/finance', '/settings', '/account', '/docs']; // /docs 는 페이지가 대표 전용으로 한 번 더 막는다
 
 // 세션 쿠키 없이 호출되는 API — 각 라우트가 토큰/서명으로 자체 인증한다.
 // (외부 수집기·Blob 완료 웹훅·공개 단어 페이지)
@@ -200,5 +200,5 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   // 보호 페이지 + 모든 API. 정적 자산과 /, /s/*, /install, /garden-service/* 는 대상 아님.
-  matcher: ['/dashboard/:path*', '/studio/:path*', '/garden/:path*', '/finance/:path*', '/settings/:path*', '/api/:path*'],
+  matcher: ['/dashboard/:path*', '/studio/:path*', '/garden/:path*', '/finance/:path*', '/settings/:path*', '/docs/:path*', '/api/:path*'],
 };

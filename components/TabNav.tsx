@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import ThemeToggle, { ThemeOptions } from '@/components/ThemeToggle';
 import { SECTIONS, inAccounting } from '@/lib/access/sections';
 import { fetchMyAccess } from '@/lib/access/tab-access-client';
+import { isOwner } from '@/lib/finance/access';
 
 const TABS = SECTIONS.map((s) => ({ href: s.href, label: s.label, key: s.key, desc: s.desc }));
 
@@ -41,8 +42,14 @@ export default function TabNav() {
   // 나비에 표시할 탭 — 섹션 토글로 막힌 것도 지우지 않고 비활성으로 그대로 둔다(2026-08-09,
   // GardenNav와 동일 처리: 어떤 섹션이 있는지, 왜 못 들어가는지 알 수 있게). admin 전용 설정
   // 탭은 토글 대상이 아니라 admin일 때만 추가되고 항상 활성.
-  const navTabs = [...TABS, ...(isAdmin ? [{ href: '/settings', label: '설정', key: 'admin-settings', desc: '계정별 접근 권한 관리' }] : [])];
-  const isTabAllowed = (key: string) => key === 'admin-settings' || !Array.isArray(allowed) || allowed.includes(key);
+  // 문서(내부 공유 문서 · 링크 발급) — 대표 계정에만 노출. 실제 차단은 /docs 페이지가 서버에서 한다(2026-11-03)
+  const navTabs = [
+    ...TABS,
+    ...(isOwner(email) ? [{ href: '/docs', label: '문서', key: 'owner-docs', desc: '링크 공유용 내부 문서' }] : []),
+    ...(isAdmin ? [{ href: '/settings', label: '설정', key: 'admin-settings', desc: '계정별 접근 권한 관리' }] : []),
+  ];
+  const isTabAllowed = (key: string) =>
+    key === 'admin-settings' || key === 'owner-docs' || !Array.isArray(allowed) || allowed.includes(key);
 
   // 페이지 이동 시 햄버거 메뉴 닫기
   useEffect(() => {
