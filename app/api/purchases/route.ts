@@ -237,7 +237,7 @@ export async function PATCH(req: Request) {
     user,
     '가든서비스 판매가 책정',
     record.chosenPrice != null
-      ? `${record.bean} · 판매가 ${record.chosenPrice.toLocaleString()}원 (${record.chosenMult}×)`
+      ? `${record.bean} · 판매가 ${record.chosenPrice.toLocaleString()}원`
       : `${record.bean} · 책정 해제`
   );
   return NextResponse.json(record);

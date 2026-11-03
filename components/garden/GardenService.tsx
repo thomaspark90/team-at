@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS, computePricing, normalize } from '@/lib/pricing';
 import { toast } from '@/components/Toast';
 import { fmtDate } from '@/lib/garden/format';
 import { useKakaoOrder } from './KakaoOrder';
-import { bandRange, defaultActiveCells, guideRowForCost, type ActiveCells } from '@/lib/garden/price-bands';
+import { bandRange, defaultActiveCells, guideRowForCost, ratioRangeLabel, type ActiveCells } from '@/lib/garden/price-bands';
 import PriceBandGuide from './PriceBandGuide';
 
 // 인라인 스타일에서 참조할 midday 토큰 (HSL 변수)
@@ -22,7 +22,7 @@ const C = {
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 
-// 발주 전용 화면 — 판매가 책정(배수 선택·공유)은 권한이 분리된 '판매가 설정' 탭
+// 발주 전용 화면 — 판매가 책정(판매가 선택·공유)은 권한이 분리된 '판매가 설정' 탭
 // (GardenSalePrice)이 담당한다. 여기서는 발주 기록 저장과 원가 확인까지만 한다.
 export default function GardenService() {
   const [settings, setSettings] = useState<PricingSettings>(DEFAULT_SETTINGS);
@@ -68,7 +68,7 @@ export default function GardenService() {
   // 잔존율·투입량이 0이면(입력창 비움) 재료비 0원·판매가 0원이 그대로 저장되므로 결과 자체를 막는다
   const result = useMemo(
     () =>
-      price > 0 && settings.capacityG > 0 && settings.yieldRate > 0 && settings.doseG > 0
+      price > 0 && settings.capacityG > 0 && settings.yieldRate > 0 && settings.yieldRate <= 1 && settings.doseG > 0
         ? computePricing(price, settings)
         : null,
     [price, settings]
@@ -177,9 +177,10 @@ export default function GardenService() {
           <p className="ta-label">판매가 산식 기준</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 12px' }}>
             <Field label="구매 용량(g)" value={settings.capacityG} onChange={(v) => setNum('capacityG', v)} />
-            {/* 값은 '남는 비율'(잔존율) — 로스율 10%면 90을 입력한다. 라벨 오독으로 10을 넣으면 재료비가 9배가 된다 */}
-            <Field label="로스 제외 잔존율(%)" value={Math.round(settings.yieldRate * 100)} onChange={(v) => setNum('yieldRate', v / 100)} />
-            <Field label="추출 투입량(g)" value={settings.doseG} onChange={(v) => setNum('doseG', v)} />
+            {/* 세팅 로스 — 발주 후 세팅(다이얼 맞추기)에 쓰는 양(기본 10%). 저장값은 기존대로 남는 비율(yieldRate = 1 − 로스) */}
+            <Field label="세팅 로스(%)" value={Math.round((1 - settings.yieldRate) * 100)} onChange={(v) => setNum('yieldRate', 1 - v / 100)} />
+            {/* 기준 도징 — ICE·HOT 도징량 중간값(프리셋 22g·18g → 20g). 판매가 판단 기준 (2026-11-03) */}
+            <Field label="기준 도징(g, ICE·HOT 평균)" value={settings.doseG} onChange={(v) => setNum('doseG', v)} />
           </div>
         </div>
 
@@ -403,14 +404,14 @@ export default function GardenService() {
                   <span className="text-caption text-muted-foreground">잔당 재료비 (VAT 포함)</span>
                   <span className="text-display text-foreground tabular">{won(result.costPerCup)}</span>
                 </div>
-                {/* 권장 배수 — 참고표에서 자동 산정(손으로 고치지 않음) */}
+                {/* 권장 재료비율 — 참고표에서 자동 산정(손으로 고치지 않음). 배수 표기는 2026-11-03 폐지 */}
                 <span className="text-caption text-muted-foreground tabular">
-                  권장 <span className="text-body text-foreground">{settings.minMult.toFixed(2)}~{settings.maxMult.toFixed(2)}×</span>
+                  권장 재료비율 <span className="text-body text-foreground">{ratioRangeLabel(settings.minMult, settings.maxMult)}</span>
                   {bandRow != null && ` · 참고표 ${bandRow.toLocaleString('ko-KR')}원 행`}
                 </span>
               </div>
 
-              {/* 권장 판매 범위 — 배수 선택(책정)은 '판매가 설정' 탭 담당이라 여기선 범위만 보여준다 */}
+              {/* 권장 판매 범위 — 판매가 선택(책정)은 '판매가 설정' 탭 담당이라 여기선 범위만 보여준다 */}
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                 <span className="text-caption text-muted-foreground">권장 판매 범위</span>
                 <span className="text-title text-foreground tabular">

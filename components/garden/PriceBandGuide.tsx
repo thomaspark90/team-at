@@ -7,10 +7,13 @@ import {
   defaultActiveCells,
   guidePrice,
   kgPriceForCost,
+  ratioLabel,
+  ratioRangeLabel,
   type ActiveCells,
 } from '@/lib/garden/price-bands';
 
-// 판매가 설정 화면 하단 참고표 — 잔당 재료비 × 배수 → 판매가.
+// 판매가 설정 화면 하단 참고표 — 잔당 재료비 × 목표 재료비율 → 판매가.
+// 열 키는 내부적으로 배수(저장값 호환)지만 화면엔 재료비율(1÷배수)만 표기한다 (2026-11-03 배수 표기 폐지).
 // 칸을 클릭하면 권장(초록) ↔ 비활성(회색)이 바뀌고 서버에 저장된다 (/api/garden-price-bands).
 // 발주 화면은 readOnly(보기 전용, 기준 변경은 판매가 설정에서만) + 지금 원두 재료비 행 강조 (2026-11-03).
 
@@ -92,11 +95,11 @@ export default function PriceBandGuide({
 
   return (
     <div className="min-w-0">
-      <p className="ta-label">참고표 · 재료비별 권장 배수</p>
+      <p className="ta-label">참고표 · 재료비별 권장 재료비율</p>
       <p className="text-caption text-muted-foreground" style={{ margin: '0 0 12px' }}>
-        세로 = 잔당 재료비(원) · 가로 = 배수 · 칸 = 판매가(원, 500원 올림) / 원가율 · 잔당 이익(원). 초록 = 권장 · 회색 = 비활성 — {readOnly ? '권장 범위는 판매가 설정 화면에서 바꿔요.' : '칸을 클릭해 바꿀 수 있어요(모두에게 저장).'}
+        세로 = 잔당 재료비(원, ICE·HOT 평균 도징) · 가로 = 목표 재료비율 · 칸 = 판매가(원, 500원 올림) / 실제 재료비율 · 잔당 이익(원). 초록 = 권장 · 회색 = 비활성 — {readOnly ? '권장 범위는 판매가 설정 화면에서 바꿔요.' : '칸을 클릭해 바꿀 수 있어요(모두에게 저장).'}
         <br />
-        ≈ kg = 그 재료비가 나오는 1kg 매입가(VAT 별도, 수율 90%·20g 기준).
+        ≈ kg = 그 재료비가 나오는 1kg 매입가(VAT 별도, 세팅 로스 10%·20g 기준).
       </p>
       {error && (
         <p className="ta-error text-caption" style={{ margin: '0 0 8px' }}>
@@ -109,7 +112,7 @@ export default function PriceBandGuide({
             <tr>
               <th className="text-caption" style={{ ...head, ...sticky, textAlign: 'left' }}>재료비(원)</th>
               {GUIDE_MULTS.map((m) => (
-                <th key={m} className="text-caption" style={head}>{m.toFixed(2)}×</th>
+                <th key={m} className="text-caption" style={head}>{ratioLabel(m)}</th>
               ))}
             </tr>
           </thead>
@@ -124,7 +127,7 @@ export default function PriceBandGuide({
                     {hl && '▸ '}
                     {n(cost)}
                     <span className="text-caption text-muted-foreground" style={{ display: 'block' }}>
-                      ≈ kg {(kgPriceForCost(cost) / 10000).toFixed(1)}만 · {on.length ? `${on[0].toFixed(2)}~${on[on.length - 1].toFixed(2)}×` : '권장 없음'}
+                      ≈ kg {(kgPriceForCost(cost) / 10000).toFixed(1)}만 · {on.length ? `재료비율 ${ratioRangeLabel(on[0], on[on.length - 1])}` : '권장 없음'}
                     </span>
                   </th>
                   {GUIDE_MULTS.map((m) => {
@@ -137,7 +140,7 @@ export default function PriceBandGuide({
                         role={readOnly ? undefined : 'button'}
                         tabIndex={readOnly ? undefined : 0}
                         aria-pressed={readOnly ? undefined : active}
-                        title={readOnly ? undefined : `${n(cost)}원 × ${m.toFixed(2)} — 클릭해 ${active ? '비활성' : '권장'}으로`}
+                        title={readOnly ? undefined : `재료비 ${n(cost)}원 · 목표 재료비율 ${ratioLabel(m)} — 클릭해 ${active ? '비활성' : '권장'}으로`}
                         onClick={() => toggle(cost, m)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {

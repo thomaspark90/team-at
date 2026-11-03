@@ -9,7 +9,7 @@ import type { PurchaseRecord } from '@/lib/types';
 
 // 필터 레시피 목록(2026-11-03 대표 결정: 시안 C3 '인덱스 + 펼침').
 // 한 원두 = 한 줄 인덱스 — 날짜는 발주 → 로스팅 → D+N 흐름, ICE·HOT 은 비율(없으면 '레시피 설정 필요'),
-// 이익은 재료비/이익 막대(HOT 기준, 없으면 ICE). 줄을 누르면 원가 계산 + 기존 카드(타이머·수정·이력·보관)가 펼쳐진다.
+// 이익은 재료비/이익 막대(ICE·HOT 평균 도징 기준, 2026-11-03 — 이전엔 HOT 우선). 줄을 누르면 원가 계산 + 기존 카드(타이머·수정·이력·보관)가 펼쳐진다.
 // 정렬: 설정 필요 먼저(기본) · 이익 높은순 · 로스팅 오래된순. 데이터 가공은 GardenDashboard 가 하고, 여기는 표시만 맡는다.
 
 export type LedgerSlot = {
@@ -32,6 +32,7 @@ export type LedgerRow = {
   roast: RoastInfo | null; // 로스팅일 — 미기재면 발주일+1 추정(estimated)
   price: number | null; // 책정 판매가(원, VAT 포함 소비자가)
   purchaseId: string | null; // 판매가가 저장된 최신 발주 기록 — 판매가 칸 인라인 수정 대상
+  base: { doseG: number; cost: number } | null; // 판단 기준 재료비 — ICE·HOT 도징 중간값(레시피 없는 쪽은 프리셋 22g·18g)
   buy: { capacityG: number; price: number; vatIncluded: boolean } | null; // 최신 발주 용량·구매가(입력 그대로)
   ice: LedgerSlot | null;
   hot: LedgerSlot | null;
@@ -48,8 +49,8 @@ const SORTS: { id: SortKey; label: string }[] = [
 const num = (n: number) => Math.round(n).toLocaleString('ko-KR');
 const md = (s: string | null) => (s ? s.slice(5, 10).replace('-', '.') : '');
 const needs = (r: LedgerRow) => !r.ice || !r.hot;
-// 막대·정렬 기준 슬롯 — HOT 우선, 없으면 ICE
-const mainSlot = (r: LedgerRow) => r.hot ?? r.ice;
+// 막대·정렬 기준 — ICE·HOT 평균 도징 재료비
+const baseProfit = (r: LedgerRow) => (r.base && r.price != null ? r.price - r.base.cost : null);
 const profitOf = (r: LedgerRow, s: LedgerSlot | null) => (s && r.price != null && s.cost != null ? r.price - s.cost : null);
 
 
@@ -108,7 +109,7 @@ export default function RecipeLedger({
   const sorted = useMemo(() => {
     if (sort === 'need') return rows;
     const list = [...rows];
-    if (sort === 'profit') list.sort((a, b) => (profitOf(b, mainSlot(b)) ?? -Infinity) - (profitOf(a, mainSlot(a)) ?? -Infinity));
+    if (sort === 'profit') list.sort((a, b) => (baseProfit(b) ?? -Infinity) - (baseProfit(a) ?? -Infinity));
     else {
       const age = (r: LedgerRow) => r.roast?.days ?? -1;
       list.sort((a, b) => age(b) - age(a));
@@ -150,11 +151,11 @@ export default function RecipeLedger({
   };
 
   const marginBar = (row: LedgerRow) => {
-    const s = mainSlot(row);
-    if (!s || row.price == null || s.cost == null) return <span className="text-muted-foreground">—</span>;
+    const s = row.base;
+    if (!s || row.price == null) return <span className="text-muted-foreground">—</span>;
     const pct = Math.min(100, Math.max(0, Math.round((s.cost / row.price) * 100)));
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }} title={`재료비 ${num(s.cost)}원 · 재료비율 ${pct}%`}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }} title={`재료비 ${num(s.cost)}원(ICE·HOT 평균 ${s.doseG}g) · 재료비율 ${pct}%`}>
         <span className="rounded-sm bg-muted" style={{ display: 'flex', width: 120, height: 8, overflow: 'hidden' }}>
           <span className="bg-muted-foreground/40" style={{ width: `${pct}%` }} />
           <span className="bg-emerald-600/60" style={{ width: `${100 - pct}%` }} />
@@ -227,7 +228,7 @@ export default function RecipeLedger({
               <th className={th} style={cell}>ICE</th>
               <th className={th} style={cell}>HOT</th>
               <th className={th} style={{ ...cell, textAlign: 'right' }}>판매가(원)</th>
-              <th className={th} style={cell}>재료비 / 이익(원) · 재료비율 — HOT 기준, 없으면 ICE</th>
+              <th className={th} style={cell}>재료비 / 이익(원) · 재료비율 — ICE·HOT 평균 도징 기준</th>
             </tr>
           </thead>
           <tbody>

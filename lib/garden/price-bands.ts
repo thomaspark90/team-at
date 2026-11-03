@@ -33,7 +33,14 @@ export const bandForCost = (cost: number): PriceBand =>
 // 판매가는 lib/pricing 과 같은 단위(500원) 올림
 export const guidePrice = (cost: number, mult: number) => roundUpPrice(cost * mult);
 
-// 재료비 → 1kg 매입가(VAT 별도) 환산 — 기본 설정(수율 90%·도징 20g·VAT 1.1) 기준
+// 화면 표기 — 배수는 저장 키로만 남기고 재료비율(= 1 ÷ 배수)로 보여준다 (2026-11-03 대표 결정: 배수 표기 폐지)
+export const ratioPct = (mult: number) => Math.round((100 / mult) * 10) / 10;
+export const ratioLabel = (mult: number) => `${ratioPct(mult)}%`;
+/** 권장 재료비율 범위 문구 — 배수 범위(lo~hi)를 재료비율(낮은%~높은%)로 */
+export const ratioRangeLabel = (lo: number, hi: number) =>
+  lo === hi ? ratioLabel(lo) : `${ratioPct(hi)}~${ratioPct(lo)}%`;
+
+// 재료비 → 1kg 매입가(VAT 별도) 환산 — 기본 설정(세팅 로스 10%·도징 20g·VAT 1.1) 기준
 export const kgPriceForCost = (cost: number) => (cost * 900) / 20 / 1.1;
 
 // 참고표 칸 단위 권장 상태 — 판매가 설정 화면에서 칸을 클릭해 켜고 끈다 (서버 저장)

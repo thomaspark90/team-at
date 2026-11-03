@@ -8,7 +8,7 @@ import { presetById } from '@/lib/drip-presets';
 
 export type BrewDoses = Record<BrewType, { doseG: number; fromRecipe: boolean }>;
 
-const PRESET_DOSE: Record<BrewType, number> = {
+export const PRESET_DOSE: Record<BrewType, number> = {
   ice: presetById('house-ice')?.defaultDoseG ?? 22,
   hot: presetById('house-hot')?.defaultDoseG ?? 18,
 };
@@ -21,6 +21,10 @@ export function dosesForBean(recipes: DripRecipe[], beanKey: string): BrewDoses 
   };
   return { ice: pick('ice'), hot: pick('hot') };
 }
+
+// 판매가 판단 기준 도징 — ICE·HOT 도징량의 중간값(2026-11-03 대표 결정). 레시피 없는 쪽은 프리셋(22g·18g)
+export const baseDoseG = (iceG: number | null | undefined, hotG: number | null | undefined): number =>
+  ((iceG ?? PRESET_DOSE.ice) + (hotG ?? PRESET_DOSE.hot)) / 2;
 
 export function brewCost(rec: PurchaseRecord, doseG: number): number {
   return costPerCup(rec.purchasePrice, { ...DEFAULT_SETTINGS, ...rec.settings, doseG });

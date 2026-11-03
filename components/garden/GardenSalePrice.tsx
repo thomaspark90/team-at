@@ -6,8 +6,8 @@ import { PRICE_UNIT, normalize, roundUpPrice } from '@/lib/pricing';
 import { fmtDate } from '@/lib/garden/format';
 import PriceBandGuide from './PriceBandGuide';
 import { useKakaoOrder } from './KakaoOrder';
-import { brewCost, dosesForBean, type BrewDoses } from '@/lib/garden/brew-cost';
-import { bandRange, defaultActiveCells, guideRowForCost, type ActiveCells } from '@/lib/garden/price-bands';
+import { baseDoseG, brewCost, dosesForBean, type BrewDoses } from '@/lib/garden/brew-cost';
+import { bandRange, defaultActiveCells, guideRowForCost, ratioRangeLabel, type ActiveCells } from '@/lib/garden/price-bands';
 
 // 판매가 설정 전용 화면 — 발주(GardenService)에서 저장된 기록의 판매가를 책정·공유한다.
 // 발주와 권한이 분리돼 있어(saleprice 탭) 책정 담당자만 이 화면을 쓴다.
@@ -79,6 +79,11 @@ export default function GardenSalePrice() {
       .catch(() => {});
   }, []);
   const dosesOf = (rec: PurchaseRecord) => dosesForBean(recipes, normalize(rec.bean));
+  // 판단 기준 재료비 — ICE·HOT 도징 중간값 기준 (2026-11-03 대표 결정, 기록 당시 costPerCup(공통 20g) 대신)
+  const baseCostOf = (rec: PurchaseRecord) => {
+    const d = dosesOf(rec);
+    return brewCost(rec, baseDoseG(d.ice.doseG, d.hot.doseG));
+  };
 
   // 판매가 확정/해제 — 판매가는 서버가 당시 설정 스냅샷 산식으로 다시 계산해 확정한다
   const decide = async (rec: PurchaseRecord, price: number | null) => {
@@ -251,7 +256,7 @@ export default function GardenSalePrice() {
                   <div key={rec.id} className="gs-row">
                     <span className="text-body text-muted-foreground" style={{ minWidth: 0 }}>
                       {rec.bean}
-                      <span className="text-caption tabular"> · {fmtDate(rec.createdAt)} · 재료비 {won(rec.costPerCup)}</span>
+                      <span className="text-caption tabular"> · {fmtDate(rec.createdAt)} · 재료비 {won(baseCostOf(rec))}</span>
                     </span>
                     <span className="text-caption text-muted-foreground tabular" style={{ marginLeft: 'auto', flexShrink: 0 }}>
                       {dismissDaysLeft(rec)}일 남음
@@ -303,13 +308,13 @@ export default function GardenSalePrice() {
                       <div className="gs-row">
                         <span className="gs-meta">
                           <span className="tabular text-muted-foreground" style={{ width: 64, flexShrink: 0 }}>{fmtDate(rec.createdAt)}</span>
-                          <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>재료비 {won(rec.costPerCup)}</span>
+                          <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>재료비 {won(baseCostOf(rec))}</span>
                         </span>
                         <span className="gs-price">
                           <span className="tabular text-foreground">
                             책정 판매가 {won(rec.chosenPrice!)}
                             <span className="text-muted-foreground">
-                              {' '}(원가율 ICE {Math.round((brewCost(rec, dosesOf(rec).ice.doseG) / rec.chosenPrice!) * 100)}% · HOT{' '}
+                              {' '}(재료비율 {Math.round((baseCostOf(rec) / rec.chosenPrice!) * 100)}% · ICE {Math.round((brewCost(rec, dosesOf(rec).ice.doseG) / rec.chosenPrice!) * 100)}% · HOT{' '}
                               {Math.round((brewCost(rec, dosesOf(rec).hot.doseG) / rec.chosenPrice!) * 100)}%)
                             </span>
                           </span>
@@ -356,7 +361,7 @@ export default function GardenSalePrice() {
         </div>
       )}
 
-      {/* 참고표 — 재료비 구간별 권장 배수 (고가 원두는 배수를 낮춘다) */}
+      {/* 참고표 — 재료비 구간별 권장 재료비율 (고가 원두는 재료비율을 높여 판매가를 누른다) */}
       <div className="min-w-0 pt-[54px]">
         <PriceBandGuide onChange={setBandCells} />
       </div>
@@ -366,7 +371,7 @@ export default function GardenSalePrice() {
   );
 }
 
-// 발주 기록 1건의 책정 UI — 기록 요약 + 배수 스프레드 표 + 확정 버튼
+// 발주 기록 1건의 책정 UI — 기록 요약 + 판매가 후보 표(재료비율) + 확정 버튼
 function RecordPricer({
   rec,
   doses,
@@ -392,8 +397,10 @@ function RecordPricer({
   compact?: boolean; // 책정 완료 목록 안 재책정 — 요약줄 생략
   orderButton?: React.ReactNode; // 발주 카톡 [발주] — 허용 계정에만 (KakaoOrder)
 }) {
-  // 권장 배수 = 참고표에서 이 기록 재료비가 속한 행의 초록 칸 범위(최솟값~최댓값)
-  const cost = rec.costPerCup;
+  // 권장 범위 = 참고표에서 이 기록 재료비가 속한 행의 초록 칸 범위(최솟값~최댓값, 내부 키는 배수)
+  // 재료비 = ICE·HOT 도징 중간값 기준 (2026-11-03) — 레시피 없으면 프리셋 22g·18g → 20g
+  const baseDose = baseDoseG(doses.ice.doseG, doses.hot.doseG);
+  const cost = brewCost(rec, baseDose);
   const bandRow = guideRowForCost(cost);
   const band = bandRange(bandCells[String(bandRow)] ?? []);
   const { lo, hi: top } = band ?? FALLBACK_BAND;
@@ -449,14 +456,14 @@ function RecordPricer({
             {(rec.staffName || rec.createdBy) && ` · ${rec.staffName ? `${rec.staffName}님 발주` : rec.createdBy!.split('@')[0]}`}
             {` · 매입 ${won(rec.purchasePrice)}`}
             {rec.settings?.vatIncluded && 'ㆍVAT포함'}
-            {` · 재료비 ${won(rec.costPerCup)}`}
+            {` · 재료비 ${won(cost)}(${baseDose}g 기준)`}
             {rec.store && ` · ${rec.store === 'pangyo' ? '판교' : '양재천'}`}
             {orderButton && <span style={{ marginLeft: 10 }}>{orderButton}</span>}
           </p>
         </div>
       )}
 
-      {/* 판매가 후보 표 (가로 스와이프) — 500원 단위 판매가 · 실제 배수 · 원가율 */}
+      {/* 판매가 후보 표 (가로 스와이프) — 500원 단위 판매가 · 재료비율(평균 도징 기준 · ICE · HOT). 배수 줄은 2026-11-03 폐지 */}
       <div ref={scrollerRef} className="rounded-md border border-border" style={{ overflowX: 'auto', fontSize: 13, WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
         <div
           style={{
@@ -472,10 +479,10 @@ function RecordPricer({
             </Cell>
           ))}
 
-          <Cell label>배수</Cell>
+          <Cell label>재료비율</Cell>
           {prices.map((p) => (
             <Cell key={`m${p}`} pos="mid" hi={hi(p)} selected={pick === p} onClick={() => onPick(p)}>
-              {multOf(p).toFixed(2)}×
+              {Math.round((cost / p) * 100)}%
             </Cell>
           ))}
 
@@ -497,9 +504,9 @@ function RecordPricer({
       <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
         초록 칸 = 권장 판매가
         {band
-          ? `(실제 배수 ${band.lo.toFixed(2)}~${band.hi.toFixed(2)}×, 아래 참고표 재료비 ${bandRow.toLocaleString('ko-KR')}원 행 기준)`
+          ? `(재료비율 ${ratioRangeLabel(band.lo, band.hi)}, 아래 참고표 재료비 ${bandRow.toLocaleString('ko-KR')}원 행 기준)`
           : `(참고표 재료비 ${bandRow.toLocaleString('ko-KR')}원 행에 권장 칸 없음)`}{' '}
-        · 500원 단위 · 판매가를 클릭해 고르세요 · 원가율 = 잔당 재료비 ÷ 판매가(VAT 포함) — ICE {doses.ice.doseG}g {won(iceCost)}
+        · 500원 단위 · 판매가를 클릭해 고르세요 · 재료비율 = 잔당 재료비 ÷ 판매가(VAT 포함), 기준은 ICE·HOT 평균 {baseDose}g {won(cost)} — ICE {doses.ice.doseG}g {won(iceCost)}
         {doses.ice.fromRecipe ? '' : '(기준값)'} · HOT {doses.hot.doseG}g {won(hotCost)}
         {doses.hot.fromRecipe ? '' : '(기준값)'}
       </p>

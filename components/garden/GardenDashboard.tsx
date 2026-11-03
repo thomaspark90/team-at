@@ -22,6 +22,7 @@ import SegmentControl from '@/components/nav/SegmentControl';
 import TastingNoteEditor from '@/components/garden/TastingNoteEditor';
 import RecipeLedger, { type LedgerRow, type LedgerSlot } from '@/components/garden/RecipeLedger';
 import { fetchMyAccess } from '@/lib/access/tab-access-client';
+import { baseDoseG } from '@/lib/garden/brew-cost';
 
 // 카드 헤더의 지점별 재고량 칩(판교 100% · 양재천 100%) — 2026-10-31 대표 지시로 '일단' 숨김.
 // 재고 데이터·알림 로직은 그대로라 true 로 바꾸면 바로 복구된다.
@@ -374,6 +375,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
         roast: roastInfo(latest),
         price: latest?.chosenPrice && latest.chosenPrice > 0 ? latest.chosenPrice : null,
         purchaseId: latest?.id ?? null,
+        base: latest
+          ? (() => {
+              const doseG = baseDoseG(g?.ice?.doseG, g?.hot?.doseG);
+              return { doseG, cost: costPerCup(latest.purchasePrice, { ...latest.settings, doseG }) };
+            })()
+          : null,
         buy: latest ? { capacityG: Number(latest.settings?.capacityG) || 0, price: Number(latest.purchasePrice) || 0, vatIncluded: !!latest.settings?.vatIncluded } : null,
         ice: slotOf(g?.ice ?? null, latest),
         hot: slotOf(g?.hot ?? null, latest),
