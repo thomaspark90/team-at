@@ -98,6 +98,7 @@ export async function GET(req: Request) {
     .map((u) => ({
       id: u.id,
       email: u.email!,
+      lastSignInAt: u.last_sign_in_at ?? null, // 설정 > 계정 목록의 '로그인 기록 없음' 표시용
       name: profileOf.get(u.id)?.display_name ?? null,
       simpleLogin: profileOf.get(u.id)?.simple_login ?? false,
       profileRole: profileOf.get(u.id)?.role ?? null,
