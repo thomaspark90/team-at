@@ -19,10 +19,13 @@ import { recentDefaults } from '@/lib/garden/recent-defaults';
 import { brewOnStyle } from '@/lib/garden/brew-colors';
 import SegmentControl from '@/components/nav/SegmentControl';
 import TastingNoteEditor from '@/components/garden/TastingNoteEditor';
+import RecipeLedger, { type LedgerRow, type LedgerSlot } from '@/components/garden/RecipeLedger';
 
 // 카드 헤더의 지점별 재고량 칩(판교 100% · 양재천 100%) — 2026-10-31 대표 지시로 '일단' 숨김.
 // 재고 데이터·알림 로직은 그대로라 true 로 바꾸면 바로 복구된다.
 const SHOW_STOCK_CHIPS = false;
+// 레시피 목록 필터 칩의 '설정 필요' — 국가명과 겹치지 않는 값
+const NEED_FILTER = '__need__';
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 
@@ -327,20 +330,6 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     return `${p.text}${p.provisional ? '*' : ''}`;
   };
 
-  // 국가별 섹션 (recipes 모드) — 보관하지 않은 레시피 원두(재고 유무 무관), 국가 가나다순 · '기타' 맨 뒤,
-  // 국가 안에서는 beanGroups의 최신 업데이트순 유지
-  const countrySections = useMemo(() => {
-    const byCountry = new Map<string, BeanGroup[]>();
-    for (const g of activeGroups) {
-      const c = countryOf(g.bean);
-      byCountry.set(c, [...(byCountry.get(c) ?? []), g]);
-    }
-    const list = Array.from(byCountry.entries()).map(([country, groups]) => ({ country, groups }));
-    list.sort((a, b) =>
-      a.country === ETC ? 1 : b.country === ETC ? -1 : a.country.localeCompare(b.country, 'ko')
-    );
-    return list;
-  }, [activeGroups]);
 
   // 발주 기록엔 있지만 레시피가 하나도 없는 원두
   const unsetBeans = useMemo(() => {
@@ -351,6 +340,51 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       .map(([, rec]) => rec)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [latestByBean, recipes, metaByBean]);
+
+  // 레시피 목록 행 (recipes 모드, 2026-11-03 시안 C3) — 국가 묶음 없이 전체 나열.
+  // 레시피 없는 원두(새 발주)도 같은 목록에 '레시피 설정 필요'로 넣는다. 정렬: 설정 필요 먼저 → 최신 발주순.
+  // 재료비는 카드와 같은 산식(최신 발주가 g당 원가 × 레시피 도징량), 판매가는 책정가(VAT 포함 소비자가) 그대로.
+  const ledgerRows = useMemo<LedgerRow[]>(() => {
+    const slotOf = (r: DripRecipe | null, latest: PurchaseRecord | undefined): LedgerSlot | null =>
+      r && {
+        ratio: ratioOf(r.doseG, r.waterG),
+        doseG: r.doseG,
+        waterG: r.waterG,
+        tempC: r.tempC,
+        grind: r.grindMesh != null ? meshFmt(r.grindMesh) : r.grind || null,
+        totalTime: r.totalTime,
+        cost: latest && r.doseG != null ? costPerCup(latest.purchasePrice, { ...latest.settings, doseG: r.doseG }) : null,
+        fallback: isFallback(r),
+      };
+    const rowOf = (beanKey: string, bean: string, g: BeanGroup | null): LedgerRow => {
+      const latest = latestByBean.get(beanKey);
+      return {
+        beanKey,
+        bean,
+        country: countryOf(bean),
+        roastery: latest?.roastery,
+        orderDate: latest ? latest.orderDate ?? latest.createdAt : null,
+        roastDate: latest?.roastDate ?? null,
+        price: latest?.chosenPrice && latest.chosenPrice > 0 ? latest.chosenPrice : null,
+        ice: slotOf(g?.ice ?? null, latest),
+        hot: slotOf(g?.hot ?? null, latest),
+        hasRecipe: !!g,
+      };
+    };
+    const rows = [
+      ...activeGroups.map((g) => rowOf(g.beanKey, g.bean, g)),
+      ...unsetBeans.map((rec) => rowOf(normalize(rec.bean), rec.bean, null)),
+    ];
+    const need = (r: LedgerRow) => (!r.ice || !r.hot ? 1 : 0);
+    return rows.sort((a, b) => need(b) - need(a) || (b.orderDate ?? '').localeCompare(a.orderDate ?? ''));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isFallback 는 fallbackIds 만 참조
+  }, [activeGroups, unsetBeans, latestByBean, fallbackIds]);
+  const ledgerCountries = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of ledgerRows) m.set(r.country, (m.get(r.country) ?? 0) + 1);
+    return Array.from(m.entries()).sort(([a], [b]) => (a === ETC ? 1 : b === ETC ? -1 : a.localeCompare(b, 'ko')));
+  }, [ledgerRows]);
+  const ledgerNeedCount = ledgerRows.filter((r) => !r.ice || !r.hot).length;
 
   // 미설정 원두 목록에서 제거 — 최신 건만 지우면 이전 발주가 다시 노출되므로 해당 원두 기록 전체 삭제
   const deleteUnsetBean = async (rec: PurchaseRecord) => {
@@ -1294,8 +1328,6 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
               태블릿 레시피 보드로 보기 →
             </Link>
           )}
-          {/* 새 발주 원두 — 레시피 미설정이면 상단에서 바로 설정 유도 */}
-          {!loading && unsetCard}
           {!loading && activeGroups.length === 0 && unsetBeans.length === 0 && (
             <p className="text-body text-muted-foreground">
               아직 레시피가 설정된 원두가 없어요. 가격 세팅에서 원두를 발주하면 여기에서 레시피를 만들 수
@@ -1303,47 +1335,54 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             </p>
           )}
 
-          {/* 국가 필터 칩 */}
-          {countrySections.length > 1 && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {['전체', ...countrySections.map((s) => s.country)].map((c) => {
-                const on = selectedCountry === c;
+          {!loading && ledgerRows.length > 0 && (
+            <RecipeLedger
+              rows={ledgerRows.filter((r) =>
+                selectedCountry === '전체' ? true : selectedCountry === NEED_FILTER ? !r.ice || !r.hot : r.country === selectedCountry
+              )}
+              // 필터 칩 — 전체 · 설정 필요 · 국가. 국가 묶음 대신 한 목록에서 걸러 본다(2026-11-03 시안 C3)
+              filters={<>
+{[
+                { id: '전체', label: '전체', n: ledgerRows.length },
+                ...(ledgerNeedCount > 0 ? [{ id: NEED_FILTER, label: '설정 필요', n: ledgerNeedCount }] : []),
+                ...(ledgerCountries.length > 1 ? ledgerCountries.map(([c, n]) => ({ id: c, label: c, n })) : []),
+              ].map(({ id, label, n }, i, arr) => {
+                const on = selectedCountry === id;
+                const warn = id === NEED_FILTER;
                 return (
                   <button
-                    key={c}
-                    onClick={() => setSelectedCountry(c)}
+                    key={id}
+                    onClick={() => setSelectedCountry(id)}
                     className={`rounded-md border px-2.5 py-1 text-body transition-colors ${
                       on
-                        ? 'border-foreground bg-foreground text-background'
-                        : 'border-border text-muted-foreground hover:text-foreground'
+                        ? warn
+                          ? 'border-amber-600 bg-amber-600 text-white'
+                          : 'border-foreground bg-foreground text-background'
+                        : warn
+                          ? 'border-amber-500/40 text-amber-700 dark:text-amber-400'
+                          : 'border-border text-muted-foreground hover:text-foreground'
                     }`}
+                    style={warn && arr[i + 1] ? { marginRight: 10 } : undefined}
                   >
-                    {c}
-                    {c !== '전체' && (
-                      <span style={{ marginLeft: 4, opacity: 0.7 }}>
-                        {countrySections.find((s) => s.country === c)?.groups.length}
-                      </span>
-                    )}
+                    {label}
+                    <span style={{ marginLeft: 4, opacity: 0.7 }}>{n}</span>
                   </button>
                 );
               })}
-            </div>
+              </>}
+              onSetup={(r, bt) => openEditor(r.beanKey, r.bean, bt)}
+              onSetupBoth={(r) => startUnsetSetup(r.beanKey, r.bean)}
+              onDeleteUnset={(r) => {
+                const rec = unsetBeans.find((x) => normalize(x.bean) === r.beanKey);
+                if (rec) deleteUnsetBean(rec);
+              }}
+              deleting={deletingBean}
+              renderDetail={(k) => {
+                const g = activeGroups.find((x) => x.beanKey === k);
+                return g ? renderBeanCard(g) : null;
+              }}
+            />
           )}
-
-          {(selectedCountry === '전체'
-            ? countrySections
-            : countrySections.filter((s) => s.country === selectedCountry)
-          ).map(({ country, groups }) => (
-            <div key={country} className="min-w-0">
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, borderBottom: '1px solid hsl(var(--border))', paddingBottom: 6, marginBottom: 24 }}>
-                <h3 className="text-title font-medium text-foreground" style={{ margin: 0 }}>{country}</h3>
-                <span className="text-caption text-muted-foreground">{groups.length}종</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px 12px' }}>
-                {groups.map(renderBeanCard)}
-              </div>
-            </div>
-          ))}
 
           {/* 필터 커피 아카이브(구 보관함) — 보관·소진 처리한 원두 카드. 펼쳐서 보고 '보관 해제'로 되돌린다 */}
           {!loading && archivedGroups.length > 0 && (
