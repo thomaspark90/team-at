@@ -32,6 +32,7 @@ export type LedgerRow = {
   roast: RoastInfo | null; // 로스팅일 — 미기재면 발주일+1 추정(estimated)
   price: number | null; // 책정 판매가(원, VAT 포함 소비자가)
   purchaseId: string | null; // 판매가가 저장된 최신 발주 기록 — 판매가 칸 인라인 수정 대상
+  buy: { capacityG: number; price: number; vatIncluded: boolean } | null; // 최신 발주 용량·구매가(입력 그대로)
   ice: LedgerSlot | null;
   hot: LedgerSlot | null;
   hasRecipe: boolean; // ICE·HOT 중 하나라도 있으면 기존 카드 펼침 가능
@@ -165,6 +166,18 @@ export default function RecipeLedger({
     );
   };
 
+  // 발주 용량·구매가와 1g당 단가 — 구매가는 입력 그대로(VAT 표기 병기), 1g당 = 구매가 ÷ 구매 용량(로스 반영 전)
+  const buyLine = (row: LedgerRow) => {
+    const b = row.buy;
+    if (!b || b.capacityG <= 0 || b.price <= 0) return null;
+    return (
+      <div className="text-caption text-muted-foreground" style={{ marginTop: 4 }}>
+        발주 {num(b.capacityG)}g · {num(b.price)}원 · 1g당 {(b.price / b.capacityG).toLocaleString('ko-KR', { maximumFractionDigits: 1 })}원
+        <span style={{ opacity: 0.7 }}> (VAT {b.vatIncluded ? '포함' : '별도'})</span>
+      </div>
+    );
+  };
+
   const costLine = (row: LedgerRow, bt: BrewType) => {
     const s = row[bt];
     if (!s || s.cost == null || s.doseG == null) return null;
@@ -287,6 +300,7 @@ export default function RecipeLedger({
                           </button>
                         )}
                       </span>
+                      {buyLine(row)}
                     </td>
                   </tr>
 

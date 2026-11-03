@@ -374,6 +374,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
         roast: roastInfo(latest),
         price: latest?.chosenPrice && latest.chosenPrice > 0 ? latest.chosenPrice : null,
         purchaseId: latest?.id ?? null,
+        buy: latest ? { capacityG: Number(latest.settings?.capacityG) || 0, price: Number(latest.purchasePrice) || 0, vatIncluded: !!latest.settings?.vatIncluded } : null,
         ice: slotOf(g?.ice ?? null, latest),
         hot: slotOf(g?.hot ?? null, latest),
         hasRecipe: !!g,
