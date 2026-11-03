@@ -10,12 +10,14 @@ import {
   meshDeltaText,
   roundMesh,
   suggestMesh,
+  suggestWater,
   summarize,
+  toggleChip,
 } from '@/lib/garden/brew-feedback';
 import { fmtDate } from '@/lib/garden/format';
 import { toast } from '@/components/Toast';
 
-// 추출 평가 — 레시피 보드 카드 아래. 이름 토글 → 개선 필요 칩 → 다음 분쇄도 슬라이더 → 남기기.
+// 추출 평가 — 레시피 보드 카드 아래. 이름 토글 → 좋음/농도/개선 필요 칩 → 다음 분쇄도 슬라이더 → 남기기.
 // 레시피는 바꾸지 않는다. 아래에 같은 지점·같은 레시피 버전의 의견 집계와 최근 의견.
 
 // 선택지는 글자 토글(M1 스타일, 2026-10-30) — 면·그림자 없이 선택만 밑줄+진한 글자
@@ -87,8 +89,8 @@ export default function BrewFeedbackPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 칩 변화에만 반응
   }, [issues.join(',')]);
 
-  const toggleIssue = (id: string) =>
-    setIssues((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]));
+  const toggleIssue = (id: string) => setIssues((xs) => toggleChip(xs, id));
+  const waterTip = suggestWater(issues);
 
   const pickStaff = (n: string) => onPickStaff(staff === n ? '' : n);
 
@@ -154,7 +156,7 @@ export default function BrewFeedbackPanel({
         )}
       </div>
 
-      {/* 개선 필요 칩 */}
+      {/* 좋음 · 농도 · 개선 필요 칩 — 좋음은 단독, 진함/연함은 하나만 */}
       {FEEDBACK_GROUPS.map((g) => (
         <div key={g.dir} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <span className="text-caption text-muted-foreground">{g.label}</span>
@@ -165,6 +167,7 @@ export default function BrewFeedbackPanel({
               </TextToggle>
             ))}
           </div>
+          {g.dir === 'strength' && waterTip && <span className="text-caption text-muted-foreground">{waterTip}</span>}
         </div>
       ))}
 

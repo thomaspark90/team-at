@@ -16,6 +16,7 @@ import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import type { StaffMealRecord } from '@/lib/types';
 import type { BoardCard, BoardScope } from '@/lib/garden/board';
 import { TYPE_TAB, daysAgo, shortDate, stepsAt, kstDay } from '@/lib/garden/board';
+import { roastInfo, restStage } from '@/lib/garden/roast';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -118,37 +119,72 @@ export async function GET(req: Request) {
     });
   }
 
-  // ── 발주 → 판매 준비 : 발주 · 레시피 · 원두카드 ──
-  const recipeKeys = new Set(recipes.map((r) => r.beanKey));
+  // ── 발주 → 판매 준비 : 발주 · 레시피(ICE·HOT) · 판매가 · 원두카드(인쇄 완료) ── (2026-11-03 대표 결정)
+  // 레시피는 ICE·HOT 둘 다 있어야(어느 지점이든) 완료, 판매가는 책정(또는 미책정 숨김), 원두카드는 디자이너의 '인쇄 완료' 표시.
+  // 카드는 현재 단계 담당자·탭 기준으로 보인다. 로스팅 경과일(미기재면 발주일+1 추정)은 메타로만 표시 — 판매를 막지 않는다.
+  const brewsByBean = new Map<string, Set<string>>();
+  for (const r of recipes) {
+    const set = brewsByBean.get(r.beanKey) ?? new Set<string>();
+    set.add(r.brewType ?? 'ice');
+    brewsByBean.set(r.beanKey, set);
+  }
   const latestByBean = new Map<string, (typeof purchases)[number]>();
   for (const p of purchases) {
     const k = normalize(p.bean);
     const cur = latestByBean.get(k);
     if (!cur || p.createdAt.localeCompare(cur.createdAt) > 0) latestByBean.set(k, p);
   }
-  const recipeOwners = topics.recipeNew ?? [];
   // 아카이브한 원두(재발주 전)는 레시피를 지웠어도 처리 끝난 것으로 본다 — 아카이브 '기록 삭제' 후 할 일로 되살아나지 않게
   const metaByBean = new Map((beanStore?.beans ?? []).map((b) => [b.beanKey, b]));
+  const ORDER_STEPS = ['발주', '레시피', '판매가', '원두카드'];
+  const ORDER_FLOW_FROM = '2026-11-03';
+  const stageOwners = [[], topics.recipeNew ?? [], topics.salePriceRequest ?? [], topics.beanCard ?? []];
+  const stageInfo = [
+    null,
+    { reason: '레시피 담당', href: '/garden/recipes', action: '레시피 설정', tab: 'recipes' },
+    { reason: '판매가 담당', href: '/garden/saleprice', action: '판매가 설정', tab: 'saleprice' },
+    { reason: '원두카드 담당', href: '/garden/beancard', action: '원두카드 인쇄', tab: 'beancard' },
+  ];
   for (const [key, p] of Array.from(latestByBean.entries())) {
-    const hasRecipe = recipeKeys.has(key) || isBeanArchived(metaByBean.get(key), p);
+    // 새 4단계 흐름은 2026-11-03 발주분부터 — 이전 발주는 '인쇄 완료' 기록이 없으니 예전 기준(레시피 하나라도 있으면 완료).
+    // 단계 표시는 실제 상태 그대로(판매가 미책정이면 ✓ 안 붙음), 칸(column)만 완료로 둔다.
+    const legacyDone = kstDay(p.createdAt) < ORDER_FLOW_FROM && brewsByBean.has(key);
+    const archived = isBeanArchived(metaByBean.get(key), p);
+    const brews = brewsByBean.get(key);
+    const recipeDone = archived || (!!brews?.has('ice') && !!brews?.has('hot'));
+    const priceDone = archived || p.chosenPrice != null || !!p.priceDismissed;
+    const cardDone = archived || legacyDone || !!p.cardDone;
+    const current = !recipeDone ? 1 : !priceDone ? 2 : !cardDone ? 3 : 4;
+    const allDone = current === 4 || legacyDone;
+    const info = allDone ? null : (stageInfo[current] ?? null);
+    const owners = info ? stageOwners[current] : [];
     const d = daysAgo(p.createdAt);
+    const roast = roastInfo(p);
+    const missing = brews ? (['ice', 'hot'] as const).filter((b) => !brews.has(b)).map((b) => b.toUpperCase()) : [];
     cards.push({
       id: `order:${p.id}`,
       type: 'order',
       title: p.bean,
-      column: hasRecipe ? 'done' : 'todo',
-      steps: stepsAt(['발주', '레시피', '원두카드'], hasRecipe ? 2 : 1),
+      column: allDone ? 'done' : current === 1 && !brews ? 'todo' : 'doing',
+      steps: stepsAt(ORDER_STEPS, current),
       meta: [
         { text: `${shortDate(p.createdAt)} 발주` },
+        ...(roast && !allDone
+          ? [{
+              text: `로스팅 ${roast.estimated ? '~' : ''}D+${roast.days}${restStage(roast.days) === 'resting' ? ' 숙성 중' : ''}`,
+              ...(restStage(roast.days) === 'resting' ? { tone: 'late' as const } : {}),
+            }]
+          : []),
+        ...(current === 1 && missing.length === 1 ? [{ text: `${missing[0]} 레시피 없음`, tone: 'late' as const }] : []),
         ...(p.chosenPrice != null ? [{ text: `${p.chosenPrice.toLocaleString()}원` }] : []),
-        ...(!hasRecipe && d >= 3 ? [{ text: `${d}일째 대기`, tone: 'late' as const }] : []),
+        ...(!allDone && d >= 3 ? [{ text: `${d}일째 진행 중`, tone: 'late' as const }] : []),
       ],
-      assignees: recipeOwners,
-      mine: !hasRecipe && owns(recipeOwners),
-      mineReason: '레시피 담당',
-      href: '/garden/recipes',
-      actionLabel: hasRecipe ? '레시피 보기' : '레시피 설정',
-      tab: TYPE_TAB.order,
+      assignees: owners,
+      mine: !allDone && owns(owners),
+      mineReason: info?.reason,
+      href: info?.href ?? '/garden/recipes',
+      actionLabel: info?.action ?? '레시피 보기',
+      tab: info?.tab ?? TYPE_TAB.order,
       sortAt: p.createdAt,
     });
   }

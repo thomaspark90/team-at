@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { BeanMeta, BrewType, DripRecipe, DripRecipeSnapshot, PourStep, PurchaseRecord, StoreId } from '@/lib/types';
-import { STORES, STOCK_LEVELS, stockOf, beanRegisteredAt, daysSince, dPlusLevel } from '@/lib/types';
+import { STORES, STOCK_LEVELS, stockOf } from '@/lib/types';
+import { roastInfo, restClass, restStage, restTitle } from '@/lib/garden/roast';
 import { costPerCup, normalize } from '@/lib/pricing';
 import { applyPreset, presetById } from '@/lib/drip-presets';
 import { flavorGradient } from '@/lib/flavor-colors';
@@ -364,7 +365,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
         country: countryOf(bean),
         roastery: latest?.roastery,
         orderDate: latest ? latest.orderDate ?? latest.createdAt : null,
-        roastDate: latest?.roastDate ?? null,
+        roast: roastInfo(latest),
         price: latest?.chosenPrice && latest.chosenPrice > 0 ? latest.chosenPrice : null,
         ice: slotOf(g?.ice ?? null, latest),
         hot: slotOf(g?.hot ?? null, latest),
@@ -669,7 +670,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   // 원두 카드 한 장
   const renderBeanCard = (g: BeanGroup) => {
     const latest = latestByBean.get(g.beanKey);
-    const regAt = beanRegisteredAt([g.ice, g.hot]);
+    const roast = roastInfo(latest);
     return (
       <div key={g.beanKey} className="rounded-md bg-muted/40" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         {/* 원두명 헤더 — muted 배경 밴드 + 테이스팅 노트 색 그라데이션(카운터컬처 플레이버 휠 차용) */}
@@ -688,20 +689,17 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
               <span className="text-title font-medium text-foreground" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {g.bean}
               </span>
-              {/* 등록 시점부터 경과일 — 등록 당일 D+0, D+25부터 주황·D+31부터 빨강 */}
-              {regAt && (() => {
-                const n = daysSince(regAt);
-                const level = dPlusLevel(n);
-                const levelCls =
-                  level === 'bad' ? 'text-destructive font-medium'
-                  : level === 'warn' ? 'text-amber-600 dark:text-amber-500 font-medium'
-                  : 'text-muted-foreground';
-                return (
-                  <span className={`tabular text-caption ${levelCls}`} style={{ flexShrink: 0 }} title={`등록 ${fmtDate(regAt)}`}>
-                    D+{n}
-                  </span>
-                );
-              })()}
+              {/* 로스팅일 기준 경과일(2026-11-03) — 미기재면 발주일+1 추정(~). 숙성 중·지남은 경고색, 판매는 막지 않는다 */}
+              {roast && (
+                <span
+                  className={`tabular rounded-sm text-caption ${restClass[restStage(roast.days)]}`}
+                  style={{ flexShrink: 0, padding: '0 5px' }}
+                  title={restTitle(roast)}
+                >
+                  {roast.estimated ? '~' : ''}D+{roast.days}
+                  {restStage(roast.days) === 'resting' ? ' 숙성 중' : ''}
+                </span>
+              )}
               {/* 판매 대기 — 선택한 지점에서 레시피는 있지만 아직 판매 전. 레시피 보드에서 빠지고 '대기' 목록으로 */}
               {(() => {
                 const waiting = !!metaByBean.get(g.beanKey)?.waitingStores?.includes(store);

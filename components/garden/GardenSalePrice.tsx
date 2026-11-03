@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { PurchaseRecord } from '@/lib/types';
+import type { DripRecipe, PurchaseRecord } from '@/lib/types';
 import { PRICE_UNIT, normalize, roundUpPrice } from '@/lib/pricing';
 import { fmtDate } from '@/lib/garden/format';
 import PriceBandGuide from './PriceBandGuide';
 import { useKakaoOrder } from './KakaoOrder';
+import { brewCost, dosesForBean, type BrewDoses } from '@/lib/garden/brew-cost';
 import { bandRange, defaultActiveCells, guideRowForCost, type ActiveCells } from '@/lib/garden/price-bands';
 
 // 판매가 설정 전용 화면 — 발주(GardenService)에서 저장된 기록의 판매가를 책정·공유한다.
@@ -64,6 +65,16 @@ export default function GardenSalePrice() {
   useEffect(() => {
     refresh();
   }, []);
+
+  // ICE·HOT 원가율용 레시피 도징량 — 레시피가 없으면 매장 기준 프리셋(ICE 22g · HOT 18g). 실패해도 프리셋으로 표시
+  const [recipes, setRecipes] = useState<DripRecipe[]>([]);
+  useEffect(() => {
+    fetch('/api/garden-recipes', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((j) => setRecipes(Array.isArray(j) ? j : []))
+      .catch(() => {});
+  }, []);
+  const dosesOf = (rec: PurchaseRecord) => dosesForBean(recipes, normalize(rec.bean));
 
   // 판매가 확정/해제 — 판매가는 서버가 당시 설정 스냅샷 산식으로 다시 계산해 확정한다
   const decide = async (rec: PurchaseRecord, price: number | null) => {
@@ -209,6 +220,7 @@ export default function GardenSalePrice() {
               <RecordPricer
                 key={rec.id}
                 rec={rec}
+                doses={dosesOf(rec)}
                 pick={picks[rec.id] ?? null}
                 bandCells={bandCells}
                 onPick={(m) => setPicks((p) => ({ ...p, [rec.id]: m }))}
@@ -292,7 +304,10 @@ export default function GardenSalePrice() {
                         <span className="gs-price">
                           <span className="tabular text-foreground">
                             책정 판매가 {won(rec.chosenPrice!)}
-                            <span className="text-muted-foreground"> ({Math.round((rec.costPerCup / rec.chosenPrice!) * 100)}%)</span>
+                            <span className="text-muted-foreground">
+                              {' '}(원가율 ICE {Math.round((brewCost(rec, dosesOf(rec).ice.doseG) / rec.chosenPrice!) * 100)}% · HOT{' '}
+                              {Math.round((brewCost(rec, dosesOf(rec).hot.doseG) / rec.chosenPrice!) * 100)}%)
+                            </span>
                           </span>
                         </span>
                         {kakao.button(rec)}
@@ -317,6 +332,7 @@ export default function GardenSalePrice() {
                         <div style={{ marginTop: 8 }}>
                           <RecordPricer
                             rec={rec}
+                            doses={dosesOf(rec)}
                             pick={picks[rec.id] ?? rec.chosenPrice}
                             bandCells={bandCells}
                             onPick={(m) => setPicks((p) => ({ ...p, [rec.id]: m }))}
@@ -349,6 +365,7 @@ export default function GardenSalePrice() {
 // 발주 기록 1건의 책정 UI — 기록 요약 + 배수 스프레드 표 + 확정 버튼
 function RecordPricer({
   rec,
+  doses,
   pick,
   bandCells,
   onPick,
@@ -360,6 +377,7 @@ function RecordPricer({
   orderButton,
 }: {
   rec: PurchaseRecord;
+  doses: BrewDoses; // ICE·HOT 도징량 — 원가율 행을 따로 보여준다
   pick: number | null;
   bandCells: ActiveCells;
   onPick: (m: number) => void;
@@ -386,6 +404,8 @@ function RecordPricer({
     prices.sort((a, b) => a - b);
   }
   const multOf = (p: number) => (cost > 0 ? p / cost : 0);
+  const iceCost = brewCost(rec, doses.ice.doseG);
+  const hotCost = brewCost(rec, doses.hot.doseG);
   const hi = (p: number) => band != null && multOf(p) >= band.lo - EPS && multOf(p) <= band.hi + EPS;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
@@ -442,10 +462,17 @@ function RecordPricer({
             </Cell>
           ))}
 
-          <Cell label>원가율</Cell>
+          {/* 원가율 — ICE·HOT 레시피 도징량별 잔당 재료비 ÷ 판매가(VAT 포함) (2026-11-03) */}
+          <Cell label>ICE</Cell>
           {prices.map((p) => (
-            <Cell key={`r${p}`} pos="bottom" hi={hi(p)} muted selected={pick === p} onClick={() => onPick(p)}>
-              {Math.round((cost / p) * 100)}%
+            <Cell key={`ri${p}`} pos="mid" hi={hi(p)} muted selected={pick === p} onClick={() => onPick(p)}>
+              {Math.round((iceCost / p) * 100)}%
+            </Cell>
+          ))}
+          <Cell label>HOT</Cell>
+          {prices.map((p) => (
+            <Cell key={`rh${p}`} pos="bottom" hi={hi(p)} muted selected={pick === p} onClick={() => onPick(p)}>
+              {Math.round((hotCost / p) * 100)}%
             </Cell>
           ))}
         </div>
@@ -455,7 +482,9 @@ function RecordPricer({
         {band
           ? `(실제 배수 ${band.lo.toFixed(2)}~${band.hi.toFixed(2)}×, 아래 참고표 재료비 ${bandRow.toLocaleString('ko-KR')}원 행 기준)`
           : `(참고표 재료비 ${bandRow.toLocaleString('ko-KR')}원 행에 권장 칸 없음)`}{' '}
-        · 500원 단위 · 판매가를 클릭해 고르세요
+        · 500원 단위 · 판매가를 클릭해 고르세요 · 원가율 = 잔당 재료비 ÷ 판매가(VAT 포함) — ICE {doses.ice.doseG}g {won(iceCost)}
+        {doses.ice.fromRecipe ? '' : '(기준값)'} · HOT {doses.hot.doseG}g {won(hotCost)}
+        {doses.hot.fromRecipe ? '' : '(기준값)'}
       </p>
 
       <div style={{ display: 'flex', gap: 8 }}>

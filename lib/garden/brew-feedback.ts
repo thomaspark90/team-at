@@ -1,9 +1,16 @@
 import type { BrewFeedback } from '@/lib/types';
 
-// 추출 평가 칩 — 개선이 필요한 점만 고른다(좋았던 점 칩은 2026-10-30 대표 결정으로 없음).
-// dir: 'under' = 덜 추출 신호(더 곱게), 'over' = 과다 추출 신호(더 굵게). id 는 저장값이라 바꾸지 않는다.
-export type FeedbackDir = 'under' | 'over';
+// 추출 평가 칩 — 개선이 필요한 점 + 농도(진함/연함) + '좋음'(2026-11-03 대표 결정: 10-30의 '좋았던 점 칩 없음'을
+// 바꿔 문제없음 기록용 '좋음' 하나와 농도 칩을 추가).
+// dir: 'under' = 덜 추출 신호(더 곱게), 'over' = 과다 추출 신호(더 굵게) — 분쇄도 제안에 쓰인다.
+//      'strength' = 농도(분쇄도가 아니라 물 비율 제안), 'good' = 그대로 좋음(다른 칩과 함께 고를 수 없음).
+// id 는 저장값이라 바꾸지 않는다.
+export type FeedbackDir = 'under' | 'over' | 'strength' | 'good';
+export const GOOD_CHIP = 'good';
 export const FEEDBACK_CHIPS: { id: string; label: string; dir: FeedbackDir }[] = [
+  { id: GOOD_CHIP, label: '좋음 (그대로)', dir: 'good' },
+  { id: 'strong', label: '진함', dir: 'strength' },
+  { id: 'weak', label: '연함', dir: 'strength' },
   { id: 'sour', label: '산미가 튐', dir: 'under' },
   { id: 'watery', label: '전체적으로 묽음(워터리)', dir: 'under' },
   { id: 'weak-sweet', label: '단맛이 약함', dir: 'under' },
@@ -15,9 +22,29 @@ export const FEEDBACK_CHIPS: { id: string; label: string; dir: FeedbackDir }[] =
   { id: 'muted', label: '향이 묻힘', dir: 'over' },
 ];
 export const FEEDBACK_GROUPS: { dir: FeedbackDir; label: string }[] = [
+  { dir: 'good', label: '문제없음' },
+  { dir: 'strength', label: '농도' },
   { dir: 'under', label: '덜 추출된 느낌' },
   { dir: 'over', label: '과하게 추출된 느낌' },
 ];
+
+// 칩 토글 규칙 — '좋음'은 단독, 진함/연함은 둘 중 하나
+export function toggleChip(issues: string[], id: string): string[] {
+  if (issues.includes(id)) return issues.filter((x) => x !== id);
+  if (id === GOOD_CHIP) return [GOOD_CHIP];
+  const dir = FEEDBACK_CHIPS.find((c) => c.id === id)?.dir;
+  const rest = issues.filter((x) => x !== GOOD_CHIP && !(dir === 'strength' && FEEDBACK_CHIPS.find((c) => c.id === x)?.dir === 'strength'));
+  return [...rest, id];
+}
+
+// 농도 칩 → 물 양 제안(텍스트만, 레시피는 바꾸지 않음). 진함 = 물 +10g(연하게), 연함 = 물 −10g(진하게)
+export const WATER_STEP_G = 10;
+export function suggestWater(issues: string[]): string | null {
+  if (issues.includes('strong')) return `진함 → 총 물량 +${WATER_STEP_G}g 제안 (비율을 연하게)`;
+  if (issues.includes('weak')) return `연함 → 총 물량 −${WATER_STEP_G}g 제안 (비율을 진하게)`;
+  return null;
+}
+
 export const chipLabel = (id: string) => FEEDBACK_CHIPS.find((c) => c.id === id)?.label ?? id;
 
 // 슬라이더 범위 — 그 지점 현재 분쇄도 ±0.5, 0.1 단위

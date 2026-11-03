@@ -37,6 +37,27 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
   const [reviewSending, setReviewSending] = useState(false);
   const [reviewMsg, setReviewMsg] = useState<string | null>(null);
 
+  // 인쇄 완료 표시 — 디자이너가 누르면 발주한 사람에게 알림(2026-11-03). 작업 보드 '원두카드' 단계 완료 판정에 쓰인다.
+  const [cardSaving, setCardSaving] = useState(false);
+  const markCardDone = async (done: boolean) => {
+    if (!record || cardSaving) return;
+    setCardSaving(true);
+    try {
+      const res = await fetch('/api/purchases/card-done', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: record.id, done }),
+      });
+      const updated = await res.json();
+      if (!res.ok) throw new Error(updated.error ?? '저장에 실패했어요.');
+      setRecords((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+    } catch (e) {
+      setReviewMsg(`⚠ ${(e as Error).message}`);
+    } finally {
+      setCardSaving(false);
+    }
+  };
+
   const requestRecipeReview = async () => {
     if (!record || reviewSending) return;
     setReviewSending(true);
@@ -120,9 +141,35 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
         <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
             <p className="ta-label">원두카드 인쇄 — A4 · 카드 9장 · 재단선 포함</p>
-            <button onClick={() => window.print()} className="ta-btn-primary" style={{ height: 34, paddingLeft: 16, paddingRight: 16 }}>
-              인쇄 (⌘P)
-            </button>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {record &&
+                (record.cardDone ? (
+                  <span className="text-body text-emerald-700 dark:text-emerald-400">
+                    인쇄 완료 · {fmtDate(record.cardDone.at)}
+                    <button
+                      onClick={() => markCardDone(false)}
+                      disabled={cardSaving}
+                      className="text-caption text-muted-foreground hover:text-foreground"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: 8, padding: 0 }}
+                    >
+                      취소
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => markCardDone(true)}
+                    disabled={cardSaving}
+                    className="ta-btn"
+                    style={{ height: 34, paddingLeft: 14, paddingRight: 14 }}
+                    title="원두카드를 인쇄했으면 눌러 주세요 — 발주한 사람에게 알림이 가요"
+                  >
+                    {cardSaving ? '저장 중…' : '인쇄 완료 표시'}
+                  </button>
+                ))}
+              <button onClick={() => window.print()} className="ta-btn-primary" style={{ height: 34, paddingLeft: 16, paddingRight: 16 }}>
+                인쇄 (⌘P)
+              </button>
+            </span>
           </div>
           {/* 저장된 발주 원두 불러오기 — 선택하면 아래 칸이 자동 기입된다 */}
           <select

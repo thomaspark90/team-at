@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import type { BrewType } from '@/lib/types';
-import { daysSince } from '@/lib/types';
+import { restClass, restStage, restTitle, type RoastInfo } from '@/lib/garden/roast';
 import { brewOnStyle } from '@/lib/garden/brew-colors';
 
 // 필터 레시피 목록(2026-11-03 대표 결정: 시안 C3 '인덱스 + 펼침').
@@ -27,7 +27,7 @@ export type LedgerRow = {
   country: string;
   roastery?: string;
   orderDate: string | null; // YYYY-MM-DD 또는 ISO
-  roastDate: string | null; // 수령 후 기재 — 없으면 '수령 전'
+  roast: RoastInfo | null; // 로스팅일 — 미기재면 발주일+1 추정(estimated)
   price: number | null; // 책정 판매가(원, VAT 포함 소비자가)
   ice: LedgerSlot | null;
   hot: LedgerSlot | null;
@@ -48,13 +48,6 @@ const needs = (r: LedgerRow) => !r.ice || !r.hot;
 const mainSlot = (r: LedgerRow) => r.hot ?? r.ice;
 const profitOf = (r: LedgerRow, s: LedgerSlot | null) => (s && r.price != null && s.cost != null ? r.price - s.cost : null);
 
-// 로스팅 후 경과일 색 — 7일 미만 숙성 중(muted) · 7~21일 적기(emerald) · 22일~ 지남(amber)
-const restCls = (d: number) =>
-  d < 7
-    ? 'bg-muted text-muted-foreground'
-    : d <= 21
-      ? 'bg-emerald-600/10 text-emerald-700 dark:text-emerald-400'
-      : 'bg-amber-500/15 text-amber-700 dark:text-amber-400';
 
 function NeedBadge() {
   return (
@@ -109,7 +102,7 @@ export default function RecipeLedger({
     const list = [...rows];
     if (sort === 'profit') list.sort((a, b) => (profitOf(b, mainSlot(b)) ?? -Infinity) - (profitOf(a, mainSlot(a)) ?? -Infinity));
     else {
-      const age = (r: LedgerRow) => (r.roastDate ? daysSince(r.roastDate) : -1);
+      const age = (r: LedgerRow) => r.roast?.days ?? -1;
       list.sort((a, b) => age(b) - age(a));
     }
     return list;
@@ -218,7 +211,6 @@ export default function RecipeLedger({
           <tbody>
             {sorted.map((row) => {
               const isOpen = open.has(row.beanKey);
-              const rd = row.roastDate ? daysSince(row.roastDate) : null;
               const none = !row.ice && !row.hot;
               return (
                 <Fragment key={row.beanKey}>
@@ -240,14 +232,21 @@ export default function RecipeLedger({
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         {row.orderDate && <span>발주 {md(row.orderDate)}</span>}
                         <span className="bg-border" style={{ width: 16, height: 1 }} />
-                        {row.roastDate && rd != null ? (
-                          <>
-                            <span>로스팅 {md(row.roastDate)}</span>
+                        {row.roast ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }} title={restTitle(row.roast)}>
+                            <span>
+                              로스팅 {row.roast.estimated ? '~' : ''}
+                              {md(row.roast.date)}
+                              {row.roast.estimated && <span style={{ opacity: 0.7 }}> 추정</span>}
+                            </span>
                             <span className="bg-border" style={{ width: 16, height: 1 }} />
-                            <span className={`rounded-sm ${restCls(rd)}`} style={{ padding: '1px 6px' }}>D+{rd}</span>
-                          </>
+                            <span className={`rounded-sm ${restClass[restStage(row.roast.days)]}`} style={{ padding: '1px 6px' }}>
+                              D+{row.roast.days}
+                              {restStage(row.roast.days) === 'resting' ? ' 숙성 중' : ''}
+                            </span>
+                          </span>
                         ) : (
-                          <span style={{ opacity: 0.6 }}>로스팅일 수령 전</span>
+                          <span style={{ opacity: 0.6 }}>로스팅일 없음</span>
                         )}
                       </span>
                     </td>

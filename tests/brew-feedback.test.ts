@@ -141,3 +141,22 @@ describe('판매가 참고표 — 1,000원 행', () => {
     expect(bandRange(c['1500'])).toEqual({ lo: 4, hi: 5 });
   });
 });
+
+// 2026-11-03 — 좋음(단독)·농도(진함/연함 택1) 칩
+import { toggleChip, suggestWater, suggestMesh as suggestMesh2 } from '@/lib/garden/brew-feedback';
+describe('좋음·농도 칩', () => {
+  it('좋음은 다른 칩을 지우고, 다른 칩을 고르면 좋음이 빠진다', () => {
+    expect(toggleChip(['sour', 'strong'], 'good')).toEqual(['good']);
+    expect(toggleChip(['good'], 'bitter')).toEqual(['bitter']);
+  });
+  it('진함/연함은 하나만', () => {
+    expect(toggleChip(['strong', 'sour'], 'weak')).toEqual(['sour', 'weak']);
+  });
+  it('농도 칩은 분쇄도 제안에 영향 없음, 물 제안만', () => {
+    expect(suggestMesh2(['strong'], 7.2).mesh).toBe(7.2);
+    expect(suggestMesh2(['strong', 'sour'], 7.2).mesh).toBe(7.1);
+    expect(suggestWater(['strong'])).toContain('+10g');
+    expect(suggestWater(['weak'])).toContain('−10g');
+    expect(suggestWater(['good'])).toBeNull();
+  });
+});

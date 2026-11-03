@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { BrewFeedback, BrewType, StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import { brewFeedbackRecords } from '@/lib/blob-records';
-import { FEEDBACK_CHIPS, roundMesh } from '@/lib/garden/brew-feedback';
+import { FEEDBACK_CHIPS, GOOD_CHIP, roundMesh } from '@/lib/garden/brew-feedback';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { requireGardenTab } from '@/lib/access/guard';
@@ -47,9 +47,11 @@ export async function POST(req: Request) {
   if (!body.beanKey || !body.bean || !body.recipeVersion) {
     return NextResponse.json({ error: '레시피 정보가 없습니다.' }, { status: 400 });
   }
-  const issues = Array.isArray(body.issues)
+  const picked = Array.isArray(body.issues)
     ? Array.from(new Set((body.issues as unknown[]).map(String))).filter((id) => CHIP_IDS.has(id))
     : [];
+  // '좋음'은 단독 — 다른 칩과 함께 오면 '좋음'을 버린다
+  const issues = picked.length > 1 ? picked.filter((id) => id !== GOOD_CHIP) : picked;
 
   const rec: BrewFeedback = {
     id: crypto.randomUUID(),
