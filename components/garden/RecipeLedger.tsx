@@ -4,6 +4,8 @@ import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import type { BrewType } from '@/lib/types';
 import { restClass, restStage, restTitle, type RoastInfo } from '@/lib/garden/roast';
 import { brewOnStyle } from '@/lib/garden/brew-colors';
+import LedgerPriceCell from '@/components/garden/LedgerPriceCell';
+import type { PurchaseRecord } from '@/lib/types';
 
 // 필터 레시피 목록(2026-11-03 대표 결정: 시안 C3 '인덱스 + 펼침').
 // 한 원두 = 한 줄 인덱스 — 날짜는 발주 → 로스팅 → D+N 흐름, ICE·HOT 은 비율(없으면 '레시피 설정 필요'),
@@ -29,6 +31,7 @@ export type LedgerRow = {
   orderDate: string | null; // YYYY-MM-DD 또는 ISO
   roast: RoastInfo | null; // 로스팅일 — 미기재면 발주일+1 추정(estimated)
   price: number | null; // 책정 판매가(원, VAT 포함 소비자가)
+  purchaseId: string | null; // 판매가가 저장된 최신 발주 기록 — 판매가 칸 인라인 수정 대상
   ice: LedgerSlot | null;
   hot: LedgerSlot | null;
   hasRecipe: boolean; // ICE·HOT 중 하나라도 있으면 기존 카드 펼침 가능
@@ -77,6 +80,8 @@ export default function RecipeLedger({
   onDeleteUnset,
   deleting,
   renderDetail,
+  canEditPrice = false,
+  onPriceSaved,
 }: {
   rows: LedgerRow[];
   filters?: ReactNode; // 왼쪽 필터 칩(전체·설정 필요·국가) — 정렬 칩과 한 줄에 놓는다
@@ -85,6 +90,8 @@ export default function RecipeLedger({
   onDeleteUnset: (row: LedgerRow) => void; // 레시피 없는 원두의 발주 기록 삭제
   deleting: string | null;
   renderDetail: (beanKey: string) => ReactNode;
+  canEditPrice?: boolean; // saleprice 탭 권한 — 판매가 칸을 눌러 바로 수정
+  onPriceSaved?: (rec: PurchaseRecord) => void;
 }) {
   const [sort, setSort] = useState<SortKey>('need');
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -255,7 +262,12 @@ export default function RecipeLedger({
                     <td style={cell}>{slotCell(row, 'ice')}</td>
                     <td style={cell}>{slotCell(row, 'hot')}</td>
                     <td style={{ ...cell, textAlign: 'right' }}>
-                      {row.price != null ? num(row.price) : <span className="text-muted-foreground">미책정</span>}
+                      <LedgerPriceCell
+                        purchaseId={row.purchaseId}
+                        price={row.price}
+                        canEdit={canEditPrice && !!onPriceSaved}
+                        onSaved={(rec) => onPriceSaved?.(rec)}
+                      />
                     </td>
                     <td style={cell}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>

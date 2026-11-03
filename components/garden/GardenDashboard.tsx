@@ -21,6 +21,7 @@ import { brewOnStyle } from '@/lib/garden/brew-colors';
 import SegmentControl from '@/components/nav/SegmentControl';
 import TastingNoteEditor from '@/components/garden/TastingNoteEditor';
 import RecipeLedger, { type LedgerRow, type LedgerSlot } from '@/components/garden/RecipeLedger';
+import { fetchMyAccess } from '@/lib/access/tab-access-client';
 
 // 카드 헤더의 지점별 재고량 칩(판교 100% · 양재천 100%) — 2026-10-31 대표 지시로 '일단' 숨김.
 // 재고 데이터·알림 로직은 그대로라 true 로 바꾸면 바로 복구된다.
@@ -163,6 +164,11 @@ interface BeanGroup {
 // 편집기·타이머 오버레이는 두 모드 공통.
 export default function GardenDashboard({ section = 'recipes' }: { section?: 'unset' | 'recipes' }) {
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
+  // 필터 레시피 목록 판매가 인라인 수정 — saleprice 탭 권한(mine=null 은 전체 허용). 실제 검증은 서버 PATCH
+  const [canEditPrice, setCanEditPrice] = useState(false);
+  useEffect(() => {
+    fetchMyAccess().then((a) => setCanEditPrice(a.mine == null || a.mine.includes('saleprice')));
+  }, []);
   const [recipes, setRecipes] = useState<DripRecipe[]>([]);
   const [beanMetas, setBeanMetas] = useState<BeanMeta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -367,6 +373,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
         orderDate: latest ? latest.orderDate ?? latest.createdAt : null,
         roast: roastInfo(latest),
         price: latest?.chosenPrice && latest.chosenPrice > 0 ? latest.chosenPrice : null,
+        purchaseId: latest?.id ?? null,
         ice: slotOf(g?.ice ?? null, latest),
         hot: slotOf(g?.hot ?? null, latest),
         hasRecipe: !!g,
@@ -1375,6 +1382,8 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                 if (rec) deleteUnsetBean(rec);
               }}
               deleting={deletingBean}
+              canEditPrice={canEditPrice}
+              onPriceSaved={(rec) => setPurchases((prev) => prev.map((r) => (r.id === rec.id ? rec : r)))}
               renderDetail={(k) => {
                 const g = activeGroups.find((x) => x.beanKey === k);
                 return g ? renderBeanCard(g) : null;
