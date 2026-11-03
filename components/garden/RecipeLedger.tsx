@@ -152,6 +152,8 @@ export default function RecipeLedger({
           <span className="bg-emerald-600/60" style={{ width: `${100 - pct}%` }} />
         </span>
         <span className="text-emerald-700 dark:text-emerald-400">{num(row.price - s.cost)}</span>
+        {/* 재료비율 — 잔당 재료비 ÷ 판매가(VAT 포함) */}
+        <span className="text-muted-foreground">재료비 {pct}%</span>
       </span>
     );
   };
@@ -205,7 +207,7 @@ export default function RecipeLedger({
               <th className={th} style={cell}>ICE</th>
               <th className={th} style={cell}>HOT</th>
               <th className={th} style={{ ...cell, textAlign: 'right' }}>판매가(원)</th>
-              <th className={th} style={cell}>재료비 / 이익(원) · HOT 기준, 없으면 ICE</th>
+              <th className={th} style={cell}>재료비 / 이익(원) · 재료비율 — HOT 기준, 없으면 ICE</th>
             </tr>
           </thead>
           <tbody>
