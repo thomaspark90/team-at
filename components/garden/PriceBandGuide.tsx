@@ -12,6 +12,7 @@ import {
 
 // 판매가 설정 화면 하단 참고표 — 잔당 재료비 × 배수 → 판매가.
 // 칸을 클릭하면 권장(초록) ↔ 비활성(회색)이 바뀌고 서버에 저장된다 (/api/garden-price-bands).
+// 발주 화면은 readOnly(보기 전용, 기준 변경은 판매가 설정에서만) + 지금 원두 재료비 행 강조 (2026-11-03).
 
 const C = {
   border: 'hsl(var(--border))',
@@ -26,7 +27,15 @@ const OFF_FILL = 'hsl(var(--muted) / 0.5)';
 const n = (v: number) => Math.round(v).toLocaleString('ko-KR');
 
 // onChange — 화면의 다른 부분(미책정 카드 권장 강조)이 같은 칸 상태를 쓰도록 변경을 알린다
-export default function PriceBandGuide({ onChange }: { onChange?: (cells: ActiveCells) => void }) {
+export default function PriceBandGuide({
+  onChange,
+  readOnly,
+  highlightCost,
+}: {
+  onChange?: (cells: ActiveCells) => void;
+  readOnly?: boolean;
+  highlightCost?: number | null; // 강조할 재료비 행 — 다른 행은 흐리게
+}) {
   const [cells, setCells] = useState<ActiveCells>(defaultActiveCells);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
@@ -50,7 +59,7 @@ export default function PriceBandGuide({ onChange }: { onChange?: (cells: Active
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const pending = useRef(0);
   const toggle = (cost: number, m: number) => {
-    if (!loaded) return;
+    if (!loaded || readOnly) return;
     const active = !isOn(cost, m);
     setCells((cur) => {
       const row = new Set(cur[String(cost)] ?? []);
@@ -85,7 +94,7 @@ export default function PriceBandGuide({ onChange }: { onChange?: (cells: Active
     <div className="min-w-0">
       <p className="ta-label">참고표 · 재료비별 권장 배수</p>
       <p className="text-caption text-muted-foreground" style={{ margin: '0 0 12px' }}>
-        세로 = 잔당 재료비(원) · 가로 = 배수 · 칸 = 판매가(원, 500원 올림) / 원가율 · 잔당 이익(원). 초록 = 권장 · 회색 = 비활성 — 칸을 클릭해 바꿀 수 있어요(모두에게 저장).
+        세로 = 잔당 재료비(원) · 가로 = 배수 · 칸 = 판매가(원, 500원 올림) / 원가율 · 잔당 이익(원). 초록 = 권장 · 회색 = 비활성 — {readOnly ? '권장 범위는 판매가 설정 화면에서 바꿔요.' : '칸을 클릭해 바꿀 수 있어요(모두에게 저장).'}
         <br />
         ≈ kg = 그 재료비가 나오는 1kg 매입가(VAT 별도, 수율 90%·20g 기준).
       </p>
@@ -107,9 +116,12 @@ export default function PriceBandGuide({ onChange }: { onChange?: (cells: Active
           <tbody>
             {GUIDE_COSTS.map((cost) => {
               const on = cells[String(cost)] ?? [];
+              const dim = highlightCost != null && highlightCost !== cost;
+              const hl = highlightCost === cost;
               return (
-                <tr key={cost}>
-                  <th className="text-body" style={{ ...cell, ...sticky, textAlign: 'left', fontWeight: 400 }}>
+                <tr key={cost} style={{ opacity: dim ? 0.4 : 1 }}>
+                  <th className="text-body" style={{ ...cell, ...sticky, textAlign: 'left', fontWeight: hl ? 500 : 400 }}>
+                    {hl && '▸ '}
                     {n(cost)}
                     <span className="text-caption text-muted-foreground" style={{ display: 'block' }}>
                       ≈ kg {(kgPriceForCost(cost) / 10000).toFixed(1)}만 · {on.length ? `${on[0].toFixed(2)}~${on[on.length - 1].toFixed(2)}×` : '권장 없음'}
@@ -122,10 +134,10 @@ export default function PriceBandGuide({ onChange }: { onChange?: (cells: Active
                       <td
                         key={m}
                         className="text-body"
-                        role="button"
-                        tabIndex={0}
-                        aria-pressed={active}
-                        title={`${n(cost)}원 × ${m.toFixed(2)} — 클릭해 ${active ? '비활성' : '권장'}으로`}
+                        role={readOnly ? undefined : 'button'}
+                        tabIndex={readOnly ? undefined : 0}
+                        aria-pressed={readOnly ? undefined : active}
+                        title={readOnly ? undefined : `${n(cost)}원 × ${m.toFixed(2)} — 클릭해 ${active ? '비활성' : '권장'}으로`}
                         onClick={() => toggle(cost, m)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
@@ -133,7 +145,7 @@ export default function PriceBandGuide({ onChange }: { onChange?: (cells: Active
                             toggle(cost, m);
                           }
                         }}
-                        style={{ ...cell, cursor: loaded ? 'pointer' : 'default', backgroundColor: active ? BAND_FILL : OFF_FILL }}
+                        style={{ ...cell, cursor: loaded && !readOnly ? 'pointer' : 'default', backgroundColor: active ? BAND_FILL : OFF_FILL }}
                       >
                         {n(price)}
                         <span className="text-caption text-muted-foreground" style={{ display: 'block' }}>

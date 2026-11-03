@@ -7,6 +7,7 @@ import { toast } from '@/components/Toast';
 import { fmtDate } from '@/lib/garden/format';
 import { useKakaoOrder } from './KakaoOrder';
 import { bandRange, defaultActiveCells, guideRowForCost, type ActiveCells } from '@/lib/garden/price-bands';
+import PriceBandGuide from './PriceBandGuide';
 
 // 인라인 스타일에서 참조할 midday 토큰 (HSL 변수)
 const C = {
@@ -74,13 +75,8 @@ export default function GardenService() {
   );
 
   // 권장 배수 = 판매가 설정 참고표에서 재료비가 속한 행의 초록 칸 범위 (2026-11-03, 이전엔 4.0~5.5 고정).
-  // 재료비 행이 바뀔 때만 다시 채우므로, 같은 행 안에서는 아래 ‹ › 로 손본 값이 유지된다.
+  // 손으로 고치는 칸은 없앴다 — 저장 버튼 아래 참고표(보기 전용)가 칸 상태를 불러와 onChange 로 넘겨준다.
   const [bandCells, setBandCells] = useState<ActiveCells>(defaultActiveCells);
-  useEffect(() => {
-    fetch('/api/garden-price-bands', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => j?.cells && setBandCells(j.cells));
-  }, []);
   const bandRow = result ? guideRowForCost(result.costPerCup) : null;
   useEffect(() => {
     if (bandRow == null) return;
@@ -90,11 +86,6 @@ export default function GardenService() {
 
   const setNum = (key: keyof PricingSettings, v: number) =>
     setSettings((s) => ({ ...s, [key]: v }));
-
-  const adjMin = (d: number) =>
-    setSettings((s) => ({ ...s, minMult: clamp(s.minMult + d, 2, s.maxMult) }));
-  const adjMax = (d: number) =>
-    setSettings((s) => ({ ...s, maxMult: clamp(s.maxMult + d, s.minMult, 7) }));
 
   const savePurchase = async () => {
     if (!result || !bean.trim() || price <= 0 || saving) return;
@@ -412,12 +403,11 @@ export default function GardenService() {
                   <span className="text-caption text-muted-foreground">잔당 재료비 (VAT 포함)</span>
                   <span className="text-display text-foreground tabular">{won(result.costPerCup)}</span>
                 </div>
-                <div className="text-caption text-muted-foreground" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span>권장</span>
-                  <Stepper value={settings.minMult} onDec={() => adjMin(-0.25)} onInc={() => adjMin(0.25)} />
-                  <span>~</span>
-                  <Stepper value={settings.maxMult} onDec={() => adjMax(-0.25)} onInc={() => adjMax(0.25)} />
-                </div>
+                {/* 권장 배수 — 참고표에서 자동 산정(손으로 고치지 않음) */}
+                <span className="text-caption text-muted-foreground tabular">
+                  권장 <span className="text-body text-foreground">{settings.minMult.toFixed(2)}~{settings.maxMult.toFixed(2)}×</span>
+                  {bandRow != null && ` · 참고표 ${bandRow.toLocaleString('ko-KR')}원 행`}
+                </span>
               </div>
 
               {/* 권장 판매 범위 — 배수 선택(책정)은 '판매가 설정' 탭 담당이라 여기선 범위만 보여준다 */}
@@ -438,6 +428,11 @@ export default function GardenService() {
               >
                 {saving ? '저장 중…' : `${bean.trim() ? bean.trim() + ' ' : ''}원두 저장하기`}
               </button>
+
+              {/* 참고표 — 지금 원두 재료비 행 강조, 보기 전용(권장 범위 변경은 판매가 설정 화면) */}
+              <div style={{ marginTop: 28 }}>
+                <PriceBandGuide readOnly highlightCost={bandRow} onChange={setBandCells} />
+              </div>
             </div>
           )}
         </div>
@@ -554,8 +549,6 @@ export default function GardenService() {
   );
 }
 
-const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
-
 // 드롭다운 선택 + '＋ 직접 입력' 폴백 — 명단은 설정(/garden/settings)에서 관리.
 // 명단에 없는 값(원두봉투 스캔 결과 등)이 들어오면 자동으로 입력 모드로 전환된다.
 function PickOrType({
@@ -627,26 +620,6 @@ function PickOrType({
 }
 
 // 권장 구간 하한/상한 조절 화살표 토글
-function Stepper({ value, onDec, onInc }: { value: number; onDec: () => void; onInc: () => void }) {
-  const btn: React.CSSProperties = {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    color: C.mutedFg,
-    fontSize: 13,
-    lineHeight: 1,
-    padding: '2px 6px',
-    fontFamily: 'inherit',
-  };
-  return (
-    <span className="rounded-md border border-border" style={{ display: 'inline-flex', alignItems: 'center' }}>
-      <button onClick={onDec} style={btn}>‹</button>
-      <span className="tabular text-foreground" style={{ minWidth: 28, textAlign: 'center', fontSize: 13 }}>{value.toFixed(2)}</span>
-      <button onClick={onInc} style={btn}>›</button>
-    </span>
-  );
-}
-
 function Field({
   label,
   value,
