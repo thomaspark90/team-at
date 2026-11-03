@@ -39,7 +39,7 @@ export type LedgerRow = {
   hasRecipe: boolean; // ICE·HOT 중 하나라도 있으면 기존 카드 펼침 가능
 };
 
-type SortKey = 'need' | 'profit' | 'roast';
+type SortKey = 'need' | 'profit' | 'roast' | 'roastNew';
 const SORTS: { id: SortKey; label: string }[] = [
   { id: 'need', label: '설정 필요 먼저' },
   { id: 'profit', label: '이익 높은순' },
@@ -111,8 +111,14 @@ export default function RecipeLedger({
     const list = [...rows];
     if (sort === 'profit') list.sort((a, b) => (baseProfit(b) ?? -Infinity) - (baseProfit(a) ?? -Infinity));
     else {
-      const age = (r: LedgerRow) => r.roast?.days ?? -1;
-      list.sort((a, b) => age(b) - age(a));
+      // 로스팅일 없는 원두는 방향과 상관없이 맨 뒤
+      const dir = sort === 'roast' ? 1 : -1; // roast = 오래된순, roastNew = 최신순
+      const age = (r: LedgerRow) => r.roast?.days;
+      list.sort((a, b) => {
+        const x = age(a), y = age(b);
+        if (x == null || y == null) return (x == null ? 1 : 0) - (y == null ? 1 : 0);
+        return dir * (y - x);
+      });
     }
     return list;
   }, [rows, sort]);
@@ -206,17 +212,25 @@ export default function RecipeLedger({
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         {filters}
         <span style={{ flex: 1 }} />
-        {SORTS.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => setSort(s.id)}
-            className={`rounded-md border px-2.5 py-1 text-body transition-colors ${
-              sort === s.id ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
+        {SORTS.map((s) => {
+          // 로스팅 칩은 누를 때마다 오래된순 ↔ 최신순 전환 (2026-11-03)
+          const isRoast = s.id === 'roast';
+          const on = isRoast ? sort === 'roast' || sort === 'roastNew' : sort === s.id;
+          const label = isRoast && sort === 'roastNew' ? '로스팅 최신순' : s.label;
+          return (
+            <button
+              key={s.id}
+              onClick={() => setSort(isRoast ? (sort === 'roast' ? 'roastNew' : 'roast') : s.id)}
+              title={isRoast ? '누를 때마다 오래된순 ↔ 최신순' : undefined}
+              className={`rounded-md border px-2.5 py-1 text-body transition-colors ${
+                on ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {label}
+              {isRoast && on && <span style={{ marginLeft: 4, opacity: 0.7 }}>⇅</span>}
+            </button>
+          );
+        })}
       </div>
 
       <div className="min-w-0" style={{ overflowX: 'auto' }}>
