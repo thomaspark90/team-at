@@ -48,5 +48,5 @@ export const restClass: Record<RestStage, string> = {
 
 export const restTitle = (r: RoastInfo) =>
   `로스팅 ${r.date}${r.estimated ? ' (추정: 발주일+1, [수령]으로 실제 날짜 입력)' : ''} · ${
-    restStage(r.days) === 'resting' ? `숙성 중 — D+${REST_START}부터 권장` : restStage(r.days) === 'peak' ? '적기' : '시간 지남'
+    restStage(r.days) === 'resting' ? `디게싱 중 — D+${REST_START}부터 권장` : restStage(r.days) === 'peak' ? '적기' : '시간 지남'
   }`;

@@ -712,7 +712,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                   title={restTitle(roast)}
                 >
                   {roast.estimated ? '~' : ''}D+{roast.days}
-                  {restStage(roast.days) === 'resting' ? ' 숙성 중' : ''}
+                  {restStage(roast.days) === 'resting' ? ' 디게싱 중' : ''}
                 </span>
               )}
               {/* 판매 대기 — 선택한 지점에서 레시피는 있지만 아직 판매 전. 레시피 보드에서 빠지고 '대기' 목록으로 */}

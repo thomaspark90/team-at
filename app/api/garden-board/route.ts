@@ -171,7 +171,7 @@ export async function GET(req: Request) {
         { text: `${shortDate(p.createdAt)} 발주` },
         ...(roast && !allDone
           ? [{
-              text: `로스팅 ${roast.estimated ? '~' : ''}D+${roast.days}${restStage(roast.days) === 'resting' ? ' 숙성 중' : ''}`,
+              text: `로스팅 ${roast.estimated ? '~' : ''}D+${roast.days}${restStage(roast.days) === 'resting' ? ' 디게싱 중' : ''}`,
               ...(restStage(roast.days) === 'resting' ? { tone: 'late' as const } : {}),
             }]
           : []),

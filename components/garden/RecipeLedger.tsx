@@ -279,7 +279,7 @@ export default function RecipeLedger({
                             <span className="bg-border" style={{ width: 16, height: 1 }} />
                             <span className={`rounded-sm ${restClass[restStage(row.roast.days)]}`} style={{ padding: '1px 6px' }}>
                               D+{row.roast.days}
-                              {restStage(row.roast.days) === 'resting' ? ' 숙성 중' : ''}
+                              {restStage(row.roast.days) === 'resting' ? ' 디게싱 중' : ''}
                             </span>
                           </span>
                         ) : (
