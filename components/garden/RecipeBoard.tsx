@@ -40,7 +40,7 @@ interface BoardData {
   feedback: BrewFeedback[];
   staffNames: string[];
 }
-const BREW_TYPES: BrewType[] = ['ice', 'hot'];
+const BREW_TYPES: BrewType[] = ['hot', 'ice']; // 표시 순서·기본 선택 — HOT 먼저(2026-11-04)
 const btOf = (r: DripRecipe): BrewType => r.brewType ?? 'ice';
 const meshFmt = (n: number) => n.toFixed(1);
 // 아카이브 국가 탭 — 자주 들어오는 산지만 따로, 나머지는 '그 외' (2026-10-30 대표 지시)

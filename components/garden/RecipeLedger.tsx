@@ -88,7 +88,7 @@ export default function RecipeLedger({
   rows: LedgerRow[];
   filters?: ReactNode; // 왼쪽 필터 칩(전체·설정 필요·국가) — 정렬 칩과 한 줄에 놓는다
   onSetup: (row: LedgerRow, bt: BrewType) => void;
-  onSetupBoth: (row: LedgerRow) => void; // 레시피가 하나도 없는 원두 — ICE 저장 후 HOT 로 이어짐
+  onSetupBoth: (row: LedgerRow) => void; // 레시피가 하나도 없는 원두 — HOT 저장 후 ICE 로 이어짐
   onDeleteUnset: (row: LedgerRow) => void; // 레시피 없는 원두의 발주 기록 삭제
   deleting: string | null;
   renderDetail: (beanKey: string) => ReactNode;
@@ -143,12 +143,12 @@ export default function RecipeLedger({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (none && bt === 'ice') onSetupBoth(row);
+            if (none && bt === 'hot') onSetupBoth(row);
             else onSetup(row, bt);
           }}
           className="ta-btn"
           style={{ height: 26, paddingLeft: 10, paddingRight: 10, fontSize: 12 }}
-          title={none && bt === 'ice' ? 'ICE 저장 후 HOT 설정으로 이어져요' : undefined}
+          title={none && bt === 'hot' ? 'HOT 저장 후 ICE 설정으로 이어져요' : undefined}
         >
           설정
         </button>

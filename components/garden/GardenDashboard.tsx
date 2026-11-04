@@ -423,12 +423,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     }
   };
 
-  // 미설정 원두의 "레시피 설정" — ICE 편집을 열고, 저장하면 같은 원두의 HOT 편집이 자동으로 이어진다
-  const [chainHotFor, setChainHotFor] = useState<string | null>(null);
+  // 미설정 원두의 "레시피 설정" — HOT 편집을 열고, 저장하면 같은 원두의 ICE 편집이 자동으로 이어진다
+  const [chainIceFor, setChainIceFor] = useState<string | null>(null);
   const startUnsetSetup = (beanKey: string, bean: string) => {
     // openEditor가 이전 연결 플래그를 지우므로, 연 뒤에 설정해야 이번 연결이 살아남는다
-    openEditor(beanKey, bean, 'ice');
-    setChainHotFor(beanKey);
+    openEditor(beanKey, bean, 'hot');
+    setChainIceFor(beanKey);
   };
 
   // 새 레시피 기본값 — 같은 지점·타입 최근 20개 레시피의 최빈값(2026-11-01). 항목이 비면 매장 기준 프리셋 값 유지.
@@ -455,8 +455,8 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
   // 편집 열기 — 기존 레시피가 있으면 불러오고, 없으면 최근 레시피 기준 기본값으로 시작
   const openEditor = (beanKey: string, bean: string, brewType: BrewType) => {
-    // 다른 편집을 열면 이전 ICE→HOT 연결은 무효 — 남아 있으면 나중에 엉뚱한 HOT 편집이 이어진다
-    setChainHotFor(null);
+    // 다른 편집을 열면 이전 HOT→ICE 연결은 무효 — 남아 있으면 나중에 엉뚱한 ICE 편집이 이어진다
+    setChainIceFor(null);
     const existing = recipes.find((r) => sameRecipeSlot(r, beanKey, brewType, store));
     // 판교 레시피가 아직 없으면 양재천 레시피를 바탕으로 판교 레시피를 새로 만든다 — 분쇄도는 판교 값(보정 > 확정 환산)
     const yangjae = store === 'pangyo' && !existing ? recipes.find((r) => sameRecipeSlot(r, beanKey, brewType, 'yangjae')) : undefined;
@@ -472,7 +472,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
   // 이력 스냅샷을 편집 폼에 불러오기 — 저장을 눌러야 실제 복원됨
   const restoreSnapshot = (beanKey: string, bean: string, brewType: BrewType, s: DripRecipeSnapshot) => {
-    setChainHotFor(null);
+    setChainIceFor(null);
     const base = draftFromRecipe({
       beanKey,
       bean,
@@ -619,12 +619,12 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       if (!tRes?.ok) toast('레시피는 저장됐지만 테이스팅 노트 저장에 실패했어요.', 'error');
     }
     await refresh();
-    // 미설정 원두에서 시작한 경우 ICE 저장 후 같은 원두의 HOT 편집으로 자동 전환
-    if (draft.brewType === 'ice' && chainHotFor === draft.beanKey) {
-      setChainHotFor(null);
-      setDraft({ ...defaultDraft(draft.beanKey, draft.bean, 'hot', draft.store), tasting: draft.tasting });
+    // 미설정 원두에서 시작한 경우 HOT 저장 후 같은 원두의 ICE 편집으로 자동 전환
+    if (draft.brewType === 'hot' && chainIceFor === draft.beanKey) {
+      setChainIceFor(null);
+      setDraft({ ...defaultDraft(draft.beanKey, draft.bean, 'ice', draft.store), tasting: draft.tasting });
       setSaving(false);
-      toast('ICE 레시피 저장 완료 — 이어서 HOT 레시피를 설정하세요.');
+      toast('HOT 레시피 저장 완료 — 이어서 ICE 레시피를 설정하세요.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -1112,7 +1112,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
               className="ta-btn"
               style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 13, flexShrink: 0 }}
             >
-              레시피 설정 (ICE→HOT)
+              레시피 설정 (HOT→ICE)
             </button>
             <button
               onClick={() => deleteUnsetBean(rec)}
@@ -1315,7 +1315,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             <button
               onClick={() => {
                 setDraft(null);
-                setChainHotFor(null);
+                setChainIceFor(null);
               }}
               className="ta-btn"
             >
