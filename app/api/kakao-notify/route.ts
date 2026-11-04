@@ -43,8 +43,13 @@ export async function GET(req: Request) {
 
   // readAll 은 오래된순 — 같은 발주의 잡이 여러 개면(실패 후 재시도) 최신 상태가 남는다
   const jobs: Record<string, KakaoNotifyJob['status']> = {};
-  for (const j of await kakaoNotifyJobs.readAll()) jobs[j.purchaseId] = j.status;
-  return NextResponse.json({ allowed: true, jobs });
+  const errors: Record<string, string> = {}; // 실패 사유 — 버튼 툴팁·알림용 (2026-11-04)
+  for (const j of await kakaoNotifyJobs.readAll()) {
+    jobs[j.purchaseId] = j.status;
+    if (j.status === 'failed' && j.error) errors[j.purchaseId] = j.error;
+    else delete errors[j.purchaseId];
+  }
+  return NextResponse.json({ allowed: true, jobs, errors });
 }
 
 export async function POST(req: Request) {

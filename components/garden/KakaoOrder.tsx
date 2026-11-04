@@ -22,18 +22,39 @@ const labelOf = (status: string | undefined, sending: boolean) => {
 export function useKakaoOrder() {
   const [allowed, setAllowed] = useState(false);
   const [jobs, setJobs] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({}); // 실패 사유(맥 전송기가 보고)
   const [sending, setSending] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
 
-  useEffect(() => {
+  const loadJobs = () =>
     fetch('/api/kakao-notify', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         if (!j) return;
         setAllowed(!!j.allowed);
-        setJobs(j.jobs ?? {});
-      });
+        setJobs((prev) => {
+          // 대기 → 실패로 바뀐 건은 화면에서도 바로 알린다 (예전엔 새로고침 전까지 '대기중'에 머물렀다)
+          for (const [id, st] of Object.entries((j.jobs ?? {}) as Record<string, string>)) {
+            if (prev[id] === 'pending' && st === 'failed') toast(`발주 카톡 전송 실패 — ${j.errors?.[id] ?? '원인 미상'}`, 'error');
+            if (prev[id] === 'pending' && st === 'sent') toast('발주 카톡을 보냈어요.');
+          }
+          return j.jobs ?? {};
+        });
+        setErrors(j.errors ?? {});
+      })
+      .catch(() => {});
+  useEffect(() => {
+    loadJobs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // 대기 중인 잡이 있으면 15초마다 상태 확인 — 맥 전송기는 60초 주기로 집어간다
+  const hasPending = Object.values(jobs).includes('pending');
+  useEffect(() => {
+    if (!hasPending) return;
+    const t = setInterval(loadJobs, 15_000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasPending]);
 
   // 미리보기 모달 Escape 닫기 — 배경 클릭과 같은 동작을 키보드에도 연다
   useEffect(() => {
@@ -96,7 +117,7 @@ export function useKakaoOrder() {
         disabled={sending === rec.id || status === 'pending' || status === 'sent'}
         className={status === 'sent' ? 'text-muted-foreground' : 'text-foreground hover:text-foreground'}
         style={{ background: 'none', border: 'none', cursor: status === 'sent' ? 'default' : 'pointer', fontSize: 11, flexShrink: 0, padding: 0 }}
-        title="카톡방에 발주 메시지 전송"
+        title={status === 'failed' ? `전송 실패 — ${errors[rec.id] ?? '원인 미상'}\n눌러서 다시 보내기` : '카톡방에 발주 메시지 전송'}
       >
         {labelOf(status, sending === rec.id)}
       </button>
@@ -121,6 +142,12 @@ export function useKakaoOrder() {
           <p className="text-body text-muted-foreground" style={{ margin: '4px 0 0' }}>
             <span className="text-foreground">[{preview.room}]</span> 방으로 전송됩니다 — 문구는 자유롭게 고칠 수 있어요
           </p>
+          {/* 직전 시도가 실패했으면 이유를 보여준다 — 모바일은 버튼 툴팁이 안 보인다 (2026-11-04) */}
+          {errors[preview.recId] && jobs[preview.recId] === 'failed' && (
+            <p className="ta-error text-caption" style={{ margin: '6px 0 0' }}>
+              직전 전송 실패: {errors[preview.recId]}
+            </p>
+          )}
         </div>
         <textarea
           autoFocus
