@@ -161,7 +161,7 @@ export default function RecipeLedger({
     if (!s || row.price == null) return <span className="text-muted-foreground">—</span>;
     const pct = Math.min(100, Math.max(0, Math.round((s.cost / row.price) * 100)));
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }} title={`재료비 ${num(s.cost)}원(ICE·HOT 평균 ${s.doseG}g) · 재료비율 ${pct}%`}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }} title={`재료비 ${num(s.cost)}원(HOT·ICE 평균 ${s.doseG}g) · 재료비율 ${pct}%`}>
         <span className="rounded-sm bg-muted" style={{ display: 'flex', width: 120, height: 8, overflow: 'hidden' }}>
           <span className="bg-muted-foreground/40" style={{ width: `${pct}%` }} />
           <span className="bg-emerald-600/60" style={{ width: `${100 - pct}%` }} />
@@ -239,10 +239,10 @@ export default function RecipeLedger({
             <tr className="border-b border-border">
               <th className={th} style={cell}>원두</th>
               <th className={th} style={cell}>날짜</th>
-              <th className={th} style={cell}>ICE</th>
               <th className={th} style={cell}>HOT</th>
+              <th className={th} style={cell}>ICE</th>
               <th className={th} style={{ ...cell, textAlign: 'right' }}>판매가(원)</th>
-              <th className={th} style={cell}>재료비 / 이익(원) · 재료비율 — ICE·HOT 평균 도징 기준</th>
+              <th className={th} style={cell}>재료비 / 이익(원) · 재료비율 — HOT·ICE 평균 도징 기준</th>
             </tr>
           </thead>
           <tbody>
@@ -287,8 +287,8 @@ export default function RecipeLedger({
                         )}
                       </span>
                     </td>
-                    <td style={cell}>{slotCell(row, 'ice')}</td>
                     <td style={cell}>{slotCell(row, 'hot')}</td>
+                    <td style={cell}>{slotCell(row, 'ice')}</td>
                     <td style={{ ...cell, textAlign: 'right' }}>
                       <LedgerPriceCell
                         purchaseId={row.purchaseId}
@@ -324,15 +324,15 @@ export default function RecipeLedger({
                     <tr className="border-b border-border bg-muted/30">
                       <td colSpan={COLS} style={{ padding: '16px 20px 22px', whiteSpace: 'normal' }}>
                         <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                          <div style={{ width: 420, maxWidth: '100%' }}>{renderDetail(row.beanKey)}</div>
+                          <div style={{ width: 840, maxWidth: '100%' }}>{renderDetail(row.beanKey)}</div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 280 }}>
                             <p className="text-body font-medium" style={{ margin: 0 }}>원가 계산</p>
                             <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
                               판매가 {row.price != null ? `${num(row.price)}원` : '미책정'}
                               <span className="text-caption"> (VAT 포함 소비자가)</span>
                             </p>
-                            {costLine(row, 'ice')}
                             {costLine(row, 'hot')}
+                            {costLine(row, 'ice')}
                           </div>
                         </div>
                       </td>

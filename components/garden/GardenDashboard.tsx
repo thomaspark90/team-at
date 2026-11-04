@@ -32,7 +32,7 @@ const NEED_FILTER = '__need__';
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 
-const BREW_TYPES: BrewType[] = ['ice', 'hot'];
+const BREW_TYPES: BrewType[] = ['hot', 'ice']; // 화면 표시 순서 — HOT 먼저(2026-11-04)
 const btOf = (r: DripRecipe): BrewType => r.brewType ?? 'ice';
 const btLabel = (bt: BrewType) => bt.toUpperCase();
 const housePresetId = (bt: BrewType) => (bt === 'ice' ? 'house-ice' : 'house-hot');
@@ -683,7 +683,8 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   const draftWater = draft ? draft.pours.reduce((a, s) => a + s.water, 0) : 0;
 
   // 원두 카드 한 장
-  const renderBeanCard = (g: BeanGroup) => {
+  // sideBySide — 레시피 목록 펼침 전용: 가로 두 칸(좁으면 세로로 접힘). 아카이브는 세로 카드 유지
+  const renderBeanCard = (g: BeanGroup, sideBySide = false) => {
     const latest = latestByBean.get(g.beanKey);
     const roast = roastInfo(latest);
     return (
@@ -900,7 +901,13 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           )}
         </div>
 
-        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div
+          style={
+            sideBySide
+              ? { padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, alignItems: 'start' }
+              : { padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }
+          }
+        >
           {BREW_TYPES.map((bt, idx) => {
             const r = g[bt];
             // 이 레시피 도징량 기준 잔당 재료비 (최신 발주가의 g당 원가 × 도징)
@@ -909,7 +916,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                 ? costPerCup(latest.purchasePrice, { ...latest.settings, doseG: r.doseG })
                 : null;
             return (
-              <div key={bt} style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: idx > 0 ? '1px solid hsl(var(--border))' : 'none', paddingTop: idx > 0 ? 12 : 0 }}>
+              <div key={bt} style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0, borderTop: !sideBySide && idx > 0 ? '1px solid hsl(var(--border))' : 'none', paddingTop: !sideBySide && idx > 0 ? 12 : 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                     <BrewBadge bt={bt} />
@@ -1335,12 +1342,17 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             </span>
           </div>
 
-          {/* 태블릿 레시피 보드 — 3장씩 좌우 스와이프로 넘겨 보는 매장용 화면 */}
-          {!loading && activeGroups.length > 0 && (
-            <Link href="/garden/recipes/board" className="text-body text-muted-foreground underline hover:text-foreground" style={{ alignSelf: 'flex-start' }}>
-              태블릿 레시피 보드로 보기 →
+          {/* 태블릿 레시피 보드 — 3장씩 좌우 스와이프로 넘겨 보는 매장용 화면 · 거기서 남긴 추출 평가 모아보기 */}
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            {!loading && activeGroups.length > 0 && (
+              <Link href="/garden/recipes/board" className="text-body text-muted-foreground underline hover:text-foreground">
+                태블릿 레시피 보드로 보기 →
+              </Link>
+            )}
+            <Link href="/garden/recipes/feedback" className="text-body text-muted-foreground underline hover:text-foreground">
+              추출 평가 모아보기 →
             </Link>
-          )}
+          </div>
           {!loading && activeGroups.length === 0 && unsetBeans.length === 0 && (
             <p className="text-body text-muted-foreground">
               아직 레시피가 설정된 원두가 없어요. 가격 세팅에서 원두를 발주하면 여기에서 레시피를 만들 수
@@ -1394,7 +1406,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
               onPriceSaved={(rec) => setPurchases((prev) => prev.map((r) => (r.id === rec.id ? rec : r)))}
               renderDetail={(k) => {
                 const g = activeGroups.find((x) => x.beanKey === k);
-                return g ? renderBeanCard(g) : null;
+                return g ? renderBeanCard(g, true) : null;
               }}
             />
           )}
@@ -1423,7 +1435,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                           <span className="text-caption text-muted-foreground">{groups.length}종</span>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px 12px' }}>
-                          {groups.map(renderBeanCard)}
+                          {groups.map((g) => renderBeanCard(g))}
                         </div>
                       </div>
                     ))}

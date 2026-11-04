@@ -1,4 +1,4 @@
-import type { BrewFeedback } from '@/lib/types';
+import type { BrewFeedback, BrewType, StoreId } from '@/lib/types';
 
 // 추출 평가 칩 — 개선이 필요한 점 + 농도(진함/연함) + '좋음'(2026-11-03 대표 결정: 10-30의 '좋았던 점 칩 없음'을
 // 바꿔 문제없음 기록용 '좋음' 하나와 농도 칩을 추가).
@@ -92,4 +92,61 @@ export function summarize(list: BrewFeedback[]) {
     deltas: Array.from(deltas.entries()).sort((a, b) => b[1] - a[1]),
     chips: Array.from(chips.entries()).sort((a, b) => b[1] - a[1]),
   };
+}
+
+// 모아보기 필터 — 빈 값/null 은 '전체'
+export type FeedbackFilter = {
+  store: StoreId | '';
+  brewType: BrewType | '';
+  beanKey: string;
+  staff: string;
+  days: number | null; // 최근 N일
+};
+
+export function filterFeedback(list: BrewFeedback[], f: FeedbackFilter, now = Date.now()): BrewFeedback[] {
+  const since = f.days != null ? now - f.days * 86_400_000 : null;
+  return list.filter(
+    (x) =>
+      (!f.store || x.store === f.store) &&
+      (!f.brewType || x.brewType === f.brewType) &&
+      (!f.beanKey || x.beanKey === f.beanKey) &&
+      (!f.staff || x.staffName === f.staff) &&
+      (since == null || new Date(x.createdAt).getTime() >= since)
+  );
+}
+
+export type FeedbackVersionGroup = { recipeVersion: string; items: BrewFeedback[] };
+export type FeedbackGroup = {
+  key: string;
+  bean: string;
+  beanKey: string;
+  store: StoreId;
+  brewType: BrewType;
+  count: number;
+  versions: FeedbackVersionGroup[];
+};
+
+// 원두·지점·ICE/HOT 별로 묶고, 그 안을 레시피 버전별로 나눈다 — 버전이 다르면 기준 분쇄도가 달라 함께 집계하면 안 된다.
+// 정렬은 모두 최신 먼저. 원두 표기는 가장 최근 의견의 표기를 쓴다.
+export function groupFeedback(list: BrewFeedback[]): FeedbackGroup[] {
+  const sorted = [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const groups = new Map<string, FeedbackGroup>();
+  for (const f of sorted) {
+    const key = `${f.beanKey}|${f.store}|${f.brewType}`;
+    let g = groups.get(key);
+    if (!g) {
+      g = { key, bean: f.bean, beanKey: f.beanKey, store: f.store, brewType: f.brewType, count: 0, versions: [] };
+      groups.set(key, g);
+    }
+    g.count += 1;
+    let v = g.versions.find((x) => x.recipeVersion === f.recipeVersion);
+    if (!v) {
+      v = { recipeVersion: f.recipeVersion, items: [] };
+      g.versions.push(v);
+    }
+    v.items.push(f);
+  }
+  const result = Array.from(groups.values());
+  for (const g of result) g.versions.sort((a, b) => b.recipeVersion.localeCompare(a.recipeVersion));
+  return result;
 }

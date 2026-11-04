@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { meshDeltaText, suggestMesh, summarize } from '@/lib/garden/brew-feedback';
+import { filterFeedback, groupFeedback, meshDeltaText, suggestMesh, summarize } from '@/lib/garden/brew-feedback';
 import type { BrewFeedback } from '@/lib/types';
 
 describe('추출 평가 — 분쇄도 제안', () => {
@@ -158,5 +158,53 @@ describe('좋음·농도 칩', () => {
     expect(suggestWater(['strong'])).toContain('+10g');
     expect(suggestWater(['weak'])).toContain('−10g');
     expect(suggestWater(['good'])).toBeNull();
+  });
+});
+
+describe('추출 평가 — 모아보기', () => {
+  const fb = (o: Partial<BrewFeedback>): BrewFeedback => ({
+    id: 'x',
+    createdAt: '2026-11-04T00:00:00.000Z',
+    staffName: 'a',
+    store: 'yangjae',
+    beanKey: 'b',
+    bean: 'B',
+    brewType: 'ice',
+    recipeVersion: 'v1',
+    issues: [],
+    baseMesh: null,
+    nextMesh: null,
+    memo: '',
+    ...o,
+  });
+  const all = { store: '', brewType: '', beanKey: '', staff: '', days: null } as const;
+
+  it('필터 — 지점·타입·원두·스탭', () => {
+    const list = [fb({ id: '1' }), fb({ id: '2', store: 'pangyo' }), fb({ id: '3', brewType: 'hot' }), fb({ id: '4', beanKey: 'c' }), fb({ id: '5', staffName: 'z' })];
+    expect(filterFeedback(list, all)).toHaveLength(5);
+    expect(filterFeedback(list, { ...all, store: 'pangyo' }).map((x) => x.id)).toEqual(['2']);
+    expect(filterFeedback(list, { ...all, brewType: 'hot' }).map((x) => x.id)).toEqual(['3']);
+    expect(filterFeedback(list, { ...all, beanKey: 'c' }).map((x) => x.id)).toEqual(['4']);
+    expect(filterFeedback(list, { ...all, staff: 'z' }).map((x) => x.id)).toEqual(['5']);
+  });
+  it('필터 — 최근 N일은 경계 포함', () => {
+    const now = Date.parse('2026-11-08T00:00:00.000Z');
+    const list = [fb({ id: 'in', createdAt: '2026-11-01T00:00:00.000Z' }), fb({ id: 'out', createdAt: '2026-10-31T23:59:59.000Z' })];
+    expect(filterFeedback(list, { ...all, days: 7 }, now).map((x) => x.id)).toEqual(['in']);
+  });
+  it('묶음 — 원두·지점·타입별, 안에서 레시피 버전별, 최신 먼저', () => {
+    const groups = groupFeedback([
+      fb({ id: 'old', createdAt: '2026-11-01T00:00:00.000Z', recipeVersion: '2026-10-01', bean: '옛 표기' }),
+      fb({ id: 'new', createdAt: '2026-11-03T00:00:00.000Z', recipeVersion: '2026-11-02', bean: '새 표기' }),
+      fb({ id: 'hot', createdAt: '2026-11-02T00:00:00.000Z', brewType: 'hot' }),
+      fb({ id: 'pg', createdAt: '2026-11-04T00:00:00.000Z', store: 'pangyo' }),
+    ]);
+    expect(groups.map((g) => [g.store, g.brewType, g.count])).toEqual([
+      ['pangyo', 'ice', 1],
+      ['yangjae', 'ice', 2],
+      ['yangjae', 'hot', 1],
+    ]);
+    expect(groups[1].bean).toBe('새 표기');
+    expect(groups[1].versions.map((v) => v.recipeVersion)).toEqual(['2026-11-02', '2026-10-01']);
   });
 });
