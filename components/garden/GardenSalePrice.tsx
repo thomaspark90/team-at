@@ -51,6 +51,7 @@ export default function GardenSalePrice() {
   // 기록별 판매가 선택 상태(500원 단위 후보) — 확정(PATCH) 전까지는 로컬에만 둔다
   const [picks, setPicks] = useState<Record<string, number>>({});
   const [openId, setOpenId] = useState<string | null>(null); // 책정 완료 기록의 '변경' 펼침
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // 같은 원두 중복 기록 삭제 — 한 번 더 확인
   const [busyId, setBusyId] = useState<string | null>(null);
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -128,6 +129,29 @@ export default function GardenSalePrice() {
       setPurchases((prev) => prev.map((r) => (r.id === rec.id ? j : r)));
     } catch (e) {
       setError(e instanceof Error ? e.message : '저장에 실패했어요.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // 같은 원두에 기록이 여러 건일 때 하나 지우기 — 발주 기록 자체를 지운다(발주 화면에서도 사라지고 되돌릴 수 없음)
+  const deleteRecord = async (rec: PurchaseRecord) => {
+    if (busyId) return;
+    setBusyId(rec.id);
+    setError('');
+    try {
+      const res = await fetch('/api/purchases', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: rec.id }),
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(j?.error ?? '삭제에 실패했어요.');
+      setPurchases((prev) => prev.filter((r) => r.id !== rec.id));
+      setConfirmDeleteId(null);
+      if (openId === rec.id) setOpenId(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '삭제에 실패했어요.');
     } finally {
       setBusyId(null);
     }
@@ -330,7 +354,39 @@ export default function GardenSalePrice() {
                         >
                           {openId === rec.id ? '접기' : '변경'}
                         </button>
+                        {/* 같은 원두에 기록이 2건 이상일 때만 — 하나 남은 기록은 여기서 지우지 않는다 */}
+                        {group.length > 1 && confirmDeleteId !== rec.id && (
+                          <button
+                            onClick={() => setConfirmDeleteId(rec.id)}
+                            className="text-muted-foreground hover:text-foreground"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, flexShrink: 0 }}
+                            title="이 발주 기록 삭제"
+                          >
+                            삭제
+                          </button>
+                        )}
                       </div>
+                      {confirmDeleteId === rec.id && (
+                        <p className="text-caption" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', flexWrap: 'wrap', gap: 10, margin: '4px 0 0' }}>
+                          <span className="text-muted-foreground">
+                            판매가 {won(rec.chosenPrice!)} 기록을 삭제할까요? 발주 화면에서도 사라지고 되돌릴 수 없어요.
+                          </span>
+                          <button
+                            onClick={() => deleteRecord(rec)}
+                            disabled={busyId === rec.id}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'hsl(0 72% 45%)', fontFamily: 'inherit', fontSize: 'inherit' }}
+                          >
+                            {busyId === rec.id ? '삭제 중…' : '삭제'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="text-muted-foreground hover:text-foreground"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 'inherit' }}
+                          >
+                            취소
+                          </button>
+                        </p>
+                      )}
                       {rec.priceReview && (
                         <p className="text-caption" style={{ margin: '4px 0 0', color: 'hsl(0 72% 45%)' }}>
                           ⚠ 레시피 담당자가 재검토를 요청했어요 · {fmtDate(rec.priceReview.at)}
