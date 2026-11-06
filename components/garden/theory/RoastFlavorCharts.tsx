@@ -61,7 +61,7 @@ function RoastChart({ roast, focus }: { roast: RoastKey; focus: FlavorKey | null
             type="monotone"
             stroke={f.color}
             strokeWidth={2}
-            strokeDasharray={f.shapeMeasured ? undefined : DASH}
+            strokeDasharray={f.solid ? undefined : DASH}
             strokeOpacity={focus && focus !== f.key ? 0.15 : 1}
             dot={false}
             activeDot={false}
@@ -97,7 +97,7 @@ export default function RoastFlavorCharts() {
                 y2="2"
                 stroke={f.color}
                 strokeWidth="2"
-                strokeDasharray={f.shapeMeasured ? undefined : '4 3'}
+                strokeDasharray={f.solid ? undefined : '4 3'}
               />
             </svg>
             {f.label}

@@ -5,6 +5,7 @@ import PageShell from '@/components/PageShell';
 import GardenNav from '@/components/garden/GardenNav';
 import TheoryCite from '@/components/garden/theory/TheoryCite';
 import { AttributeTable, CupTable, SourceList } from '@/components/garden/theory/TheoryTables';
+import { THEORY_SOURCES } from '@/lib/garden/extraction-theory';
 
 // 커피 추출 이론 — 스탭 교육·현장 참고용. 데이터와 근거는 lib/garden/extraction-theory.ts.
 // recharts 는 별도 청크로 지연 로드한다.
@@ -41,7 +42,7 @@ export default function GardenTheoryPage() {
       <div className="space-y-16 pb-10 sm:space-y-24 sm:pb-20">
         <section>
           <Heading>배전도별 추출 양상</Heading>
-          <p className="ta-prose m-0 mb-2 text-body text-muted-foreground">실선은 측정 근거가 있는 모양, 점선은 해석입니다. 측정값이 아니라서 눈금이 없습니다.</p>
+          <p className="ta-prose m-0 mb-2 text-body text-muted-foreground">측정값이 아닌 모식도라 눈금이 없습니다. 항목별 근거는 아래 표에 있습니다.</p>
           <RoastFlavorCharts />
           <Note>
             가로축은 원두 대비 음료 무게 비율입니다. 시간은 머신과 분쇄도에 따라 달라지므로 쓰지 않았습니다. 구간별 시음 연구를 찾지 못해 곡선 모양은 세 배전도가 같고, 높이는 일부만 수치 근거가 있으며<TheoryCite ids={['shi']} /> 나머지는 연구의 방향을 따라 임의로 정했습니다.
@@ -73,7 +74,7 @@ export default function GardenTheoryPage() {
         <section>
           <Heading>비율별 수율 및 TDS</Heading>
           <p className="ta-prose m-0 mb-2 text-body text-muted-foreground">
-            1:1에서 1:3 잔 고형물의 약 70%가 나옵니다. 그 뒤는 묽어지며 구성이 바뀝니다.
+            1:1에서 1:3 잔 고형물의 약 70%가 나옵니다.
             <TheoryCite ids={['schmieder', 'rao-ratio']} />
           </p>
           <CupTable />
@@ -85,22 +86,21 @@ export default function GardenTheoryPage() {
           <AttributeTable />
         </section>
 
-        <section>
-          <Heading>기존 ‘추출 순서’ 그래프를 다시 그린 이유</Heading>
-          <p className="ta-prose m-0 text-body text-muted-foreground">
-            가로축이 Lighter→Darker여서 배전도 그래프를 시간 그래프로 바꿔 쓴 것으로 추정되지만, 원본을 찾지 못해 확정할 수 없습니다.
-            <TheoryCite ids={['coffeereview']} /> 빠른 성분이 신맛이라는 연결도 제안자 본인이 추측이라고 밝혔습니다.
-            <TheoryCite ids={['gagne']} />
-          </p>
-        </section>
-
-        <section>
-          <Heading>출처</Heading>
-          <SourceList />
-          <Note>
-            배전도와 수율의 관계는 연구마다 엇갈려 표시하지 않았습니다.<TheoryCite ids={['lindsey']} /> 배전도별 그래프를 나눈 근거<TheoryCite ids={['kucera']} />, 구간별 카페인·클로로겐산 감소의 교차 확인<TheoryCite ids={['ludwig']} />. 조사일 2026-11-06.
-          </Note>
-        </section>
+        <details id="theory-sources" className="group">
+          <summary className="flex w-fit cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+            <h2 className="m-0 text-title">출처</h2>
+            <span className="text-caption text-muted-foreground">{THEORY_SOURCES.length}건</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true" className="text-muted-foreground transition-transform group-open:rotate-180">
+              <path d="M2.5 4.5 6 8l3.5-3.5" />
+            </svg>
+          </summary>
+          <div className="mt-3">
+            <SourceList />
+            <Note>
+              배전도와 수율의 관계는 연구마다 엇갈려 표시하지 않았습니다.<TheoryCite ids={['lindsey']} /> 배전도별 그래프를 나눈 근거<TheoryCite ids={['kucera']} />, 구간별 카페인·클로로겐산 감소의 교차 확인<TheoryCite ids={['ludwig']} />. 조사일 2026-11-06.
+            </Note>
+          </div>
+        </details>
       </div>
     </PageShell>
   );

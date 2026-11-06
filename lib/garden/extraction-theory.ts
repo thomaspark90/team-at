@@ -88,14 +88,14 @@ export const aromaShape = (ratio: number) => {
 export type RoastKey = 'medium' | 'mediumDark' | 'dark';
 export type FlavorKey = 'acidity' | 'aroma' | 'sweetness' | 'bitterness' | 'burnt';
 
-// 실선(shapeMeasured): 곡선 모양을 뒷받침하는 측정이 있음. 점선: 화학·전문가 의견에서 끌어낸 해석.
-// 높이는 어느 쪽도 측정값이 아니다.
-export const FLAVORS: { key: FlavorKey; label: string; color: string; shapeMeasured: boolean }[] = [
-  { key: 'acidity', label: '산미', color: 'var(--chart-cat-1)', shapeMeasured: false },
-  { key: 'aroma', label: '향미', color: 'var(--chart-cat-2)', shapeMeasured: true },
-  { key: 'sweetness', label: '단맛', color: 'var(--chart-cat-3)', shapeMeasured: false },
-  { key: 'bitterness', label: '쓴맛', color: 'var(--chart-cat-5)', shapeMeasured: false },
-  { key: 'burnt', label: '탄내', color: 'var(--chart-cat-6)', shapeMeasured: false },
+// solid 는 선 모양 구분일 뿐 근거 수준을 뜻하지 않는다. 맛별 근거는 TheoryTables 의 표에 적는다.
+// 높이와 곡선은 측정값이 아닌 모식도다.
+export const FLAVORS: { key: FlavorKey; label: string; color: string; solid: boolean }[] = [
+  { key: 'acidity', label: '산미', color: 'var(--chart-cat-1)', solid: true },
+  { key: 'aroma', label: '향미', color: 'var(--chart-cat-2)', solid: true },
+  { key: 'sweetness', label: '단맛', color: 'var(--chart-cat-3)', solid: true },
+  { key: 'bitterness', label: '쓴맛', color: 'var(--chart-cat-5)', solid: false },
+  { key: 'burnt', label: '탄내', color: 'var(--chart-cat-6)', solid: false },
 ];
 
 // 가든 원두의 측정값이 없어 Agtron 수치는 표기하지 않는다(2026-11-06).
@@ -166,7 +166,6 @@ export const THEORY_SOURCES: TheorySource[] = [
   { id: 'shi', cite: 'Shi et al. (2024), Foods 13(19):3119', use: 'Agtron 73/62/53의 산·바디·쓴맛 차이(배율의 근거)', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC11475540/', kind: '콜드브루', access: '원문' },
   { id: 'hu', cite: 'Hu et al. (2020), Food Chemistry 331:127329', use: '향·산미는 중간 배전에서 최고, 바디는 배전 따라 상승, 강배전 당 소실', url: 'https://oww-files-public.sfo3.cdn.digitaloceanspaces.com/f/f4/2020_Effect_of_roasting_degree_of_coffee_beans_on_sensory_evaluation-_Research_from_the_perspective_of_major_chemical_ingredients.pdf', kind: '원두', access: '원문' },
   { id: 'lindsey', cite: 'Lindsey et al. (2024), Scientific Reports 14:29126', use: '배전도와 추출 수율의 관계는 연구마다 엇갈림', url: 'https://www.nature.com/articles/s41598-024-80385-3', kind: '드립', access: '원문' },
-  { id: 'coffeereview', cite: 'Coffee Review, Roast Definitions', use: '참고 그래프가 배전도 서술과 맞는다는 비교', url: 'https://www.coffeereview.com/roast-definitions/', kind: '일반', access: '원문' },
   { id: 'gute', cite: '구테로이테 블로그(2026-10-20)', use: '산미·단맛·쓴맛 순서론 비판(국내 업계 의견)', url: 'https://blog.naver.com/gute_leute/224446388272', kind: '일반', access: '원문' },
 ];
 
