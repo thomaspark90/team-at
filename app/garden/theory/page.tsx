@@ -51,8 +51,8 @@ export default function GardenTheoryPage() {
 
         <section>
           <h2 className="m-0 mb-6 text-title">측정된 추출 양상</h2>
-          <div className="grid gap-x-8 gap-y-10 lg:grid-cols-2">
-            <figure className="m-0">
+          <div className="grid gap-x-8 gap-y-10 md:grid-cols-2">
+            <figure className="m-0 min-w-0">
               <figcaption className="mb-3 text-body">
                 떨어지는 액체의 농도(첫 방울 = 100%)
                 <TheoryCite ids={['schmieder']} />
@@ -60,7 +60,7 @@ export default function GardenTheoryPage() {
               <ConcentrationChart />
               <Note>모두 처음이 가장 진합니다. 카페인이 가장 느리게 줄어 뒤로 갈수록 비중이 커집니다. 원두 1종, 유량 제어 추출의 곡선 적합값입니다.</Note>
             </figure>
-            <figure className="m-0">
+            <figure className="m-0 min-w-0">
               <figcaption className="mb-3 text-body">
                 향 성분 신호(계열별 최댓값 = 100%)
                 <TheoryCite ids={['sanchez']} />

@@ -84,10 +84,11 @@ export default function RoastFlavorCharts() {
             key={f.key}
             type="button"
             aria-pressed={focus === f.key}
-            onMouseEnter={() => setFocus(f.key)}
-            onMouseLeave={() => setFocus(null)}
+            // 터치의 합성 hover 가 탭 토글을 되돌리지 않도록 마우스일 때만 hover 로 강조한다
+            onPointerEnter={(e) => e.pointerType === 'mouse' && setFocus(f.key)}
+            onPointerLeave={(e) => e.pointerType === 'mouse' && setFocus(null)}
             onClick={() => setFocus(focus === f.key ? null : f.key)}
-            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-body hover:bg-accent ${focus === f.key ? 'bg-accent' : ''}`}
+            className={`flex items-center gap-1.5 rounded-md px-2 py-2 text-body hover:bg-accent md:py-1 ${focus === f.key ? 'bg-accent' : ''}`}
           >
             <svg width="20" height="4" aria-hidden="true">
               <line
@@ -104,12 +105,12 @@ export default function RoastFlavorCharts() {
           </button>
         ))}
       </div>
-      <div className="mt-6 grid gap-x-8 gap-y-10 lg:grid-cols-3">
+      <div className="mt-6 grid gap-x-4 gap-y-10 md:grid-cols-3 lg:gap-x-8">
         {ROASTS.map((r) => (
-          <figure key={r.key} className="m-0">
+          <figure key={r.key} className="m-0 min-w-0">
             <figcaption className="mb-3">
               <span className="text-title">{r.label}</span>
-              <span className="ml-2 text-caption text-muted-foreground">
+              <span className="mt-0.5 block text-caption text-muted-foreground">
                 {r.stage} · {r.agtron}
               </span>
             </figcaption>

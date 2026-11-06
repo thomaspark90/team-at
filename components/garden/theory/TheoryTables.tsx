@@ -51,65 +51,114 @@ const ATTRIBUTES: { name: string; shape: ReactNode; roast: ReactNode; basis: str
   },
 ];
 
+// lg 미만은 표 대신 맛별 묶음으로 보여준다 — 가로로 밀지 않고 읽게.
 export function AttributeTable() {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px] border-collapse">
-        <thead>
-          <tr>
-            <th className={`${th} w-32`}>맛</th>
-            <th className={th}>추출이 진행될 때</th>
-            <th className={th}>배전도가 강해질 때</th>
-            <th className={`${th} w-64`}>근거 수준</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ATTRIBUTES.map((a) => (
-            <tr key={a.name}>
-              <td className={td}>{a.name}</td>
-              <td className={td}>{a.shape}</td>
-              <td className={td}>{a.roast}</td>
-              <td className={`${td} text-muted-foreground`}>{a.basis}</td>
+    <>
+      <div className="hidden lg:block">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr>
+              <th className={`${th} w-32`}>맛</th>
+              <th className={th}>추출이 진행될 때</th>
+              <th className={th}>배전도가 강해질 때</th>
+              <th className={`${th} w-64`}>근거 수준</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {ATTRIBUTES.map((a) => (
+              <tr key={a.name}>
+                <td className={td}>{a.name}</td>
+                <td className={td}>{a.shape}</td>
+                <td className={td}>{a.roast}</td>
+                <td className={`${td} text-muted-foreground`}>{a.basis}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="lg:hidden">
+        {ATTRIBUTES.map((a) => (
+          <article key={a.name} className="border-t border-border py-4">
+            <h3 className="m-0 text-body font-medium">{a.name}</h3>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 sm:gap-6">
+              <div className="min-w-0">
+                <div className="text-caption text-muted-foreground">추출이 진행될 때</div>
+                <div className="mt-1 text-body">{a.shape}</div>
+              </div>
+              <div className="min-w-0">
+                <div className="text-caption text-muted-foreground">배전도가 강해질 때</div>
+                <div className="mt-1 text-body">{a.roast}</div>
+              </div>
+            </div>
+            <p className="mb-0 mt-3 text-caption text-muted-foreground">근거: {a.basis}</p>
+          </article>
+        ))}
+      </div>
+    </>
   );
 }
 
 export function CupTable() {
   const rows = cupSummary();
   const r = 'text-right tabular';
+  // md 미만은 행과 열을 바꾼다 — 끊는 지점 3개가 열이 되어 폰 폭에 들어간다.
+  const metrics: { label: string; value: (c: (typeof rows)[number]) => string }[] = [
+    { label: '첫 방울 후', value: (c) => `약 ${Math.round(c.seconds)}초` },
+    { label: '수율(%)', value: (c) => c.yieldPct.toFixed(1) },
+    { label: '잔 농도 TDS(%)', value: (c) => c.cupTdsPct.toFixed(1) },
+    { label: '트리고넬린 회수(%)', value: (c) => c.trigonellineShare.toFixed(0) },
+    { label: '5-CQA 회수(%)', value: (c) => c.cqaShare.toFixed(0) },
+    { label: '카페인 회수(%)', value: (c) => c.caffeineShare.toFixed(0) },
+  ];
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] border-collapse">
+    <>
+      <div className="hidden md:block">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr>
+              <th className={th}>끊는 지점(원두 20 g)</th>
+              {metrics.map((m) => (
+                <th key={m.label} className={`${th} text-right`}>{m.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((c) => (
+              <tr key={c.ratio}>
+                <td className={td}>1:{c.ratio} ({c.massG} g)</td>
+                {metrics.map((m) => (
+                  <td key={m.label} className={`${td} ${r}`}>{m.value(c)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <table className="w-full border-collapse md:hidden">
         <thead>
           <tr>
-            <th className={th}>끊는 지점(원두 20 g)</th>
-            <th className={`${th} text-right`}>첫 방울 후</th>
-            <th className={`${th} text-right`}>수율(%)</th>
-            <th className={`${th} text-right`}>잔 농도 TDS(%)</th>
-            <th className={`${th} text-right`}>트리고넬린 회수(%)</th>
-            <th className={`${th} text-right`}>5-CQA 회수(%)</th>
-            <th className={`${th} text-right`}>카페인 회수(%)</th>
+            <th className={`${th} pl-0`}>원두 20 g</th>
+            {rows.map((c) => (
+              <th key={c.ratio} className={`${th} px-2 text-right last:pr-0`}>
+                1:{c.ratio}
+                <span className="block normal-case">{c.massG} g</span>
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((c) => (
-            <tr key={c.ratio}>
-              <td className={td}>1:{c.ratio} ({c.massG} g)</td>
-              <td className={`${td} ${r}`}>약 {Math.round(c.seconds)}초</td>
-              <td className={`${td} ${r}`}>{c.yieldPct.toFixed(1)}</td>
-              <td className={`${td} ${r}`}>{c.cupTdsPct.toFixed(1)}</td>
-              <td className={`${td} ${r}`}>{c.trigonellineShare.toFixed(0)}</td>
-              <td className={`${td} ${r}`}>{c.cqaShare.toFixed(0)}</td>
-              <td className={`${td} ${r}`}>{c.caffeineShare.toFixed(0)}</td>
+          {metrics.map((m) => (
+            <tr key={m.label}>
+              <td className={`${td} pl-0`}>{m.label}</td>
+              {rows.map((c) => (
+                <td key={c.ratio} className={`${td} ${r} whitespace-nowrap px-2 last:pr-0`}>{m.value(c)}</td>
+              ))}
             </tr>
           ))}
         </tbody>
       </table>
-    </div>
+    </>
   );
 }
 
@@ -119,7 +168,7 @@ export function SourceList() {
       {THEORY_SOURCES.map((s, i) => (
         <li key={s.id} id={`src-${i + 1}`} className="grid scroll-mt-24 grid-cols-[2.5rem_1fr] text-body">
           <span className="tabular text-muted-foreground">[{i + 1}]</span>
-          <span>
+          <span className="min-w-0 break-words">
             <a href={s.url} target="_blank" rel="noreferrer" className="underline decoration-border underline-offset-2 hover:decoration-foreground">
               {s.cite}
             </a>
