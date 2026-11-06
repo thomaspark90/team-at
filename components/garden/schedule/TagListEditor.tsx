@@ -28,7 +28,7 @@ export default function TagListEditor({ kind, items, onSaved, onClose }: { kind:
     if (removedCount && !window.confirm(`${removedCount}개를 삭제합니다. 그 태그를 가진 직원에게서도 빠집니다. 계속할까요?`)) return;
     setBusy(true);
     setError(null);
-    const r = await fetch('/api/garden-schedule/tags', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, items: list }) });
+    const r = await fetch('/api/garden-schedule/tags', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, items: list.map((t) => (t.key.startsWith('new_') ? { ...t, key: undefined } : t)) }) }); // 새 항목 키는 서버가 만든다
     const j = await r.json().catch(() => ({}));
     setBusy(false);
     if (!r.ok) return setError(j.error ?? '저장하지 못했습니다.');

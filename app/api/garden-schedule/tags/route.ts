@@ -34,7 +34,7 @@ export async function PUT(req: Request) {
   for (const it of b.items) {
     const label = String(it?.label ?? '').replace(/\s+/g, ' ').trim();
     if (!label || label.length > TAG_LABEL_MAX) return badRequest(`이름은 1~${TAG_LABEL_MAX}자입니다.`);
-    const key = typeof it?.key === 'string' && it.key ? it.key : newTagKey(kind);
+    const key = typeof it?.key === 'string' && it.key && !it.key.startsWith('new_') ? it.key : newTagKey(kind);
     if (items.some((x) => x.key === key)) return badRequest('같은 태그가 두 번 있습니다.');
     if (kind === 'role') {
       if (!COLOR_RE.test(String(it?.color ?? ''))) return badRequest(`${label}: 색을 고르세요.`);
