@@ -85,6 +85,7 @@ export default function WeekGrid({
                 const text = off ? '쉼' : label(here);
                 const changed = showPlanDiff && !!planned && planned !== text;
                 const uncertain = here.some((s) => s.uncertain);
+                const clocked = here.some((s) => s.source === 'clock');
                 const mark = cellMarks?.get(`${p.id}|${d}`);
                 const warned = !!mark?.warnings.length;
                 const body = (
@@ -92,6 +93,7 @@ export default function WeekGrid({
                     <span className={`block tabular text-body ${off ? 'text-muted-foreground' : ''} ${changed ? 'text-amber-600' : ''}`}>
                       {text || (onCell ? <span className="text-muted-foreground/40">–</span> : '')}
                       {uncertain && <span className="ml-1 text-caption text-amber-600" title="시트 메모상 실제와 다를 수 있는 기록">부정확</span>}
+                      {clocked && <span className="ml-1 text-caption text-muted-foreground" title="출퇴근 기록으로 생긴 실제 근무">출퇴근</span>}
                     </span>
                     {changed && <span className="block text-caption tabular text-muted-foreground">계획 {planned}</span>}
                     {elsewhere.length > 0 && <span className="block text-caption tabular text-muted-foreground">{storeShort(elsewhere[0].store)} {label(elsewhere)}</span>}

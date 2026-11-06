@@ -311,3 +311,24 @@ describe('월 집계·내보내기', () => {
     expect(svg).toContain('7–16');
   });
 });
+
+import { clockedIn, kstDate, kstMinutes, roundedSegment } from '@/lib/schedule/clock';
+
+describe('출퇴근 → 실제 근무', () => {
+  it('KST 분·날짜', () => {
+    expect(kstMinutes('2026-11-06T22:10:00Z')).toBe(7 * 60 + 10); // 다음날 07:10 KST
+    expect(kstDate('2026-11-06T22:10:00Z')).toBe('2026-11-07');
+  });
+  it('30분 반올림, 끝이 시작 이하면 30분', () => {
+    expect(roundedSegment(7 * 60 + 10, 16 * 60 + 20)).toEqual({ start: 420, end: 990 });
+    expect(roundedSegment(7 * 60 + 14, 7 * 60 + 20)).toEqual({ start: 420, end: 450 });
+  });
+  it('마지막 이벤트가 in 인 사람만 출근 중', () => {
+    const on = clockedIn([
+      { staffId: 1, kind: 'in', at: '2026-11-06T00:00:00Z' },
+      { staffId: 1, kind: 'out', at: '2026-11-06T08:00:00Z' },
+      { staffId: 2, kind: 'in', at: '2026-11-06T01:00:00Z' },
+    ]);
+    expect(Array.from(on.keys())).toEqual([2]);
+  });
+});

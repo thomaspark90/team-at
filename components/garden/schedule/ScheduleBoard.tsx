@@ -19,6 +19,7 @@ import TemplateMenu from './TemplateMenu';
 import LeaveExpiryNotice from './LeaveExpiryNotice';
 import PatternMenu from './PatternMenu';
 import ExportMenu from './ExportMenu';
+import SwapRequests from './SwapRequests';
 import CrewPlanner from '@/components/garden/checklist/CrewPlanner';
 import { CREW_ASSIGNMENT } from '@/lib/checklist/logic';
 
@@ -304,6 +305,10 @@ export default function ScheduleBoard() {
           <details className="ta-panel">
             <summary className="cursor-pointer text-body">직원 공유 링크 ›</summary>
             <div className="mt-4"><ShareLinkPanel /></div>
+          </details>
+          <details className="ta-panel">
+            <summary className="cursor-pointer text-body">교대 요청 ›</summary>
+            <div className="mt-4"><SwapRequests staff={week.staff} onChanged={load} /></div>
           </details>
           <details className="ta-panel">
             <summary className="cursor-pointer text-body">연차·휴무 ›</summary>

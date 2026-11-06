@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { STORES, type StoreId } from '@/lib/types';
 
+// 출퇴근 화면은 같은 링크 뒤에 /clock. 
 // 직원용 읽기 전용 링크. 새로 만들면 이전 링크는 바로 막힌다(유출 시 회수 수단).
 export default function ShareLinkPanel() {
   const [links, setLinks] = useState<Partial<Record<StoreId, string>>>({});

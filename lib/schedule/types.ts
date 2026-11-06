@@ -49,7 +49,7 @@ export interface Shift extends Partial<Segment> {
   staffId: number;
   kind: ShiftKind;
   isOff: boolean;
-  source: 'app' | 'sheet';
+  source: 'app' | 'sheet' | 'clock'; // clock = 출퇴근 기록으로 생긴 실제 근무
   uncertain: boolean;
 }
 
