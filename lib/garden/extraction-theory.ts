@@ -105,10 +105,10 @@ export const FLAVORS: { key: FlavorKey; label: string; color: string; shapeMeasu
 ];
 
 // 8단계 대응은 Kim 2024, 배전 이름 대응은 업계 관행이 엇갈려 하우스 제안값이다(중강배전은 공인 수치 없음).
-export const ROASTS: { key: RoastKey; label: string; stage: string; agtron: string }[] = [
-  { key: 'medium', label: '중배전', stage: 'High', agtron: 'Agtron 약 65' },
-  { key: 'mediumDark', label: '중강배전', stage: 'City~Full City', agtron: 'Agtron 약 55~45' },
-  { key: 'dark', label: '강배전', stage: 'French~Italian', agtron: 'Agtron 약 35~25' },
+export const ROASTS: { key: RoastKey; label: string }[] = [
+  { key: 'medium', label: '중배전' },
+  { key: 'mediumDark', label: '중강배전' },
+  { key: 'dark', label: '강배전' },
 ];
 
 // 중배전↔중강배전 비율만 근거가 있다: Shi 2024 콜드브루 Agtron 62→53 (산 ×0.86, 바디 ×1.36, 쓴맛 ×1.51). 에스프레소 값 아님.
@@ -174,8 +174,6 @@ export const THEORY_SOURCES: TheorySource[] = [
   { id: 'shi', cite: 'Shi et al. (2024), Foods 13(19):3119', use: 'Agtron 73/62/53의 산·바디·쓴맛 차이(배율의 근거)', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC11475540/', kind: '콜드브루', access: '원문' },
   { id: 'hu', cite: 'Hu et al. (2020), Food Chemistry 331:127329', use: '향·산미는 중간 배전에서 최고, 바디는 배전 따라 상승, 강배전 당 소실', url: 'https://oww-files-public.sfo3.cdn.digitaloceanspaces.com/f/f4/2020_Effect_of_roasting_degree_of_coffee_beans_on_sensory_evaluation-_Research_from_the_perspective_of_major_chemical_ingredients.pdf', kind: '원두', access: '원문' },
   { id: 'lindsey', cite: 'Lindsey et al. (2024), Scientific Reports 14:29126', use: '배전도와 추출 수율의 관계는 연구마다 엇갈림', url: 'https://www.nature.com/articles/s41598-024-80385-3', kind: '드립', access: '원문' },
-  { id: 'kim', cite: 'Kim et al. (2024), Foods 13:1757', use: '8단계 배전과 Agtron 대응', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC11171841/', kind: '원두', access: '원문' },
-  { id: 'alacarte', cite: '알라카르테 블로그, 커피 로스팅 단계', use: '8단계의 한국어 배전 이름(업계 자료)', url: 'https://blog.alacartemall.com/about-coffee-roasting-levels/', kind: '일반', access: '원문' },
   { id: 'coffeereview', cite: 'Coffee Review, Roast Definitions', use: '참고 그래프가 배전도 서술과 맞는다는 비교', url: 'https://www.coffeereview.com/roast-definitions/', kind: '일반', access: '원문' },
   { id: 'gute', cite: '구테로이테 블로그(2026-10-20)', use: '산미·단맛·쓴맛 순서론 비판(국내 업계 의견)', url: 'https://blog.naver.com/gute_leute/224446388272', kind: '일반', access: '원문' },
 ];

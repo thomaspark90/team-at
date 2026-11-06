@@ -110,9 +110,6 @@ export default function RoastFlavorCharts() {
           <figure key={r.key} className="m-0 min-w-0">
             <figcaption className="mb-1">
               <span className="text-title">{r.label}</span>
-              <span className="ml-2 text-caption text-muted-foreground">
-                {r.agtron}
-              </span>
             </figcaption>
             <RoastChart roast={r.key} focus={focus} />
           </figure>
