@@ -116,7 +116,7 @@ export default function StaffManager() {
       {error && <p className="m-0 text-body text-destructive">{error}</p>}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1400px] border-collapse">
+        <table className="w-full min-w-[1680px] border-collapse">
           <thead>
             <tr className="text-left text-caption text-muted-foreground">
               <th className="px-3 py-2 font-normal">이름</th>
@@ -126,7 +126,7 @@ export default function StaffManager() {
               <th className="px-3 py-2 font-normal">책임 태그</th>
               <th className="px-3 py-2 font-normal">입사일</th>
               <th className="px-3 py-2 font-normal">연차 총/잔여(개)</th>
-              <th className="px-3 py-2 font-normal">마지막 근무</th>
+              <th className="whitespace-nowrap px-3 py-2 font-normal">마지막 근무</th>
               <th className="px-3 py-2 font-normal">계정</th>
               <th className="px-3 py-2 font-normal">재직</th>
             </tr>
@@ -221,7 +221,7 @@ export default function StaffManager() {
                         <span className={remaining != null && remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}>/ {remaining ?? '–'}</span>
                       </span>
                       {stat && (
-                        <span className="flex items-center gap-2 text-caption text-muted-foreground" title="근로기준법 60조 · 주 40시간 통상근로자·개근 가정. 단시간 근로자는 비례 계산이 필요합니다.">
+                        <span className="flex items-center gap-2 whitespace-nowrap text-caption text-muted-foreground" title="근로기준법 60조 · 주 40시간 통상근로자·개근 가정. 단시간 근로자는 비례 계산이 필요합니다.">
                           법정 {stat.days}개 · {stat.basis === 'monthly' ? `입사 ${stat.months}개월` : `${Math.floor(stat.months / 12) + 1}년차`} · 기준 {stat.asOf.slice(2).replace(/-/g, '.')}
                           {differs && <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => saveTotal(s.id, String(stat.days), stat.asOf)}>적용</button>}
                         </span>
@@ -230,7 +230,7 @@ export default function StaffManager() {
                     );
                   })()}
                 </td>
-                <td className="px-3 py-2 tabular">
+                <td className="whitespace-nowrap px-3 py-2 tabular">
                   <span className="text-muted-foreground">{s.lastWorked ?? '–'}</span>
                   {needsActiveCheck(s.active, s.lastWorked, today) && <span className="ml-2 text-caption text-amber-600">재직 확인</span>}
                 </td>
