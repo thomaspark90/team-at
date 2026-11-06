@@ -1,4 +1,6 @@
-import type { DutyTag } from '@/lib/schedule/types';
+import { DEFAULT_DUTY_TAGS, type DutyTag } from '@/lib/schedule/types';
+
+export const DEFAULT_TAG_ORDER = DEFAULT_DUTY_TAGS.map((t) => t.key);
 import type { StoreId } from '@/lib/types';
 
 // 조 인원과 책임자 판정(순수) — 근무표 자동 제안 + 운영진 수정 + 대신 맡기. 화면·DB 를 모른다.
@@ -19,18 +21,21 @@ export interface CrewOverride {
 
 export const NO_OVERRIDE: CrewOverride = { added: [], removed: [], leadStaffId: null };
 
-const TAG_RANK: Record<DutyTag, number> = { manager: 0, sub_manager: 1 };
-const rankOf = (p: CrewPerson) => (p.dutyTag ? TAG_RANK[p.dutyTag] : 2);
+// 책임 태그 우선순위 = 태그 목록의 순서(schedule_tags duty). 목록에 없는 태그·없음은 맨 뒤.
+const rankOf = (p: CrewPerson, order: string[]) => {
+  const i = p.dutyTag ? order.indexOf(p.dutyTag) : -1;
+  return i < 0 ? order.length : i;
+};
 
 /**
- * 책임자 자동 선정 — 로그인 가능한 사람 → 매니저 → 서브 매니저 → 입사일 빠른 순(공란은 뒤) → 이름 순.
+ * 책임자 자동 선정 — 로그인 가능한 사람 → 책임 태그 순서(매니저 → 서브 매니저 …) → 입사일 빠른 순(공란은 뒤) → 이름 순.
  * 계정이 없는 사람이 책임자가 되면 아무도 제출할 수 없어 맨 앞에 둔다.
  */
-export function pickLead(people: CrewPerson[]): number | null {
+export function pickLead(people: CrewPerson[], tagOrder: string[] = DEFAULT_TAG_ORDER): number | null {
   const sorted = [...people].sort(
     (a, b) =>
       Number(b.linked) - Number(a.linked) ||
-      rankOf(a) - rankOf(b) ||
+      rankOf(a, tagOrder) - rankOf(b, tagOrder) ||
       (a.joinedOn ?? '9999').localeCompare(b.joinedOn ?? '9999') ||
       a.name.localeCompare(b.name, 'ko'),
   );
@@ -43,13 +48,14 @@ export function resolveCrew(
   override: CrewOverride,
   takeoverIds: number[],
   people: Map<number, CrewPerson>,
+  tagOrder: string[] = DEFAULT_TAG_ORDER,
 ): { memberIds: number[]; leadId: number | null } {
   const removed = new Set(override.removed);
   const memberIds = Array.from(new Set([...autoIds, ...override.added, ...takeoverIds])).filter((id) => !removed.has(id) && people.has(id));
   const leadId =
     override.leadStaffId != null && memberIds.includes(override.leadStaffId)
       ? override.leadStaffId
-      : pickLead(memberIds.map((id) => people.get(id)!));
+      : pickLead(memberIds.map((id) => people.get(id)!), tagOrder);
   return { memberIds, leadId };
 }
 

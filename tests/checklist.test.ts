@@ -106,6 +106,10 @@ describe('책임자 자동 선정', () => {
     expect(pickLead([person({ id: 1 }), person({ id: 2, dutyTag: 'sub_manager' }), person({ id: 3, dutyTag: 'manager' })])).toBe(3);
     expect(pickLead([person({ id: 1 }), person({ id: 2, dutyTag: 'sub_manager' })])).toBe(2);
   });
+  it('태그 순서는 목록이 정한다 — 새 태그를 맨 위에 두면 그 사람이 먼저, 목록에 없는 태그는 뒤', () => {
+    expect(pickLead([person({ id: 1, dutyTag: 'manager' }), person({ id: 2, dutyTag: 'd_new' })], ['d_new', 'manager'])).toBe(2);
+    expect(pickLead([person({ id: 1, dutyTag: 'ghost' }), person({ id: 2, dutyTag: 'sub_manager' })], ['manager', 'sub_manager'])).toBe(2);
+  });
   it('같은 등급이면 입사일 빠른 사람, 공란은 뒤로', () => {
     expect(pickLead([person({ id: 1 }), person({ id: 2, joinedOn: '2026-05-01' }), person({ id: 3, joinedOn: '2026-01-01' })])).toBe(3);
   });

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { fmtMd } from '@/lib/teaching/kst';
 import { hourlyStaff, laneOrder, roleCountsOf } from '@/lib/schedule/time';
-import { STAFF_ROLES, type Shift, type Staff, type StaffRole } from '@/lib/schedule/types';
+import type { Shift, Staff, TagDef } from '@/lib/schedule/types';
 import type { StoreId } from '@/lib/types';
 import RoleEditor from './RoleEditor';
 
@@ -14,16 +14,16 @@ import RoleEditor from './RoleEditor';
 const FROM = 6;
 const TO = 22;
 const HOURS = Array.from({ length: TO - FROM }, (_, i) => FROM + i);
-const COLOR = new Map<StaffRole, string>(STAFF_ROLES.map((r) => [r.key, r.color]));
-const LABEL = new Map<StaffRole, string>(STAFF_ROLES.map((r) => [r.key, r.label]));
 const NONE_COLOR = 'transparent';
 // 범례 — 같은 색(제빵·제과)은 한 항목으로
-const LEGEND = STAFF_ROLES.reduce<{ color: string; label: string }[]>((acc, r) => {
-  const hit = acc.find((x) => x.color === r.color);
-  if (hit) hit.label += `·${r.label}`;
-  else acc.push({ color: r.color, label: r.label });
-  return acc;
-}, []);
+const legendOf = (roles: TagDef[]) =>
+  roles.reduce<{ color: string; label: string }[]>((acc, r) => {
+    const color = r.color ?? NONE_COLOR;
+    const hit = acc.find((x) => x.color === color);
+    if (hit) hit.label += `·${r.label}`;
+    else acc.push({ color, label: r.label });
+    return acc;
+  }, []);
 const STORAGE_KEY = 'garden-schedule-show-roles';
 
 function Dot({ color, label }: { color: string; label: string }) {
@@ -41,12 +41,14 @@ export default function HourlyStrip({
   days,
   shifts,
   staff,
+  roles,
   store,
   onStaffChanged,
 }: {
   days: string[];
   shifts: Shift[];
   staff: Staff[];
+  roles: TagDef[];
   store: StoreId;
   onStaffChanged?: () => Promise<void> | void; // 있으면 운영진 — 역할 편집 버튼을 보여준다
 }) {
@@ -64,6 +66,10 @@ export default function HourlyStrip({
 
   const nameOf = new Map(staff.map((s) => [s.id, s.name]));
   const rolesOf = new Map(staff.map((s) => [s.id, s.roles]));
+  const COLOR = new Map(roles.map((r) => [r.key, r.color ?? NONE_COLOR]));
+  const LABEL = new Map(roles.map((r) => [r.key, r.label]));
+  const LEGEND = legendOf(roles);
+  const roleKeys = roles.map((r) => r.key);
   const rows = days.map((d) => {
     const dayShifts = shifts.filter((s) => s.date === d);
     const hours = hourlyStaff(dayShifts, FROM, TO);
@@ -71,12 +77,12 @@ export default function HourlyStrip({
     return {
       d,
       cells: hours.map((ids) => {
-        const byRole = roleCountsOf(ids, rolesOf);
+        const byRole = roleCountsOf(ids, rolesOf, roleKeys);
         return {
           ids,
           // 역할별 인원 — 두 역할인 사람은 두 역할에 다 센다(맡을 수 있는 사람 수). 역할 없는 사람은 빈 점.
           summary: [
-            ...STAFF_ROLES.filter((r) => byRole[r.key].length > 0).map((r) => ({ color: r.color, label: r.label, n: byRole[r.key].length })),
+            ...roles.filter((r) => byRole[r.key].length > 0).map((r) => ({ color: r.color ?? NONE_COLOR, label: r.label, n: byRole[r.key].length })),
             ...(byRole.none.length ? [{ color: NONE_COLOR, label: '역할 미지정', n: byRole.none.length }] : []),
           ],
           lane: lanes.map((id) => (ids.includes(id) ? id : null)),
@@ -108,7 +114,7 @@ export default function HourlyStrip({
           </div>
         </div>
       </div>
-      {editingRoles && onStaffChanged && <RoleEditor staff={staff} store={store} onChanged={onStaffChanged} onClose={() => setEditingRoles(false)} />}
+      {editingRoles && onStaffChanged && <RoleEditor staff={staff} roles={roles} store={store} onChanged={onStaffChanged} onClose={() => setEditingRoles(false)} />}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1120px] table-fixed border-collapse">
           <thead>
@@ -145,7 +151,7 @@ export default function HourlyStrip({
                                 <>
                                   <span className="text-foreground">{nameOf.get(id)}</span>
                                   {showRoles &&
-                                    (rolesOf.get(id) ?? []).map((r) => <Dot key={r} color={COLOR.get(r) ?? NONE_COLOR} label={LABEL.get(r) ?? r} />)}
+                                    (rolesOf.get(id) ?? []).filter((r) => COLOR.has(r)).map((r) => <Dot key={r} color={COLOR.get(r)!} label={LABEL.get(r) ?? r} />)}
                                 </>
                               )}
                             </div>

@@ -7,7 +7,8 @@ import StoreToggles from './StoreToggles';
 import { leaveRemaining, needsActiveCheck } from '@/lib/schedule/time';
 import { statutoryLeave } from '@/lib/schedule/leave';
 import { STORES, type StoreId } from '@/lib/types';
-import { DUTY_TAGS, STAFF_ROLES, type Staff, type StaffRole } from '@/lib/schedule/types';
+import type { Staff, StaffRole, TagDef } from '@/lib/schedule/types';
+import TagListEditor from './TagListEditor';
 
 // 직원 명부 화면 — 추가·이름·기본 지점·근무 지점·입사일·재직. 삭제는 없다(지난 기록을 지키기 위해 재직만 끈다).
 type Row = Staff & { userId: string | null; lastWorked: string | null; account: 'login' | 'roster' | null };
@@ -29,6 +30,9 @@ export default function StaffManager() {
   const [homeStore, setHomeStore] = useState<StoreId>('yangjae');
   const [error, setError] = useState<string | null>(null);
   const [balances, setBalances] = useState<Balance[]>([]);
+  const [roleDefs, setRoleDefs] = useState<TagDef[]>([]);
+  const [dutyDefs, setDutyDefs] = useState<TagDef[]>([]);
+  const [editingTags, setEditingTags] = useState<'role' | 'duty' | null>(null);
   const [leaveRecs, setLeaveRecs] = useState<LeaveRec[]>([]);
 
   // 연차는 연차·휴무 패널과 같은 API — 여기서는 총개수 입력과 잔여만 보여 준다
@@ -46,6 +50,8 @@ export default function StaffManager() {
     const j = await r.json().catch(() => ({ error: '불러오지 못했습니다.' }));
     if (!r.ok || j.error) return setError(j.error ?? '불러오지 못했습니다.');
     setRows(j.staff);
+    setRoleDefs(j.roles ?? []);
+    setDutyDefs(j.dutyTags ?? []);
     setAccounts(j.accounts ?? []);
     setToday(j.today);
   }, []);
@@ -79,6 +85,7 @@ export default function StaffManager() {
 
   return (
     <div className="space-y-6">
+    {editingTags && <TagListEditor kind={editingTags} items={editingTags === 'role' ? roleDefs : dutyDefs} onSaved={load} onClose={() => setEditingTags(null)} />}
     <SignupRequests onChanged={load} />
     <section className="ta-panel space-y-6">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
@@ -122,8 +129,12 @@ export default function StaffManager() {
               <th className="px-3 py-2 font-normal">이름</th>
               <th className="px-3 py-2 font-normal">기본 지점</th>
               <th className="px-3 py-2 font-normal">근무 지점</th>
-              <th className="px-3 py-2 font-normal">역할</th>
-              <th className="px-3 py-2 font-normal">책임 태그</th>
+              <th className="px-3 py-2 font-normal">
+                <span className="flex items-center gap-2">역할 <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => setEditingTags('role')}>편집</button></span>
+              </th>
+              <th className="px-3 py-2 font-normal">
+                <span className="flex items-center gap-2 whitespace-nowrap">책임 태그 <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => setEditingTags('duty')}>편집</button></span>
+              </th>
               <th className="px-3 py-2 font-normal">입사일</th>
               <th className="px-3 py-2 font-normal">연차 총/잔여(개)</th>
               <th className="whitespace-nowrap px-3 py-2 font-normal">마지막 근무</th>
@@ -160,7 +171,7 @@ export default function StaffManager() {
                 <td className="px-3 py-2">
                   {/* 역할 토글 — 여러 개 선택. 시간대별 인원의 역할 줄이 이 값을 읽는다 */}
                   <div className="ta-seg" role="group" aria-label={`${s.name} 역할`}>
-                    {STAFF_ROLES.map((r) => {
+                    {roleDefs.map((r) => {
                       const on = s.roles.includes(r.key);
                       return (
                         <button
@@ -180,7 +191,7 @@ export default function StaffManager() {
                   {/* 체크리스트 책임자 자동 선정에 쓴다 */}
                   <select aria-label={`${s.name} 책임 태그`} className="ta-input w-[120px]" value={s.dutyTag ?? ''} onChange={(e) => send('PATCH', { id: s.id, dutyTag: e.target.value || null })}>
                     <option value="">없음</option>
-                    {DUTY_TAGS.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+                    {dutyDefs.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
                   </select>
                 </td>
                 <td className="px-3 py-2">

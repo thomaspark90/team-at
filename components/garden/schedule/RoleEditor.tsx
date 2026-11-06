@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { STAFF_ROLES, type Staff, type StaffRole } from '@/lib/schedule/types';
+import type { Staff, StaffRole, TagDef } from '@/lib/schedule/types';
+import TagListEditor from './TagListEditor';
 import type { StoreId } from '@/lib/types';
 import StoreToggles from './StoreToggles';
 
@@ -15,17 +16,20 @@ function Dot({ color }: { color: string }) {
 
 export default function RoleEditor({
   staff,
+  roles: roleDefs,
   store,
   onChanged,
   onClose,
 }: {
   staff: Staff[];
+  roles: TagDef[];
   store: StoreId;
   onChanged: () => Promise<void> | void;
   onClose: () => void;
 }) {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingList, setEditingList] = useState(false);
   const active = staff.filter((s) => s.active);
   const byName = (a: Staff, b: Staff) => a.name.localeCompare(b.name, 'ko');
   const here = active.filter((s) => s.stores.includes(store)).sort(byName);
@@ -53,7 +57,7 @@ export default function RoleEditor({
       <span className="w-[72px] text-body">{s.name}</span>
       <StoreToggles name={s.name} stores={s.stores} homeStore={s.homeStore} disabled={busyId === s.id} onChange={(stores) => patch(s, { stores })} />
       <div className="ta-seg" role="group" aria-label={`${s.name} 역할`}>
-        {STAFF_ROLES.map((r) => {
+        {roleDefs.map((r) => {
           const on = s.roles.includes(r.key);
           return (
             <button
@@ -64,7 +68,7 @@ export default function RoleEditor({
               className={`ta-seg-item flex items-center gap-1 px-2 text-caption ${on ? 'ta-seg-on' : ''}`}
               onClick={() => patch(s, { roles: on ? s.roles.filter((k) => k !== r.key) : ([...s.roles, r.key] as StaffRole[]) })}
             >
-              <Dot color={r.color} />
+              <Dot color={r.color ?? 'transparent'} />
               {r.label}
             </button>
           );
@@ -85,8 +89,12 @@ export default function RoleEditor({
               {unassigned > 0 && <span className="text-amber-600"> 미지정 {unassigned}명</span>}
             </p>
           </div>
-          <button type="button" className="ta-btn" onClick={onClose}>닫기</button>
+          <span className="flex gap-2">
+            <button type="button" className="ta-btn" onClick={() => setEditingList(true)}>역할 목록 편집</button>
+            <button type="button" className="ta-btn" onClick={onClose}>닫기</button>
+          </span>
         </div>
+        {editingList && <TagListEditor kind="role" items={roleDefs} onSaved={onChanged} onClose={() => setEditingList(false)} />}
         {error && <p className="m-0 mt-3 text-body text-destructive">{error}</p>}
         <div className="mt-4 min-h-0 overflow-y-auto">
           <ul className="m-0 list-none divide-y divide-border p-0">{here.map(row)}</ul>

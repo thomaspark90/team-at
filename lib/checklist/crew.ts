@@ -3,6 +3,7 @@ import { weekStartOf } from '@/lib/schedule/time';
 import type { DutyTag, Shift } from '@/lib/schedule/types';
 import type { StoreId } from '@/lib/types';
 import { NO_OVERRIDE, resolveCrew, type CrewOverride, type CrewPerson } from './assignment';
+import { loadTags } from '@/lib/schedule/tags';
 import { assignmentsFor } from './logic';
 import type { ShiftType } from './types';
 
@@ -39,14 +40,16 @@ const toShift = (r: any): Shift => ({
 const nums = (v: unknown): number[] => (Array.isArray(v) ? v.map(Number) : []);
 
 export async function loadCrews(svc: SupabaseClient, date: string): Promise<DayCrews> {
-  const [weeks, shifts, staff, profiles, overrides, takeovers] = await Promise.all([
+  const [weeks, shifts, staff, profiles, overrides, takeovers, dutyTags] = await Promise.all([
     svc.from('schedule_weeks').select('store, status').eq('week_start', weekStartOf(date)),
     svc.from('schedule_shifts').select('id, work_date, store, staff_id, kind, start_min, end_min, is_off, source, uncertain').eq('work_date', date),
     svc.from('schedule_staff').select('id, name, home_store, stores, joined_on, active, duty_tag, user_id'),
     svc.from('profiles').select('user_id, status, roster_only'),
     svc.from('checklist_crew_overrides').select('store, shift_type, added_staff, removed_staff, lead_staff_id').eq('work_date', date),
     svc.from('checklist_takeovers').select('store, shift_type, staff_id, staff_name, taken_at').eq('work_date', date).order('taken_at'),
+    loadTags(svc, 'duty'),
   ]);
+  const tagOrder = dutyTags.map((t) => t.key);
   const err = weeks.error ?? shifts.error ?? staff.error ?? profiles.error ?? overrides.error ?? takeovers.error;
   if (err) throw new Error(err.message);
 
@@ -83,7 +86,7 @@ export async function loadCrews(svc: SupabaseClient, date: string): Promise<DayC
     const took = (takeovers.data ?? [])
       .filter((t: any) => t.store === store && t.shift_type === shiftType)
       .map((t: any) => ({ staffId: Number(t.staff_id), name: t.staff_name as string, at: t.taken_at as string }));
-    return { autoIds, ...resolveCrew(autoIds, override, took.map((t) => t.staffId), people), override, takeovers: took };
+    return { autoIds, ...resolveCrew(autoIds, override, took.map((t) => t.staffId), people, tagOrder), override, takeovers: took };
   };
   return { published, people, of };
 }

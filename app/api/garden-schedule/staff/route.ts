@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { badRequest, dbError, isStore, requireScheduleEditor } from '@/lib/schedule/access';
 import { toStaff } from '@/lib/schedule/queries';
-import { isDutyTag, isStaffRole } from '@/lib/schedule/types';
+import { loadTags } from '@/lib/schedule/tags';
 import { isYmd, kstToday } from '@/lib/teaching/kst';
 import { NAME_RE, isSimpleEmail, normalizeName } from '@/lib/account/simple-login';
 import { isOwner } from '@/lib/finance/access';
@@ -60,7 +60,10 @@ export async function GET() {
         .maybeSingle(),
     ),
   );
+  const [roleDefs, dutyDefs] = await Promise.all([loadTags(a.svc, 'role'), loadTags(a.svc, 'duty')]);
   return NextResponse.json({
+    roles: roleDefs,
+    dutyTags: dutyDefs,
     staff: (data ?? []).map((s, i) => ({
       ...toStaff(s),
       userId: (s.user_id as string | null) ?? null,
@@ -117,11 +120,12 @@ export async function PATCH(req: Request) {
     }
   }
   if (b?.roles !== undefined) {
-    if (!Array.isArray(b.roles) || !b.roles.every(isStaffRole)) return badRequest('역할이 올바르지 않습니다.');
+    const defs = await loadTags(a.svc, 'role');
+    if (!Array.isArray(b.roles) || !b.roles.every((k: unknown) => defs.some((d) => d.key === k))) return badRequest('역할이 올바르지 않습니다.');
     patch.roles = Array.from(new Set(b.roles));
   }
   if (b?.dutyTag !== undefined) {
-    if (b.dutyTag !== null && !isDutyTag(b.dutyTag)) return badRequest('책임 태그가 올바르지 않습니다.');
+    if (b.dutyTag !== null && !(await loadTags(a.svc, 'duty')).some((d) => d.key === b.dutyTag)) return badRequest('책임 태그가 올바르지 않습니다.');
     patch.duty_tag = b.dutyTag;
   }
   if (b?.userId !== undefined) {

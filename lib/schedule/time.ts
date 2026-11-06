@@ -1,5 +1,5 @@
 import { addDays } from '@/lib/teaching/kst';
-import { STAFF_ROLES, type Segment, type Shift, type StaffRole } from './types';
+import type { Segment, Shift, StaffRole } from './types';
 
 // 스케줄 순수 계산 — 시각은 0시 기준 분(int), 날짜는 KST 벽시계 'YYYY-MM-DD'.
 
@@ -85,10 +85,10 @@ export function laneOrder(shifts: Shift[], nameOf: (id: number) => string): numb
 }
 
 /** 시간대별 역할 인원 — 역할을 여러 개 가진 사람은 각 역할 줄에 모두 센다(배치 가능 인원). 역할이 없으면 '미지정'. */
-export function roleCountsOf(ids: number[], rolesOf: Map<number, StaffRole[]>): Record<StaffRole | 'none', number[]> {
-  const out = Object.fromEntries([...STAFF_ROLES.map((r) => r.key), 'none'].map((k) => [k, [] as number[]])) as Record<StaffRole | 'none', number[]>;
+export function roleCountsOf(ids: number[], rolesOf: Map<number, StaffRole[]>, roleKeys: string[]): Record<string, number[]> {
+  const out = Object.fromEntries([...roleKeys, 'none'].map((k) => [k, [] as number[]])) as Record<string, number[]>;
   for (const id of ids) {
-    const roles = rolesOf.get(id) ?? [];
+    const roles = (rolesOf.get(id) ?? []).filter((r) => roleKeys.includes(r)); // 지워진 역할은 세지 않는다
     if (roles.length === 0) out.none.push(id);
     for (const r of roles) out[r].push(id);
   }

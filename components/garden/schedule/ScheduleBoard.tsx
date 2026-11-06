@@ -245,7 +245,7 @@ export default function ScheduleBoard() {
           </ul>
         )}
         {week && (
-          <HourlyStrip days={week.days} shifts={shown.filter((s) => s.store === store)} staff={week.staff} store={store} onStaffChanged={editor ? load : undefined} />
+          <HourlyStrip days={week.days} shifts={shown.filter((s) => s.store === store)} staff={week.staff} roles={week.roles} store={store} onStaffChanged={editor ? load : undefined} />
         )}
         {week ? (
           <WeekGrid

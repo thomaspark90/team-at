@@ -5,6 +5,7 @@ import { weekDays } from './time';
 import { addDays } from '@/lib/teaching/kst';
 import { diffSnapshots, isSnapshot, snapshotOf } from './publish-diff';
 import { streakEndingAt } from './warnings';
+import { loadTags } from './tags';
 
 // 주간 조회 — 앱 탭과 공유 링크가 함께 쓴다. 공개 범위 필터는 여기 한 곳.
 
@@ -43,7 +44,7 @@ const SHIFT_COLS = 'id, work_date, store, staff_id, kind, start_min, end_min, is
 export async function loadWeek(svc: SupabaseClient, store: StoreId, weekStart: string, editor: boolean): Promise<WeekData> {
   const days = weekDays(weekStart);
   const dayBefore = addDays(days[0], -1);
-  const [weeksRes, shiftsRes, staffRes, notesRes, presetsRes, leavesRes, reqRes, priorRes, acksRes] = await Promise.all([
+  const [weeksRes, shiftsRes, staffRes, notesRes, presetsRes, leavesRes, reqRes, priorRes, acksRes, roles] = await Promise.all([
     svc.from('schedule_weeks').select('store, status, published_at, snapshot, prev_snapshot').eq('week_start', weekStart),
     svc.from('schedule_shifts').select(SHIFT_COLS).gte('work_date', days[0]).lte('work_date', days[6]).order('start_min'),
     svc.from('schedule_staff').select('id, name, home_store, stores, joined_on, active, roles').order('name'),
@@ -62,6 +63,7 @@ export async function loadWeek(svc: SupabaseClient, store: StoreId, weekStart: s
       ? svc.from('schedule_shifts').select('staff_id, work_date').eq('kind', 'plan').eq('is_off', false).not('start_min', 'is', null).gte('work_date', addDays(days[0], -6)).lte('work_date', dayBefore)
       : Promise.resolve({ data: [], error: null }),
     svc.from('schedule_publish_acks').select('staff_id, published_at').eq('store', store).eq('week_start', weekStart),
+    loadTags(svc, 'role'),
   ]);
   const err = weeksRes.error ?? shiftsRes.error ?? staffRes.error ?? notesRes.error ?? presetsRes.error ?? leavesRes.error ?? reqRes.error ?? priorRes.error ?? acksRes.error;
   if (err) throw new Error(err.message);
@@ -101,6 +103,7 @@ export async function loadWeek(svc: SupabaseClient, store: StoreId, weekStart: s
     shifts,
     notes: Object.fromEntries((notesRes.data ?? []).map((n: any) => [n.work_date, n.note])),
     presets: (presetsRes.data ?? []).map((p: any) => ({ label: p.label, start: p.start_min, end: p.end_min })),
+    roles,
     leaves: [
       ...(leavesRes.data ?? []).map((l: any) => ({ staffId: Number(l.staff_id), date: l.leave_date, type: l.type })),
       ...(reqRes.data ?? []).map((l: any) => ({ staffId: Number(l.staff_id), date: l.leave_date, type: l.type, pending: true })),
