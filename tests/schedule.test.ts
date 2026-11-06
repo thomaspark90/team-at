@@ -177,3 +177,46 @@ describe('출근 순 줄 고정', () => {
     expect(laneOrder(list, name)).toEqual([3, 2, 1]);
   });
 });
+
+import { streakEndingAt, weekWarnings } from '@/lib/schedule/warnings';
+import { diffSnapshots, snapshotOf } from '@/lib/schedule/publish-diff';
+
+describe('충돌 경고', () => {
+  const days = weekDays('2026-11-10');
+  it('하루 10시간 초과·주 52시간 초과', () => {
+    const long = days.map((d, i) => shift({ id: i, date: d, start: 420, end: 420 + 11 * 60 })); // 11h × 7 = 77h
+    const w = weekWarnings({ shifts: long, days, leaves: [], streakBefore: {} });
+    expect(w.filter((x) => x.code === 'day')).toHaveLength(7);
+    expect(w.find((x) => x.code === 'week')?.text).toBe('주 77시간');
+  });
+  it('연속 근무 — 주 시작 전 연속일을 이어서 센다', () => {
+    const three = days.slice(0, 3).map((d, i) => shift({ id: i, date: d }));
+    expect(weekWarnings({ shifts: three, days, leaves: [], streakBefore: {} }).some((x) => x.code === 'streak')).toBe(false);
+    const w = weekWarnings({ shifts: three, days, leaves: [], streakBefore: { 1: 4 } });
+    expect(w.filter((x) => x.code === 'streak').map((x) => x.date)).toEqual(['2026-11-11', '2026-11-12']);
+    expect(streakEndingAt(new Set(['2026-11-09', '2026-11-08', '2026-11-06']), '2026-11-09')).toBe(2);
+  });
+  it('연차·불가일 배치와 두 지점 겹침', () => {
+    const w = weekWarnings({
+      shifts: [shift({ id: 1, date: '2026-11-10' }), shift({ id: 2, date: '2026-11-11', store: 'yangjae', start: 420, end: 720 }), shift({ id: 3, date: '2026-11-11', store: 'pangyo', start: 660, end: 960 })],
+      days,
+      leaves: [{ staffId: 1, date: '2026-11-10', type: 'unavailable' }, { staffId: 1, date: '2026-11-11', type: 'sub_worked' }],
+      streakBefore: {},
+    });
+    expect(w.map((x) => [x.date, x.code])).toEqual([['2026-11-10', 'leave'], ['2026-11-11', 'overlap']]);
+    expect(w[0].text).toBe('근무 불가인 날');
+  });
+});
+
+describe('배포 비교', () => {
+  it('추가·삭제·시간 변경만 남기고 분할 근무는 한 칸으로 본다', () => {
+    const prev = snapshotOf([shift({ id: 1, date: '2026-11-10' }), shift({ id: 2, date: '2026-11-11' }), shift({ id: 3, date: '2026-11-12', start: 420, end: 600 }), shift({ id: 4, date: '2026-11-12', start: 900, end: 960 })]);
+    const cur = snapshotOf([shift({ id: 1, date: '2026-11-10', start: 600, end: 1140 }), shift({ id: 3, date: '2026-11-12', start: 900, end: 960 }), shift({ id: 4, date: '2026-11-12', start: 420, end: 600 }), shift({ id: 5, date: '2026-11-13', staffId: 2 })]);
+    expect(diffSnapshots(prev, cur)).toEqual([
+      { staffId: 1, date: '2026-11-10', before: '7–16', after: '10–19' },
+      { staffId: 1, date: '2026-11-11', before: '7–16', after: '' },
+      { staffId: 2, date: '2026-11-13', before: '', after: '7–16' },
+    ]);
+    expect(diffSnapshots(null, [])).toEqual([]);
+  });
+});

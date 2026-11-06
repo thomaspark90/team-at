@@ -2,6 +2,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { StoreId } from '@/lib/types';
 import type { Shift, Staff, WeekData } from './types';
 import { weekDays } from './time';
+import { addDays } from '@/lib/teaching/kst';
+import { diffSnapshots, isSnapshot, snapshotOf } from './publish-diff';
+import { streakEndingAt } from './warnings';
 
 // 주간 조회 — 앱 탭과 공유 링크가 함께 쓴다. 공개 범위 필터는 여기 한 곳.
 
@@ -39,16 +42,25 @@ const SHIFT_COLS = 'id, work_date, store, staff_id, kind, start_min, end_min, is
  */
 export async function loadWeek(svc: SupabaseClient, store: StoreId, weekStart: string, editor: boolean): Promise<WeekData> {
   const days = weekDays(weekStart);
-  const [weeksRes, shiftsRes, staffRes, notesRes, presetsRes] = await Promise.all([
-    svc.from('schedule_weeks').select('store, status, published_at').eq('week_start', weekStart),
+  const dayBefore = addDays(days[0], -1);
+  const [weeksRes, shiftsRes, staffRes, notesRes, presetsRes, leavesRes, priorRes, acksRes] = await Promise.all([
+    svc.from('schedule_weeks').select('store, status, published_at, snapshot, prev_snapshot').eq('week_start', weekStart),
     svc.from('schedule_shifts').select(SHIFT_COLS).gte('work_date', days[0]).lte('work_date', days[6]).order('start_min'),
     svc.from('schedule_staff').select('id, name, home_store, stores, joined_on, active, roles').order('name'),
     editor
       ? svc.from('schedule_day_notes').select('work_date, note').eq('store', store).gte('work_date', days[0]).lte('work_date', days[6])
       : Promise.resolve({ data: [], error: null }),
     svc.from('schedule_shift_presets').select('label, start_min, end_min').eq('store', store).order('position'),
+    editor
+      ? svc.from('leave_records').select('staff_id, leave_date, type').gte('leave_date', days[0]).lte('leave_date', days[6])
+      : Promise.resolve({ data: [], error: null }),
+    // 연속 근무 판정용 — 주 시작 전 6일의 근무일(전 지점, 계획)
+    editor
+      ? svc.from('schedule_shifts').select('staff_id, work_date').eq('kind', 'plan').eq('is_off', false).not('start_min', 'is', null).gte('work_date', addDays(days[0], -6)).lte('work_date', dayBefore)
+      : Promise.resolve({ data: [], error: null }),
+    svc.from('schedule_publish_acks').select('staff_id, published_at').eq('store', store).eq('week_start', weekStart),
   ]);
-  const err = weeksRes.error ?? shiftsRes.error ?? staffRes.error ?? notesRes.error ?? presetsRes.error;
+  const err = weeksRes.error ?? shiftsRes.error ?? staffRes.error ?? notesRes.error ?? presetsRes.error ?? leavesRes.error ?? priorRes.error ?? acksRes.error;
   if (err) throw new Error(err.message);
 
   const publishedStores = new Set((weeksRes.data ?? []).filter((w) => w.status === 'published').map((w) => w.store as string));
@@ -57,19 +69,39 @@ export async function loadWeek(svc: SupabaseClient, store: StoreId, weekStart: s
   const shifts = editor ? all : all.filter((s) => s.kind === 'plan' && publishedStores.has(s.store));
   const allStaff = (staffRes.data ?? []).map(toStaff);
   const onDuty = new Set(shifts.map((s) => s.staffId));
-  const staff = editor ? allStaff : allStaff.filter((s) => onDuty.has(s.id));
+
+  const priorDates = new Map<number, Set<string>>();
+  for (const r of priorRes.data ?? []) {
+    const id = Number((r as any).staff_id);
+    priorDates.set(id, (priorDates.get(id) ?? new Set()).add((r as any).work_date as string));
+  }
+  const streakBefore = Object.fromEntries(Array.from(priorDates, ([id, dates]) => [id, streakEndingAt(dates, dayBefore)]));
+  const published = publishedStores.has(store);
+  const snapshot = isSnapshot(mine?.snapshot) ? mine!.snapshot : null;
+  const prevSnapshot = isSnapshot(mine?.prev_snapshot) ? mine!.prev_snapshot : null;
+  const changes = published && snapshot && prevSnapshot ? diffSnapshots(prevSnapshot, snapshot) : [];
+  const unpublishedChanges = editor && published && snapshot ? diffSnapshots(snapshot, snapshotOf(all.filter((s) => s.kind === 'plan' && s.store === store))).length : 0;
+  const acked = (acksRes.data ?? []).filter((x: any) => mine?.published_at && x.published_at === mine.published_at).map((x: any) => Number(x.staff_id));
+  // 직원 화면엔 근무자만 — 근무가 빠진 사람도 '바뀐 칸'에 이름이 나와야 하므로 함께 싣는다
+  const changedIds = new Set(changes.map((c) => c.staffId));
+  const staff = editor ? allStaff : allStaff.filter((s) => onDuty.has(s.id) || changedIds.has(s.id));
 
   return {
     weekStart,
     days,
     store,
     editor,
-    published: publishedStores.has(store),
+    published,
     publishedStores: Array.from(publishedStores) as StoreId[],
     publishedAt: (mine?.published_at as string | null) ?? null,
     staff,
     shifts,
     notes: Object.fromEntries((notesRes.data ?? []).map((n: any) => [n.work_date, n.note])),
     presets: (presetsRes.data ?? []).map((p: any) => ({ label: p.label, start: p.start_min, end: p.end_min })),
+    leaves: (leavesRes.data ?? []).map((l: any) => ({ staffId: Number(l.staff_id), date: l.leave_date, type: l.type })),
+    streakBefore,
+    changes,
+    unpublishedChanges,
+    acked,
   };
 }

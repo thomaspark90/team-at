@@ -5,6 +5,8 @@ import Link from 'next/link';
 import SegmentControl from '@/components/nav/SegmentControl';
 import { addDays, fmtMd, kstToday } from '@/lib/teaching/kst';
 import { effectiveActual, fmtSegment, weekStartOf } from '@/lib/schedule/time';
+import { warningsByCell, weekWarnings } from '@/lib/schedule/warnings';
+import { LEAVE_LABEL } from '@/lib/schedule/types';
 import { STORES, type StoreId } from '@/lib/types';
 import type { Segment, ShiftKind, ShiftPreset, Staff, WeekData } from '@/lib/schedule/types';
 import WeekGrid from './WeekGrid';
@@ -13,6 +15,7 @@ import PresetEditor from './PresetEditor';
 import HourlyStrip from './HourlyStrip';
 import LeavePanel from './LeavePanel';
 import ShareLinkPanel from './ShareLinkPanel';
+import TemplateMenu from './TemplateMenu';
 import CrewPlanner from '@/components/garden/checklist/CrewPlanner';
 
 // 스케줄 화면의 상태·저장 흐름만 담당한다. 표·편집기·보조 패널은 각 컴포넌트.
@@ -33,6 +36,7 @@ export default function ScheduleBoard() {
   const [copyConflict, setCopyConflict] = useState<number | null>(null);
   const [copyDay, setCopyDay] = useState<string | null>(null); // 표 머리에서 복사해 둔 날
   const [editingPresets, setEditingPresets] = useState(false); // 근무 파트 편집 창
+  const [showWarnings, setShowWarnings] = useState(false); // 경고 목록 펼침
 
   const load = useCallback(async () => {
     const r = await fetch(`/api/garden-schedule?store=${store}&week=${weekStart}`, { cache: 'no-store' });
@@ -74,6 +78,28 @@ export default function ScheduleBoard() {
     return week.staff.filter((p) => onDuty.has(p.id) || addedIds.includes(p.id) || (editor && p.active && p.stores.includes(store)));
   }, [week, planShifts, actualShifts, store, addedIds, editor]);
   const addable = week ? week.staff.filter((p) => p.active && !rows.some((r) => r.id === p.id)) : [];
+  const nameOf = (id: number) => week?.staff.find((s) => s.id === id)?.name ?? String(id);
+
+  // 충돌 경고 — 운영진 계획 보기에서만. 전 지점 계획을 넣어 두 지점 겹침·주 합계를 본다. 막지 않고 표시만.
+  const warnings = useMemo(
+    () => (editor && view === 'plan' && week ? weekWarnings({ shifts: planShifts, days: week.days, leaves: week.leaves, streakBefore: week.streakBefore }) : []),
+    [editor, view, week, planShifts],
+  );
+  const cellMarks = useMemo(() => {
+    const m = new Map<string, { warnings: string[]; leave?: string }>();
+    if (!editor || view !== 'plan' || !week) return m;
+    for (const [k, w] of Array.from(warningsByCell(warnings))) m.set(k, { warnings: w });
+    for (const l of week.leaves) {
+      const k = `${l.staffId}|${l.date}`;
+      m.set(k, { warnings: m.get(k)?.warnings ?? [], leave: LEAVE_LABEL[l.type] });
+    }
+    return m;
+  }, [editor, view, week, warnings]);
+  const weekWarn = useMemo(() => new Map(warnings.filter((w) => !w.date).map((w) => [w.staffId, w.text])), [warnings]);
+  const warnLine = (w: (typeof warnings)[number]) => `${nameOf(w.staffId)} ${w.date ? fmtMd(w.date) + ' ' : ''}${w.text}`;
+  // 직원 확인 — 이번 배포 기준. 이 주 이 지점에 근무가 있는 사람이 대상
+  const ackTargets = week ? week.staff.filter((p) => planShifts.some((s) => s.store === store && s.staffId === p.id)) : [];
+  const unacked = ackTargets.filter((p) => !week!.acked.includes(p.id));
 
   const openCell = (p: Staff, date: string) => {
     const mine = week!.shifts.filter((s) => s.staffId === p.id && s.date === date && s.store === store);
@@ -103,6 +129,7 @@ export default function ScheduleBoard() {
   };
 
   const publish = async (on: boolean) => {
+    if (on && warnings.length && !window.confirm(`경고 ${warnings.length}건이 있습니다.\n${warnings.slice(0, 6).map(warnLine).join('\n')}${warnings.length > 6 ? '\n…' : ''}\n\n그래도 배포할까요?`)) return;
     const r = await post('/publish', 'POST', { store, weekStart, publish: on });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return setError(j.error ?? '배포하지 못했습니다.');
@@ -171,8 +198,12 @@ export default function ScheduleBoard() {
             <SegmentControl ariaLabel="계획/실제" items={[{ id: 'plan', label: '계획' }, { id: 'actual', label: '실제' }]} value={view} onSelect={(id) => setView(id as ShiftKind)} />
             <div className="ml-auto flex items-center gap-3">
               <button type="button" className="ta-btn" onClick={() => copyPrev()}>지난주 복사</button>
+              <TemplateMenu store={store} weekStart={weekStart} hasPlan={planShifts.some((s) => s.store === store)} onApplied={(n) => { setNotice(n); setView('plan'); load(); }} />
               {week?.published ? (
-                <button type="button" className="ta-btn" onClick={() => publish(false)}>배포 취소</button>
+                <>
+                  {week.unpublishedChanges > 0 && <button type="button" className="ta-btn-primary" onClick={() => publish(true)}>다시 배포</button>}
+                  <button type="button" className="ta-btn" onClick={() => publish(false)}>배포 취소</button>
+                </>
               ) : (
                 <button type="button" className="ta-btn-primary" onClick={() => publish(true)}>배포</button>
               )}
@@ -186,6 +217,18 @@ export default function ScheduleBoard() {
           {week && view === 'plan' && (
             <span className={week.published ? 'text-emerald-600' : 'text-amber-600'}>{week.published ? '배포됨' : editor ? '작성 중 · 직원에게 안 보임' : '아직 배포되지 않음'}</span>
           )}
+          {week && editor && view === 'plan' && week.published && week.unpublishedChanges > 0 && (
+            <span className="text-amber-600">배포 후 고친 칸 {week.unpublishedChanges} · 다시 배포해야 직원에게 보입니다</span>
+          )}
+          {week && editor && view === 'plan' && week.published && ackTargets.length > 0 && (
+            <span>
+              직원 확인 {ackTargets.length - unacked.length}/{ackTargets.length}
+              {unacked.length > 0 && unacked.length < ackTargets.length && <span className="text-muted-foreground"> · 미확인 {unacked.map((p) => p.name).join(', ')}</span>}
+            </span>
+          )}
+          {warnings.length > 0 && (
+            <button type="button" className="text-amber-600" onClick={() => setShowWarnings(!showWarnings)}>경고 {warnings.length}건 {showWarnings ? '접기' : '›'}</button>
+          )}
           {hasSheet && <span>시트 이관 기록 포함</span>}
           {view === 'actual' && <span>달라진 칸만 고치면 됩니다. 기록이 없는 칸은 계획대로 근무한 것으로 봅니다.</span>}
           {notice && <span className="text-foreground">{notice}</span>}
@@ -195,6 +238,11 @@ export default function ScheduleBoard() {
           {onlyActual && <button type="button" className="text-foreground" onClick={() => setView('actual')}>이 주는 실제 기록만 있습니다. 실제 보기 ›</button>}
         </div>
         {error && <p className="m-0 text-body text-destructive">{error}</p>}
+        {showWarnings && warnings.length > 0 && (
+          <ul className="m-0 list-none space-y-1 p-0 text-caption text-amber-600">
+            {warnings.map((w, i) => <li key={i}>{warnLine(w)}</li>)}
+          </ul>
+        )}
         {week && (
           <HourlyStrip days={week.days} shifts={shown.filter((s) => s.store === store)} staff={week.staff} store={store} onStaffChanged={editor ? load : undefined} />
         )}
@@ -213,6 +261,8 @@ export default function ScheduleBoard() {
             copyDay={editor ? copyDay : null}
             onCopyDay={editor ? setCopyDay : undefined}
             onPasteDay={editor ? (d) => pasteDay(d) : undefined}
+            cellMarks={cellMarks}
+            weekWarn={weekWarn}
           />
         ) : (
           !error && <p className="m-0 text-body text-muted-foreground">불러오는 중…</p>

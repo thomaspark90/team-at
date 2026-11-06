@@ -21,6 +21,8 @@ export default function WeekGrid({
   copyDay,
   onCopyDay,
   onPasteDay,
+  cellMarks,
+  weekWarn,
 }: {
   week: WeekData;
   rows: Staff[];
@@ -32,6 +34,8 @@ export default function WeekGrid({
   copyDay?: string | null; // 복사해 둔 날짜
   onCopyDay?: (date: string | null) => void; // null = 취소
   onPasteDay?: (date: string) => void;
+  cellMarks?: Map<string, { warnings: string[]; leave?: string }>; // `${staffId}|${date}` — 충돌 경고·연차/불가 표시(운영진 계획 보기)
+  weekWarn?: Map<number, string>; // 사람별 주 전체 경고(주 52시간)
 }) {
   const at = (list: Shift[], staffId: number, date: string) =>
     list.filter((s) => s.staffId === staffId && s.date === date);
@@ -78,6 +82,8 @@ export default function WeekGrid({
                 const text = off ? '쉼' : label(here);
                 const changed = showPlanDiff && !!planned && planned !== text;
                 const uncertain = here.some((s) => s.uncertain);
+                const mark = cellMarks?.get(`${p.id}|${d}`);
+                const warned = !!mark?.warnings.length;
                 const body = (
                   <>
                     <span className={`block tabular text-body ${off ? 'text-muted-foreground' : ''} ${changed ? 'text-amber-600' : ''}`}>
@@ -86,19 +92,21 @@ export default function WeekGrid({
                     </span>
                     {changed && <span className="block text-caption tabular text-muted-foreground">계획 {planned}</span>}
                     {elsewhere.length > 0 && <span className="block text-caption tabular text-muted-foreground">{storeShort(elsewhere[0].store)} {label(elsewhere)}</span>}
+                    {mark?.leave && <span className={`block text-caption ${warned ? 'text-amber-600' : 'text-muted-foreground'}`}>{mark.leave}</span>}
+                    {warned && <span className="block text-caption text-amber-600">{mark!.warnings.join(' · ')}</span>}
                   </>
                 );
                 return (
                   <td key={d} className="p-0">
                     {onCell ? (
-                      <button type="button" className="block h-full min-h-[44px] w-full rounded-md px-1 py-2 text-left hover:bg-accent" onClick={() => onCell(p, d)}>{body}</button>
+                      <button type="button" className={`block h-full min-h-[44px] w-full rounded-md px-1 py-2 text-left hover:bg-accent ${warned ? 'bg-amber-500/10' : ''}`} onClick={() => onCell(p, d)}>{body}</button>
                     ) : (
                       <div className="px-1 py-2">{body}</div>
                     )}
                   </td>
                 );
               })}
-              <td className="px-3 py-1 text-right text-body tabular">{hoursOf(shifts.filter((s) => s.staffId === p.id)) || ''}</td>
+              <td className={`px-3 py-1 text-right text-body tabular ${weekWarn?.has(p.id) ? 'text-amber-600' : ''}`} title={weekWarn?.get(p.id)}>{hoursOf(shifts.filter((s) => s.staffId === p.id)) || ''}</td>
             </tr>
           ))}
           {week.editor && (

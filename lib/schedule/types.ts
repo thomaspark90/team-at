@@ -1,9 +1,10 @@
 import type { StoreId } from '@/lib/types';
+import type { PublishChange } from './publish-diff';
 
 // 근무 스케줄 공용 타입 — 화면·API·시트 이관이 함께 쓴다.
 
 export type ShiftKind = 'plan' | 'actual';
-export type LeaveType = 'annual' | 'sick' | 'off' | 'sub_worked' | 'sub_off';
+export type LeaveType = 'annual' | 'sick' | 'off' | 'sub_worked' | 'sub_off' | 'unavailable';
 
 export const LEAVE_LABEL: Record<LeaveType, string> = {
   annual: '연차',
@@ -11,7 +12,14 @@ export const LEAVE_LABEL: Record<LeaveType, string> = {
   off: '오프',
   sub_worked: '대체근무',
   sub_off: '대체휴무',
+  unavailable: '근무 불가', // 직원이 말한 불가일 — 운영진이 대신 입력(2026-11-06). 잔여 연차와 무관
 };
+
+export interface LeaveMark {
+  staffId: number;
+  date: string;
+  type: LeaveType;
+}
 
 export interface Segment {
   start: number; // 0시 기준 분
@@ -68,6 +76,7 @@ export interface ShiftPreset extends Segment {
 }
 export const PRESET_LABEL_MAX = 12;
 export const PRESET_MAX = 12;
+export const TEMPLATE_NAME_MAX = 20; // 주 템플릿 이름
 
 export interface WeekData {
   weekStart: string;
@@ -81,4 +90,9 @@ export interface WeekData {
   shifts: Shift[];
   notes: Record<string, string>; // 운영진에게만 채워진다
   presets: ShiftPreset[]; // 이 지점의 근무 파트
+  leaves: LeaveMark[]; // 이 주의 연차·불가 기록(운영진에게만) — 칸 표시·충돌 경고
+  streakBefore: Record<number, number>; // 사람별 주 시작 전날까지의 연속 근무일(운영진에게만)
+  changes: PublishChange[]; // 직전 배포 대비 이번 배포에서 바뀐 칸(배포된 주만)
+  unpublishedChanges: number; // 배포 후 고친 칸 수(운영진에게만) — 0 이 아니면 다시 배포해야 직원에게 보인다
+  acked: number[]; // 이번 배포를 확인한 직원 id
 }
