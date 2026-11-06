@@ -23,6 +23,7 @@ export const GARDEN_TAB_GROUPS: GardenTab[][] = [
     // 매니저 교육 — 스탭 위시리스트·매니저 출근 일정·교육 기록. 간편 계정 발급 시 기본 허용 탭(2026-09-07)
     // 근무 스케줄 — 운영진 작성·배포, 직원은 배포된 계획 열람(2026-11-06)
     { key: 'schedule', href: '/garden/schedule', label: '스케줄', desc: '주간 근무 계획 · 실제 근무 · 연차' },
+    { key: 'checklist', href: '/garden/checklist', label: '체크리스트', desc: '오픈 · 마감 담당 체크 · 항목 관리' },
     { key: 'teaching', href: '/garden/teaching', label: '교육', desc: '배우고 싶은 주제 · 매니저 출근 일정 · 교육 기록' },
     { key: 'reviews', href: '/garden/reviews', label: '네이버 리뷰', desc: '리뷰 확인 · 답글 초안 작성' },
     { key: 'words', href: '/garden/words', label: '제철 단어', desc: '고객 제출 단어 검수' },
@@ -33,7 +34,7 @@ export const GARDEN_TAB_GROUPS: GardenTab[][] = [
 export const GARDEN_TABS: GardenTab[] = GARDEN_TAB_GROUPS.flat();
 
 // 간편 계정(스탭·매니저)을 만들 때 부여하는 기본 탭. 넓히려면 설정 › 페이지 접근 권한.
-export const SIMPLE_ACCOUNT_TABS = ['teaching', 'theory', 'beanguide'];
+export const SIMPLE_ACCOUNT_TABS = ['teaching', 'theory', 'beanguide', 'checklist'];
 
 // 내비 한 줄 구성(2026-09-09 대표 결정: 탭 14개 → 작업 보드 + 묶음 3 + 교육 + 설정).
 // 묶음은 화면 표시 전용 — 권한 키·경로는 위 GARDEN_TAB_GROUPS 그대로. 항목은 key 로 참조한다.
@@ -44,6 +45,7 @@ export const GARDEN_NAV: GardenNavEntry[] = [
   { label: '필터 레시피', keys: ['recipes', 'recommended'] }, // 제철 단어는 2026-10-30 메뉴에서 제거 (페이지·권한 키는 유지)
   { label: '분석', keys: ['sales', 'weather', 'reviews'] },
   { label: '스케줄', keys: ['schedule'] },
+  { label: '체크리스트', keys: ['checklist'] },
   { label: '교육', keys: ['teaching'] },
   { label: '설정', keys: ['settings'] },
 ];

@@ -1,20 +1,43 @@
 import { NextResponse } from 'next/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { badRequest, dbError, isStore, requireScheduleEditor } from '@/lib/schedule/access';
 import { toStaff } from '@/lib/schedule/queries';
-import { isStaffRole } from '@/lib/schedule/types';
+import { isDutyTag, isStaffRole } from '@/lib/schedule/types';
 import { isYmd, kstToday } from '@/lib/teaching/kst';
-import { NAME_RE, normalizeName } from '@/lib/account/simple-login';
+import { NAME_RE, isSimpleEmail, normalizeName } from '@/lib/account/simple-login';
 import { isOwner } from '@/lib/finance/access';
 import { setAccountLeft } from '@/lib/staff/directory';
 
 export const runtime = 'nodejs';
 
-// 직원 명부(운영진 전용) — 재직·이름의 정본. GET / POST { name, homeStore } / PATCH { id, name?, homeStore?, joinedOn?, active?, roles? }.
+/** 명부에 연결할 수 있는 로그인 계정 — 승인된 간편 계정 + 구글 계정. 교육 명부 전용·대기·퇴사 계정은 제외. */
+async function linkableAccounts(svc: SupabaseClient, staff: { id: unknown; user_id: unknown }[]) {
+  const [{ data: users, error }, { data: profiles }] = await Promise.all([
+    svc.auth.admin.listUsers({ perPage: 200 }),
+    svc.from('profiles').select('user_id, display_name, status, roster_only'),
+  ]);
+  if (error) throw new Error(error.message);
+  const profileOf = new Map((profiles ?? []).map((p) => [p.user_id as string, p]));
+  const linkedTo = new Map(staff.filter((s) => s.user_id).map((s) => [s.user_id as string, Number(s.id)]));
+  return users.users
+    .filter((u) => {
+      const p = profileOf.get(u.id);
+      return !u.banned_until && (!p || (p.status === 'active' && !p.roster_only));
+    })
+    .map((u) => {
+      const name = (profileOf.get(u.id)?.display_name as string | undefined) ?? null;
+      const email = isSimpleEmail(u.email) ? null : (u.email ?? null);
+      return { userId: u.id, name, label: name && email ? `${name} (${email})` : (name ?? email ?? u.id), linkedStaffId: linkedTo.get(u.id) ?? null };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label, 'ko'));
+}
+
+// 직원 명부(운영진 전용) — 재직·이름의 정본. GET / POST { name, homeStore } / PATCH { id, name?, homeStore?, joinedOn?, active?, roles?, dutyTag?, userId? }.
 // 기록 보존을 위해 삭제는 없다(재직 끄기). 계정이 연결돼 있으면 이름·지점을 맞추고, 재직을 끄면 로그인을 막는다.
 export async function GET() {
   const a = await requireScheduleEditor();
   if (a instanceof NextResponse) return a;
-  const { data, error } = await a.svc.from('schedule_staff').select('id, name, home_store, joined_on, active, roles, user_id').order('name');
+  const { data, error } = await a.svc.from('schedule_staff').select('id, name, home_store, joined_on, active, roles, duty_tag, user_id').order('name');
   if (error) return dbError(error);
   const userIds = (data ?? []).map((s) => s.user_id).filter(Boolean) as string[];
   const { data: profiles } = userIds.length
@@ -39,9 +62,11 @@ export async function GET() {
   return NextResponse.json({
     staff: (data ?? []).map((s, i) => ({
       ...toStaff(s),
+      userId: (s.user_id as string | null) ?? null,
       lastWorked: (last[i].data?.work_date as string | undefined) ?? null,
       account: !s.user_id ? null : rosterOnly.get(s.user_id) === false ? 'login' : 'roster',
     })),
+    accounts: await linkableAccounts(a.svc, data ?? []),
     today,
   });
 }
@@ -80,6 +105,27 @@ export async function PATCH(req: Request) {
   if (b?.roles !== undefined) {
     if (!Array.isArray(b.roles) || !b.roles.every(isStaffRole)) return badRequest('역할이 올바르지 않습니다.');
     patch.roles = Array.from(new Set(b.roles));
+  }
+  if (b?.dutyTag !== undefined) {
+    if (b.dutyTag !== null && !isDutyTag(b.dutyTag)) return badRequest('책임 태그가 올바르지 않습니다.');
+    patch.duty_tag = b.dutyTag;
+  }
+  if (b?.userId !== undefined) {
+    // 계정 연결 — 체크리스트 담당 판정의 기준. 이름이 달라도, 구글 계정이어도 운영진이 직접 잇는다.
+    if (b.userId !== null) {
+      if (typeof b.userId !== 'string') return badRequest('계정이 올바르지 않습니다.');
+      const { data: other } = await a.svc.from('schedule_staff').select('name').eq('user_id', b.userId).neq('id', id).maybeSingle();
+      if (other) return NextResponse.json({ error: `이 계정은 이미 ${other.name}님에게 연결돼 있습니다.` }, { status: 409 });
+      const { data: u, error: uErr } = await a.svc.auth.admin.getUserById(b.userId);
+      if (uErr || !u?.user) return badRequest('계정을 찾을 수 없습니다.');
+      // 탭을 지정해 둔 계정은 새 탭이 꺼져 있어, 연결하면서 체크리스트를 켠다
+      const { data: access } = await a.svc.from('garden_tab_access').select('tabs').eq('user_id', b.userId).maybeSingle();
+      if (Array.isArray(access?.tabs) && !access.tabs.includes('checklist')) {
+        const { error: tabErr } = await a.svc.from('garden_tab_access').update({ tabs: [...access.tabs, 'checklist'], updated_at: new Date().toISOString() }).eq('user_id', b.userId);
+        if (tabErr) return dbError(tabErr);
+      }
+    }
+    patch.user_id = b.userId;
   }
   if (b?.joinedOn !== undefined) {
     if (b.joinedOn !== null && !isYmd(b.joinedOn)) return badRequest('입사일이 올바르지 않습니다.');

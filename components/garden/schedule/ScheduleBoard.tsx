@@ -12,6 +12,7 @@ import ShiftEditor, { type CellTarget } from './ShiftEditor';
 import HourlyStrip from './HourlyStrip';
 import LeavePanel from './LeavePanel';
 import ShareLinkPanel from './ShareLinkPanel';
+import CrewPlanner from '@/components/garden/checklist/CrewPlanner';
 
 // 스케줄 화면의 상태·저장 흐름만 담당한다. 표·편집기·보조 패널은 각 컴포넌트.
 const post = (path: string, method: string, body: unknown) =>
@@ -195,6 +196,7 @@ export default function ScheduleBoard() {
 
       {editor && week && (
         <div className="space-y-6">
+          <CrewPlanner store={store} days={week.days} />
           <details className="ta-panel">
             <summary className="cursor-pointer text-body">직원 공유 링크 ›</summary>
             <div className="mt-4"><ShareLinkPanel /></div>

@@ -4,6 +4,10 @@
   ],
   "crons": [
     {
+      "path": "/api/cron/checklist-photos",
+      "schedule": "0 18 * * *"
+    },
+    {
       "path": "/api/cron/ingest-health",
       "schedule": "0 1 * * *"
     },
