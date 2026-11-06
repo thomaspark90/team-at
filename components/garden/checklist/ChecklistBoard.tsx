@@ -1,15 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import SegmentControl from '@/components/nav/SegmentControl';
+import Link from 'next/link';
 import { addDays, fmtMd, kstToday } from '@/lib/teaching/kst';
 import type { ChecklistCard, ChecklistDay } from '@/lib/checklist/types';
 import { SHIFT_LABEL, type ShiftType } from '@/lib/checklist/types';
 import { STORES, type StoreId } from '@/lib/types';
 import ChecklistCardView from './ChecklistCardView';
-import ChecklistItemManager from './ChecklistItemManager';
 
-// 체크리스트 화면의 상태만 담당한다. 직원은 오늘 내 담당 장만 보고, 운영진은 날짜를 넘겨 전 지점 현황과 항목 관리를 본다.
+// 체크리스트 화면의 상태만 담당한다. 직원은 오늘 내 담당 장만 보고, 운영진은 날짜를 넘겨 전 지점 현황을 본다. 항목 관리는 별도 페이지.
 
 const storeLabel = (id: StoreId) => STORES.find((s) => s.id === id)?.label ?? id;
 
@@ -17,8 +16,6 @@ export default function ChecklistBoard() {
   const [date, setDate] = useState(() => kstToday());
   const [day, setDay] = useState<ChecklistDay | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<'day' | 'items'>('day');
-  const [managedStore, setManagedStore] = useState<StoreId>('pangyo');
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -55,15 +52,9 @@ export default function ChecklistBoard() {
 
   return (
     <div className="space-y-5">
-      {day.editor && (
+      {(day.editor || day.canManageItems) && (
         <div className="flex flex-wrap items-center gap-3">
-          <SegmentControl
-            ariaLabel="보기"
-            items={[{ id: 'day', label: '하루 현황' }, { id: 'items', label: '항목 관리' }]}
-            value={view}
-            onSelect={(id) => setView(id as 'day' | 'items')}
-          />
-          {view === 'day' && (
+          {day.editor && (
             <div className="flex items-center gap-2">
               <button type="button" className="ta-btn px-3" aria-label="전날" onClick={() => setDate((d) => addDays(d, -1))}>
                 ‹
@@ -74,12 +65,14 @@ export default function ChecklistBoard() {
               </button>
             </div>
           )}
+          {day.canManageItems && (
+            <Link href="/garden/checklist/items" className="ta-btn">
+              항목 관리
+            </Link>
+          )}
         </div>
       )}
 
-      {view === 'items' && day.editor ? (
-        <ChecklistItemManager store={managedStore} onStore={setManagedStore} />
-      ) : (
         <>
           {!day.editor && <p className="text-body text-muted-foreground">{fmtMd(date)}</p>}
           {day.editor && day.closedStores.length > 0 && (
@@ -120,7 +113,6 @@ export default function ChecklistBoard() {
           )}
           {notice && <p className="ta-error text-body">{notice}</p>}
         </>
-      )}
     </div>
   );
 }

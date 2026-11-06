@@ -63,6 +63,7 @@ export interface ChecklistDay {
   date: string;
   today: string;
   editor: boolean;
+  canManageItems: boolean;
   canAct: boolean; // 오늘 자리에서 체크할 수 있는 날인가
   linked: boolean; // 내 계정이 근무자 명부에 연결돼 있는가
   closedStores: StoreId[]; // 정기 휴무

@@ -41,7 +41,7 @@ export const toCheck = (r: any): ChecklistCheck => ({
 });
 
 export const loadItems = async (svc: SupabaseClient, store?: StoreId): Promise<ChecklistItem[]> => {
-  let q = svc.from('checklist_items').select(ITEM_COLS).order('sort_order').order('id');
+  let q = svc.from('checklist_items').select(ITEM_COLS).is('deleted_at', null).order('sort_order').order('id');
   if (store) q = q.eq('store', store);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
@@ -113,6 +113,7 @@ export async function loadDay(svc: SupabaseClient, date: string, actor: Checklis
     date,
     today,
     editor,
+    canManageItems: actor.canManageItems,
     canAct: date === today,
     linked: staffId != null,
     closedStores: openStores.filter((s) => isClosedDay(s, date)),

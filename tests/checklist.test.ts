@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { canTakeOver, overrideFromMembers, NO_OVERRIDE, pickLead, resolveCrew, type CrewPerson } from '@/lib/checklist/assignment';
 import { assignmentsFor, groupBySection, isClosedDay, isEnabledStore, isMissed, itemsDue, photoCutoff, unfinishedItems } from '@/lib/checklist/logic';
+import { insertAtSectionEnd, moveItem, moveSection, renameSection, renumber } from '@/lib/checklist/ordering';
 import type { ChecklistItem } from '@/lib/checklist/types';
 import type { Shift } from '@/lib/schedule/types';
 
@@ -186,5 +187,43 @@ describe('운영 범위와 미제출', () => {
 describe('사진 보관', () => {
   it('90일 전이 기준선이다', () => {
     expect(photoCutoff(new Date('2026-11-06T00:00:00Z'))).toBe('2026-08-08T00:00:00.000Z');
+  });
+});
+
+describe('항목 순서', () => {
+  const list = [
+    { id: 1, section: 'A' },
+    { id: 2, section: 'A' },
+    { id: 3, section: 'B' },
+    { id: 4, section: 'C' },
+  ];
+  const ids = (l: { id: number }[]) => l.map((i) => i.id);
+  it('다른 항목 앞·뒤로 옮긴다', () => {
+    expect(ids(moveItem(list, 1, { targetId: 2, place: 'after' }))).toEqual([2, 1, 3, 4]);
+    expect(ids(moveItem(list, 4, { targetId: 1, place: 'before' }))).toEqual([4, 1, 2, 3]);
+  });
+  it('옮겨 간 자리의 구역을 따른다', () => {
+    expect(moveItem(list, 1, { targetId: 3, place: 'after' }).find((i) => i.id === 1)?.section).toBe('B');
+  });
+  it('자기 자신이나 없는 대상이면 그대로', () => {
+    expect(moveItem(list, 1, { targetId: 1, place: 'after' })).toBe(list);
+    expect(moveItem(list, 1, { targetId: 9, place: 'after' })).toBe(list);
+  });
+  it('구역을 통째로 옮기고 끝에서는 그대로', () => {
+    expect(ids(moveSection(list, 1, -1))).toEqual([3, 1, 2, 4]);
+    expect(ids(moveSection(list, 0, 1))).toEqual([3, 1, 2, 4]);
+    expect(moveSection(list, 0, -1)).toBe(list);
+    expect(moveSection(list, 2, 1)).toBe(list);
+  });
+  it('구역 끝에 넣고, 없는 구역이면 맨 끝에', () => {
+    expect(ids(insertAtSectionEnd(list, { id: 5, section: 'A' }))).toEqual([1, 2, 5, 3, 4]);
+    expect(ids(insertAtSectionEnd(list, { id: 5, section: 'Z' }))).toEqual([1, 2, 3, 4, 5]);
+  });
+  it('구역 이름은 그 묶음만 바꾼다', () => {
+    const split = [{ id: 1, section: 'A' }, { id: 2, section: 'B' }, { id: 3, section: 'A' }];
+    expect(renameSection(split, 0, 'X').map((i) => i.section)).toEqual(['X', 'B', 'A']);
+  });
+  it('10 간격으로 번호를 매긴다', () => {
+    expect(renumber(list).map((i) => i.sortOrder)).toEqual([10, 20, 30, 40]);
   });
 });
