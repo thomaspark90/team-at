@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import { fmtMd } from '@/lib/teaching/kst';
 import { hourlyStaff, laneOrder, roleCountsOf } from '@/lib/schedule/time';
 import { STAFF_ROLES, type Shift, type Staff, type StaffRole } from '@/lib/schedule/types';
+import type { StoreId } from '@/lib/types';
+import RoleEditor from './RoleEditor';
 
 // 시간대별 인원 — 날짜마다 6~22시 칸에 인원수 · 역할별 요약(색 점+수) · 이름(옆에 역할 색 점).
 // 이름은 사람마다 한 줄만 쓰고(두 역할이어도 중복 없음), 출근 시각 순으로 줄을 고정한다 —
 // 먼저 퇴근한 사람 자리는 비워 두어 다른 이름이 위로 밀려 올라가지 않는다(2026-11-06 대표 지시).
-// 역할 표시는 우측 상단 버튼으로 숨길 수 있다(브라우저에 기억). 범례도 같은 자리.
+// 역할 표시는 우측 상단 버튼으로 숨길 수 있다(브라우저에 기억). 범례도 같은 자리. 운영진은 '역할 편집'으로 그 자리에서 역할을 고친다.
 const FROM = 6;
 const TO = 22;
 const HOURS = Array.from({ length: TO - FROM }, (_, i) => FROM + i);
@@ -35,8 +37,21 @@ function Dot({ color, label }: { color: string; label: string }) {
   );
 }
 
-export default function HourlyStrip({ days, shifts, staff }: { days: string[]; shifts: Shift[]; staff: Staff[] }) {
+export default function HourlyStrip({
+  days,
+  shifts,
+  staff,
+  store,
+  onStaffChanged,
+}: {
+  days: string[];
+  shifts: Shift[];
+  staff: Staff[];
+  store: StoreId;
+  onStaffChanged?: () => Promise<void> | void; // 있으면 운영진 — 역할 편집 버튼을 보여준다
+}) {
   const [showRoles, setShowRoles] = useState(true);
+  const [editingRoles, setEditingRoles] = useState(false);
   useEffect(() => {
     setShowRoles(localStorage.getItem(STORAGE_KEY) !== '0');
   }, []);
@@ -83,9 +98,17 @@ export default function HourlyStrip({ days, shifts, staff }: { days: string[]; s
               <li className="flex items-center gap-1"><Dot color={NONE_COLOR} label="역할 미지정" />미지정</li>
             </ul>
           )}
-          <button type="button" className="ta-btn" onClick={toggleRoles}>{showRoles ? '담당 역할 숨기기' : '담당 역할 보이기'}</button>
+          <div className="flex flex-col items-end gap-1">
+            <button type="button" className="ta-btn" onClick={toggleRoles}>{showRoles ? '담당 역할 숨기기' : '담당 역할 보이기'}</button>
+            {onStaffChanged && (
+              <button type="button" className="text-caption text-muted-foreground underline underline-offset-2 hover:text-foreground" onClick={() => setEditingRoles(true)}>
+                역할 편집하기
+              </button>
+            )}
+          </div>
         </div>
       </div>
+      {editingRoles && onStaffChanged && <RoleEditor staff={staff} store={store} onChanged={onStaffChanged} onClose={() => setEditingRoles(false)} />}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1120px] table-fixed border-collapse">
           <thead>

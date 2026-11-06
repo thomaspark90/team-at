@@ -185,7 +185,7 @@ export default function ScheduleBoard() {
         </div>
         {error && <p className="m-0 text-body text-destructive">{error}</p>}
         {week && (
-          <HourlyStrip days={week.days} shifts={shown.filter((s) => s.store === store)} staff={week.staff} />
+          <HourlyStrip days={week.days} shifts={shown.filter((s) => s.store === store)} staff={week.staff} store={store} onStaffChanged={editor ? load : undefined} />
         )}
         {week ? (
           <WeekGrid
