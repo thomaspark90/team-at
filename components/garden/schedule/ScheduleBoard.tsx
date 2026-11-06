@@ -160,10 +160,7 @@ export default function ScheduleBoard() {
         </div>
         {error && <p className="m-0 text-body text-destructive">{error}</p>}
         {week && (
-          <div>
-            <h2 className="m-0 mb-4 text-title">시간대별 인원</h2>
-            <HourlyStrip days={week.days} shifts={shown.filter((s) => s.store === store)} staff={week.staff} />
-          </div>
+          <HourlyStrip days={week.days} shifts={shown.filter((s) => s.store === store)} staff={week.staff} />
         )}
         {week ? (
           <WeekGrid

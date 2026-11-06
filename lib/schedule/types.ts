@@ -32,12 +32,13 @@ export interface Shift extends Partial<Segment> {
 // 근무자 역할 — 한 사람이 여러 역할을 맡을 수 있다(예: 바리스타 + 콜드파트). key 는 DB 저장값이라 바꾸지 않는다.
 // 2026-11-06 대표 결정: 제빵·제과·콜드·핫·커피 다섯 가지(한 글자 약자는 분간이 안 돼 표에도 이 이름을 그대로 쓴다).
 // 'pastry' 키는 처음에 '파티쉐'로 쓰던 값 — 제과로 둔다. 'dish'(디쉬)는 제외.
+// color 는 시간대별 표의 색 점(대표 지정: 콜드 파랑 · 핫 빨강 · 제과제빵 우유색 · 커피 노랑). 제빵·제과는 같은 색.
 export const STAFF_ROLES = [
-  { key: 'bread', label: '제빵' },
-  { key: 'pastry', label: '제과' },
-  { key: 'cold', label: '콜드' },
-  { key: 'hot', label: '핫' },
-  { key: 'barista', label: '커피' },
+  { key: 'bread', label: '제빵', color: '#F3EAD3' },
+  { key: 'pastry', label: '제과', color: '#F3EAD3' },
+  { key: 'cold', label: '콜드', color: '#3B82F6' },
+  { key: 'hot', label: '핫', color: '#EF4444' },
+  { key: 'barista', label: '커피', color: '#FACC15' },
 ] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number]['key'];
 export const isStaffRole = (v: unknown): v is StaffRole => STAFF_ROLES.some((r) => r.key === v);
