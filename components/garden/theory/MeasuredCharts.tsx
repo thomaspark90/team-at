@@ -52,8 +52,8 @@ export function ConcentrationChart() {
     return row;
   });
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+    <ResponsiveContainer width="100%" height={220}>
+      <LineChart data={data} margin={{ top: 24, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid vertical={false} stroke={GRID} />
         <XAxis dataKey="ratio" type="number" domain={[0, 3]} ticks={[0, 1, 2, 3]} tickFormatter={formatRatio} tick={axisTick} stroke={GRID} />
         <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={GRID} width={44} />
@@ -72,15 +72,15 @@ export function ConcentrationChart() {
 
 // 5개 계열 중 성격이 뚜렷한 3개만 그린다(B·C 는 A 와 D 사이)
 const FAMILY_LINES = [
-  { key: 'A', short: '가벼운 향', label: '가벼운 향(아세트알데하이드·초산 등)', opacity: 0.4, labelAt: 10 },
-  { key: 'D', short: '중간', label: '중간(퓨란·메틸피라진 등)', opacity: 0.7, labelAt: 16 },
-  { key: 'E', short: '무거운 향', label: '무거운 향(과이어콜 등 페놀류)', opacity: 1, labelAt: 24 },
+  { key: 'A', short: '가벼운 향', label: '가벼운 향(초산 등)', opacity: 0.4, labelAt: 10 },
+  { key: 'D', short: '중간', label: '중간(퓨란 등)', opacity: 0.7, labelAt: 16 },
+  { key: 'E', short: '무거운 향', label: '무거운 향(페놀류)', opacity: 1, labelAt: 24 },
 ] as const;
 
 export function VolatileChart() {
   const data = VOLATILE_TIMES.map((t, i) => ({ t, A: VOLATILES.A[i], D: VOLATILES.D[i], E: VOLATILES.E[i] }));
   return (
-    <ResponsiveContainer width="100%" height={280}>
+    <ResponsiveContainer width="100%" height={220}>
       <LineChart data={data} margin={{ top: 24, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid vertical={false} stroke={GRID} />
         <XAxis dataKey="t" type="number" domain={[0, 26]} ticks={[0, 6, 10, 15, 20, 26]} tickFormatter={(v) => `${v}초`} tick={axisTick} stroke={GRID} />

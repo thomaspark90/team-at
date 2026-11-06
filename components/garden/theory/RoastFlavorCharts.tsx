@@ -39,8 +39,8 @@ function FlavorTip({ active, payload, label }: any) {
 function RoastChart({ roast, focus }: { roast: RoastKey; focus: FlavorKey | null }) {
   const data = RATIO_STEPS.map((ratio) => ({ ratio, ...flavorAt(roast, ratio) }));
   return (
-    <ResponsiveContainer width="100%" height={260}>
-      <LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 24 }}>
+    <ResponsiveContainer width="100%" height={210}>
+      <LineChart data={data} margin={{ top: 4, right: 16, bottom: 0, left: 24 }}>
         <CartesianGrid horizontal={false} stroke={GRID} />
         <XAxis
           dataKey="ratio"
@@ -105,13 +105,13 @@ export default function RoastFlavorCharts() {
           </button>
         ))}
       </div>
-      <div className="mt-6 grid gap-x-4 gap-y-10 md:grid-cols-3 lg:gap-x-8">
+      <div className="mt-3 grid gap-x-4 gap-y-6 md:grid-cols-3 lg:gap-x-8">
         {ROASTS.map((r) => (
           <figure key={r.key} className="m-0 min-w-0">
-            <figcaption className="mb-3">
+            <figcaption className="mb-1">
               <span className="text-title">{r.label}</span>
-              <span className="mt-0.5 block text-caption text-muted-foreground">
-                {r.stage} · {r.agtron}
+              <span className="ml-2 text-caption text-muted-foreground">
+                {r.agtron}
               </span>
             </figcaption>
             <RoastChart roast={r.key} focus={focus} />

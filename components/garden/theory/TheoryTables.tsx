@@ -2,46 +2,46 @@ import type { ReactNode } from 'react';
 import { THEORY_SOURCES, cupSummary } from '@/lib/garden/extraction-theory';
 import TheoryCite from './TheoryCite';
 
-const th = 'px-3 py-2 text-left text-caption font-normal uppercase tracking-[0.04em] text-muted-foreground';
-const td = 'border-t border-border px-3 py-2 align-top text-body';
+const th = 'px-3 py-1.5 text-left text-caption font-normal uppercase tracking-[0.04em] text-muted-foreground';
+const td = 'border-t border-border px-3 py-1.5 align-top text-body';
 
 // 맛별 곡선의 근거. 측정이 없는 칸은 없다고 적는다.
 const ATTRIBUTES: { name: string; shape: ReactNode; roast: ReactNode; basis: string }[] = [
   {
     name: '산미',
-    shape: <>초반에 높고 빠르게 줄어든다. 신맛은 pH나 적정산도로 설명되지 않았다.<TheoryCite ids={['gloess', 'gagne']} /></>,
+    shape: <>초반에 높고 빠르게 줄어든다.<TheoryCite ids={['gloess', 'gagne']} /></>,
     roast: <>배전이 강할수록 낮아진다.<TheoryCite ids={['carcea', 'shi']} /></>,
-    basis: '해석: 에스프레소 구간별 산 측정 없음',
+    basis: '해석(구간별 산 측정 없음)',
   },
   {
     name: '향미',
-    shape: <>흐름 시작 후 올라가 10~20초에 정점. 무거운 성분일수록 늦고 오래간다.<TheoryCite ids={['sanchez']} /></>,
+    shape: <>10~20초에 정점. 무거운 성분일수록 늦고 오래간다.<TheoryCite ids={['sanchez']} /></>,
     roast: <>중간 배전에서 가장 높았다.<TheoryCite ids={['hu']} /></>,
-    basis: '측정: 향 성분 신호. 사람이 느낀 강도는 아님',
+    basis: '측정(향 성분 신호)',
   },
   {
     name: '단맛',
-    shape: <>당이 나오는 곡선이 아니다. 쓴맛과 농도가 잦아들며 드러나는 균형으로 본다.<TheoryCite ids={['bartelak', 'batali']} /></>,
-    roast: <>강배전에서 당은 사라지지만 단맛 인상과 같지는 않다.<TheoryCite ids={['hu']} /></>,
-    basis: '해석: 드립 분획 연구 기반, 에스프레소 미검증',
+    shape: <>당 곡선이 아니라, 쓴맛과 농도가 줄며 드러나는 균형.<TheoryCite ids={['bartelak', 'batali']} /></>,
+    roast: <>강배전에서 당은 사라지지만 단맛 인상과는 별개다.<TheoryCite ids={['hu']} /></>,
+    basis: '해석(드립 연구 기반)',
   },
   {
     name: '바디',
-    shape: <>초반에 급격히 줄어든다. 고형물 농도, 초기 콜로이드와 함께 움직인다.<TheoryCite ids={['schmieder', 'gloess', 'colloid']} /></>,
-    roast: <>배전이 강할수록 올라간다. 강배전에서 다시 줄어드는지는 확인되지 않았다.<TheoryCite ids={['carcea', 'hu', 'shi']} /></>,
-    basis: '측정: 고형물 농도. 구간별 바디 시음은 없음',
+    shape: <>초반에 급격히 줄어든다.<TheoryCite ids={['schmieder', 'gloess', 'colloid']} /></>,
+    roast: <>배전이 강할수록 올라간다. 강배전에서 줄어드는지는 미확인.<TheoryCite ids={['carcea', 'hu', 'shi']} /></>,
+    basis: '측정(고형물 농도)',
   },
   {
     name: '쓴맛',
-    shape: <>마지막에 나오지 않는다. 첫 방울부터 있고 양은 줄며, 뒤로 갈수록 비중이 커진다.<TheoryCite ids={['schmieder', 'gute']} /></>,
-    roast: <>약~중배전은 퀴니드, 강배전은 거친 쓴맛 성분으로 바뀌고 일부는 입자에 오래 남는다.<TheoryCite ids={['blumberg', 'frank']} /> 카페인 비중은 약 15%다.<TheoryCite ids={['acs']} /></>,
-    basis: '해석: 성분 측정 기반, 구간별 시음 없음',
+    shape: <>첫 방울부터 있다. 양은 줄지만 비중은 커진다.<TheoryCite ids={['schmieder', 'gute']} /></>,
+    roast: <>강배전일수록 거친 쓴맛 성분으로 바뀐다.<TheoryCite ids={['blumberg', 'frank']} /> 카페인 비중은 약 15%.<TheoryCite ids={['acs']} /></>,
+    basis: '해석(성분 측정 기반)',
   },
   {
     name: '탄내',
-    shape: <>시간이 만드는 맛이 아니라고 보고 평평하게 그렸다. 시간별 측정은 찾지 못했다.</>,
-    roast: <>로스팅이 양을 정한다.<TheoryCite ids={['blumberg']} /> 무거운 향 성분은 후반까지 남는다.<TheoryCite ids={['sanchez']} /></>,
-    basis: '해석: 시간 곡선 측정 없음',
+    shape: <>시간별 측정이 없어 평평하게 그렸다.</>,
+    roast: <>로스팅이 양을 정한다.<TheoryCite ids={['blumberg']} /> 무거운 향은 후반까지 남는다.<TheoryCite ids={['sanchez']} /></>,
+    basis: '해석',
   },
   {
     name: '떫은맛(그래프 제외)',
@@ -79,19 +79,19 @@ export function AttributeTable() {
       </div>
       <div className="lg:hidden">
         {ATTRIBUTES.map((a) => (
-          <article key={a.name} className="border-t border-border py-4">
+          <article key={a.name} className="border-t border-border py-3">
             <h3 className="m-0 text-body font-medium">{a.name}</h3>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 sm:gap-6">
+            <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2 sm:gap-6">
               <div className="min-w-0">
                 <div className="text-caption text-muted-foreground">추출이 진행될 때</div>
-                <div className="mt-1 text-body">{a.shape}</div>
+                <div className="text-body">{a.shape}</div>
               </div>
               <div className="min-w-0">
                 <div className="text-caption text-muted-foreground">배전도가 강해질 때</div>
-                <div className="mt-1 text-body">{a.roast}</div>
+                <div className="text-body">{a.roast}</div>
               </div>
             </div>
-            <p className="mb-0 mt-3 text-caption text-muted-foreground">근거: {a.basis}</p>
+            <p className="mb-0 mt-1.5 text-caption text-muted-foreground">{a.basis}</p>
           </article>
         ))}
       </div>
@@ -164,16 +164,16 @@ export function CupTable() {
 
 export function SourceList() {
   return (
-    <ol className="m-0 list-none space-y-3 p-0">
+    <ol className="m-0 grid list-none gap-x-8 gap-y-1.5 p-0 lg:grid-cols-2">
       {THEORY_SOURCES.map((s, i) => (
-        <li key={s.id} id={`src-${i + 1}`} className="grid scroll-mt-24 grid-cols-[2.5rem_1fr] text-body">
+        <li key={s.id} id={`src-${i + 1}`} className="grid scroll-mt-24 grid-cols-[2rem_1fr] text-caption">
           <span className="tabular text-muted-foreground">[{i + 1}]</span>
           <span className="min-w-0 break-words">
-            <a href={s.url} target="_blank" rel="noreferrer" className="underline decoration-border underline-offset-2 hover:decoration-foreground">
+            <a href={s.url} target="_blank" rel="noreferrer" title={s.use} className="underline decoration-border underline-offset-2 hover:decoration-foreground">
               {s.cite}
             </a>
-            <span className="block text-caption text-muted-foreground">
-              {s.use} · {s.kind} · {s.access === '원문' ? '본문 확인' : s.access === '초록' ? '초록만 확인' : '소개 글로 확인'}
+            <span className="text-muted-foreground">
+              {' · '}{s.kind} · {s.access === '원문' ? '본문 확인' : s.access === '초록' ? '초록만 확인' : '소개 글로 확인'}
             </span>
           </span>
         </li>
