@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     .eq('display_name', name)
     .eq('simple_login', true)
     .maybeSingle();
-  if (!profile) return FAIL();
+  if (!profile || profile.status === 'left') return FAIL(); // 퇴사 계정은 없는 계정과 같은 응답
   if (profile.status === 'pending') {
     return NextResponse.json({ error: '가입 신청이 아직 승인되지 않았어요. 담당자가 역할·지점을 지정하면 로그인할 수 있습니다.' }, { status: 403 });
   }

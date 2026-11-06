@@ -108,15 +108,13 @@ export default function GardenService() {
         rangeHigh: result.rangeHigh,
       }),
     });
-    // 직접 입력한 새 스탭이름·로스팅사는 드롭다운 명단에 자동 추가 (설정에서 관리)
-    const s = staffName.trim();
+    // 직접 입력한 새 로스팅사는 드롭다운 명단에 자동 추가 (스탭이름은 직원 명부에서 온다)
     const r = roastery.trim();
-    const newStaff = s && !options.staffNames.includes(s);
     const newRoastery = r && !options.roasteries.includes(r);
-    if (newStaff || newRoastery) {
+    if (newRoastery) {
       const next: GardenOptions = {
-        staffNames: newStaff ? [s, ...options.staffNames] : options.staffNames,
-        roasteries: newRoastery ? [r, ...options.roasteries] : options.roasteries,
+        staffNames: options.staffNames,
+        roasteries: [r, ...options.roasteries],
       };
       setOptions(next);
       await fetch('/api/garden-options', {

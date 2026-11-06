@@ -83,6 +83,8 @@ export default function AccountRow({
   const locked = !!p?.locked_until && new Date(p.locked_until).getTime() > Date.now();
   const status = !p
     ? null
+    : p.status === 'left'
+      ? { text: '퇴사 · 로그인 차단', cls: 'text-muted-foreground' }
     : p.roster_only
       ? { text: '명부 등록 · 로그인 없음', cls: 'text-muted-foreground' }
       : !p.simple_login

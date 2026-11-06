@@ -120,7 +120,7 @@ export default function Accounts() {
     const external = a.kind === 'email' && !a.title.toLowerCase().endsWith('@' + TEAM_DOMAIN);
     const note =
       a.kind === 'simple'
-        ? '\n교육 요청·기록도 함께 지워집니다.'
+        ? '\n교육 요청·기록도 함께 지워집니다. 퇴사자라면 지우지 말고 스케줄 › 직원 명부에서 재직을 꺼 주세요.'
         : external
           ? '\n외부 계정이라 허용 목록에서도 빠져 로그인이 차단됩니다.'
           : '\n팀 도메인 계정은 구글 로그인하면 다시 생성되니, 완전 차단은 워크스페이스에서 계정을 정지하세요.';

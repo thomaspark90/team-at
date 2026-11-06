@@ -6,8 +6,10 @@ import { needsActiveCheck } from '@/lib/schedule/time';
 import { STORES, type StoreId } from '@/lib/types';
 import type { Staff } from '@/lib/schedule/types';
 
-// 근무자 명부 화면 — 추가·이름·지점·입사일·재직. 삭제는 없다(지난 근무 기록을 지키기 위해 재직만 끈다).
-type Row = Staff & { lastWorked: string | null };
+// 직원 명부 화면 — 추가·이름·지점·입사일·재직. 삭제는 없다(지난 기록을 지키기 위해 재직만 끈다).
+type Row = Staff & { lastWorked: string | null; account: 'login' | 'roster' | null };
+
+const ACCOUNT_LABEL = { login: '로그인 계정', roster: '교육 명부', none: '–' };
 type StatusFilter = 'active' | 'left' | 'all';
 
 const api = '/api/garden-schedule/staff';
@@ -84,13 +86,14 @@ export default function StaffManager() {
       {error && <p className="m-0 text-body text-destructive">{error}</p>}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse">
+        <table className="w-full min-w-[820px] border-collapse">
           <thead>
             <tr className="text-left text-caption text-muted-foreground">
               <th className="px-3 py-2 font-normal">이름</th>
               <th className="px-3 py-2 font-normal">기본 지점</th>
               <th className="px-3 py-2 font-normal">입사일</th>
               <th className="px-3 py-2 font-normal">마지막 근무</th>
+              <th className="px-3 py-2 font-normal">계정</th>
               <th className="px-3 py-2 font-normal">재직</th>
             </tr>
           </thead>
@@ -133,9 +136,19 @@ export default function StaffManager() {
                   <span className="text-muted-foreground">{s.lastWorked ?? '–'}</span>
                   {needsActiveCheck(s.active, s.lastWorked, today) && <span className="ml-2 text-caption text-amber-600">재직 확인</span>}
                 </td>
+                <td className="px-3 py-2 text-muted-foreground">{ACCOUNT_LABEL[s.account ?? 'none']}</td>
                 <td className="px-3 py-2">
                   <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={s.active} onChange={(e) => send('PATCH', { id: s.id, active: e.target.checked })} />
+                    <input
+                      type="checkbox"
+                      checked={s.active}
+                      onChange={(e) => {
+                        const active = e.target.checked;
+                        // 로그인이 걸린 변경만 한 번 더 확인한다
+                        if (!active && s.account === 'login' && !window.confirm(`${s.name}님을 퇴사 처리할까요? 로그인이 바로 막히고, 지난 기록은 '${s.name}(퇴사)'로 남습니다.`)) return;
+                        send('PATCH', { id: s.id, active });
+                      }}
+                    />
                     <span className={s.active ? '' : 'text-muted-foreground'}>{s.active ? '재직' : '퇴사'}</span>
                   </label>
                 </td>
@@ -143,7 +156,7 @@ export default function StaffManager() {
             ))}
             {!list.length && (
               <tr className="border-t border-border">
-                <td colSpan={5} className="px-3 py-4 text-body text-muted-foreground">해당하는 근무자가 없습니다.</td>
+                <td colSpan={6} className="px-3 py-4 text-body text-muted-foreground">해당하는 근무자가 없습니다.</td>
               </tr>
             )}
           </tbody>

@@ -22,6 +22,7 @@ export interface Profile {
   simple_login: boolean;
   pin_reset_required: boolean;
   can_view_comments?: boolean; // 교육 코멘트 열람(대표 지정)
+  left?: boolean; // 퇴사 — 지난 기록의 이름 표시에만 나타난다(display_name 에 (퇴사) 포함)
 }
 
 export interface Actor {

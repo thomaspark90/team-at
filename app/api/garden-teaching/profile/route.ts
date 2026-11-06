@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { ensureStaffLink, syncStaffName } from '@/lib/staff/directory';
 import { requireActor, isActor } from '@/lib/teaching/access';
 import { NAME_RE, normalizeName } from '@/lib/account/simple-login';
 import { STORES, type StoreId } from '@/lib/types';
@@ -25,6 +26,7 @@ export async function POST(req: Request) {
     }
     const { error } = await a.svc.from('profiles').update(patch).eq('user_id', a.userId);
     if (error) return NextResponse.json({ error: /unique|duplicate/i.test(error.message) ? '같은 이름이 이미 있습니다.' : error.message }, { status: 409 });
+    if (patch.display_name) await syncStaffName(a.svc, a.userId, patch.display_name as string);
     return NextResponse.json({ ok: true });
   }
 
@@ -39,5 +41,6 @@ export async function POST(req: Request) {
     created_by: a.email,
   });
   if (error) return NextResponse.json({ error: /unique|duplicate/i.test(error.message) ? '같은 이름이 이미 있습니다.' : error.message }, { status: 409 });
+  await ensureStaffLink(a.svc, { userId: a.userId, name, store: undefined, create: false }); // 구글 계정은 명부에 있을 때만 연결
   return NextResponse.json({ ok: true });
 }

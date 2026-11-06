@@ -3,8 +3,11 @@ import { NextResponse } from 'next/server';
 import type { GardenOptions } from '@/lib/types';
 import { purchaseRecords } from '@/lib/blob-records';
 import { createClient } from '@/lib/supabase/server';
+import { serviceClient } from '@/lib/supabase/service';
+import { activeNames, staffNameRows } from '@/lib/staff/directory';
 
-// 발주 입력 드롭다운 명단(스탭이름·로스팅사) — 설정에서 관리, 발주 화면에서 선택
+// 발주 입력 드롭다운 명단 — 로스팅사는 설정에서 관리, 스탭이름은 직원 명부의 재직자(2026-11-06 통합).
+// blob 의 staffNames 는 더 쓰지 않지만 지우지 않는다(이전 명단 보관).
 const DATA_PATH = 'data/garden-options.json';
 
 const clean = (arr: unknown): string[] =>
@@ -57,10 +60,12 @@ export async function GET() {
     options = await seedFromPurchases();
     await writeOptions(options);
   }
-  return NextResponse.json(options);
+  const svc = serviceClient();
+  if (!svc) return NextResponse.json({ error: '서버 설정 누락' }, { status: 500 });
+  return NextResponse.json({ ...options, staffNames: activeNames(await staffNameRows(svc)) });
 }
 
-// 명단 전체 교체: { staffNames: string[], roasteries: string[] }
+// 로스팅사 명단 전체 교체: { roasteries: string[] } — staffNames 는 받아도 무시한다
 export async function PUT(req: Request) {
   const supabase = await createClient();
   const {
@@ -69,8 +74,9 @@ export async function PUT(req: Request) {
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
 
   const body = await req.json();
+  const prev = await readOptions();
   const options: GardenOptions = {
-    staffNames: clean(body.staffNames),
+    staffNames: prev?.staffNames ?? [],
     roasteries: clean(body.roasteries),
   };
   await writeOptions(options);

@@ -3,6 +3,7 @@ import { newInternalEmail, newPin, pinToPassword } from '@/lib/account/simple-lo
 import { loadRoles, manageRoleKeys } from '@/lib/account/roles';
 import type { ParsedSurvey } from '@/lib/teaching/survey-parse';
 import { SIMPLE_ACCOUNT_TABS } from '@/lib/garden/tabs';
+import { ensureStaffLink } from '@/lib/staff/directory';
 
 // 설문 응답 → 지점 명부 반영. 웹훅(ingest)과 화면의 '명부에 반영' 버튼이 같은 함수를 쓴다.
 //  · 같은 이름의 활성 스탭 프로필이 있으면 그 사람, 없으면 로그인 없는 명부 계정(roster_only)을 새로 만든다.
@@ -23,6 +24,7 @@ export async function applySurveyToRoster(svc: SupabaseClient, r: ParsedSurvey, 
   let userId: string;
   let created = false;
   if (existing) {
+    if (existing.status === 'left') return { error: `'${r.name}' 은 퇴사 처리된 계정이라 반영하지 않았어요.` };
     if (existing.status !== 'active') return { error: `'${r.name}' 은 승인 대기 계정 — 승인 후 다시 반영하세요.` };
     if (manageKeys.has(existing.role as string)) return { error: `'${r.name}' 은 운영 권한 계정이라 반영하지 않았어요.` };
     userId = existing.user_id as string;
@@ -60,6 +62,7 @@ export async function applySurveyToRoster(svc: SupabaseClient, r: ParsedSurvey, 
       .from('garden_tab_access')
       .upsert({ user_id: userId, email, sections: ['garden'], tabs: SIMPLE_ACCOUNT_TABS, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
     created = true;
+    await ensureStaffLink(svc, { userId, name: r.name, store: r.store });
   }
 
   // 위시 — 응답 주제 전체 집합. 기존에 있던 건 requested_at 유지(받음 판정 보존), 새 건 지금.

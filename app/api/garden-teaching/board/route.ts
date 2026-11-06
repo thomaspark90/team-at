@@ -16,8 +16,8 @@ export async function GET(req: Request) {
   const store = new URL(req.url).searchParams.get('store') as StoreId | null;
   if (!store || !STORES.some((s) => s.id === store)) return NextResponse.json({ error: '지점을 선택하세요.' }, { status: 400 });
 
-  const profiles = await profileMap(a.svc);
-  const staff = Array.from(profiles.values()).filter((p) => !a.manageKeys.has(p.role) && p.stores.includes(store));
+  const profiles = await profileMap(a.svc, undefined, { includeLeft: true });
+  const staff = Array.from(profiles.values()).filter((p) => !p.left && !a.manageKeys.has(p.role) && p.stores.includes(store));
   const staffIds = staff.map((p) => p.user_id);
   const nameOf = (id: string) => profiles.get(id)?.display_name ?? '이름 없음';
   const anyNameOf = nameResolver(a.svc, profiles); // 매니저 자리에 대표(프로필 없음)가 올 수 있다

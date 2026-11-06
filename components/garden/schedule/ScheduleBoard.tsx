@@ -204,7 +204,7 @@ export default function ScheduleBoard() {
             <summary className="cursor-pointer text-body">연차·휴무 ›</summary>
             <div className="mt-4 overflow-x-auto"><LeavePanel staff={week.staff} /></div>
           </details>
-          <Link href="/garden/schedule/staff" className="ta-panel block text-body">근무자 명부 · 재직 관리 ›</Link>
+          <Link href="/garden/schedule/staff" className="ta-panel block text-body">직원 명부 · 재직 관리 ›</Link>
         </div>
       )}
 

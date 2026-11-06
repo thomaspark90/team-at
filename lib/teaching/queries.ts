@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { PROFILE_COLS, type Profile } from '@/lib/teaching/access';
 import { isOwner } from '@/lib/finance/access';
 import type { StoreId } from '@/lib/types';
+import { leftLabel } from '@/lib/staff/names';
 
 // 교육 기능 공용 조회 — API 라우트들이 같은 계산을 반복하지 않게 모아둔다.
 
@@ -13,15 +14,29 @@ export interface Received {
   createdAt: string;
 }
 
-/** 프로필 여러 건을 user_id → Profile 맵으로 — 승인된(active) 계정만. 가입 대기는 어디에도 안 보인다 */
-export async function profileMap(svc: SupabaseClient, userIds?: string[]): Promise<Map<string, Profile>> {
-  let q = svc.from('profiles').select(PROFILE_COLS).eq('status', 'active');
+/**
+ * 프로필 여러 건을 user_id → Profile 맵으로. 가입 대기는 어디에도 안 보인다.
+ *  · id 없이 부르면 재직자 목록(선택지·집계·알림 대상) — 퇴사자 제외.
+ *  · id 를 주거나 includeLeft 면 기록의 이름을 찾는 용도 — 퇴사자는 '이름(퇴사)'로 포함, left=true.
+ */
+export async function profileMap(
+  svc: SupabaseClient,
+  userIds?: string[],
+  opts?: { includeLeft?: boolean },
+): Promise<Map<string, Profile>> {
+  const statuses = userIds || opts?.includeLeft ? ['active', 'left'] : ['active'];
+  let q = svc.from('profiles').select(`${PROFILE_COLS}, status`).in('status', statuses);
   if (userIds) {
     if (userIds.length === 0) return new Map();
     q = q.in('user_id', Array.from(new Set(userIds)));
   }
   const { data } = await q;
-  return new Map(((data ?? []) as Profile[]).map((p) => [p.user_id, p]));
+  return new Map(
+    ((data ?? []) as (Profile & { status: string })[]).map((p) => {
+      const left = p.status === 'left';
+      return [p.user_id, { ...p, left, display_name: left ? leftLabel(p.display_name) : p.display_name }];
+    }),
+  );
 }
 
 /** 표시 이름 해석 — 프로필이 없으면(대표·프로필 미등록 구글 계정) auth 계정을 찾아 '대표' 또는 이메일 앞부분 */

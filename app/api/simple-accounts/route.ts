@@ -7,6 +7,7 @@ import { STORES, type StoreId } from '@/lib/types';
 import { loadRoles } from '@/lib/account/roles';
 import { notifySignupApproved } from '@/lib/account/signup-notify';
 import { SIMPLE_ACCOUNT_TABS } from '@/lib/garden/tabs';
+import { ensureStaffLink, syncStaffName } from '@/lib/staff/directory';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
@@ -109,6 +110,7 @@ export async function POST(req: Request) {
     .from('garden_tab_access')
     .upsert({ user_id: userId, email, sections: ['garden'], tabs: SIMPLE_ACCOUNT_TABS, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
 
+  await ensureStaffLink(g.svc, { userId, name, store: stores[0] });
   return NextResponse.json({ ok: true, userId, name, role, stores, pin });
 }
 
@@ -176,6 +178,14 @@ export async function PATCH(req: Request) {
 
   const { error } = await g.svc.from('profiles').update(patch).eq('user_id', userId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (patch.display_name) await syncStaffName(g.svc, userId, patch.display_name as string);
+  if (patch.status === 'active') {
+    await ensureStaffLink(g.svc, {
+      userId,
+      name: String(patch.display_name ?? profile.display_name),
+      store: (patch.stores as StoreId[] | undefined)?.[0],
+    });
+  }
 
   // 승인 완료 → 신청자가 적은 연락 이메일로 안내(없으면 스킵). 실패해도 승인은 이미 끝난 상태.
   if (patch.status === 'active') {

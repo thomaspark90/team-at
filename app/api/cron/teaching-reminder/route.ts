@@ -33,7 +33,7 @@ export async function GET(req: Request) {
   for (const shift of shifts) {
     const when = [fmtMd(shift.date), fmtRange(shift.startTime, shift.endTime)].filter(Boolean).join(' ');
     const targets = shift.trainees.length
-      ? shift.trainees.map((t) => t.userId)
+      ? shift.trainees.map((t) => t.userId).filter((id) => profiles.has(id)) // 퇴사자 제외
       : staff.filter((p) => p.stores.includes(shift.store)).map((p) => p.user_id);
     if (targets.length) {
       await sendPushToUsers(svc, targets, {

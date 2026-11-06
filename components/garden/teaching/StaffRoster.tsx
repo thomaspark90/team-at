@@ -18,6 +18,7 @@ type Draft = { name: string; stores: StoreId[]; topics: Set<string>; priorities:
 export default function StaffRoster({ me, onChange }: { me: TeachingMe; onChange: () => void }) {
   const [store, setStore] = useState<StoreId>(me.profile?.stores[0] ?? 'pangyo');
   const [staff, setStaff] = useState<StaffDetail[] | null>(null);
+  const [candidates, setCandidates] = useState<string[]>([]); // 직원 명부의 재직자 중 아직 교육에 없는 사람
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   // 등록 폼
@@ -31,8 +32,9 @@ export default function StaffRoster({ me, onChange }: { me: TeachingMe; onChange
   const load = useCallback(async () => {
     setError('');
     try {
-      const r = await api<{ staff: StaffDetail[] }>(`/api/garden-teaching/staff?store=${store}`);
+      const r = await api<{ staff: StaffDetail[]; candidates: string[] }>(`/api/garden-teaching/staff?store=${store}`);
       setStaff(r.staff);
+      setCandidates(r.candidates ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : '불러오지 못했습니다.');
     }
@@ -89,7 +91,7 @@ export default function StaffRoster({ me, onChange }: { me: TeachingMe; onChange
   };
 
   const remove = (p: StaffDetail) => {
-    if (!window.confirm(`${p.name}님을 명부에서 지울까요? 배우고 싶은 것·교육 기록도 함께 지워집니다.`)) return;
+    if (!window.confirm(`${p.name}님을 지울까요? 배우고 싶은 것·교육 기록도 함께 지워집니다.\n잘못 등록했을 때만 쓰세요. 퇴사자는 스케줄 › 직원 명부에서 재직을 끄면 기록이 남습니다.`)) return;
     void run(() => api('/api/garden-teaching/staff', { method: 'DELETE', body: JSON.stringify({ userId: p.userId }) }).then(() => {}));
   };
 
@@ -160,14 +162,17 @@ export default function StaffRoster({ me, onChange }: { me: TeachingMe; onChange
       </div>
       <p className="ta-prose text-body text-muted-foreground">
         이름만으로 등록됩니다(로그인 없음). 등록하면 교육 일정의 교육 대상으로 고를 수 있고, 배우고 싶은 것·순위·메모를 여기서 대신 적으면
-        티칭 스태프의 일정 카드에 보입니다. 본인이 직접 고치게 하려면 설정 › 간편 계정에서 로그인을 열어주세요.
+        티칭 스태프의 일정 카드에 보입니다. 본인이 직접 고치게 하려면 설정 › 간편 계정에서 로그인을 열어주세요. 재직 여부는 스케줄 › 직원 명부에서 관리합니다.
       </p>
 
       {adding && (
         <div className="flex flex-wrap items-end gap-3 rounded-md bg-muted/40 p-4">
           <label className="block">
             <span className="ta-label">이름</span>
-            <input className="ta-input" value={newName} maxLength={12} placeholder="홍길동" onChange={(e) => setNewName(e.target.value)} />
+            <input className="ta-input" list="staff-roster-candidates" value={newName} maxLength={12} placeholder="홍길동" onChange={(e) => setNewName(e.target.value)} />
+            <datalist id="staff-roster-candidates">
+              {candidates.map((n) => <option key={n} value={n} />)}
+            </datalist>
           </label>
           <div>
             <span className="ta-label">지점</span>

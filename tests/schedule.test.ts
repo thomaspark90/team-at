@@ -1,3 +1,4 @@
+import { honorific, staffLabel } from '@/lib/staff/names';
 import { describe, it, expect } from 'vitest';
 import { effectiveActual, fmtSegment, hourlyCounts, hoursOf, leaveRemaining, needsActiveCheck, segmentError, substituteBalance, weekDays, weekStartOf } from '@/lib/schedule/time';
 import { namesInCell, parseCsv, parseGrid, parseJoined, parseLeave, segmentsByName } from '@/lib/schedule/sheet-parse';
@@ -117,5 +118,32 @@ describe('시트 해석', () => {
     const [a, b] = parseLeave(csv);
     expect(a).toEqual({ name: '아이카', joinedOn: '2025-11-05', total: 9, used: [{ date: '2026-10-02', note: '개인일정' }], remaining: 8 });
     expect(b.total).toBeNull();
+  });
+});
+
+describe('직원 이름 표시', () => {
+  const rows = [
+    { name: '김소진', active: true },
+    { name: '한승희', active: false },
+    { name: '이지호', active: true },
+    { name: '김지호', active: true },
+    { name: '길형님', active: true },
+  ];
+  it('이름만 저장된 과거 기록을 명부 이름에 맞춘다', () => {
+    expect(staffLabel('소진', rows)).toBe('김소진');
+    expect(staffLabel('김소진', rows)).toBe('김소진');
+  });
+  it('퇴사자는 (퇴사) 표시', () => {
+    expect(staffLabel('한승희', rows)).toBe('한승희(퇴사)');
+    expect(staffLabel('승희', rows)).toBe('한승희(퇴사)');
+  });
+  it('후보가 둘이거나 없으면 원본 그대로', () => {
+    expect(staffLabel('지호', rows)).toBe('지호');
+    expect(staffLabel('홍길동', rows)).toBe('홍길동');
+  });
+  it('님 표기가 겹치지 않는다', () => {
+    expect(honorific('김소진')).toBe('김소진님');
+    expect(honorific('길형님')).toBe('길형님');
+    expect(honorific('한승희(퇴사)')).toBe('한승희님(퇴사)');
   });
 });

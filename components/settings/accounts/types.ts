@@ -13,7 +13,7 @@ export type ProfileRow = {
   can_view_comments?: boolean;
   pin_reset_required: boolean;
   locked_until: string | null;
-  status: 'pending' | 'active';
+  status: 'pending' | 'active' | 'left';
   created_at: string;
   contact_email: string | null;
 };

@@ -1,5 +1,6 @@
 'use client';
 
+import { honorific } from '@/lib/staff/names';
 import { useEffect, useMemo, useState } from 'react';
 import type { BrewFeedback, BrewType, DripRecipe, StoreId } from '@/lib/types';
 import {
@@ -144,12 +145,12 @@ export default function BrewFeedbackPanel({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <span className="text-caption text-muted-foreground">이름</span>
         {staffNames.length === 0 ? (
-          <span className="text-caption text-muted-foreground">설정 › 드롭다운 명단에 스탭이름을 추가해 주세요.</span>
+          <span className="text-caption text-muted-foreground">스케줄 › 직원 명부에 재직자를 등록해 주세요.</span>
         ) : (
           <div style={toggleRow}>
             {staffNames.map((n) => (
               <TextToggle key={n} on={staff === n} onClick={() => pickStaff(n)}>
-                {n}님
+                {honorific(n)}
               </TextToggle>
             ))}
           </div>
@@ -270,7 +271,7 @@ export default function BrewFeedbackPanel({
                 {recent.map((f) => (
                   <div key={f.id} className="border-b border-border last:border-b-0" style={{ padding: '8px 0' }}>
                     <p className="tabular text-caption text-muted-foreground" style={{ margin: 0 }}>
-                      {f.staffName}님 · {fmtDate(f.createdAt)}
+                      {honorific(f.staffName)} · {fmtDate(f.createdAt)}
                       {meshDeltaText(f.baseMesh, f.nextMesh) && ` · ${meshDeltaText(f.baseMesh, f.nextMesh)}`}
                     </p>
                     {f.issues.length > 0 && (

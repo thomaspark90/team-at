@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { serviceClient } from '@/lib/supabase/service';
+import { staffNameRows } from '@/lib/staff/directory';
+import { staffLabel } from '@/lib/staff/names';
 import type { BrewFeedback, BrewType, StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import { brewFeedbackRecords } from '@/lib/blob-records';
@@ -24,7 +27,11 @@ async function guard() {
 export async function GET() {
   const g = await guard();
   if ('error' in g) return g.error;
-  return NextResponse.json(await brewFeedbackRecords.readAll());
+  const svc = serviceClient();
+  if (!svc) return NextResponse.json({ error: '서버 설정 누락' }, { status: 500 });
+  const [records, staffRows] = await Promise.all([brewFeedbackRecords.readAll(), staffNameRows(svc)]);
+  // 원본은 그대로 두고 표시 이름만 명부에 맞춘다(소진 → 김소진, 퇴사자는 이름(퇴사))
+  return NextResponse.json(records.map((f) => ({ ...f, staffName: staffLabel(f.staffName, staffRows) })));
 }
 
 const STORE_IDS = STORES.map((s) => s.id);

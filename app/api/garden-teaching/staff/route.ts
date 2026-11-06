@@ -5,6 +5,7 @@ import { TEACHING_TOPIC_KEYS } from '@/lib/teaching/topics';
 import { NAME_RE, newInternalEmail, normalizeName, pinToPassword, newPin } from '@/lib/account/simple-login';
 import { STORES, type StoreId } from '@/lib/types';
 import { SIMPLE_ACCOUNT_TABS } from '@/lib/garden/tabs';
+import { ensureStaffLink, syncStaffName } from '@/lib/staff/directory';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
@@ -102,7 +103,9 @@ export async function GET(req: Request) {
       recentComments: recentOf.get(p.user_id as string) ?? [],
     }))
     .sort((x, y) => x.name.localeCompare(y.name, 'ko'));
-  return NextResponse.json({ staff });
+  // 등록 후보 — 직원 명부의 재직자 중 아직 교육 명부에 없는 사람
+  const { data: candidates } = await a.svc.from('schedule_staff').select('name').eq('active', true).is('user_id', null).order('name');
+  return NextResponse.json({ staff, candidates: (candidates ?? []).map((c) => c.name as string) });
 }
 
 export async function POST(req: Request) {
@@ -158,6 +161,7 @@ export async function POST(req: Request) {
   await a.svc
     .from('garden_tab_access')
     .upsert({ user_id: userId, email, sections: ['garden'], tabs: SIMPLE_ACCOUNT_TABS, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  await ensureStaffLink(a.svc, { userId, name, store: stores[0] });
   return NextResponse.json({ ok: true, userId, name, stores });
 }
 
@@ -189,6 +193,7 @@ export async function PATCH(req: Request) {
   if (Object.keys(patch).length) {
     const { error } = await a.svc.from('profiles').update({ ...patch, updated_at: now }).eq('user_id', userId);
     if (error) return NextResponse.json({ error: /unique|duplicate/i.test(error.message) ? '같은 이름이 이미 있어요.' : error.message }, { status: 409 });
+    if (patch.display_name) await syncStaffName(a.svc, userId, patch.display_name as string);
   }
 
   // 배우고 싶은 것(전체 집합 교체) — 있던 항목은 requested_at 유지, 새 항목은 지금

@@ -11,6 +11,7 @@ import { STORES, type StoreId } from '@/lib/types';
 // RLS 는 정책 없이 닫혀 있어 모든 접근이 이 판정 뒤의 service role 로만 일어난다.
 
 export interface ScheduleActor {
+  userId: string;
   email: string;
   editor: boolean;
   svc: SupabaseClient;
@@ -32,7 +33,7 @@ export async function requireScheduleActor(): Promise<ScheduleActor | NextRespon
     const { data } = await svc.from('schedule_editors').select('email').eq('email', email).maybeSingle();
     editor = !!data;
   }
-  return { email, editor, svc };
+  return { userId: user.id, email, editor, svc };
 }
 
 /** 작성 권한까지 필요한 라우트용. */

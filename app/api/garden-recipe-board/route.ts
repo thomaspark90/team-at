@@ -1,12 +1,15 @@
 import { get } from '@vercel/blob';
 import { NextResponse } from 'next/server';
-import type { BeanMetaStore, GardenOptions } from '@/lib/types';
+import type { BeanMetaStore } from '@/lib/types';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import { alignmentRecords, brewFeedbackRecords, dripRecipeRecords, purchaseRecords } from '@/lib/blob-records';
 import { dropStaleProfiles } from '@/lib/grinder-alignments';
 import { normalize } from '@/lib/pricing';
 import { createClient } from '@/lib/supabase/server';
 import { requireGardenTab } from '@/lib/access/guard';
+import { serviceClient } from '@/lib/supabase/service';
+import { activeNames, staffNameRows } from '@/lib/staff/directory';
+import { staffLabel } from '@/lib/staff/names';
 
 // 태블릿 레시피 보드 한 방 조회 — 화면이 쓰던 7개 API(레시피·원두·발주·그라인더·얼라인·추출 평가·스탭 명단)를
 // 요청 하나로 묶는다. 로그인·권한 확인 1회 + 서버 안에서 blob 병렬 읽기라 첫 로딩이 짧아진다.
@@ -31,14 +34,16 @@ export async function GET() {
   const denied = await requireGardenTab(supabase, user, 'recipes');
   if (denied) return denied;
 
-  const [recipes, beans, purchases, grinders, alignments, feedback, options] = await Promise.all([
+  const svc = serviceClient();
+  if (!svc) return NextResponse.json({ error: '서버 설정 누락' }, { status: 500 });
+  const [recipes, beans, purchases, grinders, alignments, feedback, staffRows] = await Promise.all([
     dripRecipeRecords.readAll(),
     readJson<BeanMetaStore>('data/garden-beans.json'),
     purchaseRecords.readAll(),
     readJson<{ profiles: GrinderProfiles }>('data/garden-grinders.json'),
     alignmentRecords.readAll(),
     brewFeedbackRecords.readAll(),
-    readJson<GardenOptions>('data/garden-options.json'),
+    staffNameRows(svc),
   ]);
 
   // 발주는 '원두별 마지막 발주 시각'만 필요(보관 후 재발주 자동 해제 판정) — 전체 기록은 내리지 않는다
@@ -72,7 +77,7 @@ export async function GET() {
     purchaseTasting,
     grinderProfiles: dropStaleProfiles(grinders?.profiles ?? {}, alignments),
     alignments,
-    feedback,
-    staffNames: options?.staffNames ?? [],
+    feedback: feedback.map((f) => ({ ...f, staffName: staffLabel(f.staffName, staffRows) })),
+    staffNames: activeNames(staffRows),
   });
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { honorific } from '@/lib/staff/names';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { BrewFeedback, BrewType, StoreId } from '@/lib/types';
@@ -95,7 +96,7 @@ export default function BrewFeedbackReview() {
         <select aria-label="스탭" value={staff} onChange={(e) => setStaff(e.target.value)} className="ta-input" style={{ width: 'auto', cursor: 'pointer' }}>
           <option value="">전체 스탭</option>
           {staffNames.map((n) => (
-            <option key={n} value={n}>{n}님</option>
+            <option key={n} value={n}>{honorific(n)}</option>
           ))}
         </select>
         {list && <span className="tabular text-caption text-muted-foreground">{filtered.length}건</span>}
@@ -139,7 +140,7 @@ export default function BrewFeedbackReview() {
                     {v.items.map((f) => (
                       <div key={f.id} className="border-b border-border last:border-b-0" style={{ padding: '8px 0' }}>
                         <p className="tabular text-caption text-muted-foreground" style={{ margin: 0 }}>
-                          {f.staffName}님 · {fmtDate(f.createdAt)}
+                          {honorific(f.staffName)} · {fmtDate(f.createdAt)}
                           <MeshChange f={f} />
                         </p>
                         {f.issues.length > 0 && (
