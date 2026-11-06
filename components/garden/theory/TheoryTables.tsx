@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { THEORY_SOURCES, cupSummary } from '@/lib/garden/extraction-theory';
 import TheoryCite from './TheoryCite';
 
-const th = 'px-3 py-1.5 text-left text-caption font-normal uppercase tracking-[0.04em] text-muted-foreground';
+const th = 'px-3 py-1.5 text-left text-caption font-normal tracking-[0.04em] text-muted-foreground';
 const td = 'border-t border-border px-3 py-1.5 align-top text-body';
 
 // 맛별 곡선의 근거. 측정이 없는 칸은 없다고 적는다.
@@ -33,7 +33,7 @@ const ATTRIBUTES: { name: string; shape: ReactNode; roast: ReactNode; basis: str
   },
   {
     name: '쓴맛',
-    shape: <>첫 방울부터 있다. 양은 줄지만 비중은 커진다.<TheoryCite ids={['schmieder', 'gute']} /></>,
+    shape: <>First drop부터 있다. 양은 줄지만 비중은 커진다.<TheoryCite ids={['schmieder', 'gute']} /></>,
     roast: <>강배전일수록 거친 쓴맛 성분으로 바뀐다.<TheoryCite ids={['blumberg', 'frank']} /> 카페인 비중은 약 15%.<TheoryCite ids={['acs']} /></>,
     basis: '해석(성분 측정 기반)',
   },
@@ -104,7 +104,7 @@ export function CupTable() {
   const r = 'text-right tabular';
   // md 미만은 행과 열을 바꾼다 — 끊는 지점 3개가 열이 되어 폰 폭에 들어간다.
   const metrics: { label: string; value: (c: (typeof rows)[number]) => string }[] = [
-    { label: '첫 방울 후', value: (c) => `약 ${Math.round(c.seconds)}초` },
+    { label: 'First drop 후', value: (c) => `약 ${Math.round(c.seconds)}초` },
     { label: '수율(%)', value: (c) => c.yieldPct.toFixed(1) },
     { label: '잔 농도 TDS(%)', value: (c) => c.cupTdsPct.toFixed(1) },
     { label: '트리고넬린 회수(%)', value: (c) => c.trigonellineShare.toFixed(0) },
@@ -142,7 +142,7 @@ export function CupTable() {
             {rows.map((c) => (
               <th key={c.ratio} className={`${th} px-2 text-right last:pr-0`}>
                 1:{c.ratio}
-                <span className="block normal-case">{c.massG} g</span>
+                <span className="block">{c.massG} g</span>
               </th>
             ))}
           </tr>

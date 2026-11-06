@@ -23,11 +23,11 @@ export const concentrationAt = (key: CompoundKey, massG: number) => {
   return c0 * Math.exp(-massG / lambda);
 };
 
-/** 첫 방울 농도(c0)를 100으로 둔 지금 떨어지는 액체의 상대 농도(%) */
+/** First drop 농도(c0)를 100으로 둔 지금 떨어지는 액체의 상대 농도(%) */
 export const relativeConcentration = (key: CompoundKey, massG: number) =>
   100 * Math.exp(-massG / SCHMIEDER_FIT[key].lambda);
 
-/** 추출 비율(원두 1 대비 음료) → 첫 방울 이후 대략 초. 프리인퓨전 제외 */
+/** 추출 비율(원두 1 대비 음료) → First drop 이후 대략 초. 프리인퓨전 제외 */
 export const ratioToSeconds = (ratio: number) => (ratio * DOSE_G) / FLOW_G_PER_S;
 
 // 측정: 같은 논문 Table 2, 잔에 담긴 질량 (원두 20 g 기준)
@@ -104,7 +104,7 @@ export const FLAVORS: { key: FlavorKey; label: string; color: string; shapeMeasu
   { key: 'burnt', label: '탄내', color: 'var(--chart-cat-6)', shapeMeasured: false },
 ];
 
-// 8단계 대응은 Kim 2024, 배전 이름 대응은 업계 관행이 엇갈려 하우스 제안값이다(중강배전은 공인 수치 없음).
+// 가든 원두의 측정값이 없어 Agtron 수치는 표기하지 않는다(2026-11-06).
 export const ROASTS: { key: RoastKey; label: string }[] = [
   { key: 'medium', label: '중배전' },
   { key: 'mediumDark', label: '중강배전' },
@@ -134,7 +134,7 @@ export const flavorAt = (roast: RoastKey, ratio: number): Record<FlavorKey, numb
     sweetness: a.sweetness * Math.exp(-((ratio - 1.2) ** 2) / (2 * 0.8 ** 2)), // 설탕 곡선이 아니라 지각된 균형
     body: a.body * decay('tds', ratio),
     bitterness:
-      a.bitterFast * decay('caffeine', ratio) + // 첫 방울부터 있고 줄어드는 쓴맛
+      a.bitterFast * decay('caffeine', ratio) + // First drop부터 있고 줄어드는 쓴맛
       a.bitterHarsh * (1 - Math.exp(-ratio / 0.5)) * Math.exp(-ratio / 3), // 분쇄 입자에 오래 남는 거친 쓴맛
     burnt: a.burnt * Math.exp(-ratio / 6), // 시간이 아니라 배전도가 높이를 정한다
   };
@@ -142,7 +142,7 @@ export const flavorAt = (roast: RoastKey, ratio: number): Record<FlavorKey, numb
 
 export const RATIO_STEPS = Array.from({ length: 61 }, (_, i) => i * 0.05);
 
-export const formatRatio = (r: number) => (r === 0 ? '첫 방울' : `1:${Number(r.toFixed(2))}`);
+export const formatRatio = (r: number) => (r === 0 ? 'First drop' : `1:${Number(r.toFixed(2))}`);
 
 // ── 출처 ──
 // access: 원문 = 본문 열람 / 초록 = 초록·요약만 열람 / 간접 = 다른 글의 소개로 확인

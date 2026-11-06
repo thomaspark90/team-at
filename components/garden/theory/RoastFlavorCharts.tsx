@@ -40,7 +40,7 @@ function RoastChart({ roast, focus }: { roast: RoastKey; focus: FlavorKey | null
   const data = RATIO_STEPS.map((ratio) => ({ ratio, ...flavorAt(roast, ratio) }));
   return (
     <ResponsiveContainer width="100%" height={210}>
-      <LineChart data={data} margin={{ top: 4, right: 16, bottom: 0, left: 24 }}>
+      <LineChart data={data} margin={{ top: 4, right: 16, bottom: 0, left: 30 }}>
         <CartesianGrid horizontal={false} stroke={GRID} />
         <XAxis
           dataKey="ratio"

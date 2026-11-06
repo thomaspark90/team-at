@@ -32,7 +32,7 @@ export default function GardenTheoryPage() {
       title="커피 추출 이론"
       subtitle={
         <>
-          모든 성분은 첫 방울에 가장 진하고, 줄어드는 속도만 다릅니다.
+          모든 성분은 First drop에 가장 진하고, 줄어드는 속도만 다릅니다.
           <TheoryCite ids={['schmieder', 'gute']} />
         </>
       }
@@ -43,7 +43,7 @@ export default function GardenTheoryPage() {
           <p className="ta-prose m-0 mb-2 text-body text-muted-foreground">실선은 측정 근거가 있는 모양, 점선은 해석입니다. 측정값이 아니라서 눈금이 없습니다.</p>
           <RoastFlavorCharts />
           <Note>
-            1:1, 1:2, 1:3은 첫 방울 후 약 11초, 21초, 32초입니다(원두 20 g 기준). 구간별 시음 연구를 찾지 못해 곡선 모양은 세 배전도가 같고, 높이는 일부만 수치 근거가 있으며<TheoryCite ids={['shi']} /> 나머지는 연구의 방향을 따라 임의로 정했습니다.
+            1:1, 1:2, 1:3은 First drop 후 약 11초, 21초, 32초입니다(원두 20 g 기준). 구간별 시음 연구를 찾지 못해 곡선 모양은 세 배전도가 같고, 높이는 일부만 수치 근거가 있으며<TheoryCite ids={['shi']} /> 나머지는 연구의 방향을 따라 임의로 정했습니다.
           </Note>
         </section>
 
@@ -52,7 +52,7 @@ export default function GardenTheoryPage() {
           <div className="grid gap-x-8 gap-y-6 md:grid-cols-2">
             <figure className="m-0 min-w-0">
               <figcaption className="mb-2 text-body">
-                액체 농도(첫 방울 = 100%)
+                액체 농도(First drop = 100%)
                 <TheoryCite ids={['schmieder']} />
               </figcaption>
               <ConcentrationChart />
@@ -70,7 +70,7 @@ export default function GardenTheoryPage() {
         </section>
 
         <section>
-          <Heading>어디서 끊으면 무엇이 담기나</Heading>
+          <Heading>시간별 수율 및 농도</Heading>
           <p className="ta-prose m-0 mb-2 text-body text-muted-foreground">
             1:1에서 1:3 잔 고형물의 약 70%가 나옵니다. 그 뒤는 묽어지며 구성이 바뀝니다.
             <TheoryCite ids={['schmieder', 'rao-ratio']} />
