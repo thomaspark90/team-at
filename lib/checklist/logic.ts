@@ -8,6 +8,12 @@ import type { ChecklistItem, ShiftType } from './types';
 /** 정기 휴무 요일(0=일) — 이날은 근무자가 있어도(준비 근무 등) 체크리스트를 주지 않는다. */
 export const CLOSED_WEEKDAYS: Record<StoreId, number[]> = { pangyo: [], yangjae: [1] };
 
+/**
+ * 담당 지정(조·책임자) 사용 여부 — 2026-11-06 대표 결정: 기본은 '담당 없음'. 정착되면 true 로 켠다.
+ * false 면 그 지점 재직자 누구나 오늘 체크리스트를 열어 체크·제출하고, 조 편성·책임 넘기기·대신 맡기는 숨긴다.
+ */
+export const CREW_ASSIGNMENT = false;
+
 /** 직원에게 체크리스트를 주는 지점 — 판교 시범(2026-11-10~) 후 기준을 충족하면 양재를 더한다. 운영진은 전 지점을 보고 쓸 수 있다. */
 export const ENABLED_STORES: StoreId[] = ['pangyo'];
 export const isEnabledStore = (store: StoreId): boolean => ENABLED_STORES.includes(store);

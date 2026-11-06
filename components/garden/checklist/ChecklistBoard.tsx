@@ -87,7 +87,7 @@ export default function ChecklistBoard() {
           {!day.linked && !day.editor && (
             <p className="text-body text-amber-600">근무자 명부에 계정이 연결되어 있지 않습니다. 운영진에게 연결을 요청해 주세요.</p>
           )}
-          {day.linked && day.cards.length === 0 && <p className="text-body text-muted-foreground">오늘 맡은 체크리스트가 없습니다.</p>}
+          {day.linked && day.cards.length === 0 && <p className="text-body text-muted-foreground">{day.assignment ? '오늘 맡은 체크리스트가 없습니다.' : '오늘 체크리스트가 없습니다.'}</p>}
           {!day.linked && day.editor && day.cards.length === 0 && <p className="text-body text-muted-foreground">이날 체크리스트가 없습니다.</p>}
           <div className="grid items-start gap-5 lg:grid-cols-2">
             {day.cards.map((card) => (
@@ -96,6 +96,7 @@ export default function ChecklistBoard() {
                 card={card}
                 canAct={day.canAct && (card.onCrew || day.editor)}
                 editor={day.editor}
+                assignment={day.assignment}
                 today={day.today}
                 onChange={replaceCard}
                 onReload={load}

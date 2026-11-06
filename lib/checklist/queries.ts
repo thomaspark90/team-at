@@ -4,7 +4,7 @@ import { STORES, type StoreId } from '@/lib/types';
 import { canTakeOver } from './assignment';
 import type { ChecklistActor } from './access';
 import { isOnCrew, loadCrews } from './crew';
-import { isClosedDay, isEnabledStore, isMissed, itemsDue, STORE_START } from './logic';
+import { CREW_ASSIGNMENT, isClosedDay, isEnabledStore, isMissed, itemsDue, STORE_START } from './logic';
 import { SHIFT_TYPES, type ChecklistCard, type ChecklistCheck, type ChecklistDay, type ChecklistItem, type CrewPlan, type ShiftType } from './types';
 
 // 조회·쓰기 공용 — 조 구성은 lib/checklist/crew 가 근무표·수정값에서 매번 계산한다(스케줄을 고치면 바로 반영).
@@ -48,7 +48,7 @@ export const loadItems = async (svc: SupabaseClient, store?: StoreId): Promise<C
   return (data ?? []).map(toItem);
 };
 
-/** 화면 하루치 — 직원은 오늘 자기 조만, 운영진은 그날 운영 지점 전체. */
+/** 화면 하루치 — 직원은 오늘 자기 조만(담당 지정이 꺼져 있으면 자기 지점 전체), 운영진은 그날 운영 지점 전체. */
 export async function loadDay(svc: SupabaseClient, date: string, actor: ChecklistActor): Promise<ChecklistDay> {
   const today = kstToday();
   const { editor, staffId } = actor;
@@ -76,15 +76,16 @@ export async function loadDay(svc: SupabaseClient, date: string, actor: Checklis
   for (const store of openStores) {
     if (isClosedDay(store, date)) continue;
     for (const shiftType of SHIFT_TYPES) {
-      const crew = crews.of(store, shiftType);
       const run = runs.find((r: any) => r.store === store && r.shift_type === shiftType);
+      // 담당 지정이 꺼져 있으면 조·책임자 없이 지점 직원 전원이 담당
+      const crew = CREW_ASSIGNMENT ? crews.of(store, shiftType) : { memberIds: [] as number[], leadId: null, takeovers: [] as { name: string; at: string }[] };
       const members = crew.memberIds.map((id) => {
         const p = crews.people.get(id)!;
         return { id, name: p.name, linked: p.linked };
       });
       members.filter((m) => !m.linked).forEach((m) => unlinked.add(m.name));
-      const onCrew = staffId != null && crew.memberIds.includes(staffId);
-      if (date === today && isEnabledStore(store) && !onCrew && !run?.submitted_at && canTakeOver(actor, store)) takeoverOptions.push({ store, shiftType });
+      const onCrew = CREW_ASSIGNMENT ? staffId != null && crew.memberIds.includes(staffId) : canTakeOver(actor, store);
+      if (CREW_ASSIGNMENT && date === today && isEnabledStore(store) && !onCrew && !run?.submitted_at && canTakeOver(actor, store)) takeoverOptions.push({ store, shiftType });
       if (!editor && !(onCrew && date === today)) continue;
       // 운영 시작 전 지난 날짜에 기록도 없으면 카드를 만들지 않는다
       const start = STORE_START[store];
@@ -114,10 +115,11 @@ export async function loadDay(svc: SupabaseClient, date: string, actor: Checklis
     today,
     editor,
     canManageItems: actor.canManageItems,
+    assignment: CREW_ASSIGNMENT,
     canAct: date === today,
     linked: staffId != null,
     closedStores: openStores.filter((s) => isClosedDay(s, date)),
-    unpublishedStores: openStores.filter((s) => !isClosedDay(s, date) && !crews.published.has(s)),
+    unpublishedStores: CREW_ASSIGNMENT ? openStores.filter((s) => !isClosedDay(s, date) && !crews.published.has(s)) : [],
     unlinked: editor ? Array.from(unlinked) : [],
     takeoverOptions,
     cards,
@@ -155,16 +157,17 @@ export async function loadCrewPlan(svc: SupabaseClient, store: StoreId, date: st
   };
 }
 
-/** 체크 대상 항목 + 쓸 수 있는 run — 오늘·운영 지점·조 인원(또는 운영진)·미제출만 통과. 실패 시 문구. */
+/** 체크 대상 항목 + 쓸 수 있는 run — 오늘·운영 지점·조 인원(담당 지정이 꺼져 있으면 지점 직원, 또는 운영진)·미제출만 통과. 실패 시 문구. */
 export async function openRun(
   svc: SupabaseClient,
-  actor: { staffId: number | null; editor: boolean },
+  actor: Pick<ChecklistActor, 'staffId' | 'editor' | 'staff' | 'stores'>,
   input: { store: StoreId; date: string; shiftType: ShiftType },
 ): Promise<{ runId: number } | { error: string; status: number }> {
   if (input.date !== kstToday()) return { error: '오늘 체크리스트만 기록할 수 있습니다.', status: 400 };
   if ((!isEnabledStore(input.store) && !actor.editor) || isClosedDay(input.store, input.date)) return { error: '오늘 이 지점은 체크리스트가 없습니다.', status: 400 };
-  if (!actor.editor && !(await isOnCrew(svc, input.store, input.date, input.shiftType, actor.staffId))) {
-    return { error: '오늘 이 체크리스트의 담당이 아닙니다.', status: 403 };
+  if (!actor.editor) {
+    const allowed = CREW_ASSIGNMENT ? await isOnCrew(svc, input.store, input.date, input.shiftType, actor.staffId) : canTakeOver(actor, input.store);
+    if (!allowed) return { error: CREW_ASSIGNMENT ? '오늘 이 체크리스트의 담당이 아닙니다.' : '이 지점 직원만 기록할 수 있습니다.', status: 403 };
   }
   const { data, error } = await svc
     .from('checklist_runs')

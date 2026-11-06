@@ -18,6 +18,7 @@ export default function ChecklistCardView({
   card,
   canAct,
   editor,
+  assignment = true,
   today,
   onChange,
   onReload,
@@ -25,6 +26,7 @@ export default function ChecklistCardView({
   card: ChecklistCard;
   canAct: boolean; // 오늘 + 담당 또는 운영진
   editor: boolean;
+  assignment?: boolean; // 담당 지정 사용 여부 — 꺼져 있으면 조·책임자 표시와 조 수정을 숨기고 누구나 제출
   today: string;
   onChange: (next: ChecklistCard) => void;
   onReload: () => void; // 조·책임자·제출 상태가 바뀌어 하루치를 다시 읽는다
@@ -126,7 +128,7 @@ export default function ChecklistCardView({
 
   const done = card.items.length - remaining;
   const lead = card.members.find((m) => m.id === card.leadId);
-  const canSubmit = editor || card.isLead;
+  const canSubmit = editor || card.isLead || !assignment;
   const handoffTargets = card.members.filter((m) => m.id !== card.leadId && m.linked);
   return (
     <section className="ta-panel">
@@ -145,10 +147,12 @@ export default function ChecklistCardView({
           </p>
         )}
       </div>
-      <p className="mt-1 text-caption text-muted-foreground">
-        {card.members.length ? card.members.map((m) => (m.id === card.leadId ? `${m.name}(책임)` : m.name)).join(', ') : '배정된 근무자 없음'}
-        {card.isLead && !card.submittedAt && ' · 오늘 내가 책임자입니다'}
-      </p>
+      {assignment && (
+        <p className="mt-1 text-caption text-muted-foreground">
+          {card.members.length ? card.members.map((m) => (m.id === card.leadId ? `${m.name}(책임)` : m.name)).join(', ') : '배정된 근무자 없음'}
+          {card.isLead && !card.submittedAt && ' · 오늘 내가 책임자입니다'}
+        </p>
+      )}
       {card.takeovers.map((t) => (
         <p key={`t-${t.name}-${t.at}`} className="text-caption text-amber-600">
           대신 맡음: {t.name} · {kstTime(t.at)}
@@ -160,7 +164,7 @@ export default function ChecklistCardView({
         </p>
       ))}
 
-      {editable && (
+      {editable && assignment && (
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
           {canSubmit && handoffTargets.length > 0 && (
             <select
@@ -185,7 +189,7 @@ export default function ChecklistCardView({
           )}
         </div>
       )}
-      {editor && card.date >= today && (
+      {editor && assignment && card.date >= today && (
         <div className="mt-3">
           <button type="button" className="min-h-10 text-caption text-muted-foreground" onClick={() => setEditingCrew((v) => !v)}>
             조 수정 {editingCrew ? '닫기' : '›'}

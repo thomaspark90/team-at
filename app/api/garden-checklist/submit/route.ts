@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { badRequest, dbError, requireChecklistActor } from '@/lib/checklist/access';
-import { itemsDue, unfinishedItems } from '@/lib/checklist/logic';
+import { CREW_ASSIGNMENT, itemsDue, unfinishedItems } from '@/lib/checklist/logic';
 import { loadCrews } from '@/lib/checklist/crew';
 import { loadItems, openRun, toCheck } from '@/lib/checklist/queries';
 import { isStore } from '@/lib/schedule/access';
 
 export const runtime = 'nodejs';
 
-// POST { store, date, shiftType } — 제출(책임자 또는 운영진). 빠진 항목이 있으면 막고, 그 시점 항목을 함께 저장해 기록을 고정한다.
+// POST { store, date, shiftType } — 제출(책임자 또는 운영진. 담당 지정이 꺼져 있으면 지점 직원 누구나). 빠진 항목이 있으면 막고, 그 시점 항목을 함께 저장해 기록을 고정한다.
 export async function POST(req: Request) {
   const a = await requireChecklistActor();
   if (a instanceof NextResponse) return a;
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   if (!b || !isStore(b.store) || (b.shiftType !== 'open' && b.shiftType !== 'close')) return badRequest('요청이 올바르지 않습니다.');
   const run = await openRun(a.svc, a, { store: b.store, date: b.date, shiftType: b.shiftType });
   if ('error' in run) return NextResponse.json({ error: run.error }, { status: run.status });
-  if (!a.editor) {
+  if (!a.editor && CREW_ASSIGNMENT) {
     const crews = await loadCrews(a.svc, b.date);
     if (crews.of(b.store, b.shiftType).leadId !== a.staffId) return NextResponse.json({ error: '제출은 오늘의 책임자가 합니다.' }, { status: 403 });
   }

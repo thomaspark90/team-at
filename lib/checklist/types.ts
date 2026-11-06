@@ -64,6 +64,7 @@ export interface ChecklistDay {
   today: string;
   editor: boolean;
   canManageItems: boolean;
+  assignment: boolean; // 담당 지정 사용 여부(CREW_ASSIGNMENT) — 꺼져 있으면 조·책임자 없이 지점 직원 누구나
   canAct: boolean; // 오늘 자리에서 체크할 수 있는 날인가
   linked: boolean; // 내 계정이 근무자 명부에 연결돼 있는가
   closedStores: StoreId[]; // 정기 휴무

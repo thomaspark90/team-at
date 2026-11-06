@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { badRequest, dbError, forbid, requireChecklistActor } from '@/lib/checklist/access';
 import { canTakeOver, overrideFromMembers } from '@/lib/checklist/assignment';
 import { loadCrews, saveOverride } from '@/lib/checklist/crew';
-import { isClosedDay, isEnabledStore } from '@/lib/checklist/logic';
+import { CREW_ASSIGNMENT, isClosedDay, isEnabledStore } from '@/lib/checklist/logic';
 import { loadCrewPlan } from '@/lib/checklist/queries';
 import { isStore } from '@/lib/schedule/access';
 import { isYmd, kstToday } from '@/lib/teaching/kst';
@@ -39,6 +39,7 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => null);
   if (!b || !isStore(b.store) || !isYmd(b.date) || (b.shiftType !== 'open' && b.shiftType !== 'close')) return badRequest('요청이 올바르지 않습니다.');
   const { store, date, shiftType } = b;
+  if (!CREW_ASSIGNMENT) return badRequest('담당 지정 기능이 꺼져 있습니다.');
   const today = kstToday();
   if ((!isEnabledStore(store) && !a.editor) || isClosedDay(store, date)) return badRequest('이 날짜·지점은 체크리스트가 없습니다.');
 
