@@ -71,6 +71,18 @@ export function hourlyStaff(shifts: Shift[], fromHour: number, toHour: number): 
   });
 }
 
+/** 하루 근무자 줄 순서 — 출근 시각 빠른 사람부터, 같으면 이름순. 시간대별 표에서 사람마다 줄을 고정하는 데 쓴다. */
+export function laneOrder(shifts: Shift[], nameOf: (id: number) => string): number[] {
+  const start = new Map<number, number>();
+  for (const s of shifts) {
+    if (!hasTime(s)) continue;
+    start.set(s.staffId, Math.min(start.get(s.staffId) ?? Infinity, s.start));
+  }
+  return Array.from(start.entries())
+    .sort((a, b) => a[1] - b[1] || nameOf(a[0]).localeCompare(nameOf(b[0]), 'ko'))
+    .map(([id]) => id);
+}
+
 /** 시간대별 역할 인원 — 역할을 여러 개 가진 사람은 각 역할 줄에 모두 센다(배치 가능 인원). 역할이 없으면 '미지정'. */
 export function roleCountsOf(ids: number[], rolesOf: Map<number, StaffRole[]>): Record<StaffRole | 'none', number[]> {
   const out = Object.fromEntries([...STAFF_ROLES.map((r) => r.key), 'none'].map((k) => [k, [] as number[]])) as Record<StaffRole | 'none', number[]>;

@@ -1,6 +1,6 @@
 import { honorific, rosterMatch, staffLabel } from '@/lib/staff/names';
 import { describe, it, expect } from 'vitest';
-import { effectiveActual, fmtSegment, hourlyStaff, hoursOf, roleCountsOf, leaveRemaining, needsActiveCheck, segmentError, substituteBalance, weekDays, weekStartOf } from '@/lib/schedule/time';
+import { effectiveActual, fmtSegment, hourlyStaff, hoursOf, laneOrder, roleCountsOf, leaveRemaining, needsActiveCheck, segmentError, substituteBalance, weekDays, weekStartOf } from '@/lib/schedule/time';
 import { namesInCell, parseCsv, parseGrid, parseJoined, parseLeave, segmentsByName } from '@/lib/schedule/sheet-parse';
 import type { Shift } from '@/lib/schedule/types';
 
@@ -162,5 +162,18 @@ describe('역할별 인원', () => {
     expect(r.pastry).toEqual([2]);
     expect(r.hot).toEqual([]);
     expect(r.none).toEqual([3]);
+  });
+});
+
+describe('출근 순 줄 고정', () => {
+  it('출근 시각 빠른 순, 같으면 이름순', () => {
+    const list = [
+      shift({ id: 1, staffId: 1, start: 600, end: 960 }),
+      shift({ id: 2, staffId: 2, start: 420, end: 960 }),
+      shift({ id: 3, staffId: 3, start: 420, end: 720 }),
+      shift({ id: 4, staffId: 4, isOff: true, start: undefined, end: undefined }),
+    ];
+    const name = (id: number) => ({ 1: '김소진', 2: '진윤미', 3: '아이카', 4: '휴무' })[id] ?? '';
+    expect(laneOrder(list, name)).toEqual([3, 2, 1]);
   });
 });
