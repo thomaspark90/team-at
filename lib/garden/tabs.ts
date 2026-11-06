@@ -20,6 +20,8 @@ export const GARDEN_TAB_GROUPS: GardenTab[][] = [
   ],
   [
     // 매니저 교육 — 스탭 위시리스트·매니저 출근 일정·교육 기록. 간편 계정 발급 시 기본 허용 탭(2026-09-07)
+    // 근무 스케줄 — 운영진 작성·배포, 직원은 배포된 계획 열람(2026-11-06)
+    { key: 'schedule', href: '/garden/schedule', label: '스케줄', desc: '주간 근무 계획 · 실제 근무 · 연차' },
     { key: 'teaching', href: '/garden/teaching', label: '교육', desc: '배우고 싶은 주제 · 매니저 출근 일정 · 교육 기록' },
     { key: 'reviews', href: '/garden/reviews', label: '네이버 리뷰', desc: '리뷰 확인 · 답글 초안 작성' },
     { key: 'words', href: '/garden/words', label: '제철 단어', desc: '고객 제출 단어 검수' },
@@ -40,6 +42,7 @@ export const GARDEN_NAV: GardenNavEntry[] = [
   { label: '커피(필터)', keys: ['pricing', 'saleprice', 'calibration', 'beancard', 'theory'] }, // 2026-10-30 '운영'→'커피(필터)', 원두카드를 레시피에서 이동
   { label: '필터 레시피', keys: ['recipes', 'recommended'] }, // 제철 단어는 2026-10-30 메뉴에서 제거 (페이지·권한 키는 유지)
   { label: '분석', keys: ['sales', 'weather', 'reviews'] },
+  { label: '스케줄', keys: ['schedule'] },
   { label: '교육', keys: ['teaching'] },
   { label: '설정', keys: ['settings'] },
 ];
