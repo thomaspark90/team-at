@@ -146,7 +146,9 @@ export default function ScheduleBoard() {
 
       <section className="ta-panel space-y-4">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-muted-foreground">
-          <span className={week?.published ? 'text-emerald-600' : 'text-amber-600'}>{week?.published ? '배포됨' : editor ? '작성 중 · 직원에게 안 보임' : '아직 배포되지 않음'}</span>
+          {week && view === 'plan' && (
+            <span className={week.published ? 'text-emerald-600' : 'text-amber-600'}>{week.published ? '배포됨' : editor ? '작성 중 · 직원에게 안 보임' : '아직 배포되지 않음'}</span>
+          )}
           {hasSheet && <span>시트 이관 기록 포함</span>}
           {view === 'actual' && <span>달라진 칸만 고치면 됩니다. 기록이 없는 칸은 계획대로 근무한 것으로 봅니다.</span>}
           {notice && <span className="text-foreground">{notice}</span>}

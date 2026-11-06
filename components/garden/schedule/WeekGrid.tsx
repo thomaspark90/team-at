@@ -33,7 +33,7 @@ export default function WeekGrid({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[880px] border-collapse">
+      <table className="w-full min-w-[880px] table-fixed border-collapse">
         <thead>
           <tr>
             <th className="w-[96px] px-3 py-2 text-left text-caption font-normal text-muted-foreground">이름</th>
