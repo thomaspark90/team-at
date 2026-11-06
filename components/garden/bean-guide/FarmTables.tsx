@@ -28,7 +28,7 @@ export default function FarmList() {
   return (
     <div>
       <div className={`hidden pb-1.5 text-caption text-muted-foreground ${ROW_GRID}`}>
-        <span>농장</span>
+        <span>농장·생산자</span>
         <span>위치</span>
         <span>고도(m)</span>
         <span>왜 유명한가</span>

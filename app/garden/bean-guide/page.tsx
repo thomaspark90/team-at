@@ -37,6 +37,7 @@ export default function GardenBeanGuidePage() {
 
         <section>
           <Heading>유명 농장</Heading>
+          <Lead>대회 성적과 가격은 해당 연도의 한 랏 기록이며, 농장의 순위가 아닙니다. ‘—’는 확인하지 못한 값입니다.</Lead>
           <FarmList />
         </section>
 

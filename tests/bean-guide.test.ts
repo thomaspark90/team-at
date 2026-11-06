@@ -52,7 +52,7 @@ describe('원두에 대한 이해 데이터', () => {
 
   it('모든 농장이 국가 목록에 한 번씩 들어간다', () => {
     expect(FARMS_BY_COUNTRY.flatMap((c) => c.farms)).toHaveLength(FARMS.length);
-    for (const c of FARMS_BY_COUNTRY) expect(c.farms.length).toBeGreaterThan(0);
+    for (const c of FARMS_BY_COUNTRY) expect([c.country, c.farms.length >= 2]).toEqual([c.country, true]);
   });
 
   it('우리 메뉴 10종을 모두 해독한다', () => {
