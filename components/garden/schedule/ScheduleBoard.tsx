@@ -6,9 +6,10 @@ import SegmentControl from '@/components/nav/SegmentControl';
 import { addDays, fmtMd, kstToday } from '@/lib/teaching/kst';
 import { effectiveActual, fmtSegment, weekStartOf } from '@/lib/schedule/time';
 import { STORES, type StoreId } from '@/lib/types';
-import type { Segment, ShiftKind, Staff, WeekData } from '@/lib/schedule/types';
+import type { Segment, ShiftKind, ShiftPreset, Staff, WeekData } from '@/lib/schedule/types';
 import WeekGrid from './WeekGrid';
 import ShiftEditor, { type CellTarget } from './ShiftEditor';
+import PresetEditor from './PresetEditor';
 import HourlyStrip from './HourlyStrip';
 import LeavePanel from './LeavePanel';
 import ShareLinkPanel from './ShareLinkPanel';
@@ -31,6 +32,7 @@ export default function ScheduleBoard() {
   const [addedIds, setAddedIds] = useState<number[]>([]);
   const [copyConflict, setCopyConflict] = useState<number | null>(null);
   const [copyDay, setCopyDay] = useState<string | null>(null); // 표 머리에서 복사해 둔 날
+  const [editingPresets, setEditingPresets] = useState(false); // 근무 파트 편집 창
 
   const load = useCallback(async () => {
     const r = await fetch(`/api/garden-schedule?store=${store}&week=${weekStart}`, { cache: 'no-store' });
@@ -135,6 +137,15 @@ export default function ScheduleBoard() {
     load();
   };
 
+  // 근무 파트 저장 — 지점별 목록 교체 후 주 데이터를 다시 읽어 칸 편집기의 버튼을 갱신한다
+  const savePresets = async (presets: ShiftPreset[]) => {
+    const r = await post('/presets', 'PUT', { store, presets });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return (j.error as string) ?? '저장하지 못했습니다.';
+    await load();
+    return null;
+  };
+
   const saveNote = async () => {
     const r = await post('/notes', 'PUT', { store, date: noteDate, note: noteText });
     if (!r.ok) {
@@ -234,7 +245,12 @@ export default function ScheduleBoard() {
         </div>
       )}
 
-      {editing && <ShiftEditor target={editing} onSave={saveCell} onClose={() => setEditing(null)} />}
+      {editing && week && (
+        <ShiftEditor target={editing} presets={week.presets} onSave={saveCell} onClose={() => setEditing(null)} onEditPresets={() => setEditingPresets(true)} />
+      )}
+      {editingPresets && week && (
+        <PresetEditor presets={week.presets} storeLabel={STORES.find((s) => s.id === store)?.short ?? store} onSave={savePresets} onClose={() => setEditingPresets(false)} />
+      )}
 
       {noteDate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 p-4" onClick={() => setNoteDate(null)}>

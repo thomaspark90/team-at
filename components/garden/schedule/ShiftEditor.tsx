@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { fmtMd } from '@/lib/teaching/kst';
-import { SHIFT_PRESETS, STEP_MIN, fmtMin, fmtSegment, segmentError } from '@/lib/schedule/time';
-import type { Segment, ShiftKind } from '@/lib/schedule/types';
+import { STEP_MIN, fmtMin, fmtSegment, segmentError } from '@/lib/schedule/time';
+import type { Segment, ShiftKind, ShiftPreset } from '@/lib/schedule/types';
 
-// 칸 편집 — 근무 버튼 또는 시간 직접 입력(30분 단위). 하루 여러 구간(분할근무) 가능.
+// 칸 편집 — 근무 파트 버튼(지점별, '파트 수정'으로 고침) 또는 시간 직접 입력(30분 단위). 하루 여러 구간(분할근무) 가능.
 const OPTIONS = Array.from({ length: (24 * 60 - 5 * 60) / STEP_MIN + 1 }, (_, i) => 5 * 60 + i * STEP_MIN);
 
 export interface CellTarget {
@@ -21,12 +21,16 @@ export interface CellTarget {
 
 export default function ShiftEditor({
   target,
+  presets,
   onSave,
   onClose,
+  onEditPresets,
 }: {
   target: CellTarget;
+  presets: ShiftPreset[];
   onSave: (segments: Segment[], off: boolean) => Promise<string | null>;
   onClose: () => void;
+  onEditPresets?: () => void;
 }) {
   const [segs, setSegs] = useState<Segment[]>(target.segments);
   const [error, setError] = useState<string | null>(null);
@@ -53,9 +57,14 @@ export default function ShiftEditor({
           {actual && target.planLabel && ` · 계획 ${target.planLabel}`}
         </p>
 
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          {SHIFT_PRESETS.map((p) => (
-            <button key={p.label} type="button" disabled={busy} className="ta-btn justify-between" onClick={() => save([{ start: p.start, end: p.end }])}>
+        <div className="mt-5 flex items-center justify-between">
+          <p className="ta-label m-0">근무 파트</p>
+          {onEditPresets && <button type="button" className="text-caption text-muted-foreground underline underline-offset-2 hover:text-foreground" onClick={onEditPresets}>파트 수정</button>}
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {presets.length === 0 && <p className="col-span-2 m-0 text-caption text-muted-foreground">파트가 없습니다. 아래에서 직접 입력하세요.</p>}
+          {presets.map((p, i) => (
+            <button key={i} type="button" disabled={busy} className="ta-btn justify-between" onClick={() => save([{ start: p.start, end: p.end }])}>
               <span>{p.label}</span>
               <span className="tabular text-muted-foreground">{fmtSegment(p)}</span>
             </button>

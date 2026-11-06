@@ -61,6 +61,13 @@ export interface Staff {
   dutyTag: DutyTag | null; // 운영진 명부 조회에만 채워진다
 }
 
+// 근무 파트 — 칸 편집기의 한 번 누르기 버튼. 지점별로 운영진이 고친다(finance.schedule_shift_presets).
+export interface ShiftPreset extends Segment {
+  label: string;
+}
+export const PRESET_LABEL_MAX = 12;
+export const PRESET_MAX = 12;
+
 export interface WeekData {
   weekStart: string;
   days: string[];
@@ -72,4 +79,5 @@ export interface WeekData {
   staff: Staff[];
   shifts: Shift[];
   notes: Record<string, string>; // 운영진에게만 채워진다
+  presets: ShiftPreset[]; // 이 지점의 근무 파트
 }

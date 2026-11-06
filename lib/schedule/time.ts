@@ -6,6 +6,7 @@ import { STAFF_ROLES, type Segment, type Shift, type StaffRole } from './types';
 export const STEP_MIN = 30;
 
 /** 근무 입력 버튼. 시트 2026-10월 패턴 기준. */
+/** 근무 파트 초기값 — 실제 값은 지점별 finance.schedule_shift_presets(마이그레이션 시드도 이 값). 표가 비었을 때의 대체. */
 export const SHIFT_PRESETS: { label: string; start: number; end: number }[] = [
   { label: '오픈', start: 7 * 60, end: 16 * 60 },
   { label: '오전 파트', start: 7 * 60, end: 14 * 60 },

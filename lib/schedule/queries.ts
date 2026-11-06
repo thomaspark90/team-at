@@ -38,15 +38,16 @@ const SHIFT_COLS = 'id, work_date, store, staff_id, kind, start_min, end_min, is
  */
 export async function loadWeek(svc: SupabaseClient, store: StoreId, weekStart: string, editor: boolean): Promise<WeekData> {
   const days = weekDays(weekStart);
-  const [weeksRes, shiftsRes, staffRes, notesRes] = await Promise.all([
+  const [weeksRes, shiftsRes, staffRes, notesRes, presetsRes] = await Promise.all([
     svc.from('schedule_weeks').select('store, status, published_at').eq('week_start', weekStart),
     svc.from('schedule_shifts').select(SHIFT_COLS).gte('work_date', days[0]).lte('work_date', days[6]).order('start_min'),
     svc.from('schedule_staff').select('id, name, home_store, joined_on, active, roles').order('name'),
     editor
       ? svc.from('schedule_day_notes').select('work_date, note').eq('store', store).gte('work_date', days[0]).lte('work_date', days[6])
       : Promise.resolve({ data: [], error: null }),
+    svc.from('schedule_shift_presets').select('label, start_min, end_min').eq('store', store).order('position'),
   ]);
-  const err = weeksRes.error ?? shiftsRes.error ?? staffRes.error ?? notesRes.error;
+  const err = weeksRes.error ?? shiftsRes.error ?? staffRes.error ?? notesRes.error ?? presetsRes.error;
   if (err) throw new Error(err.message);
 
   const publishedStores = new Set((weeksRes.data ?? []).filter((w) => w.status === 'published').map((w) => w.store as string));
@@ -68,5 +69,6 @@ export async function loadWeek(svc: SupabaseClient, store: StoreId, weekStart: s
     staff,
     shifts,
     notes: Object.fromEntries((notesRes.data ?? []).map((n: any) => [n.work_date, n.note])),
+    presets: (presetsRes.data ?? []).map((p: any) => ({ label: p.label, start: p.start_min, end: p.end_min })),
   };
 }
