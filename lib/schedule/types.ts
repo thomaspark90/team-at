@@ -30,15 +30,24 @@ export interface Shift extends Partial<Segment> {
 }
 
 // 근무자 역할 — 한 사람이 여러 역할을 맡을 수 있다(예: 바리스타 + 콜드파트). key 는 DB 저장값이라 바꾸지 않는다.
+// short 는 시간대별 표에서 이름 옆에 붙는 약자.
 export const STAFF_ROLES = [
-  { key: 'barista', label: '바리스타' },
-  { key: 'pastry', label: '파티쉐' },
-  { key: 'cold', label: '콜드파트' },
-  { key: 'hot', label: '핫파트' },
-  { key: 'dish', label: '디쉬' },
+  { key: 'barista', label: '바리스타', short: '바' },
+  { key: 'pastry', label: '파티쉐', short: '파' },
+  { key: 'cold', label: '콜드파트', short: '콜' },
+  { key: 'hot', label: '핫파트', short: '핫' },
+  { key: 'dish', label: '디쉬', short: '디' },
 ] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number]['key'];
 export const isStaffRole = (v: unknown): v is StaffRole => STAFF_ROLES.some((r) => r.key === v);
+
+// 책임 태그 — 체크리스트 책임자 자동 선정에 쓴다. 근무 역할과 별개. key 는 DB 저장값.
+export const DUTY_TAGS = [
+  { key: 'manager', label: '매니저' },
+  { key: 'sub_manager', label: '서브 매니저' },
+] as const;
+export type DutyTag = (typeof DUTY_TAGS)[number]['key'];
+export const isDutyTag = (v: unknown): v is DutyTag => DUTY_TAGS.some((t) => t.key === v);
 
 export interface Staff {
   id: number;
@@ -47,6 +56,7 @@ export interface Staff {
   joinedOn: string | null;
   active: boolean;
   roles: StaffRole[];
+  dutyTag: DutyTag | null; // 운영진 명부 조회에만 채워진다
 }
 
 export interface WeekData {
