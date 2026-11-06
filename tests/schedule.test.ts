@@ -1,6 +1,6 @@
 import { honorific, rosterMatch, staffLabel } from '@/lib/staff/names';
 import { describe, it, expect } from 'vitest';
-import { effectiveActual, fmtSegment, hourlyCounts, hoursOf, leaveRemaining, needsActiveCheck, segmentError, substituteBalance, weekDays, weekStartOf } from '@/lib/schedule/time';
+import { effectiveActual, fmtSegment, hourlyStaff, hoursOf, leaveRemaining, needsActiveCheck, segmentError, substituteBalance, weekDays, weekStartOf } from '@/lib/schedule/time';
 import { namesInCell, parseCsv, parseGrid, parseJoined, parseLeave, segmentsByName } from '@/lib/schedule/sheet-parse';
 import type { Shift } from '@/lib/schedule/types';
 
@@ -56,8 +56,8 @@ describe('실제 근무 — 달라진 것만 기록', () => {
 
 describe('시간대별 인원', () => {
   it('30분 걸침도 세고 한 사람은 한 번만', () => {
-    const r = hourlyCounts([shift({ start: 450, end: 540 }), shift({ id: 2, staffId: 2, start: 480, end: 540 })], 7, 10);
-    expect(r).toEqual([1, 2, 0]);
+    const r = hourlyStaff([shift({ start: 450, end: 540 }), shift({ id: 2, staffId: 2, start: 480, end: 540 })], 7, 10);
+    expect(r).toEqual([[1], [1, 2], []]);
   });
 });
 

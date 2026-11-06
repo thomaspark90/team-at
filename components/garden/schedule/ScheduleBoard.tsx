@@ -158,6 +158,12 @@ export default function ScheduleBoard() {
           {onlyActual && <button type="button" className="text-foreground" onClick={() => setView('actual')}>이 주는 실제 기록만 있습니다. 실제 보기 ›</button>}
         </div>
         {error && <p className="m-0 text-body text-destructive">{error}</p>}
+        {week && (
+          <div>
+            <h2 className="m-0 mb-4 text-title">시간대별 인원</h2>
+            <HourlyStrip days={week.days} shifts={shown.filter((s) => s.store === store)} staff={week.staff} />
+          </div>
+        )}
         {week ? (
           <WeekGrid
             week={week}
@@ -186,13 +192,6 @@ export default function ScheduleBoard() {
           </select>
         )}
       </section>
-
-      {week && (
-        <section>
-          <h2 className="m-0 mb-4 text-title">시간대별 인원</h2>
-          <HourlyStrip days={week.days} shifts={shown.filter((s) => s.store === store)} />
-        </section>
-      )}
 
       {editor && week && (
         <div className="space-y-6">

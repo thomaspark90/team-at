@@ -63,12 +63,11 @@ export function effectiveActual(shifts: Shift[], isPublished: (s: Shift) => bool
   return [...actual, ...shifts.filter((s) => s.kind === 'plan' && !recorded.has(key(s)) && isPublished(s))];
 }
 
-/** 시간대별 인원 — 30분이라도 걸치면 그 시간 칸에 센다(사람 중복 제외). */
-export function hourlyCounts(shifts: Shift[], fromHour: number, toHour: number): number[] {
+/** 시간대별 근무자 id — 30분이라도 걸치면 그 시간 칸에 넣는다(사람 중복 제외). */
+export function hourlyStaff(shifts: Shift[], fromHour: number, toHour: number): number[][] {
   return Array.from({ length: toHour - fromHour }, (_, i) => {
     const h = (fromHour + i) * 60;
-    const who = new Set(shifts.filter((s) => hasTime(s) && s.start < h + 60 && s.end > h).map((s) => s.staffId));
-    return who.size;
+    return Array.from(new Set(shifts.filter((s) => hasTime(s) && s.start < h + 60 && s.end > h).map((s) => s.staffId)));
   });
 }
 
