@@ -80,7 +80,7 @@ export default function GardenTheoryPage() {
         </section>
 
         <section>
-          <Heading>맛별 근거</Heading>
+          <Heading>요소별 추출 과정 및 요약</Heading>
           <AttributeTable />
         </section>
 
