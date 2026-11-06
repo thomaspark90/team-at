@@ -6,6 +6,7 @@ import { STORES } from '@/lib/types';
 import type { Shift, Staff, WeekData } from '@/lib/schedule/types';
 
 // 사람×요일 표. shifts 는 현재 보기(계획 또는 실제 반영)의 전 지점 근무.
+// 날짜 머리의 복사·붙여넣기 — 한 날의 근무(현재 지점)를 다른 날로 옮긴다. 복사한 날은 취소할 때까지 여러 날에 붙여넣을 수 있다.
 // 주간 합계는 지점을 합친 값 — 지점을 오가는 사람의 근무시간이 쪼개져 보이지 않게.
 const storeShort = (id: string) => STORES.find((s) => s.id === id)?.short ?? id;
 
@@ -17,6 +18,9 @@ export default function WeekGrid({
   showPlanDiff,
   onCell,
   onNote,
+  copyDay,
+  onCopyDay,
+  onPasteDay,
 }: {
   week: WeekData;
   rows: Staff[];
@@ -25,6 +29,9 @@ export default function WeekGrid({
   showPlanDiff: boolean;
   onCell?: (staff: Staff, date: string) => void;
   onNote?: (date: string) => void;
+  copyDay?: string | null; // 복사해 둔 날짜
+  onCopyDay?: (date: string | null) => void; // null = 취소
+  onPasteDay?: (date: string) => void;
 }) {
   const at = (list: Shift[], staffId: number, date: string) =>
     list.filter((s) => s.staffId === staffId && s.date === date);
@@ -38,7 +45,22 @@ export default function WeekGrid({
           <tr>
             <th className="w-[96px] px-3 py-2 text-left text-caption font-normal text-muted-foreground">이름</th>
             {week.days.map((d) => (
-              <th key={d} className={`px-1 py-2 text-left text-caption font-normal tabular ${dowOf(d) === '월' ? 'text-muted-foreground/60' : 'text-muted-foreground'}`}>{fmtMd(d)}</th>
+              <th key={d} className={`px-1 py-2 text-left text-caption font-normal tabular ${dowOf(d) === '월' ? 'text-muted-foreground/60' : 'text-muted-foreground'}`}>
+                <span className="flex items-center gap-2">
+                  <span className={copyDay === d ? 'text-foreground' : ''}>{fmtMd(d)}</span>
+                  {onCopyDay && onPasteDay && (
+                    copyDay === d ? (
+                      <button type="button" className="text-caption text-foreground underline underline-offset-2" onClick={() => onCopyDay(null)}>복사됨 · 취소</button>
+                    ) : copyDay ? (
+                      <button type="button" className="text-caption text-foreground underline underline-offset-2" onClick={() => onPasteDay(d)}>붙여넣기</button>
+                    ) : (
+                      shifts.some((s) => s.date === d && s.store === week.store && !s.isOff) && (
+                        <button type="button" className="text-caption text-muted-foreground hover:text-foreground" onClick={() => onCopyDay(d)}>복사</button>
+                      )
+                    )
+                  )}
+                </span>
+              </th>
             ))}
             <th className="w-[60px] px-3 py-2 text-right text-caption font-normal text-muted-foreground">주간</th>
           </tr>

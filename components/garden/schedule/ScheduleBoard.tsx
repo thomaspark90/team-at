@@ -30,6 +30,7 @@ export default function ScheduleBoard() {
   const [noteText, setNoteText] = useState('');
   const [addedIds, setAddedIds] = useState<number[]>([]);
   const [copyConflict, setCopyConflict] = useState<number | null>(null);
+  const [copyDay, setCopyDay] = useState<string | null>(null); // 표 머리에서 복사해 둔 날
 
   const load = useCallback(async () => {
     const r = await fetch(`/api/garden-schedule?store=${store}&week=${weekStart}`, { cache: 'no-store' });
@@ -42,9 +43,18 @@ export default function ScheduleBoard() {
   useEffect(() => {
     setAddedIds([]);
     setCopyConflict(null);
+    setCopyDay(null);
     setNotice(null);
     load();
   }, [load]);
+
+  // Esc 로 복사 취소
+  useEffect(() => {
+    if (!copyDay) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setCopyDay(null);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [copyDay]);
 
   const planShifts = useMemo(() => (week?.shifts ?? []).filter((s) => s.kind === 'plan'), [week]);
   const actualShifts = useMemo(() => {
@@ -107,6 +117,21 @@ export default function ScheduleBoard() {
     setError(null);
     setView('plan');
     setNotice(`지난주 ${j.from === 'actual' ? '실제 근무' : '계획'} ${j.copied}건을 복사했습니다.`);
+    load();
+  };
+
+  // 하루 복사 → 다른 날 붙여넣기. 붙여넣는 날에 기록이 있으면 한 번 묻고 덮어쓴다. 복사 상태는 유지해 여러 날에 이어 붙일 수 있다.
+  const pasteDay = async (to: string, overwrite = false) => {
+    if (!copyDay) return;
+    const r = await post('/copy-day', 'POST', { store, from: copyDay, to, kind: view, overwrite });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 409) {
+      if (window.confirm(`${fmtMd(to)}에 이미 ${j.existing}건이 있습니다. ${fmtMd(copyDay)} 근무로 덮어쓸까요?`)) return pasteDay(to, true);
+      return;
+    }
+    if (!r.ok) return setError(j.error ?? '붙여넣지 못했습니다.');
+    setError(null);
+    setNotice(`${fmtMd(copyDay)} 근무 ${j.people}명을 ${fmtMd(to)}에 붙여넣었습니다. 다른 날에도 붙여넣을 수 있고, 끝나면 취소를 누르세요.`);
     load();
   };
 
@@ -174,6 +199,9 @@ export default function ScheduleBoard() {
               setNoteDate(d);
               setNoteText(week.notes[d] ?? '');
             }}
+            copyDay={editor ? copyDay : null}
+            onCopyDay={editor ? setCopyDay : undefined}
+            onPasteDay={editor ? (d) => pasteDay(d) : undefined}
           />
         ) : (
           !error && <p className="m-0 text-body text-muted-foreground">불러오는 중…</p>
