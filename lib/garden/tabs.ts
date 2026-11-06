@@ -14,6 +14,7 @@ export const GARDEN_TAB_GROUPS: GardenTab[][] = [
     { key: 'recommended', href: '/garden/recommended', label: '필터 레시피 추천', desc: '원두별 추천 레시피 조회' },
     { key: 'calibration', href: '/garden/calibration', label: '분쇄도 측정', desc: 'EK43 캘리브레이션 업로드 · 차트' },
     { key: 'beancard', href: '/garden/beancard', label: '원두카드', desc: '매장 비치용 원두카드 인쇄' },
+    { key: 'theory', href: '/garden/theory', label: '커피 추출 이론', desc: '스탭 교육 · 현장 참고용 추출 이론' },
     { key: 'sales', href: '/garden/sales', label: '상품 추이', desc: '지점별 POS 매출 요약 (재무 멤버)' },
     { key: 'weather', href: '/garden/weather', label: '날씨 분석', desc: '기온·강수 밴드별 판매 효과 리포트' },
   ],
@@ -33,7 +34,7 @@ export const GARDEN_TABS: GardenTab[] = GARDEN_TAB_GROUPS.flat();
 export type GardenNavEntry = { label: string; keys: string[] };
 export const GARDEN_NAV: GardenNavEntry[] = [
   { label: '작업 보드', keys: ['dashboard'] },
-  { label: '커피(필터)', keys: ['pricing', 'saleprice', 'calibration', 'beancard'] }, // 2026-10-30 '운영'→'커피(필터)', 원두카드를 레시피에서 이동
+  { label: '커피(필터)', keys: ['pricing', 'saleprice', 'calibration', 'beancard', 'theory'] }, // 2026-10-30 '운영'→'커피(필터)', 원두카드를 레시피에서 이동
   { label: '필터 레시피', keys: ['recipes', 'recommended'] }, // 제철 단어는 2026-10-30 메뉴에서 제거 (페이지·권한 키는 유지)
   { label: '분석', keys: ['sales', 'weather', 'reviews'] },
   { label: '교육', keys: ['teaching'] },
