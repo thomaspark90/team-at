@@ -30,9 +30,9 @@ export default function GardenBeanGuidePage() {
       <div className="space-y-16 pb-10 sm:space-y-24 sm:pb-20">
         <section>
           <Heading>원산지별 떼루아</Heading>
-          <Lead>값은 범위로 읽어주세요. 풍미는 측정값이 아니라 자주 묘사되는 표현이고, ‘—’는 신뢰할 값을 찾지 못한 칸입니다.</Lead>
+          <Lead>국가를 누르면 지역별 내용이 펼쳐집니다. 풍미는 측정값이 아니라 자주 묘사되는 표현이고, ‘—’는 신뢰할 값을 찾지 못한 칸입니다.</Lead>
           <OriginTables />
-          <Note>근거 A는 법령·공공 기관·논문, B는 수입사·로스터·업계지, C는 출처 미표기 자료 또는 검색 요약입니다. 출처마다 고도와 수확기가 다를 수 있습니다.</Note>
+          <Note>국가 요약은 조사한 지역 값을 묶은 대략적인 범위입니다. 근거 A는 법령·공공 기관·논문, B는 수입사·로스터·업계지, C는 출처 미표기 자료 또는 검색 요약입니다.</Note>
         </section>
 
         <section>

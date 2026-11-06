@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { COUNTRY_SUMMARIES, rowsForCountry } from '@/lib/garden/bean-guide/countries';
 import { ALTITUDE_FINDINGS, MYTH_CHECKS, QUALITY_FACTORS } from '@/lib/garden/bean-guide/factors';
 import { BOP_RECORDS, FARMS } from '@/lib/garden/bean-guide/farms';
 import { MENU_NAMES, NAME_TERMS } from '@/lib/garden/bean-guide/names';
@@ -39,6 +40,16 @@ describe('원두에 대한 이해 출처', () => {
 });
 
 describe('원두에 대한 이해 데이터', () => {
+  it('모든 산지가 정확히 한 국가에 속한다', () => {
+    for (const g of ORIGIN_GROUPS) {
+      const countries = COUNTRY_SUMMARIES[g.key];
+      for (const r of g.rows) {
+        expect([r.name, countries.filter((c) => rowsForCountry(g.key, c).includes(r)).length]).toEqual([r.name, 1]);
+      }
+      for (const c of countries) expect([c.country, rowsForCountry(g.key, c).length > 0]).toEqual([c.country, true]);
+    }
+  });
+
   it('Best of Panama 파운드 값을 kg 로 환산한다', () => {
     for (const r of BOP_RECORDS) {
       const lb = r.original.match(/USD ([\d,.]+)\/lb/);
