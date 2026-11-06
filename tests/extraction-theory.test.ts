@@ -4,12 +4,10 @@ import {
   RATIO_STEPS,
   ROAST_AMPLITUDES,
   THEORY_SOURCES,
-  TIME_TICKS,
   aromaShape,
   concentrationAt,
   cupSummary,
   flavorAt,
-  formatTimeTick,
 } from '@/lib/garden/extraction-theory';
 
 describe('측정값', () => {
@@ -60,12 +58,6 @@ describe('배전도별 모식도', () => {
     expect(aromaShape(1.84)).toBeCloseTo(aromaShape(1.85), 1);
     expect(aromaShape(0.8)).toBeGreaterThan(aromaShape(0));
     expect(aromaShape(3)).toBeLessThan(aromaShape(0.8));
-  });
-});
-
-describe('시간 눈금', () => {
-  it('환산 위치에 10s·20s·30s 를 표시한다', () => {
-    expect(TIME_TICKS.map(formatTimeTick)).toEqual(['First drop', '10s', '20s', '30s']);
   });
 });
 

@@ -6,11 +6,8 @@ import {
   FLAVORS,
   ROASTS,
   flavorAt,
-  TIME_DOMAIN,
-  TIME_STEPS,
-  TIME_TICKS,
+  RATIO_STEPS,
   formatRatio,
-  formatTimeTick,
   ratioToSeconds,
   type FlavorKey,
   type RoastKey,
@@ -40,7 +37,7 @@ function FlavorTip({ active, payload, label }: any) {
 }
 
 function RoastChart({ roast, focus }: { roast: RoastKey; focus: FlavorKey | null }) {
-  const data = TIME_STEPS.map((ratio) => ({ ratio, ...flavorAt(roast, ratio) }));
+  const data = RATIO_STEPS.map((ratio) => ({ ratio, ...flavorAt(roast, ratio) }));
   return (
     <ResponsiveContainer width="100%" height={210}>
       <LineChart data={data} margin={{ top: 4, right: 16, bottom: 0, left: 30 }}>
@@ -48,10 +45,10 @@ function RoastChart({ roast, focus }: { roast: RoastKey; focus: FlavorKey | null
         <XAxis
           dataKey="ratio"
           type="number"
-          domain={TIME_DOMAIN}
-          ticks={TIME_TICKS}
+          domain={[0, 3]}
+          ticks={[0, 1, 2, 3]}
           interval={0}
-          tickFormatter={formatTimeTick}
+          tickFormatter={formatRatio}
           tick={axisTick}
           stroke={GRID}
         />
