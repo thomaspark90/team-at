@@ -18,7 +18,7 @@ export interface Crew {
 
 export interface DayCrews {
   published: Set<string>;
-  people: Map<number, CrewPerson & { active: boolean; homeStore: StoreId }>;
+  people: Map<number, CrewPerson & { active: boolean; stores: StoreId[] }>; // stores = 근무 지점(여러 개)
   of: (store: StoreId, shiftType: ShiftType) => Crew;
 }
 
@@ -42,7 +42,7 @@ export async function loadCrews(svc: SupabaseClient, date: string): Promise<DayC
   const [weeks, shifts, staff, profiles, overrides, takeovers] = await Promise.all([
     svc.from('schedule_weeks').select('store, status').eq('week_start', weekStartOf(date)),
     svc.from('schedule_shifts').select('id, work_date, store, staff_id, kind, start_min, end_min, is_off, source, uncertain').eq('work_date', date),
-    svc.from('schedule_staff').select('id, name, home_store, joined_on, active, duty_tag, user_id'),
+    svc.from('schedule_staff').select('id, name, home_store, stores, joined_on, active, duty_tag, user_id'),
     svc.from('profiles').select('user_id, status, roster_only'),
     svc.from('checklist_crew_overrides').select('store, shift_type, added_staff, removed_staff, lead_staff_id').eq('work_date', date),
     svc.from('checklist_takeovers').select('store, shift_type, staff_id, staff_name, taken_at').eq('work_date', date).order('taken_at'),
@@ -68,7 +68,7 @@ export async function loadCrews(svc: SupabaseClient, date: string): Promise<DayC
         dutyTag: (s.duty_tag as DutyTag | null) ?? null,
         joinedOn: (s.joined_on as string | null) ?? null,
         active: !!s.active,
-        homeStore: s.home_store as StoreId,
+        stores: (Array.isArray(s.stores) && s.stores.length ? s.stores : [s.home_store]) as StoreId[],
       },
     ]),
   );

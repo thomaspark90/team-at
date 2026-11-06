@@ -155,15 +155,16 @@ describe('조 수정값 만들기', () => {
 });
 
 describe('대신 맡기 자격', () => {
-  const staff = { active: true, homeStore: 'pangyo' as const };
+  const staff = { active: true, stores: ['pangyo' as const] };
   it('소속 지점 직원, 계정에 지점이 지정된 직원, 운영진', () => {
     expect(canTakeOver({ editor: false, staff, stores: [] }, 'pangyo')).toBe(true);
-    expect(canTakeOver({ editor: false, staff: { active: true, homeStore: 'yangjae' }, stores: ['pangyo'] }, 'pangyo')).toBe(true);
-    expect(canTakeOver({ editor: true, staff: { active: true, homeStore: 'yangjae' }, stores: [] }, 'pangyo')).toBe(true);
+    expect(canTakeOver({ editor: false, staff: { active: true, stores: ['yangjae', 'pangyo'] }, stores: [] }, 'pangyo')).toBe(true);
+    expect(canTakeOver({ editor: false, staff: { active: true, stores: ['yangjae'] }, stores: ['pangyo'] }, 'pangyo')).toBe(true);
+    expect(canTakeOver({ editor: true, staff: { active: true, stores: ['yangjae'] }, stores: [] }, 'pangyo')).toBe(true);
   });
   it('다른 지점 직원·퇴사자·명부 미연결은 안 된다', () => {
     expect(canTakeOver({ editor: false, staff, stores: [] }, 'yangjae')).toBe(false);
-    expect(canTakeOver({ editor: false, staff: { active: false, homeStore: 'pangyo' }, stores: [] }, 'pangyo')).toBe(false);
+    expect(canTakeOver({ editor: false, staff: { active: false, stores: ['pangyo'] }, stores: [] }, 'pangyo')).toBe(false);
     expect(canTakeOver({ editor: true, staff: null, stores: [] }, 'pangyo')).toBe(false);
   });
 });

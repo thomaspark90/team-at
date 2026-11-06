@@ -17,7 +17,7 @@ export interface ChecklistActor {
   editor: boolean;
   canManageItems: boolean;
   staffId: number | null; // 명부에 연결되지 않았으면 null
-  staff: { active: boolean; homeStore: StoreId } | null;
+  staff: { active: boolean; stores: StoreId[] } | null; // stores = 명부의 근무 지점
   stores: string[]; // 계정에 지정된 지점
   svc: SupabaseClient;
 }
@@ -37,7 +37,7 @@ export async function requireChecklistActor(): Promise<ChecklistActor | NextResp
   const [{ data: profile }, { data: editorRow }, { data: staff }] = await Promise.all([
     svc.from('profiles').select('display_name, stores').eq('user_id', user.id).maybeSingle(),
     svc.from('schedule_editors').select('email').eq('email', email).maybeSingle(),
-    svc.from('schedule_staff').select('id, name, active, home_store').eq('user_id', user.id).maybeSingle(),
+    svc.from('schedule_staff').select('id, name, active, home_store, stores').eq('user_id', user.id).maybeSingle(),
   ]);
   const editor = isOwner(user.email) || !!editorRow;
   return {
@@ -46,7 +46,7 @@ export async function requireChecklistActor(): Promise<ChecklistActor | NextResp
     editor,
     canManageItems: editor || (await requireGardenTab(session, user, 'checklist_items')) === null,
     staffId: staff ? Number(staff.id) : null,
-    staff: staff ? { active: !!staff.active, homeStore: staff.home_store as StoreId } : null,
+    staff: staff ? { active: !!staff.active, stores: (Array.isArray(staff.stores) && staff.stores.length ? staff.stores : [staff.home_store]) as StoreId[] } : null,
     stores: (profile?.stores as string[] | null) ?? [],
     svc,
   };

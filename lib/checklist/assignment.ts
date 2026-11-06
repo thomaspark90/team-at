@@ -65,11 +65,11 @@ export function overrideFromMembers(autoIds: number[], takeoverIds: number[], me
   };
 }
 
-/** 대신 맡을 수 있는가 — 운영진 또는 그 지점 소속 재직 직원. */
+/** 대신 맡을 수 있는가 — 운영진 또는 그 지점에서 근무하는 재직 직원(명부의 근무 지점 또는 계정 지점). */
 export function canTakeOver(
-  actor: { editor: boolean; staff: { active: boolean; homeStore: StoreId } | null; stores: string[] },
+  actor: { editor: boolean; staff: { active: boolean; stores: StoreId[] } | null; stores: string[] },
   store: StoreId,
 ): boolean {
   if (!actor.staff?.active) return false;
-  return actor.editor || actor.staff.homeStore === store || actor.stores.includes(store);
+  return actor.editor || actor.staff.stores.includes(store) || actor.stores.includes(store);
 }

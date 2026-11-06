@@ -148,7 +148,7 @@ export async function loadCrewPlan(svc: SupabaseClient, store: StoreId, date: st
     editable: date >= kstToday(),
     published: crews.published.has(store),
     people: Array.from(crews.people.values())
-      .filter((p) => onDuty.has(p.id) || (p.active && p.homeStore === store))
+      .filter((p) => onDuty.has(p.id) || (p.active && p.stores.includes(store)))
       .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
       .map((p) => ({ id: p.id, name: p.name, linked: p.linked })),
     crews: { open: plan('open'), close: plan('close') },
