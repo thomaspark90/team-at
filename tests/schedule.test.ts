@@ -220,3 +220,25 @@ describe('배포 비교', () => {
     expect(diffSnapshots(null, [])).toEqual([]);
   });
 });
+
+import { addYears, fullMonthsBetween, statutoryLeave } from '@/lib/schedule/leave';
+
+describe('연차 법정 발생(입사일 기준)', () => {
+  it('만 개월 계산 — 같은 날짜에 도달해야 한 달', () => {
+    expect(fullMonthsBetween('2026-09-22', '2026-11-06')).toBe(1);
+    expect(fullMonthsBetween('2026-09-22', '2026-11-22')).toBe(2);
+    expect(fullMonthsBetween('2026-11-10', '2026-11-06')).toBe(0);
+  });
+  it('1년 미만은 달마다 1개(최대 11), 기준일은 입사일', () => {
+    expect(statutoryLeave('2026-09-22', '2026-11-06')).toEqual({ days: 1, asOf: '2026-09-22', basis: 'monthly', months: 1 });
+    expect(statutoryLeave('2025-11-20', '2026-11-06')?.days).toBe(11);
+    expect(statutoryLeave('2026-12-01', '2026-11-06')).toBeNull();
+  });
+  it('1년 이상은 15개, 3년차부터 2년마다 1개, 최대 25, 기준일은 기념일', () => {
+    expect(statutoryLeave('2025-11-05', '2026-11-06')).toEqual({ days: 15, asOf: '2026-11-05', basis: 'annual', months: 12 });
+    expect(statutoryLeave('2023-11-05', '2026-11-06')?.days).toBe(16); // 3년차
+    expect(statutoryLeave('2021-11-05', '2026-11-06')?.days).toBe(17); // 5년차
+    expect(statutoryLeave('2000-01-01', '2026-11-06')?.days).toBe(25);
+    expect(addYears('2024-02-29', 1)).toBe('2025-02-28');
+  });
+});

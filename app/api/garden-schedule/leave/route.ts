@@ -6,7 +6,7 @@ import { isYmd, kstToday } from '@/lib/teaching/kst';
 export const runtime = 'nodejs';
 
 // 연차·휴무(운영진 전용). 총개수는 입력값 — 산식이 정해지지 않아 자동 계산하지 않는다.
-// GET / PUT { staffId, total } / POST { staffId, date, type, note } / DELETE { id }
+// GET / PUT { staffId, total, asOf? } / POST { staffId, date, type, note } / DELETE { id }
 export async function GET() {
   const a = await requireScheduleEditor();
   if (a instanceof NextResponse) return a;
@@ -33,11 +33,13 @@ export async function PUT(req: Request) {
   }
   const total = Number(b?.total);
   if (!Number.isFinite(total) || total < 0 || total * 2 !== Math.floor(total * 2)) return badRequest('총 연차는 0.5개 단위로 넣어주세요.');
-  // 기준일은 처음 입력한 날 유지 — 총개수만 고쳐도 이미 쓴 연차가 잔여에서 빠지지 않는 일이 없게
+  // 기준일은 처음 입력한 날 유지 — 총개수만 고쳐도 이미 쓴 연차가 잔여에서 빠지지 않는 일이 없게.
+  // 법정 발생분을 적용할 때는 발생일(입사일·기념일)을 asOf 로 넘긴다.
+  if (b?.asOf !== undefined && !isYmd(b.asOf)) return badRequest('기준일이 올바르지 않습니다.');
   const { data: cur } = await a.svc.from('leave_balances').select('as_of').eq('staff_id', staffId).maybeSingle();
   const { error } = await a.svc
     .from('leave_balances')
-    .upsert({ staff_id: staffId, total_days: total, as_of: cur?.as_of ?? kstToday(), updated_at: new Date().toISOString() });
+    .upsert({ staff_id: staffId, total_days: total, as_of: b?.asOf ?? cur?.as_of ?? kstToday(), updated_at: new Date().toISOString() });
   return error ? dbError(error) : NextResponse.json({ ok: true });
 }
 

@@ -5,6 +5,7 @@ import SegmentControl from '@/components/nav/SegmentControl';
 import SignupRequests from './SignupRequests';
 import StoreToggles from './StoreToggles';
 import { leaveRemaining, needsActiveCheck } from '@/lib/schedule/time';
+import { statutoryLeave } from '@/lib/schedule/leave';
 import { STORES, type StoreId } from '@/lib/types';
 import { DUTY_TAGS, STAFF_ROLES, type Staff, type StaffRole } from '@/lib/schedule/types';
 
@@ -53,9 +54,9 @@ export default function StaffManager() {
     loadLeave();
   }, [load, loadLeave]);
 
-  const saveTotal = async (staffId: number, v: string) => {
+  const saveTotal = async (staffId: number, v: string, asOf?: string) => {
     setError(null);
-    const r = await fetch('/api/garden-schedule/leave', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ staffId, total: v === '' ? null : Number(v) }) });
+    const r = await fetch('/api/garden-schedule/leave', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ staffId, total: v === '' ? null : Number(v), asOf }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) setError(j.error ?? '저장하지 못했습니다.');
     loadLeave();
@@ -199,7 +200,11 @@ export default function StaffManager() {
                   {(() => {
                     const bal = balances.find((b) => b.staffId === s.id);
                     const remaining = leaveRemaining(bal?.total ?? null, bal?.asOf ?? null, leaveRecs.filter((r) => r.staffId === s.id));
+                    // 입사일 기준 법정 발생분 — 총개수·기준일이 다르면 '적용' 버튼(주 40시간·개근 가정)
+                    const stat = s.joinedOn && today ? statutoryLeave(s.joinedOn, today) : null;
+                    const differs = stat && (bal?.total !== stat.days || bal?.asOf !== stat.asOf);
                     return (
+                      <span className="flex flex-col gap-1">
                       <span className="flex items-center gap-2 tabular">
                         <input
                           key={`${s.id}-${bal?.total ?? ''}`}
@@ -214,6 +219,13 @@ export default function StaffManager() {
                           }}
                         />
                         <span className={remaining != null && remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}>/ {remaining ?? '–'}</span>
+                      </span>
+                      {stat && (
+                        <span className="flex items-center gap-2 text-caption text-muted-foreground" title="근로기준법 60조 · 주 40시간 통상근로자·개근 가정. 단시간 근로자는 비례 계산이 필요합니다.">
+                          법정 {stat.days}개 · {stat.basis === 'monthly' ? `입사 ${stat.months}개월` : `${Math.floor(stat.months / 12) + 1}년차`} · 기준 {stat.asOf.slice(2).replace(/-/g, '.')}
+                          {differs && <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => saveTotal(s.id, String(stat.days), stat.asOf)}>적용</button>}
+                        </span>
+                      )}
                       </span>
                     );
                   })()}
