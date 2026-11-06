@@ -11,6 +11,7 @@ import { MenuNameTable, NameAnatomy, NameTerms, ReadingSteps } from '@/component
 import OriginTables from '@/components/garden/bean-guide/OriginTables';
 import { HoneyTable, ProcessRules, ProcessTables } from '@/components/garden/bean-guide/ProcessGuide';
 import SectionNav from '@/components/garden/bean-guide/SectionNav';
+import VarietyGuide from '@/components/garden/bean-guide/VarietyGuide';
 import { GLOSSARY_ID } from '@/lib/garden/bean-guide/sections';
 import { BEAN_SOURCES } from '@/lib/garden/bean-guide/sources';
 
@@ -29,7 +30,7 @@ export default function GardenBeanGuidePage() {
     <PageShell nav={<GardenNav />}>
       <header className="mb-16 pt-6 sm:mb-24 sm:pt-14">
         <h1 className="m-0 text-display">원두에 대한 이해</h1>
-        <div className="ta-prose mt-3 text-body text-muted-foreground">산지, 농장, 이름, 가공, 재배 조건으로 원두를 읽는 법을 정리했습니다.</div>
+        <div className="ta-prose mt-3 text-body text-muted-foreground">산지, 농장, 이름, 품종, 가공, 재배 조건으로 원두를 읽는 법을 정리했습니다.</div>
       </header>
       <SectionNav />
       <div className="space-y-16 pb-10 sm:space-y-24 sm:pb-20">
@@ -62,6 +63,13 @@ export default function GardenBeanGuidePage() {
             <Sub>이름에 자주 나오는 단어</Sub>
             <NameTerms />
           </div>
+        </section>
+
+        <section id="bean-variety" className="scroll-mt-28">
+          <Heading>품종</Heading>
+          <Lead>평가는 World Coffee Research 카탈로그의 잠재력과 재배 특성이며 실제 컵의 맛이 아닙니다. 같은 품종도 산지와 가공에 따라 달라, 품종별 풍미는 적지 않았습니다.</Lead>
+          <VarietyGuide />
+          <Note>품질 잠재력은 높은 고도에서 재배했을 때의 평가입니다. 평가가 없는 품종은 카탈로그에서 확인하지 못해 비워 두었습니다.</Note>
         </section>
 
         <section id="bean-process" className="scroll-mt-28">

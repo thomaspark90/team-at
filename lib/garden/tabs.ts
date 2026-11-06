@@ -15,7 +15,7 @@ export const GARDEN_TAB_GROUPS: GardenTab[][] = [
     { key: 'calibration', href: '/garden/calibration', label: '분쇄도 측정', desc: 'EK43 캘리브레이션 업로드 · 차트' },
     { key: 'beancard', href: '/garden/beancard', label: '원두카드', desc: '매장 비치용 원두카드 인쇄' },
     { key: 'theory', href: '/garden/theory', label: '커피 추출 이론', desc: '스탭 교육 · 현장 참고용 추출 이론' },
-    { key: 'beanguide', href: '/garden/bean-guide', label: '원두에 대한 이해', desc: '원산지 떼루아 · 유명 농장 · 이름 읽는 법 · 고도와 품질 요소' },
+    { key: 'beanguide', href: '/garden/bean-guide', label: '원두에 대한 이해', desc: '원산지 떼루아 · 유명 농장 · 이름 읽는 법 · 품종 · 고도와 품질 요소' },
     { key: 'sales', href: '/garden/sales', label: '상품 추이', desc: '지점별 POS 매출 요약 (재무 멤버)' },
     { key: 'weather', href: '/garden/weather', label: '날씨 분석', desc: '기온·강수 밴드별 판매 효과 리포트' },
   ],

@@ -6,6 +6,7 @@ import { MENU_NAMES, NAME_TERMS } from '@/lib/garden/bean-guide/names';
 import { ORIGIN_GROUPS } from '@/lib/garden/bean-guide/origins';
 import { PROCESS_GROUPS, PROCESS_RULES } from '@/lib/garden/bean-guide/processes';
 import { BEAN_SOURCES } from '@/lib/garden/bean-guide/sources';
+import { VARIETY_GROUPS } from '@/lib/garden/bean-guide/varieties';
 
 const cited = [
   ...ORIGIN_GROUPS.flatMap((g) => g.rows.flatMap((r) => r.src)),
@@ -18,6 +19,7 @@ const cited = [
   ...MYTH_CHECKS.flatMap((m) => m.src),
   ...PROCESS_GROUPS.flatMap((g) => g.items.flatMap((p) => p.src)),
   ...PROCESS_RULES.flatMap((r) => r.src),
+  ...VARIETY_GROUPS.flatMap((g) => g.items.flatMap((v) => v.src)),
   'wcr-bourbon', // 위도 표
   'pdg-honey', // Honey 색 구분 표
 ];
@@ -53,6 +55,13 @@ describe('원두에 대한 이해 데이터', () => {
   it('모든 농장이 국가 목록에 한 번씩 들어간다', () => {
     expect(FARMS_BY_COUNTRY.flatMap((c) => c.farms)).toHaveLength(FARMS.length);
     for (const c of FARMS_BY_COUNTRY) expect([c.country, c.farms.length >= 2]).toEqual([c.country, true]);
+  });
+
+  it('품종 평가는 셋 다 있거나 셋 다 비어 있다', () => {
+    for (const v of VARIETY_GROUPS.flatMap((g) => g.items)) {
+      const blanks = [v.quality, v.yieldLevel, v.rust].filter((x) => x === '—').length;
+      expect([v.name, blanks === 0 || blanks === 3]).toEqual([v.name, true]);
+    }
   });
 
   it('우리 메뉴 10종을 모두 해독한다', () => {
