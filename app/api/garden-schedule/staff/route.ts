@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { badRequest, dbError, isStore, requireScheduleEditor } from '@/lib/schedule/access';
 import { toStaff } from '@/lib/schedule/queries';
+import { isStaffRole } from '@/lib/schedule/types';
 import { isYmd, kstToday } from '@/lib/teaching/kst';
 import { NAME_RE, normalizeName } from '@/lib/account/simple-login';
 import { isOwner } from '@/lib/finance/access';
@@ -8,12 +9,12 @@ import { setAccountLeft } from '@/lib/staff/directory';
 
 export const runtime = 'nodejs';
 
-// 직원 명부(운영진 전용) — 재직·이름의 정본. GET / POST { name, homeStore } / PATCH { id, name?, homeStore?, joinedOn?, active? }.
+// 직원 명부(운영진 전용) — 재직·이름의 정본. GET / POST { name, homeStore } / PATCH { id, name?, homeStore?, joinedOn?, active?, roles? }.
 // 기록 보존을 위해 삭제는 없다(재직 끄기). 계정이 연결돼 있으면 이름·지점을 맞추고, 재직을 끄면 로그인을 막는다.
 export async function GET() {
   const a = await requireScheduleEditor();
   if (a instanceof NextResponse) return a;
-  const { data, error } = await a.svc.from('schedule_staff').select('id, name, home_store, joined_on, active, user_id').order('name');
+  const { data, error } = await a.svc.from('schedule_staff').select('id, name, home_store, joined_on, active, roles, user_id').order('name');
   if (error) return dbError(error);
   const userIds = (data ?? []).map((s) => s.user_id).filter(Boolean) as string[];
   const { data: profiles } = userIds.length
@@ -75,6 +76,10 @@ export async function PATCH(req: Request) {
   if (b?.homeStore !== undefined) {
     if (!isStore(b.homeStore)) return badRequest('지점이 올바르지 않습니다.');
     patch.home_store = b.homeStore;
+  }
+  if (b?.roles !== undefined) {
+    if (!Array.isArray(b.roles) || !b.roles.every(isStaffRole)) return badRequest('역할이 올바르지 않습니다.');
+    patch.roles = Array.from(new Set(b.roles));
   }
   if (b?.joinedOn !== undefined) {
     if (b.joinedOn !== null && !isYmd(b.joinedOn)) return badRequest('입사일이 올바르지 않습니다.');

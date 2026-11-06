@@ -29,12 +29,24 @@ export interface Shift extends Partial<Segment> {
   uncertain: boolean;
 }
 
+// 근무자 역할 — 한 사람이 여러 역할을 맡을 수 있다(예: 바리스타 + 콜드파트). key 는 DB 저장값이라 바꾸지 않는다.
+export const STAFF_ROLES = [
+  { key: 'barista', label: '바리스타' },
+  { key: 'pastry', label: '파티쉐' },
+  { key: 'cold', label: '콜드파트' },
+  { key: 'hot', label: '핫파트' },
+  { key: 'dish', label: '디쉬' },
+] as const;
+export type StaffRole = (typeof STAFF_ROLES)[number]['key'];
+export const isStaffRole = (v: unknown): v is StaffRole => STAFF_ROLES.some((r) => r.key === v);
+
 export interface Staff {
   id: number;
   name: string;
   homeStore: StoreId;
   joinedOn: string | null;
   active: boolean;
+  roles: StaffRole[];
 }
 
 export interface WeekData {

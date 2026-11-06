@@ -1,5 +1,5 @@
 import { addDays } from '@/lib/teaching/kst';
-import type { Segment, Shift } from './types';
+import { STAFF_ROLES, type Segment, type Shift, type StaffRole } from './types';
 
 // 스케줄 순수 계산 — 시각은 0시 기준 분(int), 날짜는 KST 벽시계 'YYYY-MM-DD'.
 
@@ -69,6 +69,17 @@ export function hourlyStaff(shifts: Shift[], fromHour: number, toHour: number): 
     const h = (fromHour + i) * 60;
     return Array.from(new Set(shifts.filter((s) => hasTime(s) && s.start < h + 60 && s.end > h).map((s) => s.staffId)));
   });
+}
+
+/** 시간대별 역할 인원 — 역할을 여러 개 가진 사람은 각 역할 줄에 모두 센다(배치 가능 인원). 역할이 없으면 '미지정'. */
+export function roleCountsOf(ids: number[], rolesOf: Map<number, StaffRole[]>): Record<StaffRole | 'none', number[]> {
+  const out = Object.fromEntries([...STAFF_ROLES.map((r) => r.key), 'none'].map((k) => [k, [] as number[]])) as Record<StaffRole | 'none', number[]>;
+  for (const id of ids) {
+    const roles = rolesOf.get(id) ?? [];
+    if (roles.length === 0) out.none.push(id);
+    for (const r of roles) out[r].push(id);
+  }
+  return out;
 }
 
 /** 재직으로 표시됐는데 오래 근무가 없는 사람 — 재직 여부 확인 안내용. 기록이 아예 없으면(신규) 대상 아님. */

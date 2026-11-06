@@ -1,6 +1,6 @@
 import { honorific, rosterMatch, staffLabel } from '@/lib/staff/names';
 import { describe, it, expect } from 'vitest';
-import { effectiveActual, fmtSegment, hourlyStaff, hoursOf, leaveRemaining, needsActiveCheck, segmentError, substituteBalance, weekDays, weekStartOf } from '@/lib/schedule/time';
+import { effectiveActual, fmtSegment, hourlyStaff, hoursOf, roleCountsOf, leaveRemaining, needsActiveCheck, segmentError, substituteBalance, weekDays, weekStartOf } from '@/lib/schedule/time';
 import { namesInCell, parseCsv, parseGrid, parseJoined, parseLeave, segmentsByName } from '@/lib/schedule/sheet-parse';
 import type { Shift } from '@/lib/schedule/types';
 
@@ -150,5 +150,17 @@ describe('직원 이름 표시', () => {
     expect(honorific('김소진')).toBe('김소진님');
     expect(honorific('길형님')).toBe('길형님');
     expect(honorific('한승희(퇴사)')).toBe('한승희님(퇴사)');
+  });
+});
+
+describe('역할별 인원', () => {
+  it('두 역할을 가진 사람은 두 줄에 다 세고, 역할 없으면 미지정', () => {
+    const rolesOf = new Map<number, ('barista' | 'cold' | 'pastry' | 'hot' | 'dish')[]>([[1, ['barista', 'cold']], [2, ['pastry']], [3, []]]);
+    const r = roleCountsOf([1, 2, 3], rolesOf);
+    expect(r.barista).toEqual([1]);
+    expect(r.cold).toEqual([1]);
+    expect(r.pastry).toEqual([2]);
+    expect(r.hot).toEqual([]);
+    expect(r.none).toEqual([3]);
   });
 });

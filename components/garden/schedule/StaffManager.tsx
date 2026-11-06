@@ -5,7 +5,7 @@ import SegmentControl from '@/components/nav/SegmentControl';
 import SignupRequests from './SignupRequests';
 import { needsActiveCheck } from '@/lib/schedule/time';
 import { STORES, type StoreId } from '@/lib/types';
-import type { Staff } from '@/lib/schedule/types';
+import { STAFF_ROLES, type Staff, type StaffRole } from '@/lib/schedule/types';
 
 // 직원 명부 화면 — 추가·이름·지점·입사일·재직. 삭제는 없다(지난 기록을 지키기 위해 재직만 끈다).
 type Row = Staff & { lastWorked: string | null; account: 'login' | 'roster' | null };
@@ -89,11 +89,12 @@ export default function StaffManager() {
       {error && <p className="m-0 text-body text-destructive">{error}</p>}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] border-collapse">
+        <table className="w-full min-w-[1100px] border-collapse">
           <thead>
             <tr className="text-left text-caption text-muted-foreground">
               <th className="px-3 py-2 font-normal">이름</th>
               <th className="px-3 py-2 font-normal">기본 지점</th>
+              <th className="px-3 py-2 font-normal">역할</th>
               <th className="px-3 py-2 font-normal">입사일</th>
               <th className="px-3 py-2 font-normal">마지막 근무</th>
               <th className="px-3 py-2 font-normal">계정</th>
@@ -121,6 +122,25 @@ export default function StaffManager() {
                   <select aria-label={`${s.name} 지점`} className="ta-input w-[90px]" value={s.homeStore} onChange={(e) => send('PATCH', { id: s.id, homeStore: e.target.value })}>
                     {STORES.map((x) => <option key={x.id} value={x.id}>{x.short}</option>)}
                   </select>
+                </td>
+                <td className="px-3 py-2">
+                  {/* 역할 토글 — 여러 개 선택. 시간대별 인원의 역할 줄이 이 값을 읽는다 */}
+                  <div className="ta-seg" role="group" aria-label={`${s.name} 역할`}>
+                    {STAFF_ROLES.map((r) => {
+                      const on = s.roles.includes(r.key);
+                      return (
+                        <button
+                          key={r.key}
+                          type="button"
+                          aria-pressed={on}
+                          className={`ta-seg-item px-2 text-caption ${on ? 'ta-seg-on' : ''}`}
+                          onClick={() => send('PATCH', { id: s.id, roles: on ? s.roles.filter((k) => k !== r.key) : [...s.roles, r.key] as StaffRole[] })}
+                        >
+                          {r.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </td>
                 <td className="px-3 py-2">
                   <input
@@ -159,7 +179,7 @@ export default function StaffManager() {
             ))}
             {!list.length && (
               <tr className="border-t border-border">
-                <td colSpan={6} className="px-3 py-4 text-body text-muted-foreground">해당하는 근무자가 없습니다.</td>
+                <td colSpan={7} className="px-3 py-4 text-body text-muted-foreground">해당하는 근무자가 없습니다.</td>
               </tr>
             )}
           </tbody>
