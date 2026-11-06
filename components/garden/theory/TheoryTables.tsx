@@ -21,7 +21,7 @@ const ATTRIBUTES: { name: string; shape: ReactNode; roast: ReactNode; basis: str
   },
   {
     name: '단맛',
-    shape: <>당 곡선이 아니라, 쓴맛과 농도가 줄며 드러나는 균형.<TheoryCite ids={['bartelak', 'batali']} /></>,
+    shape: <>당 곡선이 아니라, 쓴맛과 TDS가 줄며 드러나는 균형.<TheoryCite ids={['bartelak', 'batali']} /></>,
     roast: <>강배전에서 당은 사라지지만 단맛 인상과는 별개다.<TheoryCite ids={['hu']} /></>,
     basis: '해석(드립 연구 기반)',
   },
@@ -29,7 +29,7 @@ const ATTRIBUTES: { name: string; shape: ReactNode; roast: ReactNode; basis: str
     name: '바디',
     shape: <>초반에 급격히 줄어든다.<TheoryCite ids={['schmieder', 'gloess', 'colloid']} /></>,
     roast: <>배전이 강할수록 올라간다. 강배전에서 줄어드는지는 미확인.<TheoryCite ids={['carcea', 'hu', 'shi']} /></>,
-    basis: '측정(고형물 농도)',
+    basis: '측정(TDS)',
   },
   {
     name: '쓴맛',
@@ -106,7 +106,7 @@ export function CupTable() {
   const metrics: { label: string; value: (c: (typeof rows)[number]) => string }[] = [
     { label: 'First drop 후', value: (c) => `약 ${Math.round(c.seconds)}초` },
     { label: '수율(%)', value: (c) => c.yieldPct.toFixed(1) },
-    { label: '잔 농도(%)', value: (c) => c.cupTdsPct.toFixed(1) },
+    { label: 'TDS(%)', value: (c) => c.cupTdsPct.toFixed(1) },
     { label: '트리고넬린 회수(%)', value: (c) => c.trigonellineShare.toFixed(0) },
     { label: '5-CQA 회수(%)', value: (c) => c.cqaShare.toFixed(0) },
     { label: '카페인 회수(%)', value: (c) => c.caffeineShare.toFixed(0) },

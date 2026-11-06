@@ -71,13 +71,13 @@ export default function GardenTheoryPage() {
         </section>
 
         <section>
-          <Heading>시간별 수율 및 농도</Heading>
+          <Heading>시간별 수율 및 TDS</Heading>
           <p className="ta-prose m-0 mb-2 text-body text-muted-foreground">
             1:1에서 1:3 잔 고형물의 약 70%가 나옵니다. 그 뒤는 묽어지며 구성이 바뀝니다.
             <TheoryCite ids={['schmieder', 'rao-ratio']} />
           </p>
           <CupTable />
-          <Note>회수는 1:3 잔 대비 비율입니다. 원두 1종의 측정값이므로 목표치로 쓰지 마세요.<TheoryCite ids={['schmieder']} /></Note>
+          <Note>수율은 원두에서 녹아 나온 비율, TDS(총용존고형물)는 음료에 녹아 있는 고형물의 비율, 회수는 1:3 잔 대비 비율입니다. 원두 1종의 측정값이므로 목표치로 쓰지 마세요.<TheoryCite ids={['schmieder']} /></Note>
         </section>
 
         <section>
