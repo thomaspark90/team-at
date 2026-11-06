@@ -3,7 +3,9 @@
 //  · 1년 미만: 개근한 달마다 1개(최대 11개). 입사 1년이 되는 날 소멸.
 //  · 1년 이상: 15개, 3년차부터 2년마다 1개 추가, 최대 25개. 발생일 = 입사 기념일.
 export interface StatutoryLeave {
-  days: number;
+  days: number; // 비례 적용 후(0.5 단위 올림)
+  fullDays: number; // 통상근로자 기준
+  ratio: number; // 주 소정근로시간/40 (통상 1)
   asOf: string; // 이 날 이후 사용분만 잔여에서 뺀다 — 1년 미만은 입사일, 이후는 올해 입사 기념일
   basis: 'monthly' | 'annual';
   months: number; // 입사 후 지난 개월 수(만)
@@ -26,10 +28,22 @@ export const addYears = (ymd: string, n: number): string => {
   return `${yy}-${String(m).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
 };
 
-export function statutoryLeave(joinedOn: string, today: string): StatutoryLeave | null {
+/** 단시간 근로자 비례 — 통상 개수 × 주 소정근로시간/40, 0.5 단위 올림(근로기준법 18조·시행령 9조, 시간 단위를 반일로 맞춤). 주 15시간 미만은 연차 없음. */
+export function proratedDays(fullDays: number, weeklyHours: number | null): { days: number; ratio: number } {
+  if (weeklyHours == null || weeklyHours >= 40) return { days: fullDays, ratio: 1 };
+  if (weeklyHours < 15) return { days: 0, ratio: 0 };
+  const ratio = weeklyHours / 40;
+  return { days: Math.ceil(fullDays * ratio * 2) / 2, ratio };
+}
+
+export function statutoryLeave(joinedOn: string, today: string, weeklyHours: number | null = null): StatutoryLeave | null {
   if (joinedOn > today) return null;
   const months = fullMonthsBetween(joinedOn, today);
-  if (months < 12) return { days: Math.min(months, 11), asOf: joinedOn, basis: 'monthly', months };
+  const build = (fullDays: number, asOf: string, basis: StatutoryLeave['basis']): StatutoryLeave => {
+    const p = proratedDays(fullDays, weeklyHours);
+    return { days: p.days, fullDays, ratio: p.ratio, asOf, basis, months };
+  };
+  if (months < 12) return build(Math.min(months, 11), joinedOn, 'monthly');
   const years = Math.floor(months / 12);
-  return { days: Math.min(25, 15 + Math.floor((years - 1) / 2)), asOf: addYears(joinedOn, years), basis: 'annual', months };
+  return build(Math.min(25, 15 + Math.floor((years - 1) / 2)), addYears(joinedOn, years), 'annual');
 }

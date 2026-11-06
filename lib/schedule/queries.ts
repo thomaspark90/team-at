@@ -19,6 +19,8 @@ export const toStaff = (r: any): Staff => ({
   active: r.active,
   roles: Array.isArray(r.roles) ? r.roles : [],
   dutyTag: r.duty_tag ?? null,
+  employment: r.employment === 'part_time' ? 'part_time' : 'regular',
+  weeklyHours: r.weekly_hours == null ? null : Number(r.weekly_hours),
 });
 
 const toShift = (r: any): Shift => ({
@@ -47,7 +49,7 @@ export async function loadWeek(svc: SupabaseClient, store: StoreId, weekStart: s
   const [weeksRes, shiftsRes, staffRes, notesRes, presetsRes, leavesRes, reqRes, priorRes, acksRes, roles] = await Promise.all([
     svc.from('schedule_weeks').select('store, status, published_at, snapshot, prev_snapshot').eq('week_start', weekStart),
     svc.from('schedule_shifts').select(SHIFT_COLS).gte('work_date', days[0]).lte('work_date', days[6]).order('start_min'),
-    svc.from('schedule_staff').select('id, name, home_store, stores, joined_on, active, roles').order('name'),
+    svc.from('schedule_staff').select('id, name, home_store, stores, joined_on, active, roles, employment, weekly_hours').order('name'),
     editor
       ? svc.from('schedule_day_notes').select('work_date, note').eq('store', store).gte('work_date', days[0]).lte('work_date', days[6])
       : Promise.resolve({ data: [], error: null }),

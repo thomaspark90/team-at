@@ -72,7 +72,10 @@ export default function WeekGrid({
         <tbody>
           {rows.map((p) => (
             <tr key={p.id} className="border-t border-border">
-              <td className="whitespace-nowrap px-3 py-1 text-body">{p.name}</td>
+              <td className="whitespace-nowrap px-3 py-1 text-body">
+                {p.name}
+                {p.employment === 'part_time' && <span className="ml-1 text-caption text-muted-foreground" title="파트타임">PT</span>}
+              </td>
               {week.days.map((d) => {
                 const cell = at(shifts, p.id, d);
                 const here = cell.filter((s) => s.store === week.store);

@@ -78,6 +78,11 @@ export const DEFAULT_DUTY_TAGS: TagDef[] = [
 export type StaffRole = string;
 export type DutyTag = string;
 
+// 고용 형태 — 파트타임은 주 소정근로시간으로 법정 연차를 비례 계산한다. 집계·경고 기준은 같다.
+export type Employment = 'regular' | 'part_time';
+export const EMPLOYMENT_LABEL: Record<Employment, string> = { regular: '정규', part_time: '파트타임' };
+export const isEmployment = (v: unknown): v is Employment => v === 'regular' || v === 'part_time';
+
 export interface Staff {
   id: number;
   name: string;
@@ -87,6 +92,8 @@ export interface Staff {
   active: boolean;
   roles: StaffRole[];
   dutyTag: DutyTag | null; // 운영진 명부 조회에만 채워진다
+  employment: Employment;
+  weeklyHours: number | null; // 주 소정근로시간 — 파트타임 연차 비례용. 비면 비례 계산 안 함
 }
 
 // 근무 파트 — 칸 편집기의 한 번 누르기 버튼. 지점별로 운영진이 고친다(finance.schedule_shift_presets).

@@ -7,7 +7,7 @@ import StoreToggles from './StoreToggles';
 import { leaveRemaining, needsActiveCheck } from '@/lib/schedule/time';
 import { statutoryLeave } from '@/lib/schedule/leave';
 import { STORES, type StoreId } from '@/lib/types';
-import type { Staff, StaffRole, TagDef } from '@/lib/schedule/types';
+import { EMPLOYMENT_LABEL, type Employment, type Staff, type StaffRole, type TagDef } from '@/lib/schedule/types';
 import TagListEditor from './TagListEditor';
 
 // 직원 명부 화면 — 추가·이름·기본 지점·근무 지점·입사일·재직. 삭제는 없다(지난 기록을 지키기 위해 재직만 끈다).
@@ -123,7 +123,7 @@ export default function StaffManager() {
       {error && <p className="m-0 text-body text-destructive">{error}</p>}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1680px] border-collapse">
+        <table className="w-full min-w-[1880px] border-collapse">
           <thead>
             <tr className="text-left text-caption text-muted-foreground">
               <th className="px-3 py-2 font-normal">이름</th>
@@ -135,6 +135,7 @@ export default function StaffManager() {
               <th className="px-3 py-2 font-normal">
                 <span className="flex items-center gap-2 whitespace-nowrap">책임 태그 <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => setEditingTags('duty')}>편집</button></span>
               </th>
+              <th className="whitespace-nowrap px-3 py-2 font-normal">고용 형태 · 주 시간</th>
               <th className="px-3 py-2 font-normal">입사일</th>
               <th className="px-3 py-2 font-normal">연차 총/잔여(개)</th>
               <th className="whitespace-nowrap px-3 py-2 font-normal">마지막 근무</th>
@@ -195,6 +196,31 @@ export default function StaffManager() {
                   </select>
                 </td>
                 <td className="px-3 py-2">
+                  {/* 파트타임이면 주 소정근로시간으로 법정 연차를 비례 계산한다 */}
+                  <span className="flex items-center gap-2">
+                    <select aria-label={`${s.name} 고용 형태`} className="ta-input w-[104px]" value={s.employment} onChange={(e) => send('PATCH', { id: s.id, employment: e.target.value as Employment })}>
+                      {(Object.keys(EMPLOYMENT_LABEL) as Employment[]).map((k) => <option key={k} value={k}>{EMPLOYMENT_LABEL[k]}</option>)}
+                    </select>
+                    {s.employment === 'part_time' && (
+                      <input
+                        key={`${s.id}-${s.weeklyHours ?? ''}`}
+                        aria-label={`${s.name} 주 소정근로시간`}
+                        type="number"
+                        step="0.5"
+                        min="1"
+                        max="60"
+                        placeholder="주 h"
+                        className="ta-input w-[72px] tabular"
+                        defaultValue={s.weeklyHours ?? ''}
+                        onBlur={(e) => {
+                          const v = e.target.value === '' ? null : Number(e.target.value);
+                          if (v !== s.weeklyHours) send('PATCH', { id: s.id, weeklyHours: v });
+                        }}
+                      />
+                    )}
+                  </span>
+                </td>
+                <td className="px-3 py-2">
                   <input
                     key={s.joinedOn ?? ''}
                     aria-label={`${s.name} 입사일`}
@@ -212,7 +238,8 @@ export default function StaffManager() {
                     const bal = balances.find((b) => b.staffId === s.id);
                     const remaining = leaveRemaining(bal?.total ?? null, bal?.asOf ?? null, leaveRecs.filter((r) => r.staffId === s.id));
                     // 입사일 기준 법정 발생분 — 총개수·기준일이 다르면 '적용' 버튼(주 40시간·개근 가정)
-                    const stat = s.joinedOn && today ? statutoryLeave(s.joinedOn, today) : null;
+                    const stat = s.joinedOn && today ? statutoryLeave(s.joinedOn, today, s.employment === 'part_time' ? s.weeklyHours : null) : null;
+                    const needHours = s.employment === 'part_time' && s.weeklyHours == null;
                     const differs = stat && (bal?.total !== stat.days || bal?.asOf !== stat.asOf);
                     return (
                       <span className="flex flex-col gap-1">
@@ -233,7 +260,7 @@ export default function StaffManager() {
                       </span>
                       {stat && (
                         <span className="flex items-center gap-2 whitespace-nowrap text-caption text-muted-foreground" title="근로기준법 60조 · 주 40시간 통상근로자·개근 가정. 단시간 근로자는 비례 계산이 필요합니다.">
-                          법정 {stat.days}개 · {stat.basis === 'monthly' ? `입사 ${stat.months}개월` : `${Math.floor(stat.months / 12) + 1}년차`} · 기준 {stat.asOf.slice(2).replace(/-/g, '.')}
+                          법정 {stat.days}개{stat.ratio < 1 && ` (${stat.fullDays}×${s.weeklyHours}/40)`}{needHours && ' · 주 시간 입력 시 비례'} · {stat.basis === 'monthly' ? `입사 ${stat.months}개월` : `${Math.floor(stat.months / 12) + 1}년차`} · 기준 {stat.asOf.slice(2).replace(/-/g, '.')}
                           {differs && <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => saveTotal(s.id, String(stat.days), stat.asOf)}>적용</button>}
                         </span>
                       )}
@@ -280,7 +307,7 @@ export default function StaffManager() {
             ))}
             {!list.length && (
               <tr className="border-t border-border">
-                <td colSpan={10} className="px-3 py-4 text-body text-muted-foreground">해당하는 근무자가 없습니다.</td>
+                <td colSpan={11} className="px-3 py-4 text-body text-muted-foreground">해당하는 근무자가 없습니다.</td>
               </tr>
             )}
           </tbody>

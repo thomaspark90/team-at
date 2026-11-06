@@ -230,15 +230,32 @@ describe('연차 법정 발생(입사일 기준)', () => {
     expect(fullMonthsBetween('2026-11-10', '2026-11-06')).toBe(0);
   });
   it('1년 미만은 달마다 1개(최대 11), 기준일은 입사일', () => {
-    expect(statutoryLeave('2026-09-22', '2026-11-06')).toEqual({ days: 1, asOf: '2026-09-22', basis: 'monthly', months: 1 });
+    expect(statutoryLeave('2026-09-22', '2026-11-06')).toMatchObject({ days: 1, asOf: '2026-09-22', basis: 'monthly', months: 1 });
     expect(statutoryLeave('2025-11-20', '2026-11-06')?.days).toBe(11);
     expect(statutoryLeave('2026-12-01', '2026-11-06')).toBeNull();
   });
   it('1년 이상은 15개, 3년차부터 2년마다 1개, 최대 25, 기준일은 기념일', () => {
-    expect(statutoryLeave('2025-11-05', '2026-11-06')).toEqual({ days: 15, asOf: '2026-11-05', basis: 'annual', months: 12 });
+    expect(statutoryLeave('2025-11-05', '2026-11-06')).toMatchObject({ days: 15, asOf: '2026-11-05', basis: 'annual', months: 12 });
     expect(statutoryLeave('2023-11-05', '2026-11-06')?.days).toBe(16); // 3년차
     expect(statutoryLeave('2021-11-05', '2026-11-06')?.days).toBe(17); // 5년차
     expect(statutoryLeave('2000-01-01', '2026-11-06')?.days).toBe(25);
     expect(addYears('2024-02-29', 1)).toBe('2025-02-28');
+  });
+});
+
+import { proratedDays } from '@/lib/schedule/leave';
+
+describe('파트타임 연차 비례', () => {
+  it('주 소정근로시간/40 비례, 0.5 단위 올림, 15시간 미만은 0, 40 이상·미입력은 그대로', () => {
+    expect(proratedDays(15, 20)).toEqual({ days: 7.5, ratio: 0.5 });
+    expect(proratedDays(15, 24)).toEqual({ days: 9, ratio: 0.6 });
+    expect(proratedDays(11, 16)).toEqual({ days: 4.5, ratio: 0.4 });
+    expect(proratedDays(15, 14)).toEqual({ days: 0, ratio: 0 });
+    expect(proratedDays(15, 40).days).toBe(15);
+    expect(proratedDays(15, null).days).toBe(15);
+  });
+  it('statutoryLeave 에 주 시간을 주면 비례된 개수와 통상 개수를 함께 준다', () => {
+    const s = statutoryLeave('2025-11-05', '2026-11-06', 20)!;
+    expect([s.days, s.fullDays, s.ratio]).toEqual([7.5, 15, 0.5]);
   });
 });

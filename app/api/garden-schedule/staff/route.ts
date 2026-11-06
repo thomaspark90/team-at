@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { badRequest, dbError, isStore, requireScheduleEditor } from '@/lib/schedule/access';
 import { toStaff } from '@/lib/schedule/queries';
 import { loadTags } from '@/lib/schedule/tags';
+import { isEmployment } from '@/lib/schedule/types';
 import { isYmd, kstToday } from '@/lib/teaching/kst';
 import { NAME_RE, isSimpleEmail, normalizeName } from '@/lib/account/simple-login';
 import { isOwner } from '@/lib/finance/access';
@@ -38,7 +39,7 @@ async function linkableAccounts(svc: SupabaseClient, staff: { id: unknown; user_
 export async function GET() {
   const a = await requireScheduleEditor();
   if (a instanceof NextResponse) return a;
-  const { data, error } = await a.svc.from('schedule_staff').select('id, name, home_store, stores, joined_on, active, roles, duty_tag, user_id').order('name');
+  const { data, error } = await a.svc.from('schedule_staff').select('id, name, home_store, stores, joined_on, active, roles, duty_tag, user_id, employment, weekly_hours').order('name');
   if (error) return dbError(error);
   const userIds = (data ?? []).map((s) => s.user_id).filter(Boolean) as string[];
   const { data: profiles } = userIds.length
@@ -144,6 +145,14 @@ export async function PATCH(req: Request) {
       }
     }
     patch.user_id = b.userId;
+  }
+  if (b?.employment !== undefined) {
+    if (!isEmployment(b.employment)) return badRequest('고용 형태가 올바르지 않습니다.');
+    patch.employment = b.employment;
+  }
+  if (b?.weeklyHours !== undefined) {
+    if (b.weeklyHours !== null && !(typeof b.weeklyHours === 'number' && b.weeklyHours > 0 && b.weeklyHours <= 60)) return badRequest('주 소정근로시간은 0 초과 60 이하입니다.');
+    patch.weekly_hours = b.weeklyHours;
   }
   if (b?.joinedOn !== undefined) {
     if (b.joinedOn !== null && !isYmd(b.joinedOn)) return badRequest('입사일이 올바르지 않습니다.');
