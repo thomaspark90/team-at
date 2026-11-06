@@ -71,7 +71,7 @@ export default function ScheduleBoard() {
   const rows: Staff[] = useMemo(() => {
     if (!week) return [];
     const onDuty = new Set([...planShifts, ...actualShifts].filter((s) => s.store === store).map((s) => s.staffId));
-    return week.staff.filter((p) => onDuty.has(p.id) || addedIds.includes(p.id) || (editor && p.active && p.homeStore === store));
+    return week.staff.filter((p) => onDuty.has(p.id) || addedIds.includes(p.id) || (editor && p.active && p.stores.includes(store)));
   }, [week, planShifts, actualShifts, store, addedIds, editor]);
   const addable = week ? week.staff.filter((p) => p.active && !rows.some((r) => r.id === p.id)) : [];
 

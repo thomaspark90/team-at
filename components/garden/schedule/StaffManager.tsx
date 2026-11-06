@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import SegmentControl from '@/components/nav/SegmentControl';
 import SignupRequests from './SignupRequests';
+import StoreToggles from './StoreToggles';
 import { needsActiveCheck } from '@/lib/schedule/time';
 import { STORES, type StoreId } from '@/lib/types';
 import { DUTY_TAGS, STAFF_ROLES, type Staff, type StaffRole } from '@/lib/schedule/types';
 
-// 직원 명부 화면 — 추가·이름·지점·입사일·재직. 삭제는 없다(지난 기록을 지키기 위해 재직만 끈다).
+// 직원 명부 화면 — 추가·이름·기본 지점·근무 지점·입사일·재직. 삭제는 없다(지난 기록을 지키기 위해 재직만 끈다).
 type Row = Staff & { userId: string | null; lastWorked: string | null; account: 'login' | 'roster' | null };
 type Account = { userId: string; name: string | null; label: string; linkedStaffId: number | null };
 
@@ -48,7 +49,7 @@ export default function StaffManager() {
 
   if (!rows) return error ? <p className="m-0 text-body text-destructive">{error}</p> : <p className="m-0 text-body text-muted-foreground">불러오는 중…</p>;
 
-  const inStore = rows.filter((r) => store === 'all' || r.homeStore === store);
+  const inStore = rows.filter((r) => store === 'all' || r.stores.includes(store));
   const list = inStore.filter((r) => status === 'all' || (status === 'active' ? r.active : !r.active));
   const activeCount = inStore.filter((r) => r.active).length;
 
@@ -68,7 +69,7 @@ export default function StaffManager() {
           onSelect={(id) => setStatus(id as StatusFilter)}
         />
         <SegmentControl
-          ariaLabel="기본 지점"
+          ariaLabel="근무 지점"
           items={[{ id: 'all', label: '전 지점' }, ...STORES.map((s) => ({ id: s.id, label: s.short }))]}
           value={store}
           onSelect={(id) => setStore(id as 'all' | StoreId)}
@@ -96,6 +97,7 @@ export default function StaffManager() {
             <tr className="text-left text-caption text-muted-foreground">
               <th className="px-3 py-2 font-normal">이름</th>
               <th className="px-3 py-2 font-normal">기본 지점</th>
+              <th className="px-3 py-2 font-normal">근무 지점</th>
               <th className="px-3 py-2 font-normal">역할</th>
               <th className="px-3 py-2 font-normal">책임 태그</th>
               <th className="px-3 py-2 font-normal">입사일</th>
@@ -125,6 +127,10 @@ export default function StaffManager() {
                   <select aria-label={`${s.name} 지점`} className="ta-input w-[90px]" value={s.homeStore} onChange={(e) => send('PATCH', { id: s.id, homeStore: e.target.value })}>
                     {STORES.map((x) => <option key={x.id} value={x.id}>{x.short}</option>)}
                   </select>
+                </td>
+                <td className="px-3 py-2">
+                  {/* 근무 지점 — 고른 지점의 근무표에 행으로 나온다. 기본 지점은 고정 */}
+                  <StoreToggles name={s.name} stores={s.stores} homeStore={s.homeStore} onChange={(stores) => send('PATCH', { id: s.id, stores })} />
                 </td>
                 <td className="px-3 py-2">
                   {/* 역할 토글 — 여러 개 선택. 시간대별 인원의 역할 줄이 이 값을 읽는다 */}
@@ -204,7 +210,7 @@ export default function StaffManager() {
             ))}
             {!list.length && (
               <tr className="border-t border-border">
-                <td colSpan={8} className="px-3 py-4 text-body text-muted-foreground">해당하는 근무자가 없습니다.</td>
+                <td colSpan={9} className="px-3 py-4 text-body text-muted-foreground">해당하는 근무자가 없습니다.</td>
               </tr>
             )}
           </tbody>

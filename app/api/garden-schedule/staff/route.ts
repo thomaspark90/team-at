@@ -32,12 +32,13 @@ async function linkableAccounts(svc: SupabaseClient, staff: { id: unknown; user_
     .sort((a, b) => a.label.localeCompare(b.label, 'ko'));
 }
 
-// 직원 명부(운영진 전용) — 재직·이름의 정본. GET / POST { name, homeStore } / PATCH { id, name?, homeStore?, joinedOn?, active?, roles?, dutyTag?, userId? }.
+// 직원 명부(운영진 전용) — 재직·이름의 정본. GET / POST { name, homeStore } / PATCH { id, name?, homeStore?, stores?, joinedOn?, active?, roles?, dutyTag?, userId? }.
+// stores(근무 지점)는 기본 지점을 항상 포함한다 — 기본 지점을 바꾸면 자동으로 넣고, 빼려 하면 거절.
 // 기록 보존을 위해 삭제는 없다(재직 끄기). 계정이 연결돼 있으면 이름·지점을 맞추고, 재직을 끄면 로그인을 막는다.
 export async function GET() {
   const a = await requireScheduleEditor();
   if (a instanceof NextResponse) return a;
-  const { data, error } = await a.svc.from('schedule_staff').select('id, name, home_store, joined_on, active, roles, duty_tag, user_id').order('name');
+  const { data, error } = await a.svc.from('schedule_staff').select('id, name, home_store, stores, joined_on, active, roles, duty_tag, user_id').order('name');
   if (error) return dbError(error);
   const userIds = (data ?? []).map((s) => s.user_id).filter(Boolean) as string[];
   const { data: profiles } = userIds.length
@@ -78,7 +79,7 @@ export async function POST(req: Request) {
   const name = String(b?.name ?? '').trim();
   if (!name) return badRequest('이름을 입력하세요.');
   if (!isStore(b?.homeStore)) return badRequest('지점을 선택하세요.');
-  const { data, error } = await a.svc.from('schedule_staff').insert({ name, home_store: b.homeStore }).select().single();
+  const { data, error } = await a.svc.from('schedule_staff').insert({ name, home_store: b.homeStore, stores: [b.homeStore] }).select().single();
   if (error?.code === '23505') return NextResponse.json({ error: '이미 있는 이름입니다.' }, { status: 409 });
   if (error) return dbError(error);
   // 교육 명부 등에 같은 이름의 계정이 이미 있으면 연결
@@ -93,7 +94,7 @@ export async function PATCH(req: Request) {
   const b = await req.json().catch(() => ({}));
   const id = Number(b?.id);
   if (!Number.isInteger(id)) return badRequest('근무자를 선택하세요.');
-  const { data: cur } = await a.svc.from('schedule_staff').select('name, home_store, active, user_id').eq('id', id).maybeSingle();
+  const { data: cur } = await a.svc.from('schedule_staff').select('name, home_store, stores, active, user_id').eq('id', id).maybeSingle();
   if (!cur) return NextResponse.json({ error: '근무자를 찾을 수 없습니다.' }, { status: 404 });
   const userId = cur.user_id as string | null;
   const patch: Record<string, unknown> = {};
@@ -101,6 +102,19 @@ export async function PATCH(req: Request) {
   if (b?.homeStore !== undefined) {
     if (!isStore(b.homeStore)) return badRequest('지점이 올바르지 않습니다.');
     patch.home_store = b.homeStore;
+  }
+  if (b?.stores !== undefined) {
+    if (!Array.isArray(b.stores) || !b.stores.length || !b.stores.every(isStore)) return badRequest('근무 지점을 하나 이상 선택하세요.');
+    patch.stores = Array.from(new Set(b.stores));
+  }
+  {
+    const home = (patch.home_store ?? cur.home_store) as string;
+    const curStores: string[] = Array.isArray(cur.stores) && cur.stores.length ? cur.stores : [cur.home_store];
+    if (patch.stores) {
+      if (!(patch.stores as string[]).includes(home)) return badRequest('기본 지점은 근무 지점에서 뺄 수 없습니다.');
+    } else if (patch.home_store && !curStores.includes(home)) {
+      patch.stores = [...curStores, home];
+    }
   }
   if (b?.roles !== undefined) {
     if (!Array.isArray(b.roles) || !b.roles.every(isStaffRole)) return badRequest('역할이 올바르지 않습니다.');
@@ -162,10 +176,12 @@ export async function PATCH(req: Request) {
   if (error?.code === '23505') return NextResponse.json({ error: '이미 있는 이름입니다.' }, { status: 409 });
   if (error) return dbError(error);
 
-  if (userId && (profileName || patch.home_store)) {
+  if (userId && (profileName || patch.home_store || patch.stores)) {
     const profilePatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (profileName) profilePatch.display_name = profileName;
-    if (patch.home_store && patch.home_store !== cur.home_store) {
+    if (patch.stores) {
+      profilePatch.stores = patch.stores; // 명부의 근무 지점이 계정 지점의 정본
+    } else if (patch.home_store && patch.home_store !== cur.home_store) {
       // 계정의 지점은 여러 개일 수 있어, 예전 기본 지점만 새 지점으로 바꾼다
       const { data: p } = await a.svc.from('profiles').select('stores').eq('user_id', userId).maybeSingle();
       if (p) {

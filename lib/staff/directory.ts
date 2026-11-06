@@ -32,7 +32,7 @@ export async function ensureStaffLink(
   const { error } = row
     ? await svc.from('schedule_staff').update({ user_id: a.userId, active: true }).eq('id', row.id)
     : a.create !== false && a.store
-      ? await svc.from('schedule_staff').insert({ name: a.name, home_store: a.store, user_id: a.userId })
+      ? await svc.from('schedule_staff').insert({ name: a.name, home_store: a.store, stores: [a.store], user_id: a.userId })
       : { error: null };
   if (error) console.error('직원 명부 연결 실패:', a.name, error.message);
 }

@@ -54,7 +54,8 @@ export const isDutyTag = (v: unknown): v is DutyTag => DUTY_TAGS.some((t) => t.k
 export interface Staff {
   id: number;
   name: string;
-  homeStore: StoreId;
+  homeStore: StoreId; // 기본 지점 — 체크리스트 담당 판정·명부 정렬 기준
+  stores: StoreId[]; // 근무 지점 — 이 지점들의 근무표에 행으로 나온다. 기본 지점을 항상 포함
   joinedOn: string | null;
   active: boolean;
   roles: StaffRole[];
