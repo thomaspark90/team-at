@@ -52,7 +52,8 @@ export default function HourlyStrip({ days, shifts, staff }: { days: string[]; s
                     <>
                       <div className="text-caption font-medium tabular">{c.ids.length}명</div>
                       {/* 역할별 인원 요약 — 두 역할인 사람은 두 역할에 다 센다(맡을 수 있는 사람 수) */}
-                      <div className="text-caption tabular leading-tight text-muted-foreground">
+                      {/* 칸 폭(약 70px)보다 길어 줄바꿈 — 높이를 3줄로 고정해야 아래 이름 줄이 칸마다 같은 높이에서 시작한다 */}
+                      <div className="h-[42px] overflow-hidden whitespace-normal break-keep text-caption tabular leading-[14px] text-muted-foreground">
                         {c.summary}
                         {c.none > 0 && <span className="text-amber-600">{c.summary ? ' ' : ''}미지정{c.none}</span>}
                       </div>
