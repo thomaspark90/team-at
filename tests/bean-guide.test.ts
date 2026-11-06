@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { COUNTRY_SUMMARIES, rowsForCountry } from '@/lib/garden/bean-guide/countries';
 import { ALTITUDE_FINDINGS, MYTH_CHECKS, QUALITY_FACTORS } from '@/lib/garden/bean-guide/factors';
-import { BOP_RECORDS, FARMS } from '@/lib/garden/bean-guide/farms';
+import { FARMS, FARMS_BY_COUNTRY } from '@/lib/garden/bean-guide/farms';
 import { MENU_NAMES, NAME_TERMS } from '@/lib/garden/bean-guide/names';
 import { ORIGIN_GROUPS } from '@/lib/garden/bean-guide/origins';
 import { PROCESS_GROUPS, PROCESS_RULES } from '@/lib/garden/bean-guide/processes';
@@ -10,7 +10,6 @@ import { BEAN_SOURCES } from '@/lib/garden/bean-guide/sources';
 const cited = [
   ...ORIGIN_GROUPS.flatMap((g) => g.rows.flatMap((r) => r.src)),
   ...FARMS.flatMap((f) => f.src),
-  ...BOP_RECORDS.map((r) => r.src),
   ...MENU_NAMES.flatMap((n) => n.src),
   ...NAME_TERMS.flatMap((t) => t.src),
   ...ALTITUDE_FINDINGS.flatMap((f) => f.src),
@@ -50,11 +49,9 @@ describe('원두에 대한 이해 데이터', () => {
     }
   });
 
-  it('Best of Panama 파운드 값을 kg 로 환산한다', () => {
-    for (const r of BOP_RECORDS) {
-      const lb = r.original.match(/USD ([\d,.]+)\/lb/);
-      if (lb) expect(r.usdPerKg).toBeCloseTo(Number(lb[1].replace(/,/g, '')) * 2.2046, -1);
-    }
+  it('모든 농장이 국가 목록에 한 번씩 들어간다', () => {
+    expect(FARMS_BY_COUNTRY.flatMap((c) => c.farms)).toHaveLength(FARMS.length);
+    for (const c of FARMS_BY_COUNTRY) expect(c.farms.length).toBeGreaterThan(0);
   });
 
   it('우리 메뉴 10종을 모두 해독한다', () => {

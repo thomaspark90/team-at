@@ -118,7 +118,6 @@ export const BEAN_SOURCES: BeanSource[] = [
   { id: 'dcn-2020', cite: 'Daily Coffee News (2020), Finca Sophia', url: 'https://dailycoffeenews.com/2020/09/18/finca-sophia-coffee-earns-record-breaking-1300-per-pound-at-best-of-panama', grade: 'B' },
   { id: 'dcn-2024', cite: 'Daily Coffee News (2024), Best of Panama', url: 'https://dailycoffeenews.com/2024/08/15/best-of-panama-shatters-price-records-with-627-per-pound-average', grade: 'B' },
   { id: 'dcn-gesha', cite: 'Daily Coffee News (2022), Gesha Village 자체 경매', url: 'https://dailycoffeenews.com/2022/07/13/top-coffee-earns-254-per-pound-at-gesha-village-coffee-estate-auction', grade: 'B' },
-  { id: 'stir-2023', cite: 'STiR (2023), Best of Panama', url: 'https://stir-tea-coffee.com/tea-coffee-news/panamanian-geisha-wins-record-high-price-of-10-005-per-kilog', grade: 'C' },
   { id: 'cm-2025', cite: 'Coffee Magazine (2025), Best of Panama', url: 'https://magazine.coffee/blog/1/6985/new-record-breaking-high-price-paid-at-best-of-panama-auction-2025', grade: 'B' },
   { id: 'np-2026', cite: 'Newsroom Panama (2026), Best of Panama', url: 'https://newsroompanama.com/2026/09/24/18000-per-kilo-generating-more-than-3-million-in-sales-at-the-best-of-panama-auction-not-gold-or-silver-it-is-panamanian-coffee/', grade: 'B' },
   { id: 'esmeralda', cite: 'Hacienda La Esmeralda 공식 사이트(농장 자체 서술)', url: 'https://haciendaesmeralda.com/our-story/', grade: 'B' },

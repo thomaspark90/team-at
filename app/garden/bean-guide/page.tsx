@@ -4,7 +4,7 @@ import PageShell from '@/components/PageShell';
 import GardenNav from '@/components/garden/GardenNav';
 import BeanCite from '@/components/garden/bean-guide/BeanCite';
 import { AltitudeChain, AltitudeFindings, FactorTable, LatitudeTable, MythTable } from '@/components/garden/bean-guide/FactorTables';
-import { BopTable, FarmTable } from '@/components/garden/bean-guide/FarmTables';
+import FarmList from '@/components/garden/bean-guide/FarmTables';
 import { MenuNameTable, NameAnatomy, NameTerms, ReadingSteps } from '@/components/garden/bean-guide/NameGuide';
 import OriginTables from '@/components/garden/bean-guide/OriginTables';
 import { HoneyTable, ProcessRules, ProcessTables } from '@/components/garden/bean-guide/ProcessGuide';
@@ -37,14 +37,7 @@ export default function GardenBeanGuidePage() {
 
         <section>
           <Heading>유명 농장</Heading>
-          <FarmTable />
-          <div className="mt-8">
-            <Sub>Best of Panama 최고가</Sub>
-            <div className="ta-prose">
-              <BopTable />
-            </div>
-            <Note>소량 랏의 경매 기록이라 희소성과 입찰 경쟁이 포함된 값이며, 떼루아의 측정치가 아닙니다. 세금 포함 여부는 출처에 없습니다.</Note>
-          </div>
+          <FarmList />
         </section>
 
         <section>
