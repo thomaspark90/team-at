@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import SegmentControl from '@/components/nav/SegmentControl';
+import SignupRequests from './SignupRequests';
 import { needsActiveCheck } from '@/lib/schedule/time';
 import { STORES, type StoreId } from '@/lib/types';
 import type { Staff } from '@/lib/schedule/types';
@@ -50,6 +51,8 @@ export default function StaffManager() {
   const activeCount = inStore.filter((r) => r.active).length;
 
   return (
+    <div className="space-y-6">
+    <SignupRequests onChanged={load} />
     <section className="ta-panel space-y-6">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <SegmentControl
@@ -163,5 +166,6 @@ export default function StaffManager() {
         </table>
       </div>
     </section>
+    </div>
   );
 }

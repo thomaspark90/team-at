@@ -1,4 +1,4 @@
-import { honorific, staffLabel } from '@/lib/staff/names';
+import { honorific, rosterMatch, staffLabel } from '@/lib/staff/names';
 import { describe, it, expect } from 'vitest';
 import { effectiveActual, fmtSegment, hourlyCounts, hoursOf, leaveRemaining, needsActiveCheck, segmentError, substituteBalance, weekDays, weekStartOf } from '@/lib/schedule/time';
 import { namesInCell, parseCsv, parseGrid, parseJoined, parseLeave, segmentsByName } from '@/lib/schedule/sheet-parse';
@@ -140,6 +140,11 @@ describe('직원 이름 표시', () => {
   it('후보가 둘이거나 없으면 원본 그대로', () => {
     expect(staffLabel('지호', rows)).toBe('지호');
     expect(staffLabel('홍길동', rows)).toBe('홍길동');
+  });
+  it('가입 신청 대조는 정확히 같은 이름만', () => {
+    expect(rosterMatch('김소진', rows)).toBe('active');
+    expect(rosterMatch('한승희', rows)).toBe('left');
+    expect(rosterMatch('소진', rows)).toBe('none');
   });
   it('님 표기가 겹치지 않는다', () => {
     expect(honorific('김소진')).toBe('김소진님');

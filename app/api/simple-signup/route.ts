@@ -6,14 +6,14 @@ import { SIMPLE_ACCOUNT_TABS } from '@/lib/garden/tabs';
 
 export const runtime = 'nodejs';
 
-// 간편 계정 가입 신청 — { name(한글 3글자), pin(6자리), email?(연락용, 선택) }. 세션 없이 호출(PUBLIC_API).
+// 간편 계정 가입 신청 — { name(한글·영문 2~12자), pin(6자리), email?(연락용, 선택) }. 세션 없이 호출(PUBLIC_API).
 // 계정은 만들되 status='pending' 이라 로그인은 막힌다. 대표가 /settings 에서 역할·지점을 지정해 승인하면 열린다.
-// 도배 방어: 이름 정확히 3글자 + 고유, 승인 대기 상한(MAX_PENDING).
+// 도배 방어: 이름 규칙 + 고유, 승인 대기 상한(MAX_PENDING).
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const name = normalizeName(body?.name);
   const pin = String(body?.pin ?? '');
-  if (!SIGNUP_NAME_RE.test(name)) return NextResponse.json({ error: '이름은 성을 포함한 한글 3글자로 적어주세요.' }, { status: 400 });
+  if (!SIGNUP_NAME_RE.test(name)) return NextResponse.json({ error: '이름은 성을 포함해 한글 또는 영문 2~12자로 적어주세요.' }, { status: 400 });
   if (!PIN_RE.test(pin)) return NextResponse.json({ error: '비밀번호는 숫자 6자리입니다.' }, { status: 400 });
   // 연락용 이메일(선택) — 승인 알림 수신처. 여기서는 저장만 하고 메일은 승인 때만 보낸다(열린 엔드포인트라 임의 주소 발송 금지).
   const contactEmail = normalizeContactEmail(body?.email);

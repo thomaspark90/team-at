@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 // 간편 로그인 — 이름 + 숫자 6자리. 스탭·매니저용.
 //  · 로그인: 로그인 API 가 세션 쿠키를 심으면 그대로 이동(첫 로그인은 비밀번호 변경 화면으로).
-//  · 가입 신청: 이름(성 포함 3글자) + 본인이 정한 6자리 + 연락 이메일(선택, 승인 알림용). 담당자가 설정에서 역할·지점을 지정해 승인해야 로그인이 열린다.
+//  · 가입 신청: 이름(성 포함, 한글·영문 2~12자) + 본인이 정한 6자리 + 연락 이메일(선택, 승인 알림용). 담당자가 설정에서 역할·지점을 지정해 승인해야 로그인이 열린다.
 
 const pinField = (value: string, set: (v: string) => void, placeholder: string, autoComplete: string) => (
   <input
@@ -73,7 +73,7 @@ export default function SimpleLoginForm() {
     }
   };
 
-  const nameOk = mode === 'login' ? !!name.trim() : /^[가-힣]{3}$/.test(name.trim());
+  const nameOk = mode === 'login' ? !!name.trim() : /^(?=.{2,12}$)[가-힣a-zA-Z]+(?: [가-힣a-zA-Z]+)*$/.test(name.trim().replace(/\s+/g, ' '));
   const ready = nameOk && pin.length === 6 && (mode === 'login' || confirm.length === 6);
 
   return (
@@ -95,10 +95,10 @@ export default function SimpleLoginForm() {
         <div className="space-y-2">
           <input
             className="ta-input w-full"
-            placeholder="이름 (성 포함 3글자)"
+            placeholder="이름 (성 포함)"
             autoComplete="username"
             value={name}
-            maxLength={3}
+            maxLength={12}
             onChange={(e) => setName(e.target.value)}
           />
           {pinField(pin, setPin, '비밀번호 — 숫자 6자리', 'new-password')}

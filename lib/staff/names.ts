@@ -6,6 +6,14 @@ export interface StaffNameRow {
   active: boolean;
 }
 
+export type RosterMatch = 'active' | 'left' | 'none';
+
+/** 가입 신청 이름과 명부 대조 — 정확히 같은 이름만 일치로 본다(추정 연결 없음). */
+export function rosterMatch(name: string, rows: StaffNameRow[]): RosterMatch {
+  const hit = rows.find((r) => r.name === name);
+  return !hit ? 'none' : hit.active ? 'active' : 'left';
+}
+
 export const leftLabel = (name: string) => `${name}(퇴사)`;
 
 /** 명부에서 사람 찾기 — 정확히 같은 이름, 없으면 뒤가 일치하는 사람이 한 명뿐일 때만(소진 → 김소진). */

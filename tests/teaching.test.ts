@@ -26,11 +26,17 @@ describe('간편 로그인 — 입력 규칙', () => {
     expect(normalizeName('  박  연재 ')).toBe('박 연재');
   });
 
-  it('자가 가입 이름은 성 포함 한글 정확히 3글자', () => {
+  it('자가 가입 이름은 한글·영문 2~12자, 단어 사이 공백 허용', () => {
     expect(SIGNUP_NAME_RE.test('박연재')).toBe(true);
-    expect(SIGNUP_NAME_RE.test('박연')).toBe(false);
+    expect(SIGNUP_NAME_RE.test('남궁민수')).toBe(true);
+    expect(SIGNUP_NAME_RE.test('이진')).toBe(true);
+    expect(SIGNUP_NAME_RE.test('Kim')).toBe(true);
+    expect(SIGNUP_NAME_RE.test('John Smith')).toBe(true);
+    expect(SIGNUP_NAME_RE.test('박')).toBe(false);
     expect(SIGNUP_NAME_RE.test('박연재(판교)')).toBe(false);
-    expect(SIGNUP_NAME_RE.test('Kim')).toBe(false);
+    expect(SIGNUP_NAME_RE.test('abc123')).toBe(false);
+    expect(SIGNUP_NAME_RE.test('<b>kim</b>')).toBe(false);
+    expect(SIGNUP_NAME_RE.test('가나다라마바사아자차카타파')).toBe(false);
   });
 
   it('내부 이메일은 팀 도메인이라 미들웨어 허용을 통과하고, 판별도 된다', () => {

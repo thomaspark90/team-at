@@ -26,8 +26,8 @@ export function pinToPassword(email: string, pin: string): string {
 
 // 표시 이름: 한글·영문·숫자·공백·괄호, 1~12자 — "박연재(판교)"처럼 동명이인 구분 허용(대표 발급·수정용)
 export const NAME_RE = /^[가-힣a-zA-Z0-9 ()]{1,12}$/;
-// 자가 가입 이름: 성 포함 한글 3글자 정확히(2026-09-07 대표 결정) — 동명이인은 승인 때 대표가 구분해 고친다
-export const SIGNUP_NAME_RE = /^[가-힣]{3}$/;
+// 자가 가입 이름: 한글·영문 2~12자, 단어 사이 공백 허용(2026-11-06 대표 결정) — 동명이인은 대표가 설정에서 구분해 고친다
+export const SIGNUP_NAME_RE = /^(?=.{2,12}$)[가-힣a-zA-Z]+(?: [가-힣a-zA-Z]+)*$/;
 // 승인 대기 상한 — 공개 가입 엔드포인트 도배 방어
 export const MAX_PENDING = 50;
 export const normalizeName = (s: unknown) => String(s ?? '').replace(/\s+/g, ' ').trim();
