@@ -3,7 +3,7 @@ import { fmtMd } from '@/lib/teaching/kst';
 import { hourlyStaff, roleCountsOf } from '@/lib/schedule/time';
 import { STAFF_ROLES, type Shift, type Staff, type StaffRole } from '@/lib/schedule/types';
 
-// 시간대별 인원 — 날짜마다 6~22시 칸에 전체 인원수·이름, 그 아래 역할별 줄(바리스타·파티쉐·콜드·핫·디쉬).
+// 시간대별 인원 — 날짜마다 6~22시 칸에 전체 인원수, 그 아래 역할별 줄(바리스타·파티쉐·콜드·핫·디쉬)에 이름. 줄 사이는 가로선.
 // 역할 줄은 '그 역할을 맡을 수 있는 사람' 수라, 두 역할을 가진 사람은 두 줄에 다 들어간다.
 const FROM = 6;
 const TO = 22;
@@ -43,27 +43,25 @@ export default function HourlyStrip({ days, shifts, staff }: { days: string[]; s
                 {hours.map((ids, i) => {
                   const list = names(ids);
                   return (
-                    <td key={i} className="px-1 py-2 align-top" title={list.length ? `${HOURS[i]}시 ${list.length}명: ${list.join(', ')}` : undefined}>
-                      {list.length > 0 && (
-                        <>
-                          <div className="text-caption font-medium tabular">{list.length}명</div>
-                          {list.map((n) => (
-                            <div key={n} className="break-keep text-caption leading-tight text-muted-foreground">{n}</div>
-                          ))}
-                        </>
-                      )}
+                    <td key={i} className="px-1 py-2 align-top text-caption font-medium tabular" title={list.length ? `${HOURS[i]}시 ${list.length}명: ${list.join(', ')}` : undefined}>
+                      {list.length > 0 && `${list.length}명`}
                     </td>
                   );
                 })}
               </tr>
               {roleRows.map((r) => (
-                <tr key={`${d}-${r.key}`}>
-                  <td className={`py-[2px] pr-2 text-caption ${r.key === 'none' ? 'text-amber-600' : 'text-muted-foreground'}`}>{r.label}</td>
-                  {r.cells.map((ids, i) => (
-                    <td key={i} className="px-1 py-[2px] text-caption tabular text-muted-foreground" title={ids.length ? `${r.label} ${ids.length}명: ${names(ids).join(', ')}` : undefined}>
-                      {ids.length > 0 ? ids.length : ''}
-                    </td>
-                  ))}
+                <tr key={`${d}-${r.key}`} className="border-t border-border/60">
+                  <td className={`py-2 pr-2 align-top text-caption ${r.key === 'none' ? 'text-amber-600' : 'text-muted-foreground'}`}>{r.label}</td>
+                  {r.cells.map((ids, i) => {
+                    const list = names(ids);
+                    return (
+                      <td key={i} className="px-1 py-2 align-top">
+                        {list.map((n) => (
+                          <div key={n} className="break-keep text-caption leading-tight text-muted-foreground">{n}</div>
+                        ))}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </Fragment>
