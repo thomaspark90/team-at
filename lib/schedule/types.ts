@@ -30,13 +30,14 @@ export interface Shift extends Partial<Segment> {
 }
 
 // 근무자 역할 — 한 사람이 여러 역할을 맡을 수 있다(예: 바리스타 + 콜드파트). key 는 DB 저장값이라 바꾸지 않는다.
-// short 는 시간대별 표에서 이름 옆에 붙는 약자.
+// 2026-11-06 대표 결정: 제빵·제과·콜드·핫·커피 다섯 가지(한 글자 약자는 분간이 안 돼 표에도 이 이름을 그대로 쓴다).
+// 'pastry' 키는 처음에 '파티쉐'로 쓰던 값 — 제과로 둔다. 'dish'(디쉬)는 제외.
 export const STAFF_ROLES = [
-  { key: 'barista', label: '바리스타', short: '바' },
-  { key: 'pastry', label: '파티쉐', short: '파' },
-  { key: 'cold', label: '콜드파트', short: '콜' },
-  { key: 'hot', label: '핫파트', short: '핫' },
-  { key: 'dish', label: '디쉬', short: '디' },
+  { key: 'bread', label: '제빵' },
+  { key: 'pastry', label: '제과' },
+  { key: 'cold', label: '콜드' },
+  { key: 'hot', label: '핫' },
+  { key: 'barista', label: '커피' },
 ] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number]['key'];
 export const isStaffRole = (v: unknown): v is StaffRole => STAFF_ROLES.some((r) => r.key === v);

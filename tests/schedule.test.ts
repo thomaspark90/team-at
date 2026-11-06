@@ -155,7 +155,7 @@ describe('직원 이름 표시', () => {
 
 describe('역할별 인원', () => {
   it('두 역할을 가진 사람은 두 줄에 다 세고, 역할 없으면 미지정', () => {
-    const rolesOf = new Map<number, ('barista' | 'cold' | 'pastry' | 'hot' | 'dish')[]>([[1, ['barista', 'cold']], [2, ['pastry']], [3, []]]);
+    const rolesOf = new Map<number, ('barista' | 'cold' | 'pastry' | 'hot' | 'bread')[]>([[1, ['barista', 'cold']], [2, ['pastry']], [3, []]]);
     const r = roleCountsOf([1, 2, 3], rolesOf);
     expect(r.barista).toEqual([1]);
     expect(r.cold).toEqual([1]);
