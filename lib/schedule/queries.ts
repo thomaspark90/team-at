@@ -13,6 +13,7 @@ export const toStaff = (r: any): Staff => ({
   joinedOn: r.joined_on,
   active: r.active,
   roles: Array.isArray(r.roles) ? r.roles : [],
+  dutyTag: r.duty_tag ?? null,
 });
 
 const toShift = (r: any): Shift => ({
