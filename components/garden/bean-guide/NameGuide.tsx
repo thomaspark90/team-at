@@ -9,9 +9,6 @@ const Cell = ({ value }: { value: string }) => (
   <span className={value.startsWith('(') ? 'text-muted-foreground' : ''}>{value || '—'}</span>
 );
 
-const CHECK_CODE = /`([^`]+)`/g;
-const Check = ({ text }: { text: string }) => <>{text.replace(CHECK_CODE, '‘$1’')}</>;
-
 const FIELDS: { key: keyof MenuName; label: string }[] = [
   { key: 'country', label: '국가' },
   { key: 'region', label: '지역' },
@@ -62,7 +59,6 @@ export function MenuNameTable() {
               {FIELDS.map((f) => (
                 <th key={f.key} className={th}>{f.label}</th>
               ))}
-              <th className={`${th} w-64`}>확인 필요</th>
             </tr>
           </thead>
           <tbody>
@@ -77,7 +73,6 @@ export function MenuNameTable() {
                     <Cell value={String(n[f.key] ?? '')} />
                   </td>
                 ))}
-                <td className={`${td} text-muted-foreground`}>{n.check ? <Check text={n.check} /> : '—'}</td>
               </tr>
             ))}
           </tbody>
@@ -100,11 +95,6 @@ export function MenuNameTable() {
                 </div>
               ))}
             </dl>
-            {n.check && (
-              <p className="mb-0 mt-1.5 text-caption text-muted-foreground">
-                확인 필요: <Check text={n.check} />
-              </p>
-            )}
           </article>
         ))}
       </div>
