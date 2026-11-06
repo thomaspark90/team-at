@@ -1,5 +1,6 @@
 import { FARMS_BY_COUNTRY, FARMS_SHOWN, type Farm } from '@/lib/garden/bean-guide/farms';
 import BeanCite from './BeanCite';
+import { MoreDetails } from './MoreDetails';
 
 const ROW_GRID = 'lg:grid lg:grid-cols-[15rem_11rem_10rem_minmax(0,1fr)] lg:gap-x-4';
 
@@ -43,18 +44,11 @@ export default function FarmList() {
                 <FarmRow key={f.name} farm={f} />
               ))}
               {rest.length > 0 && (
-                <details className="group">
-                  <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 py-2 text-caption text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
-                    <span className="group-open:hidden">더 보기 {rest.length}곳</span>
-                    <span className="hidden group-open:inline">접기</span>
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true" className="transition-transform group-open:rotate-180">
-                      <path d="M2.5 4.5 6 8l3.5-3.5" />
-                    </svg>
-                  </summary>
+                <MoreDetails label={`더 보기 ${rest.length}곳`}>
                   {rest.map((f) => (
                     <FarmRow key={f.name} farm={f} />
                   ))}
-                </details>
+                </MoreDetails>
               )}
             </section>
           );

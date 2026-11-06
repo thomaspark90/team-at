@@ -1,5 +1,9 @@
 import { ALTITUDE_CHAIN, ALTITUDE_FINDINGS, ALTITUDE_MEASURES, LATITUDE_BANDS, MYTH_CHECKS, QUALITY_FACTORS, REVIEW_COUNTS } from '@/lib/garden/bean-guide/factors';
 import BeanCite from './BeanCite';
+import { MoreDetails } from './MoreDetails';
+
+// 각 목록에서 먼저 보여줄 개수. 데이터 순서가 곧 우선순위다.
+const SHOWN = 4;
 
 const th = 'px-3 py-1.5 text-left text-caption font-normal text-muted-foreground first:pl-0';
 const td = 'border-t border-border px-3 py-1.5 align-top text-body first:pl-0';
@@ -55,52 +59,49 @@ export function LatitudeTable() {
   );
 }
 
+const FACTOR_GRID = 'lg:grid lg:grid-cols-[7rem_minmax(0,1fr)_18rem] lg:gap-x-4';
+
+function FactorRow({ f }: { f: (typeof QUALITY_FACTORS)[number] }) {
+  return (
+    <article className={`border-t border-border py-3 lg:py-2 ${FACTOR_GRID}`}>
+      <h4 className="m-0 text-body font-medium lg:font-normal">{f.name}</h4>
+      <p className="m-0 mt-1 break-words text-body lg:mt-0">
+        {f.finding}
+        <BeanCite ids={f.src} />
+      </p>
+      <p className="m-0 mt-1 text-caption text-muted-foreground lg:mt-0 lg:text-body">
+        <span className="lg:hidden">스탭 설명: </span>
+        {f.say}
+      </p>
+    </article>
+  );
+}
+
 export function FactorTable() {
+  const rest = QUALITY_FACTORS.slice(SHOWN);
   return (
     <>
-      <div className="hidden lg:block">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>
-              <th className={`${th} w-28`}>요소</th>
-              <th className={th}>확인된 내용</th>
-              <th className={`${th} w-72`}>스탭 설명</th>
-            </tr>
-          </thead>
-          <tbody>
-            {QUALITY_FACTORS.map((f) => (
-              <tr key={f.name}>
-                <td className={td}>{f.name}</td>
-                <td className={td}>
-                  {f.finding}
-                  <BeanCite ids={f.src} />
-                </td>
-                <td className={`${td} text-muted-foreground`}>{f.say}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className={`hidden pb-1.5 text-caption text-muted-foreground ${FACTOR_GRID}`}>
+        <span>요소</span>
+        <span>확인된 내용</span>
+        <span>스탭 설명</span>
       </div>
-      <div className="lg:hidden">
-        {QUALITY_FACTORS.map((f) => (
-          <article key={f.name} className="border-t border-border py-3">
-            <h4 className="m-0 text-body font-medium">{f.name}</h4>
-            <p className="m-0 mt-1 break-words text-body">
-              {f.finding}
-              <BeanCite ids={f.src} />
-            </p>
-            <p className="m-0 mt-1 text-caption text-muted-foreground">스탭 설명: {f.say}</p>
-          </article>
+      {QUALITY_FACTORS.slice(0, SHOWN).map((f) => (
+        <FactorRow key={f.name} f={f} />
+      ))}
+      <MoreDetails label={`더 보기 ${rest.length}개`}>
+        {rest.map((f) => (
+          <FactorRow key={f.name} f={f} />
         ))}
-      </div>
+      </MoreDetails>
     </>
   );
 }
 
-export function MythTable() {
+function MythList({ items }: { items: typeof MYTH_CHECKS }) {
   return (
     <dl className="m-0 grid gap-x-8 lg:grid-cols-2">
-      {MYTH_CHECKS.map((m) => (
+      {items.map((m) => (
         <div key={m.claim} className="border-t border-border py-2">
           <dt className="text-body font-medium">{m.claim}</dt>
           <dd className="m-0 mt-0.5 break-words text-body text-muted-foreground">
@@ -113,44 +114,50 @@ export function MythTable() {
   );
 }
 
-export function AltitudeMeasures() {
+export function MythTable() {
+  const rest = MYTH_CHECKS.slice(SHOWN);
   return (
     <>
-      <div className="hidden lg:block">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>
-              <th className={`${th} w-36`}>항목</th>
-              <th className={th}>측정 결과</th>
-              <th className={th}>주의</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ALTITUDE_MEASURES.map((m) => (
-              <tr key={m.item}>
-                <td className={td}>{m.item}</td>
-                <td className={td}>
-                  {m.result}
-                  <BeanCite ids={m.src} />
-                </td>
-                <td className={`${td} text-muted-foreground`}>{m.caution}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <MythList items={MYTH_CHECKS.slice(0, SHOWN)} />
+      <MoreDetails label={`더 보기 ${rest.length}개`}>
+        <MythList items={rest} />
+      </MoreDetails>
+    </>
+  );
+}
+
+const MEASURE_GRID = 'lg:grid lg:grid-cols-[9rem_minmax(0,1.4fr)_minmax(0,1fr)] lg:gap-x-4';
+
+function MeasureRow({ m }: { m: (typeof ALTITUDE_MEASURES)[number] }) {
+  return (
+    <article className={`border-t border-border py-3 lg:py-2 ${MEASURE_GRID}`}>
+      <h4 className="m-0 text-body font-medium lg:font-normal">{m.item}</h4>
+      <p className="m-0 mt-1 break-words text-body lg:mt-0">
+        {m.result}
+        <BeanCite ids={m.src} />
+      </p>
+      <p className="m-0 mt-1 text-caption text-muted-foreground lg:mt-0 lg:text-body">{m.caution}</p>
+    </article>
+  );
+}
+
+export function AltitudeMeasures() {
+  const rest = ALTITUDE_MEASURES.slice(SHOWN);
+  return (
+    <>
+      <div className={`hidden pb-1.5 text-caption text-muted-foreground ${MEASURE_GRID}`}>
+        <span>항목</span>
+        <span>측정 결과</span>
+        <span>주의</span>
       </div>
-      <div className="lg:hidden">
-        {ALTITUDE_MEASURES.map((m) => (
-          <article key={m.item} className="border-t border-border py-3">
-            <h4 className="m-0 text-body font-medium">{m.item}</h4>
-            <p className="m-0 mt-1 break-words text-body">
-              {m.result}
-              <BeanCite ids={m.src} />
-            </p>
-            <p className="m-0 mt-1 text-caption text-muted-foreground">{m.caution}</p>
-          </article>
+      {ALTITUDE_MEASURES.slice(0, SHOWN).map((m) => (
+        <MeasureRow key={m.item} m={m} />
+      ))}
+      <MoreDetails label={`더 보기 ${rest.length}개`}>
+        {rest.map((m) => (
+          <MeasureRow key={m.item} m={m} />
         ))}
-      </div>
+      </MoreDetails>
     </>
   );
 }

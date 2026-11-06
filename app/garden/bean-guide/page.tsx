@@ -5,9 +5,13 @@ import GardenNav from '@/components/garden/GardenNav';
 import BeanCite from '@/components/garden/bean-guide/BeanCite';
 import { AltitudeChain, AltitudeFindings, AltitudeMeasures, FactorTable, LatitudeTable, MythTable, ReviewCounts } from '@/components/garden/bean-guide/FactorTables';
 import FarmList from '@/components/garden/bean-guide/FarmTables';
+import Glossary from '@/components/garden/bean-guide/Glossary';
+import { FoldedSection } from '@/components/garden/bean-guide/MoreDetails';
 import { MenuNameTable, NameAnatomy, NameTerms, ReadingSteps } from '@/components/garden/bean-guide/NameGuide';
 import OriginTables from '@/components/garden/bean-guide/OriginTables';
 import { HoneyTable, ProcessRules, ProcessTables } from '@/components/garden/bean-guide/ProcessGuide';
+import SectionNav from '@/components/garden/bean-guide/SectionNav';
+import { GLOSSARY_ID } from '@/lib/garden/bean-guide/sections';
 import { BEAN_SOURCES } from '@/lib/garden/bean-guide/sources';
 
 // 원두에 대한 이해 — 스탭 교육·현장 참고용. 데이터는 lib/garden/bean-guide.
@@ -27,21 +31,22 @@ export default function GardenBeanGuidePage() {
         <h1 className="m-0 text-display">원두에 대한 이해</h1>
         <div className="ta-prose mt-3 text-body text-muted-foreground">산지, 농장, 이름, 가공, 재배 조건으로 원두를 읽는 법을 정리했습니다.</div>
       </header>
+      <SectionNav />
       <div className="space-y-16 pb-10 sm:space-y-24 sm:pb-20">
-        <section>
+        <section id="bean-origin" className="scroll-mt-28">
           <Heading>원산지별 떼루아</Heading>
           <Lead>국가를 누르면 지역별 내용이 펼쳐집니다. 풍미는 측정값이 아니라 자주 묘사되는 표현이고, ‘—’는 신뢰할 값을 찾지 못한 칸입니다.</Lead>
           <OriginTables />
           <Note>국가 요약은 조사한 지역 값을 묶은 대략적인 범위입니다. 근거 A는 법령·공공 기관·논문, B는 수입사·로스터·업계지, C는 출처 미표기 자료 또는 검색 요약입니다.</Note>
         </section>
 
-        <section>
+        <section id="bean-farm" className="scroll-mt-28">
           <Heading>유명 농장</Heading>
           <Lead>대회 성적과 가격은 해당 연도의 한 랏 기록이며, 농장의 순위가 아닙니다. ‘—’는 확인하지 못한 값입니다.</Lead>
           <FarmList />
         </section>
 
-        <section>
+        <section id="bean-name" className="scroll-mt-28">
           <Heading>커피 이름 읽는 법</Heading>
           <Lead>이름의 순서는 법으로 정해진 형식이 아니라 로스터의 관행입니다.</Lead>
           <NameAnatomy />
@@ -59,7 +64,7 @@ export default function GardenBeanGuidePage() {
           </div>
         </section>
 
-        <section>
+        <section id="bean-process" className="scroll-mt-28">
           <Heading>가공 방식</Heading>
           <Lead>이름이 같아도 시간과 온도는 생산자마다 다릅니다. 표의 숫자는 표준이 아니라 사례로 읽어주세요.</Lead>
           <ProcessTables />
@@ -79,7 +84,7 @@ export default function GardenBeanGuidePage() {
           </div>
         </section>
 
-        <section>
+        <section id="bean-altitude" className="scroll-mt-28">
           <Heading>고도와 기타 요소</Heading>
           <Lead>고도 자체보다 서늘한 기온이 핵심으로 보입니다. 아래 흐름은 경향이며, 전체 과정을 한 연구에서 인과로 증명한 사례는 찾지 못했습니다.</Lead>
           <AltitudeChain />
@@ -92,26 +97,6 @@ export default function GardenBeanGuidePage() {
             <Note>지역을 비교한 연구가 많아 품종, 가공, 농장 관리 차이가 함께 섞일 수 있습니다.</Note>
           </div>
           <div className="mt-10">
-            <Sub>
-              요인별 연구 방향
-              <BeanCite ids={['ahmed']} />
-            </Sub>
-            <div className="ta-prose">
-              <ReviewCounts />
-            </div>
-            <Note>문헌고찰 73편 중 요인별로 센 값입니다. 관능 방향을 밝힌 연구만 셌고 효과 크기나 요인 순위는 아닙니다. 물 스트레스는 양방향을 보고한 1편이 더 있습니다.</Note>
-          </div>
-          <div className="mt-10">
-            <Sub>
-              위도에 따라 달라지는 고도 기준
-              <BeanCite ids={['wcr-bourbon']} />
-            </Sub>
-            <div className="ta-prose">
-              <LatitudeTable />
-            </div>
-            <Note>재배 적합 기준입니다. 같은 ‘높음’이라도 기온이 같다는 측정값은 아닙니다.</Note>
-          </div>
-          <div className="mt-10">
             <Sub>그 밖의 요소</Sub>
             <FactorTable />
           </div>
@@ -119,7 +104,30 @@ export default function GardenBeanGuidePage() {
             <Sub>자주 듣는 말 점검</Sub>
             <MythTable />
           </div>
+          <FoldedSection title="요인별 연구 방향" className="mt-10">
+            <div className="ta-prose">
+              <ReviewCounts />
+            </div>
+            <Note>
+              문헌고찰 73편 중 요인별로 센 값입니다. 관능 방향을 밝힌 연구만 셌고 효과 크기나 요인 순위는 아닙니다. 물 스트레스는 양방향을 보고한 1편이 더 있습니다.
+              <BeanCite ids={['ahmed']} />
+            </Note>
+          </FoldedSection>
+          <FoldedSection title="위도에 따라 달라지는 고도 기준" className="mt-4">
+            <div className="ta-prose">
+              <LatitudeTable />
+            </div>
+            <Note>
+              재배 적합 기준입니다. 같은 ‘높음’이라도 기온이 같다는 측정값은 아닙니다.
+              <BeanCite ids={['wcr-bourbon']} />
+            </Note>
+          </FoldedSection>
         </section>
+
+        <FoldedSection id={GLOSSARY_ID} title="용어 풀이" className="scroll-mt-28" titleClassName="text-title">
+          <Glossary />
+          <Note>일반적인 뜻을 짧게 풀어 쓴 설명이며 별도 출처를 달지 않았습니다. 수치 근거는 각 표의 출처를 따릅니다.</Note>
+        </FoldedSection>
 
         <details id="bean-sources" className="group">
           <summary className="flex w-fit cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
