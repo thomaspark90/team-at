@@ -69,7 +69,7 @@ export async function loadDay(svc: SupabaseClient, date: string, actor: Checklis
   if (checksRes.error) throw new Error(checksRes.error.message);
   if (reopensRes.error) throw new Error(reopensRes.error.message);
 
-  const openStores = STORES.map((s) => s.id).filter((s) => isEnabledStore(s));
+  const openStores = STORES.map((s) => s.id).filter((s) => editor || isEnabledStore(s));
   const cards: ChecklistCard[] = [];
   const takeoverOptions: ChecklistDay['takeoverOptions'] = [];
   const unlinked = new Set<string>();
@@ -84,10 +84,11 @@ export async function loadDay(svc: SupabaseClient, date: string, actor: Checklis
       });
       members.filter((m) => !m.linked).forEach((m) => unlinked.add(m.name));
       const onCrew = staffId != null && crew.memberIds.includes(staffId);
-      if (date === today && !onCrew && !run?.submitted_at && canTakeOver(actor, store)) takeoverOptions.push({ store, shiftType });
+      if (date === today && isEnabledStore(store) && !onCrew && !run?.submitted_at && canTakeOver(actor, store)) takeoverOptions.push({ store, shiftType });
       if (!editor && !(onCrew && date === today)) continue;
       // 운영 시작 전 지난 날짜에 기록도 없으면 카드를 만들지 않는다
-      if (!run && date < today && date < (STORE_START[store] ?? '')) continue;
+      const start = STORE_START[store];
+      if (!run && date < today && (!start || date < start)) continue;
       const snapshot = run?.submitted_at ? (run.items_snapshot as ChecklistItem[] | null) : null;
       cards.push({
         store,
@@ -160,7 +161,7 @@ export async function openRun(
   input: { store: StoreId; date: string; shiftType: ShiftType },
 ): Promise<{ runId: number } | { error: string; status: number }> {
   if (input.date !== kstToday()) return { error: '오늘 체크리스트만 기록할 수 있습니다.', status: 400 };
-  if (!isEnabledStore(input.store) || isClosedDay(input.store, input.date)) return { error: '오늘 이 지점은 체크리스트가 없습니다.', status: 400 };
+  if ((!isEnabledStore(input.store) && !actor.editor) || isClosedDay(input.store, input.date)) return { error: '오늘 이 지점은 체크리스트가 없습니다.', status: 400 };
   if (!actor.editor && !(await isOnCrew(svc, input.store, input.date, input.shiftType, actor.staffId))) {
     return { error: '오늘 이 체크리스트의 담당이 아닙니다.', status: 403 };
   }

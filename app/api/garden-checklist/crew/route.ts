@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   if (!b || !isStore(b.store) || !isYmd(b.date) || (b.shiftType !== 'open' && b.shiftType !== 'close')) return badRequest('요청이 올바르지 않습니다.');
   const { store, date, shiftType } = b;
   const today = kstToday();
-  if (!isEnabledStore(store) || isClosedDay(store, date)) return badRequest('이 날짜·지점은 체크리스트가 없습니다.');
+  if ((!isEnabledStore(store) && !a.editor) || isClosedDay(store, date)) return badRequest('이 날짜·지점은 체크리스트가 없습니다.');
 
   const { data: run, error: runErr } = await a.svc.from('checklist_runs').select('submitted_at').eq('store', store).eq('work_date', date).eq('shift_type', shiftType).maybeSingle();
   if (runErr) return dbError(runErr);
