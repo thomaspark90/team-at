@@ -2,11 +2,14 @@
 
 import { CartesianGrid, LabelList, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
-  RATIO_STEPS,
   SCHMIEDER_FIT,
   VOLATILES,
   VOLATILE_TIMES,
+  TIME_DOMAIN,
+  TIME_STEPS,
+  TIME_TICKS,
   formatRatio,
+  formatTimeTick,
   ratioToSeconds,
   relativeConcentration,
   type CompoundKey,
@@ -46,7 +49,7 @@ function ValueTip({ active, payload, label, heading, unit }: any) {
 
 export function ConcentrationChart() {
   const keys = Object.keys(SCHMIEDER_FIT) as CompoundKey[];
-  const data = RATIO_STEPS.map((ratio) => {
+  const data = TIME_STEPS.map((ratio) => {
     const row: Record<string, number> = { ratio };
     keys.forEach((k) => (row[k] = relativeConcentration(k, ratio * 20)));
     return row;
@@ -55,7 +58,7 @@ export function ConcentrationChart() {
     <ResponsiveContainer width="100%" height={220}>
       <LineChart data={data} margin={{ top: 24, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid vertical={false} stroke={GRID} />
-        <XAxis dataKey="ratio" type="number" domain={[0, 3]} ticks={[0, 1, 2, 3]} tickFormatter={formatRatio} tick={axisTick} stroke={GRID} />
+        <XAxis dataKey="ratio" type="number" domain={TIME_DOMAIN} ticks={TIME_TICKS} interval={0} tickFormatter={formatTimeTick} tick={axisTick} stroke={GRID} />
         <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={GRID} width={44} />
         <Tooltip
           content={<ValueTip unit="%" heading={(r: number) => `${formatRatio(r)} · 약 ${Math.round(ratioToSeconds(r))}초`} />}
@@ -83,7 +86,7 @@ export function VolatileChart() {
     <ResponsiveContainer width="100%" height={220}>
       <LineChart data={data} margin={{ top: 24, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid vertical={false} stroke={GRID} />
-        <XAxis dataKey="t" type="number" domain={[0, 26]} ticks={[0, 6, 10, 15, 20, 26]} tickFormatter={(v) => `${v}초`} tick={axisTick} stroke={GRID} />
+        <XAxis dataKey="t" type="number" domain={[0, 26]} ticks={[0, 6, 10, 15, 20, 26]} tickFormatter={(v) => `${v}s`} tick={axisTick} stroke={GRID} />
         <YAxis domain={[0, 1]} ticks={[0, 0.25, 0.5, 0.75, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} tick={axisTick} stroke={GRID} width={44} />
         <Tooltip
           content={<ValueTip unit="" heading={(t: number) => `펌프 시작 후 ${t}초`} />}

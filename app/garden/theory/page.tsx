@@ -40,11 +40,11 @@ export default function GardenTheoryPage() {
       </header>
       <div className="space-y-16 pb-10 sm:space-y-24 sm:pb-20">
         <section>
-          <Heading>배전도별 맛의 변화</Heading>
+          <Heading>배전도별 추출 양상</Heading>
           <p className="ta-prose m-0 mb-2 text-body text-muted-foreground">실선은 측정 근거가 있는 모양, 점선은 해석입니다. 측정값이 아니라서 눈금이 없습니다.</p>
           <RoastFlavorCharts />
           <Note>
-            1:1, 1:2, 1:3은 First drop 후 약 11초, 21초, 32초입니다(원두 20 g 기준). 구간별 시음 연구를 찾지 못해 곡선 모양은 세 배전도가 같고, 높이는 일부만 수치 근거가 있으며<TheoryCite ids={['shi']} /> 나머지는 연구의 방향을 따라 임의로 정했습니다.
+            시간은 원두 20 g, 약 1.9 g/초로 환산한 참고값으로 머신과 분쇄도에 따라 달라집니다. 1:1, 1:2, 1:3은 약 11초, 21초, 32초입니다. 구간별 시음 연구를 찾지 못해 곡선 모양은 세 배전도가 같고, 높이는 일부만 수치 근거가 있으며<TheoryCite ids={['shi']} /> 나머지는 연구의 방향을 따라 임의로 정했습니다.
           </Note>
         </section>
 

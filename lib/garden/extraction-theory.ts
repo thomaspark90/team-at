@@ -144,6 +144,12 @@ export const RATIO_STEPS = Array.from({ length: 61 }, (_, i) => i * 0.05);
 
 export const formatRatio = (r: number) => (r === 0 ? 'First drop' : `1:${Number(r.toFixed(2))}`);
 
+// 비율 축 위에 놓는 시간 눈금. 원두 20 g, 약 1.9 g/초로 환산한 위치다.
+export const TIME_TICKS = [0, 10, 20, 30].map((s) => (s * FLOW_G_PER_S) / DOSE_G);
+export const TIME_DOMAIN: [number, number] = [0, TIME_TICKS[3]];
+export const TIME_STEPS = RATIO_STEPS.filter((r) => r <= TIME_DOMAIN[1] + 1e-9);
+export const formatTimeTick = (r: number) => (r === 0 ? 'First drop' : `${Math.round(ratioToSeconds(r))}s`);
+
 // ── 출처 ──
 // access: 원문 = 본문 열람 / 초록 = 초록·요약만 열람 / 간접 = 다른 글의 소개로 확인
 export type TheorySource = {

@@ -4,10 +4,13 @@ import { useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
   FLAVORS,
-  RATIO_STEPS,
   ROASTS,
   flavorAt,
+  TIME_DOMAIN,
+  TIME_STEPS,
+  TIME_TICKS,
   formatRatio,
+  formatTimeTick,
   ratioToSeconds,
   type FlavorKey,
   type RoastKey,
@@ -37,7 +40,7 @@ function FlavorTip({ active, payload, label }: any) {
 }
 
 function RoastChart({ roast, focus }: { roast: RoastKey; focus: FlavorKey | null }) {
-  const data = RATIO_STEPS.map((ratio) => ({ ratio, ...flavorAt(roast, ratio) }));
+  const data = TIME_STEPS.map((ratio) => ({ ratio, ...flavorAt(roast, ratio) }));
   return (
     <ResponsiveContainer width="100%" height={210}>
       <LineChart data={data} margin={{ top: 4, right: 16, bottom: 0, left: 30 }}>
@@ -45,10 +48,10 @@ function RoastChart({ roast, focus }: { roast: RoastKey; focus: FlavorKey | null
         <XAxis
           dataKey="ratio"
           type="number"
-          domain={[0, 3]}
-          ticks={[0, 1, 2, 3]}
+          domain={TIME_DOMAIN}
+          ticks={TIME_TICKS}
           interval={0}
-          tickFormatter={formatRatio}
+          tickFormatter={formatTimeTick}
           tick={axisTick}
           stroke={GRID}
         />
