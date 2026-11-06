@@ -72,6 +72,12 @@ export function hourlyCounts(shifts: Shift[], fromHour: number, toHour: number):
   });
 }
 
+/** 재직으로 표시됐는데 오래 근무가 없는 사람 — 재직 여부 확인 안내용. 기록이 아예 없으면(신규) 대상 아님. */
+export function needsActiveCheck(active: boolean, lastWorked: string | null, today: string, days = 30): boolean {
+  if (!active || !lastWorked) return false;
+  return lastWorked < addDays(today, -days);
+}
+
 /** 잔여 연차 = 총개수 − 기준일 이후 연차 사용. 총개수 미입력이면 null. */
 export function leaveRemaining(
   total: number | null,

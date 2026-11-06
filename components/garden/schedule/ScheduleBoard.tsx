@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import SegmentControl from '@/components/nav/SegmentControl';
 import { addDays, fmtMd, kstToday } from '@/lib/teaching/kst';
 import { effectiveActual, fmtSegment, weekStartOf } from '@/lib/schedule/time';
@@ -9,7 +10,6 @@ import type { Segment, ShiftKind, Staff, WeekData } from '@/lib/schedule/types';
 import WeekGrid from './WeekGrid';
 import ShiftEditor, { type CellTarget } from './ShiftEditor';
 import HourlyStrip from './HourlyStrip';
-import RosterPanel from './RosterPanel';
 import LeavePanel from './LeavePanel';
 import ShareLinkPanel from './ShareLinkPanel';
 
@@ -204,10 +204,7 @@ export default function ScheduleBoard() {
             <summary className="cursor-pointer text-body">연차·휴무 ›</summary>
             <div className="mt-4 overflow-x-auto"><LeavePanel staff={week.staff} /></div>
           </details>
-          <details className="ta-panel">
-            <summary className="cursor-pointer text-body">근무자 명부 ›</summary>
-            <div className="mt-4 overflow-x-auto"><RosterPanel staff={week.staff} onChanged={load} /></div>
-          </details>
+          <Link href="/garden/schedule/staff" className="ta-panel block text-body">근무자 명부 · 재직 관리 ›</Link>
         </div>
       )}
 

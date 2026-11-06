@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { effectiveActual, fmtSegment, hourlyCounts, hoursOf, leaveRemaining, segmentError, substituteBalance, weekDays, weekStartOf } from '@/lib/schedule/time';
+import { effectiveActual, fmtSegment, hourlyCounts, hoursOf, leaveRemaining, needsActiveCheck, segmentError, substituteBalance, weekDays, weekStartOf } from '@/lib/schedule/time';
 import { namesInCell, parseCsv, parseGrid, parseJoined, parseLeave, segmentsByName } from '@/lib/schedule/sheet-parse';
 import type { Shift } from '@/lib/schedule/types';
 
@@ -57,6 +57,17 @@ describe('시간대별 인원', () => {
   it('30분 걸침도 세고 한 사람은 한 번만', () => {
     const r = hourlyCounts([shift({ start: 450, end: 540 }), shift({ id: 2, staffId: 2, start: 480, end: 540 })], 7, 10);
     expect(r).toEqual([1, 2, 0]);
+  });
+});
+
+describe('재직 확인 안내', () => {
+  it('재직인데 30일 넘게 근무가 없으면 안내', () => {
+    expect(needsActiveCheck(true, '2026-10-06', '2026-11-06')).toBe(true);
+    expect(needsActiveCheck(true, '2026-10-07', '2026-11-06')).toBe(false);
+  });
+  it('퇴사 처리됐거나 기록이 없는 신규는 대상 아님', () => {
+    expect(needsActiveCheck(false, '2026-01-01', '2026-11-06')).toBe(false);
+    expect(needsActiveCheck(true, null, '2026-11-06')).toBe(false);
   });
 });
 
