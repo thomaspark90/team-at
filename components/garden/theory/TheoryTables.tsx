@@ -106,7 +106,7 @@ export function CupTable() {
   const metrics: { label: string; value: (c: (typeof rows)[number]) => string }[] = [
     { label: 'First drop 후', value: (c) => `약 ${Math.round(c.seconds)}초` },
     { label: '수율(%)', value: (c) => c.yieldPct.toFixed(1) },
-    { label: '잔 농도 TDS(%)', value: (c) => c.cupTdsPct.toFixed(1) },
+    { label: '잔 농도(%)', value: (c) => c.cupTdsPct.toFixed(1) },
     { label: '트리고넬린 회수(%)', value: (c) => c.trigonellineShare.toFixed(0) },
     { label: '5-CQA 회수(%)', value: (c) => c.cqaShare.toFixed(0) },
     { label: '카페인 회수(%)', value: (c) => c.caffeineShare.toFixed(0) },

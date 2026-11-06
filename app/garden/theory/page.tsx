@@ -29,15 +29,16 @@ export default function GardenTheoryPage() {
   return (
     <PageShell
       nav={<GardenNav />}
-      title="커피 추출 이론"
-      subtitle={
-        <>
+    >
+      {/* 이 페이지만 여백을 넓게 쓴다 — PageShell 공통 제목 줄 대신 직접 그린다 */}
+      <header className="mb-16 pt-6 sm:mb-24 sm:pt-14">
+        <h1 className="m-0 text-display">커피 추출 이론</h1>
+        <div className="ta-prose mt-3 text-body text-muted-foreground">
           모든 성분은 First drop에 가장 진하고, 줄어드는 속도만 다릅니다.
           <TheoryCite ids={['schmieder', 'gute']} />
-        </>
-      }
-    >
-      <div className="space-y-10">
+        </div>
+      </header>
+      <div className="space-y-16 pb-10 sm:space-y-24 sm:pb-20">
         <section>
           <Heading>배전도별 맛의 변화</Heading>
           <p className="ta-prose m-0 mb-2 text-body text-muted-foreground">실선은 측정 근거가 있는 모양, 점선은 해석입니다. 측정값이 아니라서 눈금이 없습니다.</p>
