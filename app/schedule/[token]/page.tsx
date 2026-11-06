@@ -8,6 +8,7 @@ import { addDays, fmtMd, isYmd, kstToday } from '@/lib/teaching/kst';
 import { STORES, type StoreId } from '@/lib/types';
 import ScheduleDayList from '@/components/garden/schedule/ScheduleDayList';
 import PublishAck from '@/components/garden/schedule/PublishAck';
+import MyLeave from '@/components/garden/schedule/MyLeave';
 
 const fmtAt = (iso: string) => new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
@@ -78,6 +79,7 @@ export default async function SharedSchedulePage({ params, searchParams }: { par
         ) : (
           <p className="text-body text-muted-foreground">이 주는 아직 배포된 스케줄이 없습니다.</p>
         )}
+        <div className="mt-8"><MyLeave token={params.token} /></div>
         <p className="mt-10 text-caption text-muted-foreground">이 링크는 외부로 전달하지 마세요.</p>
       </div>
     </main>

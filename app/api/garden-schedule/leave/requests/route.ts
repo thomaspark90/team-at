@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 
 // 연차 신청(운영진 전용 — 지금은 대신 접수). GET / POST { staffId, date, type, note } / PATCH { id, action: approve|reject, note? }
 // 승인 = leave_records 에 기록 + 상태 approved. 같은 날 같은 종류 기록이 이미 있으면 기록은 두고 승인만 표시한다.
+// 승인하면 그날 계획 근무는 지운다(연차/병가/오프 = 근무 없음). 계획이 들어 있으면 force 없이는 409 로 알려 확인을 받는다.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const toReq = (r: any): LeaveRequest => ({
   id: Number(r.id),
@@ -64,6 +65,12 @@ export async function PATCH(req: Request) {
   if (!cur) return NextResponse.json({ error: '신청을 찾을 수 없습니다.' }, { status: 404 });
   if (cur.status !== 'pending') return NextResponse.json({ error: '이미 처리된 신청입니다.' }, { status: 409 });
   if (b.action === 'approve') {
+    const { data: planned } = await a.svc.from('schedule_shifts').select('id, store').eq('staff_id', cur.staff_id).eq('work_date', cur.leave_date).eq('kind', 'plan');
+    if (planned?.length) {
+      if (b?.force !== true) return NextResponse.json({ error: '그날 계획 근무가 들어 있습니다.', conflict: planned.length, stores: Array.from(new Set(planned.map((p) => p.store))) }, { status: 409 });
+      const { error: dErr } = await a.svc.from('schedule_shifts').delete().in('id', planned.map((p) => p.id));
+      if (dErr) return dbError(dErr);
+    }
     const { error } = await a.svc
       .from('leave_records')
       .insert({ staff_id: cur.staff_id, leave_date: cur.leave_date, type: cur.type, note: cur.note });
@@ -74,5 +81,5 @@ export async function PATCH(req: Request) {
     .update({ status: b.action === 'approve' ? 'approved' : 'rejected', decided_by: a.email, decided_at: new Date().toISOString(), decision_note: String(b?.note ?? '').trim() })
     .eq('id', id);
   if (error) return dbError(error);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, removedShifts: b.action === 'approve' ? Number(b?.force === true) : 0 });
 }

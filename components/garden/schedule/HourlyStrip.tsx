@@ -44,6 +44,7 @@ export default function HourlyStrip({
   roles,
   store,
   onStaffChanged,
+  leadWarn,
 }: {
   days: string[];
   shifts: Shift[];
@@ -51,6 +52,7 @@ export default function HourlyStrip({
   roles: TagDef[];
   store: StoreId;
   onStaffChanged?: () => Promise<void> | void; // 있으면 운영진 — 역할 편집 버튼을 보여준다
+  leadWarn?: boolean; // 책임 태그 가진 사람이 없는 시간대를 노랗게(운영진 계획 보기)
 }) {
   const [showRoles, setShowRoles] = useState(true);
   const [editingRoles, setEditingRoles] = useState(false);
@@ -70,6 +72,8 @@ export default function HourlyStrip({
   const LABEL = new Map(roles.map((r) => [r.key, r.label]));
   const LEGEND = legendOf(roles);
   const roleKeys = roles.map((r) => r.key);
+  const hasLead = new Set(staff.filter((s) => s.dutyTag).map((s) => s.id));
+  let noLeadCells = 0;
   const rows = days.map((d) => {
     const dayShifts = shifts.filter((s) => s.date === d);
     const hours = hourlyStaff(dayShifts, FROM, TO);
@@ -78,8 +82,11 @@ export default function HourlyStrip({
       d,
       cells: hours.map((ids) => {
         const byRole = roleCountsOf(ids, rolesOf, roleKeys);
+        const noLead = !!leadWarn && ids.length > 0 && !ids.some((id) => hasLead.has(id));
+        if (noLead) noLeadCells++;
         return {
           ids,
+          noLead,
           // 역할별 인원 — 두 역할인 사람은 두 역할에 다 센다(맡을 수 있는 사람 수). 역할 없는 사람은 빈 점.
           summary: [
             ...roles.filter((r) => byRole[r.key].length > 0).map((r) => ({ color: r.color ?? NONE_COLOR, label: r.label, n: byRole[r.key].length })),
@@ -94,7 +101,10 @@ export default function HourlyStrip({
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="m-0 text-title">시간대별 인원</h2>
+        <h2 className="m-0 text-title">
+          시간대별 인원
+          {leadWarn && noLeadCells > 0 && <span className="ml-3 text-caption font-normal text-amber-600" title="책임 태그(매니저 등)를 가진 사람이 아무도 없는 시간대">책임자 없는 시간대 {noLeadCells}</span>}
+        </h2>
         <div className="flex flex-wrap items-center gap-4">
           {showRoles && (
             <ul className="m-0 flex list-none items-center gap-3 p-0 text-caption text-muted-foreground" aria-label="역할 범례">
@@ -130,7 +140,7 @@ export default function HourlyStrip({
               <tr key={d} className="border-t border-border">
                 <td className="py-2 pr-2 align-top text-caption tabular text-foreground">{fmtMd(d)}</td>
                 {cells.map((c, i) => (
-                  <td key={i} className="px-1 py-2 align-top whitespace-nowrap" title={c.ids.length ? `${HOURS[i]}시 ${c.ids.length}명` : undefined}>
+                  <td key={i} className={`px-1 py-2 align-top whitespace-nowrap ${c.noLead ? 'bg-amber-500/10' : ''}`} title={c.ids.length ? `${HOURS[i]}시 ${c.ids.length}명${c.noLead ? ' · 책임자 없음' : ''}` : undefined}>
                     {c.ids.length > 0 && (
                       <>
                         <div className="text-caption font-medium tabular">{c.ids.length}명</div>

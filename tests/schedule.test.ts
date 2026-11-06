@@ -259,3 +259,27 @@ describe('파트타임 연차 비례', () => {
     expect([s.days, s.fullDays, s.ratio]).toEqual([7.5, 15, 0.5]);
   });
 });
+
+import { daysBetween, expiringLeaves, leaveExpiry, suggestWeeklyHours } from '@/lib/schedule/leave';
+
+describe('연차 소멸·주 시간 제안', () => {
+  it('소멸일은 기준일 + 1년, 30일 안이면 알림 대상(잔여 있을 때만), 가까운 순', () => {
+    expect(leaveExpiry('2025-11-20')).toBe('2026-11-20');
+    expect(daysBetween('2026-11-06', '2026-11-20')).toBe(14);
+    const out = expiringLeaves(
+      [
+        { staffId: 1, total: 15, asOf: '2025-11-20' }, // 14일 뒤 소멸, 잔여 14
+        { staffId: 2, total: 3, asOf: '2025-11-10' }, // 4일 뒤, 잔여 0 → 제외
+        { staffId: 3, total: 5, asOf: '2026-03-01' }, // 멀다 → 제외
+        { staffId: 4, total: 2, asOf: '2025-10-01' }, // 이미 지남, 잔여 2 → 포함(음수)
+      ],
+      [{ staffId: 1, type: 'annual', date: '2026-01-05' }, { staffId: 2, type: 'annual', date: '2026-01-05' }, { staffId: 2, type: 'annual', date: '2026-02-05' }, { staffId: 2, type: 'annual', date: '2026-03-05' }],
+      '2026-11-06',
+    );
+    expect(out.map((x) => [x.staffId, x.remaining, x.daysLeft])).toEqual([[4, 2, -36], [1, 14, 14]]);
+  });
+  it('주 시간 제안은 합계÷주, 0.5 반올림, 기록 없으면 null', () => {
+    expect(suggestWeeklyHours(81, 4)).toBe(20.5);
+    expect(suggestWeeklyHours(0, 4)).toBeNull();
+  });
+});

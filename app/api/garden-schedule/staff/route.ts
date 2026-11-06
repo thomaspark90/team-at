@@ -4,6 +4,8 @@ import { badRequest, dbError, isStore, requireScheduleEditor } from '@/lib/sched
 import { toStaff } from '@/lib/schedule/queries';
 import { loadTags } from '@/lib/schedule/tags';
 import { isEmployment } from '@/lib/schedule/types';
+import { suggestWeeklyHours } from '@/lib/schedule/leave';
+import { addDays } from '@/lib/teaching/kst';
 import { isYmd, kstToday } from '@/lib/teaching/kst';
 import { NAME_RE, isSimpleEmail, normalizeName } from '@/lib/account/simple-login';
 import { isOwner } from '@/lib/finance/access';
@@ -62,6 +64,25 @@ export async function GET() {
     ),
   );
   const [roleDefs, dutyDefs] = await Promise.all([loadTags(a.svc, 'role'), loadTags(a.svc, 'duty')]);
+  // 파트타이머 주 소정근로시간 제안 — 주 시간이 비어 있으면 최근 4주(어제까지) 계획 근무의 주 평균
+  const needHours = (data ?? []).filter((s) => s.employment === 'part_time' && s.weekly_hours == null && s.active).map((s) => Number(s.id));
+  const suggested = new Map<number, number | null>();
+  if (needHours.length) {
+    const { data: recent } = await a.svc
+      .from('schedule_shifts')
+      .select('staff_id, start_min, end_min')
+      .in('staff_id', needHours)
+      .eq('kind', 'plan')
+      .eq('is_off', false)
+      .gte('work_date', addDays(today, -28))
+      .lte('work_date', addDays(today, -1));
+    const hours = new Map<number, number>();
+    for (const r of recent ?? []) {
+      if (r.start_min == null || r.end_min == null) continue;
+      hours.set(Number(r.staff_id), (hours.get(Number(r.staff_id)) ?? 0) + (r.end_min - r.start_min) / 60);
+    }
+    for (const id of needHours) suggested.set(id, suggestWeeklyHours(hours.get(id) ?? 0, 4));
+  }
   return NextResponse.json({
     roles: roleDefs,
     dutyTags: dutyDefs,
@@ -70,6 +91,7 @@ export async function GET() {
       userId: (s.user_id as string | null) ?? null,
       lastWorked: (last[i].data?.work_date as string | undefined) ?? null,
       account: !s.user_id ? null : rosterOnly.get(s.user_id) === false ? 'login' : 'roster',
+      suggestedWeeklyHours: suggested.get(Number(s.id)) ?? null,
     })),
     accounts: await linkableAccounts(a.svc, data ?? []),
     today,

@@ -49,7 +49,7 @@ export async function loadWeek(svc: SupabaseClient, store: StoreId, weekStart: s
   const [weeksRes, shiftsRes, staffRes, notesRes, presetsRes, leavesRes, reqRes, priorRes, acksRes, roles] = await Promise.all([
     svc.from('schedule_weeks').select('store, status, published_at, snapshot, prev_snapshot').eq('week_start', weekStart),
     svc.from('schedule_shifts').select(SHIFT_COLS).gte('work_date', days[0]).lte('work_date', days[6]).order('start_min'),
-    svc.from('schedule_staff').select('id, name, home_store, stores, joined_on, active, roles, employment, weekly_hours').order('name'),
+    svc.from('schedule_staff').select('id, name, home_store, stores, joined_on, active, roles, employment, weekly_hours, duty_tag').order('name'),
     editor
       ? svc.from('schedule_day_notes').select('work_date, note').eq('store', store).gte('work_date', days[0]).lte('work_date', days[6])
       : Promise.resolve({ data: [], error: null }),
@@ -74,7 +74,8 @@ export async function loadWeek(svc: SupabaseClient, store: StoreId, weekStart: s
   const mine = (weeksRes.data ?? []).find((w) => w.store === store);
   const all = (shiftsRes.data ?? []).map(toShift);
   const shifts = editor ? all : all.filter((s) => s.kind === 'plan' && publishedStores.has(s.store));
-  const allStaff = (staffRes.data ?? []).map(toStaff);
+  // 책임 태그는 운영진에게만(책임자 없는 시간대 경고용)
+  const allStaff = (staffRes.data ?? []).map(toStaff).map((s) => (editor ? s : { ...s, dutyTag: null }));
   const onDuty = new Set(shifts.map((s) => s.staffId));
 
   const priorDates = new Map<number, Set<string>>();

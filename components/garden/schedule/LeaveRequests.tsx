@@ -35,6 +35,11 @@ export default function LeaveRequests({ staff, onChanged }: { staff: Staff[]; on
     const r = await fetch(api, json(method, body));
     const j = await r.json().catch(() => ({}));
     setBusy(false);
+    if (r.status === 409 && j.conflict && (body as { action?: string }).action === 'approve') {
+      // 그날 계획 근무가 있다 — 지우고 승인할지 확인
+      if (window.confirm(`그날 계획 근무 ${j.conflict}건이 들어 있습니다. 근무를 지우고 승인할까요?`)) return send(method, { ...(body as object), force: true });
+      return false;
+    }
     if (!r.ok) {
       setError(j.error ?? '저장하지 못했습니다.');
       return false;
@@ -69,6 +74,7 @@ export default function LeaveRequests({ staff, onChanged }: { staff: Staff[]; on
   return (
     <div>
       <p className="ta-label">연차 신청</p>
+      <p className="m-0 mb-2 text-caption text-muted-foreground">승인하면 잔여에서 빠지고 그날 계획 근무가 지워집니다. 근무가 들어 있으면 한 번 더 묻습니다.</p>
       <form
         className="flex flex-wrap items-center gap-2"
         onSubmit={async (e) => {

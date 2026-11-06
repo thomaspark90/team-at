@@ -16,6 +16,7 @@ import HourlyStrip from './HourlyStrip';
 import LeavePanel from './LeavePanel';
 import ShareLinkPanel from './ShareLinkPanel';
 import TemplateMenu from './TemplateMenu';
+import LeaveExpiryNotice from './LeaveExpiryNotice';
 import CrewPlanner from '@/components/garden/checklist/CrewPlanner';
 import { CREW_ASSIGNMENT } from '@/lib/checklist/logic';
 
@@ -238,6 +239,7 @@ export default function ScheduleBoard() {
           )}
           {onlyActual && <button type="button" className="text-foreground" onClick={() => setView('actual')}>이 주는 실제 기록만 있습니다. 실제 보기 ›</button>}
         </div>
+        {editor && week && <LeaveExpiryNotice staff={week.staff} today={kstToday()} />}
         {error && <p className="m-0 text-body text-destructive">{error}</p>}
         {showWarnings && warnings.length > 0 && (
           <ul className="m-0 list-none space-y-1 p-0 text-caption text-amber-600">
@@ -245,7 +247,7 @@ export default function ScheduleBoard() {
           </ul>
         )}
         {week && (
-          <HourlyStrip days={week.days} shifts={shown.filter((s) => s.store === store)} staff={week.staff} roles={week.roles} store={store} onStaffChanged={editor ? load : undefined} />
+          <HourlyStrip days={week.days} shifts={shown.filter((s) => s.store === store)} staff={week.staff} roles={week.roles} store={store} onStaffChanged={editor ? load : undefined} leadWarn={editor && view === 'plan'} />
         )}
         {week ? (
           <WeekGrid
@@ -290,7 +292,7 @@ export default function ScheduleBoard() {
           </details>
           <details className="ta-panel">
             <summary className="cursor-pointer text-body">연차·휴무 ›</summary>
-            <div className="mt-4 overflow-x-auto"><LeavePanel staff={week.staff} /></div>
+            <div className="mt-4 overflow-x-auto"><LeavePanel staff={week.staff} onWeekChanged={load} /></div>
           </details>
           <Link href="/garden/schedule/staff" className="ta-panel block text-body">직원 명부 · 재직 관리 ›</Link>
         </div>

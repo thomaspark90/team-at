@@ -47,3 +47,39 @@ export function statutoryLeave(joinedOn: string, today: string, weeklyHours: num
   const years = Math.floor(months / 12);
   return build(Math.min(25, 15 + Math.floor((years - 1) / 2)), addYears(joinedOn, years), 'annual');
 }
+
+/** 두 날짜 사이 일수(to − from). */
+export const daysBetween = (from: string, to: string): number => Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000);
+
+/** 잔여 연차 소멸일 — 기준일(발생일)로부터 1년. 1년 미만 월차도 입사 1년이 되는 날 사라지므로 같은 식(기준일 = 입사일). */
+export const leaveExpiry = (asOf: string): string => addYears(asOf, 1);
+
+export interface ExpiringLeave {
+  staffId: number;
+  remaining: number;
+  expiresOn: string;
+  daysLeft: number; // 음수면 이미 지남
+}
+
+/** 소멸이 가까운(또는 지난) 잔여 연차 — 운영진 알림용. withinDays 안에 소멸하고 잔여가 있는 사람만. */
+export function expiringLeaves(
+  balances: { staffId: number; total: number; asOf: string }[],
+  records: { staffId: number; type: string; date: string }[],
+  today: string,
+  withinDays = 30,
+): ExpiringLeave[] {
+  return balances
+    .map((b) => {
+      const remaining = b.total - records.filter((r) => r.staffId === b.staffId && r.type === 'annual' && r.date >= b.asOf).length;
+      const expiresOn = leaveExpiry(b.asOf);
+      return { staffId: b.staffId, remaining, expiresOn, daysLeft: daysBetween(today, expiresOn) };
+    })
+    .filter((x) => x.remaining > 0 && x.daysLeft <= withinDays)
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+}
+
+/** 최근 근무 기록으로 주 소정근로시간 제안 — 합계 ÷ 주 수, 0.5 단위 반올림. 기록이 없으면 null. */
+export function suggestWeeklyHours(hoursTotal: number, weeks: number): number | null {
+  if (weeks <= 0 || hoursTotal <= 0) return null;
+  return Math.round((hoursTotal / weeks) * 2) / 2;
+}

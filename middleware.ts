@@ -36,6 +36,7 @@ const PUBLIC_API = [
   '/api/garden-teaching/survey/ingest', // 탈리 설문 웹훅 — tally-signature(HMAC, TALLY_WEBHOOK_SECRET) 자체 인증
   '/api/kakao-notify/queue', // 원두 발주 카톡 전송기(맥 로컬) — 토큰(x-kakao-token) 자체 인증
   '/api/schedule-link/ack', // 직원 스케줄 링크의 '확인했어요' — 공유 토큰으로 지점을 확인, 배포된 주만
+  '/api/schedule-link/leave', // 직원 스케줄 링크의 '내 연차' — 공유 토큰으로 지점 확인, 잔여·신청 상태만
 ];
 
 const isPublicApi = (p: string) => PUBLIC_API.some((a) => p === a || p.startsWith(a + '/'));

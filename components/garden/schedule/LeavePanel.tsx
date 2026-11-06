@@ -13,7 +13,7 @@ type Rec = { id: number; staffId: number; date: string; type: LeaveType; note: s
 const api = '/api/garden-schedule/leave';
 const json = (method: string, body: unknown) => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
-export default function LeavePanel({ staff }: { staff: Staff[] }) {
+export default function LeavePanel({ staff, onWeekChanged }: { staff: Staff[]; onWeekChanged?: () => void }) {
   const [balances, setBalances] = useState<Balance[]>([]);
   const [records, setRecords] = useState<Rec[]>([]);
   const [form, setForm] = useState({ staffId: '', date: kstToday(), type: 'annual' as LeaveType, note: '' });
@@ -48,7 +48,7 @@ export default function LeavePanel({ staff }: { staff: Staff[] }) {
 
   return (
     <div className="space-y-8">
-      <LeaveRequests staff={staff} onChanged={load} />
+      <LeaveRequests staff={staff} onChanged={() => { load(); onWeekChanged?.(); }} />
       <div>
       <p className="ta-label">연차·휴무 기록</p>
       <form

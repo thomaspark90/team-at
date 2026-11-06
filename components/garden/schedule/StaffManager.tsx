@@ -5,13 +5,13 @@ import SegmentControl from '@/components/nav/SegmentControl';
 import SignupRequests from './SignupRequests';
 import StoreToggles from './StoreToggles';
 import { leaveRemaining, needsActiveCheck } from '@/lib/schedule/time';
-import { statutoryLeave } from '@/lib/schedule/leave';
+import { leaveExpiry, statutoryLeave } from '@/lib/schedule/leave';
 import { STORES, type StoreId } from '@/lib/types';
 import { EMPLOYMENT_LABEL, type Employment, type Staff, type StaffRole, type TagDef } from '@/lib/schedule/types';
 import TagListEditor from './TagListEditor';
 
 // 직원 명부 화면 — 추가·이름·기본 지점·근무 지점·입사일·재직. 삭제는 없다(지난 기록을 지키기 위해 재직만 끈다).
-type Row = Staff & { userId: string | null; lastWorked: string | null; account: 'login' | 'roster' | null };
+type Row = Staff & { userId: string | null; lastWorked: string | null; account: 'login' | 'roster' | null; suggestedWeeklyHours: number | null };
 type Account = { userId: string; name: string | null; label: string; linkedStaffId: number | null };
 
 type StatusFilter = 'active' | 'left' | 'all';
@@ -202,6 +202,7 @@ export default function StaffManager() {
                       {(Object.keys(EMPLOYMENT_LABEL) as Employment[]).map((k) => <option key={k} value={k}>{EMPLOYMENT_LABEL[k]}</option>)}
                     </select>
                     {s.employment === 'part_time' && (
+                      <>
                       <input
                         key={`${s.id}-${s.weeklyHours ?? ''}`}
                         aria-label={`${s.name} 주 소정근로시간`}
@@ -217,6 +218,12 @@ export default function StaffManager() {
                           if (v !== s.weeklyHours) send('PATCH', { id: s.id, weeklyHours: v });
                         }}
                       />
+                      {s.weeklyHours == null && s.suggestedWeeklyHours != null && (
+                        <button type="button" className="whitespace-nowrap text-caption text-muted-foreground underline underline-offset-2 hover:text-foreground" title="최근 4주 계획 근무의 주 평균" onClick={() => send('PATCH', { id: s.id, weeklyHours: s.suggestedWeeklyHours })}>
+                          최근 4주 평균 {s.suggestedWeeklyHours}h 적용
+                        </button>
+                      )}
+                      </>
                     )}
                   </span>
                 </td>
@@ -257,6 +264,11 @@ export default function StaffManager() {
                           }}
                         />
                         <span className={remaining != null && remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}>/ {remaining ?? '–'}</span>
+                        {bal && remaining != null && remaining > 0 && (() => {
+                          const exp = leaveExpiry(bal.asOf);
+                          const left = today ? Math.round((Date.parse(exp) - Date.parse(today)) / 86400000) : 999;
+                          return <span className={`whitespace-nowrap text-caption ${left <= 30 ? 'text-amber-600' : 'text-muted-foreground'}`} title="기준일로부터 1년">{exp.slice(2).replace(/-/g, '.')} 소멸{left <= 30 && left >= 0 ? ` D-${left}` : left < 0 ? ' 지남' : ''}</span>;
+                        })()}
                       </span>
                       {stat && (
                         <span className="flex items-center gap-2 whitespace-nowrap text-caption text-muted-foreground" title="근로기준법 60조 · 주 40시간 통상근로자·개근 가정. 단시간 근로자는 비례 계산이 필요합니다.">
