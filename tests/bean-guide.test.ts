@@ -3,6 +3,7 @@ import { ALTITUDE_FINDINGS, MYTH_CHECKS, QUALITY_FACTORS } from '@/lib/garden/be
 import { BOP_RECORDS, FARMS } from '@/lib/garden/bean-guide/farms';
 import { MENU_NAMES, NAME_TERMS } from '@/lib/garden/bean-guide/names';
 import { ORIGIN_GROUPS } from '@/lib/garden/bean-guide/origins';
+import { PROCESS_GROUPS, PROCESS_RULES } from '@/lib/garden/bean-guide/processes';
 import { BEAN_SOURCES } from '@/lib/garden/bean-guide/sources';
 
 const cited = [
@@ -14,7 +15,10 @@ const cited = [
   ...ALTITUDE_FINDINGS.flatMap((f) => f.src),
   ...QUALITY_FACTORS.flatMap((f) => f.src),
   ...MYTH_CHECKS.flatMap((m) => m.src),
+  ...PROCESS_GROUPS.flatMap((g) => g.items.flatMap((p) => p.src)),
+  ...PROCESS_RULES.flatMap((r) => r.src),
   'wcr-bourbon', // 위도 표
+  'pdg-honey', // Honey 색 구분 표
 ];
 
 describe('원두에 대한 이해 출처', () => {

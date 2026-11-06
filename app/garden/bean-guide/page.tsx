@@ -7,6 +7,7 @@ import { AltitudeChain, AltitudeFindings, FactorTable, LatitudeTable, MythTable 
 import { BopTable, FarmTable } from '@/components/garden/bean-guide/FarmTables';
 import { MenuNameTable, NameAnatomy, NameTerms, ReadingSteps } from '@/components/garden/bean-guide/NameGuide';
 import OriginTables from '@/components/garden/bean-guide/OriginTables';
+import { HoneyTable, ProcessRules, ProcessTables } from '@/components/garden/bean-guide/ProcessGuide';
 import { BEAN_SOURCES } from '@/lib/garden/bean-guide/sources';
 
 // 원두에 대한 이해 — 스탭 교육·현장 참고용. 데이터는 lib/garden/bean-guide.
@@ -24,7 +25,7 @@ export default function GardenBeanGuidePage() {
     <PageShell nav={<GardenNav />}>
       <header className="mb-16 pt-6 sm:mb-24 sm:pt-14">
         <h1 className="m-0 text-display">원두에 대한 이해</h1>
-        <div className="ta-prose mt-3 text-body text-muted-foreground">산지, 농장, 이름, 재배 조건으로 원두를 읽는 법을 정리했습니다.</div>
+        <div className="ta-prose mt-3 text-body text-muted-foreground">산지, 농장, 이름, 가공, 재배 조건으로 원두를 읽는 법을 정리했습니다.</div>
       </header>
       <div className="space-y-16 pb-10 sm:space-y-24 sm:pb-20">
         <section>
@@ -61,6 +62,26 @@ export default function GardenBeanGuidePage() {
           <div className="mt-10">
             <Sub>이름에 자주 나오는 단어</Sub>
             <NameTerms />
+          </div>
+        </section>
+
+        <section>
+          <Heading>가공 방식</Heading>
+          <Lead>이름이 같아도 시간과 온도는 생산자마다 다릅니다. 표의 숫자는 표준이 아니라 사례로 읽어주세요.</Lead>
+          <ProcessTables />
+          <div className="mt-10">
+            <Sub>
+              Honey의 색 구분
+              <BeanCite ids={['pdg-honey']} />
+            </Sub>
+            <div className="ta-prose">
+              <HoneyTable />
+            </div>
+            <Note>대표값입니다. 같은 Red라도 생산자에 따라 다른 커피의 Yellow나 Black에 해당할 수 있습니다.</Note>
+          </div>
+          <div className="mt-10">
+            <Sub>Infused를 둘러싼 기준</Sub>
+            <ProcessRules />
           </div>
         </section>
 
