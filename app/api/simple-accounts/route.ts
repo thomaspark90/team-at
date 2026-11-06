@@ -6,6 +6,7 @@ import { NAME_RE, newInternalEmail, newPin, normalizeName, pinToPassword } from 
 import { STORES, type StoreId } from '@/lib/types';
 import { loadRoles } from '@/lib/account/roles';
 import { notifySignupApproved } from '@/lib/account/signup-notify';
+import { SIMPLE_ACCOUNT_TABS } from '@/lib/garden/tabs';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
@@ -106,7 +107,7 @@ export async function POST(req: Request) {
   // 기본 권한: 가든 섹션 + 교육 탭만. 이후 '페이지 접근 권한'에서 넓힐 수 있다.
   await g.svc
     .from('garden_tab_access')
-    .upsert({ user_id: userId, email, sections: ['garden'], tabs: ['teaching'], updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    .upsert({ user_id: userId, email, sections: ['garden'], tabs: SIMPLE_ACCOUNT_TABS, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
 
   return NextResponse.json({ ok: true, userId, name, role, stores, pin });
 }

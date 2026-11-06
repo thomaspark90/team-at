@@ -98,7 +98,7 @@ export type FlavorKey = 'acidity' | 'aroma' | 'sweetness' | 'body' | 'bitterness
 export const FLAVORS: { key: FlavorKey; label: string; color: string; shapeMeasured: boolean }[] = [
   { key: 'acidity', label: '산미', color: 'var(--chart-cat-1)', shapeMeasured: false },
   { key: 'aroma', label: '향미', color: 'var(--chart-cat-2)', shapeMeasured: true },
-  { key: 'sweetness', label: '감미', color: 'var(--chart-cat-3)', shapeMeasured: false },
+  { key: 'sweetness', label: '단맛', color: 'var(--chart-cat-3)', shapeMeasured: false },
   { key: 'body', label: '바디', color: 'var(--chart-cat-4)', shapeMeasured: true },
   { key: 'bitterness', label: '쓴맛', color: 'var(--chart-cat-5)', shapeMeasured: false },
   { key: 'burnt', label: '탄내', color: 'var(--chart-cat-6)', shapeMeasured: false },
@@ -112,7 +112,7 @@ export const ROASTS: { key: RoastKey; label: string; stage: string; agtron: stri
 ];
 
 // 중배전↔중강배전 비율만 근거가 있다: Shi 2024 콜드브루 Agtron 62→53 (산 ×0.86, 바디 ×1.36, 쓴맛 ×1.51). 에스프레소 값 아님.
-// 강배전 값과 향미·감미·탄내 높이는 방향만 근거가 있고 크기는 임의로 정한 값이다.
+// 강배전 값과 향미·단맛·탄내 높이는 방향만 근거가 있고 크기는 임의로 정한 값이다.
 // 강배전 바디는 감소 여부가 미확인이라 중강배전과 같게 둔다.
 export const ROAST_AMPLITUDES: Record<
   RoastKey,

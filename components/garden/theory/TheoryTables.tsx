@@ -20,7 +20,7 @@ const ATTRIBUTES: { name: string; shape: ReactNode; roast: ReactNode; basis: str
     basis: '측정: 향 성분 신호. 사람이 느낀 강도는 아님',
   },
   {
-    name: '감미',
+    name: '단맛',
     shape: <>당이 나오는 곡선이 아니다. 쓴맛과 농도가 잦아들며 드러나는 균형으로 본다.<TheoryCite ids={['bartelak', 'batali']} /></>,
     roast: <>강배전에서 당은 사라지지만 단맛 인상과 같지는 않다.<TheoryCite ids={['hu']} /></>,
     basis: '해석: 드립 분획 연구 기반, 에스프레소 미검증',

@@ -7,7 +7,7 @@
 - 로그인 화면(`/`)의 구글 버튼 아래 폼 → `POST /api/simple-login`(PUBLIC_API). 5회 연속 실패 → 10분 잠금(`profiles.locked_until`).
 - 내부 구조: Supabase 이메일/비밀번호 계정. 이메일은 `acct-<랜덤>@team-at.space`(팀 도메인이라 미들웨어 허용 통과, 구글 로그인 불가).
   저장 비밀번호 = `sha256(SIMPLE_LOGIN_PEPPER : 이메일 : PIN)` — **`SIMPLE_LOGIN_PEPPER` env 를 바꾸면 모든 간편 계정이 로그인 불가**(전원 초기화 필요). Vercel production 과 `.env.local` 에 동일 값.
-- 발급 기본 권한: 가든 섹션 + 교육 탭(`garden_tab_access`). 넓히려면 페이지 접근 권한에서 토글.
+- 발급 기본 권한: 가든 섹션 + 교육·커피 추출 이론 탭(`garden_tab_access`, `SIMPLE_ACCOUNT_TABS`). 넓히려면 페이지 접근 권한에서 토글.
 - 삭제: 설정 › 간편 계정 › 삭제 — auth 계정과 프로필·요청·일정·기록이 함께 지워진다.
 
 ## 역할 (`finance.profile_roles`, 2026-09-09)

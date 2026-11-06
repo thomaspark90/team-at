@@ -4,6 +4,7 @@ import { lastReceivedMap, isFulfilled, profileMap, nameResolver } from '@/lib/te
 import { TEACHING_TOPIC_KEYS } from '@/lib/teaching/topics';
 import { NAME_RE, newInternalEmail, normalizeName, pinToPassword, newPin } from '@/lib/account/simple-login';
 import { STORES, type StoreId } from '@/lib/types';
+import { SIMPLE_ACCOUNT_TABS } from '@/lib/garden/tabs';
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
@@ -156,7 +157,7 @@ export async function POST(req: Request) {
   // 나중에 로그인을 열었을 때의 기본 권한(가든 섹션 + 교육 탭)
   await a.svc
     .from('garden_tab_access')
-    .upsert({ user_id: userId, email, sections: ['garden'], tabs: ['teaching'], updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    .upsert({ user_id: userId, email, sections: ['garden'], tabs: SIMPLE_ACCOUNT_TABS, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
   return NextResponse.json({ ok: true, userId, name, stores });
 }
 

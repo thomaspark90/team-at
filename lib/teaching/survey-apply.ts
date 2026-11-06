@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { newInternalEmail, newPin, pinToPassword } from '@/lib/account/simple-login';
 import { loadRoles, manageRoleKeys } from '@/lib/account/roles';
 import type { ParsedSurvey } from '@/lib/teaching/survey-parse';
+import { SIMPLE_ACCOUNT_TABS } from '@/lib/garden/tabs';
 
 // 설문 응답 → 지점 명부 반영. 웹훅(ingest)과 화면의 '명부에 반영' 버튼이 같은 함수를 쓴다.
 //  · 같은 이름의 활성 스탭 프로필이 있으면 그 사람, 없으면 로그인 없는 명부 계정(roster_only)을 새로 만든다.
@@ -57,7 +58,7 @@ export async function applySurveyToRoster(svc: SupabaseClient, r: ParsedSurvey, 
     }
     await svc
       .from('garden_tab_access')
-      .upsert({ user_id: userId, email, sections: ['garden'], tabs: ['teaching'], updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      .upsert({ user_id: userId, email, sections: ['garden'], tabs: SIMPLE_ACCOUNT_TABS, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
     created = true;
   }
 

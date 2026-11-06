@@ -29,6 +29,9 @@ export const GARDEN_TAB_GROUPS: GardenTab[][] = [
 
 export const GARDEN_TABS: GardenTab[] = GARDEN_TAB_GROUPS.flat();
 
+// 간편 계정(스탭·매니저)을 만들 때 부여하는 기본 탭. 넓히려면 설정 › 페이지 접근 권한.
+export const SIMPLE_ACCOUNT_TABS = ['teaching', 'theory'];
+
 // 내비 한 줄 구성(2026-09-09 대표 결정: 탭 14개 → 작업 보드 + 묶음 3 + 교육 + 설정).
 // 묶음은 화면 표시 전용 — 권한 키·경로는 위 GARDEN_TAB_GROUPS 그대로. 항목은 key 로 참조한다.
 export type GardenNavEntry = { label: string; keys: string[] };

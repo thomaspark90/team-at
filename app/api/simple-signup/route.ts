@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { serviceClient } from '@/lib/supabase/service';
 import { MAX_PENDING, PIN_RE, SIGNUP_NAME_RE, newInternalEmail, normalizeName, pinToPassword } from '@/lib/account/simple-login';
 import { CONTACT_EMAIL_RE, normalizeContactEmail, notifySignupRequest } from '@/lib/account/signup-notify';
+import { SIMPLE_ACCOUNT_TABS } from '@/lib/garden/tabs';
 
 export const runtime = 'nodejs';
 
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
   // 기본 권한은 발급과 동일(가든 섹션 + 교육 탭) — 승인 전엔 어차피 로그인이 안 된다
   await svc
     .from('garden_tab_access')
-    .upsert({ user_id: userId, email, sections: ['garden'], tabs: ['teaching'], updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    .upsert({ user_id: userId, email, sections: ['garden'], tabs: SIMPLE_ACCOUNT_TABS, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
 
   // 담당자에게 알림 — 실패해도 신청은 이미 접수된 상태이므로 막지 않는다
   await notifySignupRequest(svc, name, contactEmail || null).catch((e) => console.error('signup notify 실패:', e));
