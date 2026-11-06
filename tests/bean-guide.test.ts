@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { COUNTRY_SUMMARIES, rowsForCountry } from '@/lib/garden/bean-guide/countries';
-import { ALTITUDE_FINDINGS, MYTH_CHECKS, QUALITY_FACTORS } from '@/lib/garden/bean-guide/factors';
+import { ALTITUDE_FINDINGS, ALTITUDE_MEASURES, MYTH_CHECKS, QUALITY_FACTORS } from '@/lib/garden/bean-guide/factors';
 import { FARMS, FARMS_BY_COUNTRY } from '@/lib/garden/bean-guide/farms';
 import { MENU_NAMES, NAME_TERMS } from '@/lib/garden/bean-guide/names';
 import { ORIGIN_GROUPS } from '@/lib/garden/bean-guide/origins';
@@ -13,6 +13,7 @@ const cited = [
   ...MENU_NAMES.flatMap((n) => n.src),
   ...NAME_TERMS.flatMap((t) => t.src),
   ...ALTITUDE_FINDINGS.flatMap((f) => f.src),
+  ...ALTITUDE_MEASURES.flatMap((m) => m.src),
   ...QUALITY_FACTORS.flatMap((f) => f.src),
   ...MYTH_CHECKS.flatMap((m) => m.src),
   ...PROCESS_GROUPS.flatMap((g) => g.items.flatMap((p) => p.src)),

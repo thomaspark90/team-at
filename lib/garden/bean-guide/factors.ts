@@ -5,8 +5,28 @@ export const ALTITUDE_FINDINGS: { text: string; src: string[] }[] = [
   { text: '문헌고찰에서 고도와 관능을 측정한 13편 중 12편은 상승, 1편은 하락이었습니다.', src: ['ahmed'] },
   { text: 'Honduras 52개 구획, Costa Rica 두 지역에서도 고도와 좋은 평가가 함께 움직였습니다.', src: ['decazy', 'avelino'] },
   { text: 'Réunion 16개 구획에서는 종자가 자라는 시기의 평균 기온이 관능을 크게 좌우했습니다.', src: ['bertrand'] },
-  { text: 'Mozambique에서 650 m → 935 m로 오르면 성숙이 4주 늘었습니다. 다만 컵 평가는 없었습니다.', src: ['gorongosa'] },
   { text: 'Burundi 155농가 연구에서는 고도가 생두 크기를 키웠지만 관능에 직접 효과는 없었습니다.', src: ['kagisye'] },
+];
+
+// 고도와 함께 측정된 항목. 지역 비교가 많아 품종·가공·관리 차이가 섞일 수 있다.
+export const ALTITUDE_MEASURES: { item: string; result: string; caution: string; src: string[] }[] = [
+  { item: '기온', result: '에티오피아 약 1,600 m대와 약 2,000 m대의 연평균 기온 차이는 3.2°C였습니다.', caution: '지점이 달라 일반적인 고도당 기온 공식으로 쓰면 안 됩니다.', src: ['tolessa'] },
+  { item: '성숙 기간', result: 'Mozambique에서 650 m → 935 m로 오르면 성숙이 4주 늘고 크기, 균일도, 밀도도 커졌습니다.', caution: '컵 평가는 없었습니다.', src: ['gorongosa'] },
+  { item: '생두 무게', result: '에티오피아 20개 표본(1,025~2,775 m)에서 고도가 높을수록 100립중이 무거웠습니다.', caution: '커핑 결과는 확인하지 못했습니다.', src: ['urugo'] },
+  { item: '결점두', result: 'Gayo에서 저고도 14.30%, 중고도 10.19%, 고고도 8.50%였습니다.', caution: '중·고고도 차이는 유의하지 않았고, 양품 무게는 중고도가 가장 컸습니다. 컵 평가는 없었습니다.', src: ['iieta'] },
+  { item: '산미', result: '남서부 에티오피아에서 그늘이 있을 때만 100 m당 0.22점 올랐습니다.', caution: '그늘이 없으면 유의하지 않았습니다.', src: ['worku'] },
+  { item: '자당·트리고넬린', result: '에티오피아 20개 표본에서 고도와 함께 늘었습니다.', caution: '자당은 낮은 고도에서 더 높았다는 연구도 있습니다.', src: ['urugo'] },
+  { item: '클로로겐산', result: '에티오피아 연구들에서는 고도가 높을수록 줄었습니다.', caution: 'Bertrand 2006의 전통 품종에서는 반대로 늘었습니다.', src: ['urugo', 'worku', 'bertrand-2006'] },
+  { item: '카페인', result: '에티오피아 20개 표본에서는 고도와 유의한 관계가 없었습니다.', caution: '남서부 에티오피아 연구는 100 m당 0.12 g/kg 감소를 보고했습니다.', src: ['urugo', 'worku'] },
+  { item: '관능 항목', result: "Pu'er 930~1,520 m 비교에서 향과 풍미 외 항목은 차이가 작았습니다.", caution: '고도별 5개 표본이고 고도가 오를수록 계속 오르는 형태는 아니었습니다.', src: ['hu-2024'] },
+];
+
+// Ahmed 2021 문헌고찰. 관능을 잰 연구의 방향만 센 것이며 효과 크기가 아니다.
+export const REVIEW_COUNTS = [
+  { factor: '고도가 높을수록', papers: 18, up: '12편', down: '1편' },
+  { factor: '빛이 많을수록', papers: 19, up: '4편', down: '8편' },
+  { factor: '기온 변화', papers: 9, up: '4편', down: '3편' },
+  { factor: '물 스트레스', papers: 9, up: '2편', down: '0편' },
 ];
 
 // World Coffee Research 카탈로그의 재배 적합 고도(m). 기온이 같다는 측정값은 아니다.

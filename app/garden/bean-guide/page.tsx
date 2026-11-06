@@ -3,7 +3,7 @@
 import PageShell from '@/components/PageShell';
 import GardenNav from '@/components/garden/GardenNav';
 import BeanCite from '@/components/garden/bean-guide/BeanCite';
-import { AltitudeChain, AltitudeFindings, FactorTable, LatitudeTable, MythTable } from '@/components/garden/bean-guide/FactorTables';
+import { AltitudeChain, AltitudeFindings, AltitudeMeasures, FactorTable, LatitudeTable, MythTable, ReviewCounts } from '@/components/garden/bean-guide/FactorTables';
 import FarmList from '@/components/garden/bean-guide/FarmTables';
 import { MenuNameTable, NameAnatomy, NameTerms, ReadingSteps } from '@/components/garden/bean-guide/NameGuide';
 import OriginTables from '@/components/garden/bean-guide/OriginTables';
@@ -84,6 +84,21 @@ export default function GardenBeanGuidePage() {
           <AltitudeChain />
           <div className="mt-6">
             <AltitudeFindings />
+          </div>
+          <div className="mt-10">
+            <Sub>고도가 오르면 무엇이 달라지나</Sub>
+            <AltitudeMeasures />
+            <Note>지역을 비교한 연구가 많아 품종, 가공, 농장 관리 차이가 함께 섞일 수 있습니다.</Note>
+          </div>
+          <div className="mt-10">
+            <Sub>
+              요인별 연구 방향
+              <BeanCite ids={['ahmed']} />
+            </Sub>
+            <div className="ta-prose">
+              <ReviewCounts />
+            </div>
+            <Note>문헌고찰 73편 중 요인별로 센 값입니다. 관능 방향을 밝힌 연구만 셌고 효과 크기나 요인 순위는 아닙니다. 물 스트레스는 양방향을 보고한 1편이 더 있습니다.</Note>
           </div>
           <div className="mt-10">
             <Sub>

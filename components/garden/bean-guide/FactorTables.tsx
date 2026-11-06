@@ -1,4 +1,4 @@
-import { ALTITUDE_CHAIN, ALTITUDE_FINDINGS, LATITUDE_BANDS, MYTH_CHECKS, QUALITY_FACTORS } from '@/lib/garden/bean-guide/factors';
+import { ALTITUDE_CHAIN, ALTITUDE_FINDINGS, ALTITUDE_MEASURES, LATITUDE_BANDS, MYTH_CHECKS, QUALITY_FACTORS, REVIEW_COUNTS } from '@/lib/garden/bean-guide/factors';
 import BeanCite from './BeanCite';
 
 const th = 'px-3 py-1.5 text-left text-caption font-normal text-muted-foreground first:pl-0';
@@ -110,5 +110,72 @@ export function MythTable() {
         </div>
       ))}
     </dl>
+  );
+}
+
+export function AltitudeMeasures() {
+  return (
+    <>
+      <div className="hidden lg:block">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr>
+              <th className={`${th} w-36`}>항목</th>
+              <th className={th}>측정 결과</th>
+              <th className={th}>주의</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ALTITUDE_MEASURES.map((m) => (
+              <tr key={m.item}>
+                <td className={td}>{m.item}</td>
+                <td className={td}>
+                  {m.result}
+                  <BeanCite ids={m.src} />
+                </td>
+                <td className={`${td} text-muted-foreground`}>{m.caution}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="lg:hidden">
+        {ALTITUDE_MEASURES.map((m) => (
+          <article key={m.item} className="border-t border-border py-3">
+            <h4 className="m-0 text-body font-medium">{m.item}</h4>
+            <p className="m-0 mt-1 break-words text-body">
+              {m.result}
+              <BeanCite ids={m.src} />
+            </p>
+            <p className="m-0 mt-1 text-caption text-muted-foreground">{m.caution}</p>
+          </article>
+        ))}
+      </div>
+    </>
+  );
+}
+
+export function ReviewCounts() {
+  return (
+    <table className="w-full border-collapse">
+      <thead>
+        <tr>
+          <th className={th}>요인</th>
+          <th className={`${th} text-right`}>논문</th>
+          <th className={`${th} text-right`}>관능 상승</th>
+          <th className={`${th} text-right`}>관능 하락</th>
+        </tr>
+      </thead>
+      <tbody>
+        {REVIEW_COUNTS.map((r) => (
+          <tr key={r.factor}>
+            <td className={td}>{r.factor}</td>
+            <td className={`${td} text-right tabular`}>{r.papers}편</td>
+            <td className={`${td} text-right tabular`}>{r.up}</td>
+            <td className={`${td} text-right tabular`}>{r.down}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
