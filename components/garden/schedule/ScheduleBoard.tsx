@@ -92,7 +92,7 @@ export default function ScheduleBoard() {
     for (const [k, w] of Array.from(warningsByCell(warnings))) m.set(k, { warnings: w });
     for (const l of week.leaves) {
       const k = `${l.staffId}|${l.date}`;
-      m.set(k, { warnings: m.get(k)?.warnings ?? [], leave: LEAVE_LABEL[l.type] });
+      m.set(k, { warnings: m.get(k)?.warnings ?? [], leave: l.pending ? `${LEAVE_LABEL[l.type]} 신청` : LEAVE_LABEL[l.type] });
     }
     return m;
   }, [editor, view, week, warnings]);

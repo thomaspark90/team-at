@@ -19,6 +19,22 @@ export interface LeaveMark {
   staffId: number;
   date: string;
   type: LeaveType;
+  pending?: boolean; // 아직 승인되지 않은 신청 — 표에는 보이되 경고는 내지 않는다
+}
+
+// 연차 신청 — 승인되면 leave_records 가 된다. 지금은 운영진이 대신 접수(source editor), 직원 앱 신청은 app.
+export const LEAVE_REQUEST_TYPES: LeaveType[] = ['annual', 'sick', 'off'];
+export interface LeaveRequest {
+  id: number;
+  staffId: number;
+  date: string;
+  type: LeaveType;
+  note: string;
+  status: 'pending' | 'approved' | 'rejected';
+  source: 'editor' | 'link' | 'app';
+  requestedAt: string;
+  decidedAt: string | null;
+  decisionNote: string;
 }
 
 export interface Segment {

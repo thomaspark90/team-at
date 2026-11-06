@@ -36,7 +36,7 @@ export function weekWarnings(a: {
     if (!timed(s) || !a.days.includes(s.date)) continue;
     byStaff.set(s.staffId, [...(byStaff.get(s.staffId) ?? []), s]);
   }
-  const leaveOf = new Map(a.leaves.filter((l) => NOT_WORKING.includes(l.type)).map((l) => [`${l.staffId}|${l.date}`, l.type]));
+  const leaveOf = new Map(a.leaves.filter((l) => !l.pending && NOT_WORKING.includes(l.type)).map((l) => [`${l.staffId}|${l.date}`, l.type]));
 
   for (const [staffId, list] of Array.from(byStaff)) {
     let weekMin = 0;

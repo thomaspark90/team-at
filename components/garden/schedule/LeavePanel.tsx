@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { kstToday } from '@/lib/teaching/kst';
 import { leaveRemaining, substituteBalance } from '@/lib/schedule/time';
 import { LEAVE_LABEL, type LeaveType, type Staff } from '@/lib/schedule/types';
+import LeaveRequests from './LeaveRequests';
 
 // 연차·휴무 — 총 연차는 입력값(자동 계산 없음), 잔여와 대체 잔여만 계산한다.
 type Balance = { staffId: number; total: number; asOf: string };
@@ -46,7 +47,10 @@ export default function LeavePanel({ staff }: { staff: Staff[] }) {
   const nameOf = new Map(staff.map((s) => [s.id, s.name]));
 
   return (
-    <div>
+    <div className="space-y-8">
+      <LeaveRequests staff={staff} onChanged={load} />
+      <div>
+      <p className="ta-label">연차·휴무 기록</p>
       <form
         className="flex flex-wrap items-center gap-2"
         onSubmit={async (e) => {
@@ -118,6 +122,7 @@ export default function LeavePanel({ staff }: { staff: Staff[] }) {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

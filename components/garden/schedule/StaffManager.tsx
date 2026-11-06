@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import SegmentControl from '@/components/nav/SegmentControl';
 import SignupRequests from './SignupRequests';
 import StoreToggles from './StoreToggles';
-import { needsActiveCheck } from '@/lib/schedule/time';
+import { leaveRemaining, needsActiveCheck } from '@/lib/schedule/time';
 import { STORES, type StoreId } from '@/lib/types';
 import { DUTY_TAGS, STAFF_ROLES, type Staff, type StaffRole } from '@/lib/schedule/types';
 
@@ -13,6 +13,8 @@ type Row = Staff & { userId: string | null; lastWorked: string | null; account: 
 type Account = { userId: string; name: string | null; label: string; linkedStaffId: number | null };
 
 type StatusFilter = 'active' | 'left' | 'all';
+type Balance = { staffId: number; total: number; asOf: string };
+type LeaveRec = { staffId: number; type: string; date: string };
 
 const api = '/api/garden-schedule/staff';
 
@@ -25,6 +27,18 @@ export default function StaffManager() {
   const [name, setName] = useState('');
   const [homeStore, setHomeStore] = useState<StoreId>('yangjae');
   const [error, setError] = useState<string | null>(null);
+  const [balances, setBalances] = useState<Balance[]>([]);
+  const [leaveRecs, setLeaveRecs] = useState<LeaveRec[]>([]);
+
+  // 연차는 연차·휴무 패널과 같은 API — 여기서는 총개수 입력과 잔여만 보여 준다
+  const loadLeave = useCallback(async () => {
+    const r = await fetch('/api/garden-schedule/leave', { cache: 'no-store' });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && !j.error) {
+      setBalances(j.balances);
+      setLeaveRecs(j.records);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     const r = await fetch(api, { cache: 'no-store' });
@@ -36,7 +50,16 @@ export default function StaffManager() {
   }, []);
   useEffect(() => {
     load();
-  }, [load]);
+    loadLeave();
+  }, [load, loadLeave]);
+
+  const saveTotal = async (staffId: number, v: string) => {
+    setError(null);
+    const r = await fetch('/api/garden-schedule/leave', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ staffId, total: v === '' ? null : Number(v) }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) setError(j.error ?? '저장하지 못했습니다.');
+    loadLeave();
+  };
 
   const send = async (method: 'POST' | 'PATCH', body: unknown) => {
     setError(null);
@@ -101,6 +124,7 @@ export default function StaffManager() {
               <th className="px-3 py-2 font-normal">역할</th>
               <th className="px-3 py-2 font-normal">책임 태그</th>
               <th className="px-3 py-2 font-normal">입사일</th>
+              <th className="px-3 py-2 font-normal">연차 총/잔여(개)</th>
               <th className="px-3 py-2 font-normal">마지막 근무</th>
               <th className="px-3 py-2 font-normal">계정</th>
               <th className="px-3 py-2 font-normal">재직</th>
@@ -171,6 +195,29 @@ export default function StaffManager() {
                     }}
                   />
                 </td>
+                <td className="px-3 py-2">
+                  {(() => {
+                    const bal = balances.find((b) => b.staffId === s.id);
+                    const remaining = leaveRemaining(bal?.total ?? null, bal?.asOf ?? null, leaveRecs.filter((r) => r.staffId === s.id));
+                    return (
+                      <span className="flex items-center gap-2 tabular">
+                        <input
+                          key={`${s.id}-${bal?.total ?? ''}`}
+                          aria-label={`${s.name} 총 연차`}
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          className="ta-input w-[72px] tabular"
+                          defaultValue={bal?.total ?? ''}
+                          onBlur={(e) => {
+                            if (e.target.value !== String(bal?.total ?? '')) saveTotal(s.id, e.target.value);
+                          }}
+                        />
+                        <span className={remaining != null && remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}>/ {remaining ?? '–'}</span>
+                      </span>
+                    );
+                  })()}
+                </td>
                 <td className="px-3 py-2 tabular">
                   <span className="text-muted-foreground">{s.lastWorked ?? '–'}</span>
                   {needsActiveCheck(s.active, s.lastWorked, today) && <span className="ml-2 text-caption text-amber-600">재직 확인</span>}
@@ -210,7 +257,7 @@ export default function StaffManager() {
             ))}
             {!list.length && (
               <tr className="border-t border-border">
-                <td colSpan={9} className="px-3 py-4 text-body text-muted-foreground">해당하는 근무자가 없습니다.</td>
+                <td colSpan={10} className="px-3 py-4 text-body text-muted-foreground">해당하는 근무자가 없습니다.</td>
               </tr>
             )}
           </tbody>
