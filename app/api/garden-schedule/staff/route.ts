@@ -41,7 +41,7 @@ async function linkableAccounts(svc: SupabaseClient, staff: { id: unknown; user_
 export async function GET() {
   const a = await requireScheduleEditor();
   if (a instanceof NextResponse) return a;
-  const { data, error } = await a.svc.from('schedule_staff').select('id, name, home_store, stores, joined_on, active, roles, duty_tag, user_id, employment, weekly_hours').order('name');
+  const { data, error } = await a.svc.from('schedule_staff').select('id, name, home_store, stores, joined_on, active, roles, duty_tag, user_id, employment, weekly_hours, hourly_wage').order('name');
   if (error) return dbError(error);
   const userIds = (data ?? []).map((s) => s.user_id).filter(Boolean) as string[];
   const { data: profiles } = userIds.length
@@ -70,15 +70,16 @@ export async function GET() {
   if (needHours.length) {
     const { data: recent } = await a.svc
       .from('schedule_shifts')
-      .select('staff_id, start_min, end_min')
+      .select('staff_id, work_date, store, kind, start_min, end_min, is_off')
       .in('staff_id', needHours)
-      .eq('kind', 'plan')
-      .eq('is_off', false)
       .gte('work_date', addDays(today, -28))
       .lte('work_date', addDays(today, -1));
+    // 같은 사람·날·지점에 실제 기록이 있으면 실제(시트 이관분 포함), 없으면 계획
+    const hasActual = new Set((recent ?? []).filter((r) => r.kind === 'actual').map((r) => `${r.staff_id}|${r.work_date}|${r.store}`));
     const hours = new Map<number, number>();
     for (const r of recent ?? []) {
-      if (r.start_min == null || r.end_min == null) continue;
+      if (r.is_off || r.start_min == null || r.end_min == null) continue;
+      if (r.kind === 'plan' && hasActual.has(`${r.staff_id}|${r.work_date}|${r.store}`)) continue;
       hours.set(Number(r.staff_id), (hours.get(Number(r.staff_id)) ?? 0) + (r.end_min - r.start_min) / 60);
     }
     for (const id of needHours) suggested.set(id, suggestWeeklyHours(hours.get(id) ?? 0, 4));
@@ -171,6 +172,10 @@ export async function PATCH(req: Request) {
   if (b?.employment !== undefined) {
     if (!isEmployment(b.employment)) return badRequest('고용 형태가 올바르지 않습니다.');
     patch.employment = b.employment;
+  }
+  if (b?.hourlyWage !== undefined) {
+    if (b.hourlyWage !== null && !(Number.isInteger(b.hourlyWage) && b.hourlyWage >= 0)) return badRequest('시급은 0 이상의 정수(원)입니다.');
+    patch.hourly_wage = b.hourlyWage;
   }
   if (b?.weeklyHours !== undefined) {
     if (b.weeklyHours !== null && !(typeof b.weeklyHours === 'number' && b.weeklyHours > 0 && b.weeklyHours <= 60)) return badRequest('주 소정근로시간은 0 초과 60 이하입니다.');

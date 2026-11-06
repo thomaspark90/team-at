@@ -123,7 +123,7 @@ export default function StaffManager() {
       {error && <p className="m-0 text-body text-destructive">{error}</p>}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1880px] border-collapse">
+        <table className="w-full min-w-[1990px] border-collapse">
           <thead>
             <tr className="text-left text-caption text-muted-foreground">
               <th className="px-3 py-2 font-normal">이름</th>
@@ -136,6 +136,7 @@ export default function StaffManager() {
                 <span className="flex items-center gap-2 whitespace-nowrap">책임 태그 <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => setEditingTags('duty')}>편집</button></span>
               </th>
               <th className="whitespace-nowrap px-3 py-2 font-normal">고용 형태 · 주 시간</th>
+              <th className="whitespace-nowrap px-3 py-2 font-normal">시급(원)</th>
               <th className="px-3 py-2 font-normal">입사일</th>
               <th className="px-3 py-2 font-normal">연차 총/잔여(개)</th>
               <th className="whitespace-nowrap px-3 py-2 font-normal">마지막 근무</th>
@@ -226,6 +227,23 @@ export default function StaffManager() {
                       </>
                     )}
                   </span>
+                </td>
+                <td className="px-3 py-2">
+                  {/* 월 집계 예상 인건비용 — 비우면 집계에 금액이 안 나온다 */}
+                  <input
+                    key={`${s.id}-wage-${s.hourlyWage ?? ''}`}
+                    aria-label={`${s.name} 시급`}
+                    type="number"
+                    step="10"
+                    min="0"
+                    placeholder="–"
+                    className="ta-input w-[96px] tabular"
+                    defaultValue={s.hourlyWage ?? ''}
+                    onBlur={(e) => {
+                      const v = e.target.value === '' ? null : Number(e.target.value);
+                      if (v !== s.hourlyWage) send('PATCH', { id: s.id, hourlyWage: v });
+                    }}
+                  />
                 </td>
                 <td className="px-3 py-2">
                   <input
@@ -319,7 +337,7 @@ export default function StaffManager() {
             ))}
             {!list.length && (
               <tr className="border-t border-border">
-                <td colSpan={11} className="px-3 py-4 text-body text-muted-foreground">해당하는 근무자가 없습니다.</td>
+                <td colSpan={12} className="px-3 py-4 text-body text-muted-foreground">해당하는 근무자가 없습니다.</td>
               </tr>
             )}
           </tbody>

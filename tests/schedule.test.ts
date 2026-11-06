@@ -283,3 +283,31 @@ describe('연차 소멸·주 시간 제안', () => {
     expect(suggestWeeklyHours(0, 4)).toBeNull();
   });
 });
+
+import { monthRange, monthlyRows } from '@/lib/schedule/monthly';
+import { weekSvg } from '@/lib/schedule/export-svg';
+
+describe('월 집계·내보내기', () => {
+  const sh = (o: Partial<Shift> & { id: number; staffId: number; date: string }): Shift => ({ store: 'yangjae', kind: 'plan', isOff: false, source: 'app', uncertain: false, start: 420, end: 960, ...o });
+  it('월 범위', () => {
+    expect(monthRange('2026-02')).toEqual(['2026-02-01', '2026-02-28']);
+    expect(monthRange('2026-11')).toEqual(['2026-11-01', '2026-11-30']);
+  });
+  it('실제는 실제 기록 우선·없으면 배포된 계획, 미배포 계획은 실제 0, 시급 있으면 예상 인건비', () => {
+    const shifts = [
+      sh({ id: 1, staffId: 1, date: '2026-11-03' }), // 배포된 주 계획 9h
+      sh({ id: 2, staffId: 1, date: '2026-11-04' }),
+      sh({ id: 3, staffId: 1, date: '2026-11-04', kind: 'actual', start: 420, end: 720 }), // 실제 5h 가 계획 9h 를 대체
+      sh({ id: 4, staffId: 2, date: '2026-11-10' }), // 미배포 주 계획
+    ];
+    const rows = monthlyRows(shifts, new Set(['yangjae|2026-11-03']), weekStartOf, (id) => (id === 1 ? 10000 : null));
+    expect(rows.find((r) => r.staffId === 1)).toMatchObject({ planHours: 18, actualHours: 14, planDays: 2, actualDays: 2, estPay: 140000 });
+    expect(rows.find((r) => r.staffId === 2)).toMatchObject({ planHours: 9, actualHours: 0, estPay: null });
+  });
+  it('SVG 에 이름·시간이 들어가고 특수문자는 이스케이프', () => {
+    const staff = { id: 1, name: '김<보영>', homeStore: 'yangjae' as const, stores: ['yangjae' as const], joinedOn: null, active: true, roles: [], dutyTag: null, employment: 'regular' as const, weeklyHours: null, hourlyWage: null };
+    const svg = weekSvg({ title: 't', days: ['2026-11-03'], rows: [staff], shifts: [sh({ id: 1, staffId: 1, date: '2026-11-03' })], store: 'yangjae' });
+    expect(svg).toContain('김&lt;보영&gt;');
+    expect(svg).toContain('7–16');
+  });
+});

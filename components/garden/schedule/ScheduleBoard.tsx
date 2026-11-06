@@ -17,6 +17,8 @@ import LeavePanel from './LeavePanel';
 import ShareLinkPanel from './ShareLinkPanel';
 import TemplateMenu from './TemplateMenu';
 import LeaveExpiryNotice from './LeaveExpiryNotice';
+import PatternMenu from './PatternMenu';
+import ExportMenu from './ExportMenu';
 import CrewPlanner from '@/components/garden/checklist/CrewPlanner';
 import { CREW_ASSIGNMENT } from '@/lib/checklist/logic';
 
@@ -201,6 +203,7 @@ export default function ScheduleBoard() {
             <div className="ml-auto flex items-center gap-3">
               <button type="button" className="ta-btn" onClick={() => copyPrev()}>지난주 복사</button>
               <TemplateMenu store={store} weekStart={weekStart} hasPlan={planShifts.some((s) => s.store === store)} onApplied={(n) => { setNotice(n); setView('plan'); load(); }} />
+              {week && <PatternMenu store={store} weekStart={weekStart} staff={week.staff} presets={week.presets} onApplied={(n) => { setNotice(n); setView('plan'); load(); }} />}
               {week?.published ? (
                 <>
                   {week.unpublishedChanges > 0 && <button type="button" className="ta-btn-primary" onClick={() => publish(true)}>다시 배포</button>}
@@ -238,6 +241,18 @@ export default function ScheduleBoard() {
             <button type="button" className="text-destructive" onClick={() => copyPrev(true)}>이번 주 계획 {copyConflict}건을 지우고 덮어쓰기 ›</button>
           )}
           {onlyActual && <button type="button" className="text-foreground" onClick={() => setView('actual')}>이 주는 실제 기록만 있습니다. 실제 보기 ›</button>}
+          {week && (
+            <span className="ml-auto">
+              <ExportMenu
+                title={`가든서비스 ${STORES.find((s) => s.id === store)?.label ?? ''} 근무표 ${fmtMd(weekStart)}~${fmtMd(addDays(weekStart, 6))}${view === 'actual' ? ' (실제)' : ''}`}
+                days={week.days}
+                rows={rows.filter((p) => shown.some((s) => s.store === store && s.staffId === p.id))}
+                shifts={shown}
+                store={store}
+                printHref={`/garden/schedule/print?store=${store}&week=${weekStart}`}
+              />
+            </span>
+          )}
         </div>
         {editor && week && <LeaveExpiryNotice staff={week.staff} today={kstToday()} />}
         {error && <p className="m-0 text-body text-destructive">{error}</p>}
@@ -294,6 +309,7 @@ export default function ScheduleBoard() {
             <summary className="cursor-pointer text-body">연차·휴무 ›</summary>
             <div className="mt-4 overflow-x-auto"><LeavePanel staff={week.staff} onWeekChanged={load} /></div>
           </details>
+          <Link href="/garden/schedule/monthly" className="ta-panel block text-body">월 근무시간 집계 · 예상 인건비 ›</Link>
           <Link href="/garden/schedule/staff" className="ta-panel block text-body">직원 명부 · 재직 관리 ›</Link>
         </div>
       )}

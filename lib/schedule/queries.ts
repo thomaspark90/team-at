@@ -21,6 +21,7 @@ export const toStaff = (r: any): Staff => ({
   dutyTag: r.duty_tag ?? null,
   employment: r.employment === 'part_time' ? 'part_time' : 'regular',
   weeklyHours: r.weekly_hours == null ? null : Number(r.weekly_hours),
+  hourlyWage: r.hourly_wage == null ? null : Number(r.hourly_wage),
 });
 
 const toShift = (r: any): Shift => ({
@@ -75,7 +76,7 @@ export async function loadWeek(svc: SupabaseClient, store: StoreId, weekStart: s
   const all = (shiftsRes.data ?? []).map(toShift);
   const shifts = editor ? all : all.filter((s) => s.kind === 'plan' && publishedStores.has(s.store));
   // 책임 태그는 운영진에게만(책임자 없는 시간대 경고용)
-  const allStaff = (staffRes.data ?? []).map(toStaff).map((s) => (editor ? s : { ...s, dutyTag: null }));
+  const allStaff = (staffRes.data ?? []).map(toStaff).map((s) => (editor ? s : { ...s, dutyTag: null, hourlyWage: null }));
   const onDuty = new Set(shifts.map((s) => s.staffId));
 
   const priorDates = new Map<number, Set<string>>();

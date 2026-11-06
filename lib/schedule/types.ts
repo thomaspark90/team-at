@@ -94,6 +94,7 @@ export interface Staff {
   dutyTag: DutyTag | null; // 운영진 명부 조회에만 채워진다
   employment: Employment;
   weeklyHours: number | null; // 주 소정근로시간 — 파트타임 연차 비례용. 비면 비례 계산 안 함
+  hourlyWage: number | null; // 시급(원) — 월 집계 예상 인건비. 운영진 명부 조회에만 채워진다
 }
 
 // 근무 파트 — 칸 편집기의 한 번 누르기 버튼. 지점별로 운영진이 고친다(finance.schedule_shift_presets).
@@ -103,6 +104,11 @@ export interface ShiftPreset extends Segment {
 export const PRESET_LABEL_MAX = 12;
 export const PRESET_MAX = 12;
 export const TEMPLATE_NAME_MAX = 20; // 주 템플릿 이름
+
+// 고정 근무 패턴 — 사람·지점·요일(0=화…6=월)별 기본 근무(finance.schedule_staff_patterns)
+export interface PatternDay extends Segment {
+  dow: number;
+}
 
 export interface WeekData {
   weekStart: string;
