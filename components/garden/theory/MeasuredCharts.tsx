@@ -7,7 +7,6 @@ import {
   VOLATILE_TIMES,
   RATIO_STEPS,
   formatRatio,
-  ratioToSeconds,
   relativeConcentration,
   type CompoundKey,
 } from '@/lib/garden/extraction-theory';
@@ -17,7 +16,7 @@ import {
 const GRID = 'var(--chart-grid-stroke)';
 const axisTick = { fontSize: 12, fill: 'var(--chart-axis-text)' };
 
-// 맛 차트와 연결되는 색을 쓴다: TDS↔바디, 트리고넬린↔산미 대용, 카페인↔쓴맛
+// 맛 차트와 연결되는 색을 쓴다: 트리고넬린↔산미 대용, 카페인↔쓴맛
 const COMPOUND_COLOR: Record<CompoundKey, string> = {
   tds: 'var(--chart-cat-4)',
   trigonelline: 'var(--chart-cat-1)',
@@ -58,7 +57,7 @@ export function ConcentrationChart() {
         <XAxis dataKey="ratio" type="number" domain={[0, 3]} ticks={[0, 1, 2, 3]} interval={0} tickFormatter={formatRatio} tick={axisTick} stroke={GRID} />
         <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v) => `${v}%`} tick={axisTick} stroke={GRID} width={44} />
         <Tooltip
-          content={<ValueTip unit="%" heading={(r: number) => `${formatRatio(r)} · 약 ${Math.round(ratioToSeconds(r))}초`} />}
+          content={<ValueTip unit="%" heading={formatRatio} />}
           cursor={{ stroke: 'var(--chart-axis-text)', strokeWidth: 1 }}
         />
         <Legend iconType="plainline" itemSorter={null} wrapperStyle={{ fontSize: 12 }} />

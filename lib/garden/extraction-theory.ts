@@ -6,7 +6,6 @@
 
 // ── 측정: Schmieder et al. 2023, Foods 12(15):2871, Table A1 Exp.7 (원두 20 g, 약 1.9 mL/s, 88.3 °C) ──
 export const DOSE_G = 20;
-export const FLOW_G_PER_S = 1.9; // 1 mL ≈ 1 g 가정 — 초 환산 표기에만 사용
 
 export type CompoundKey = 'tds' | 'trigonelline' | 'cqa' | 'caffeine';
 
@@ -27,9 +26,6 @@ export const concentrationAt = (key: CompoundKey, massG: number) => {
 export const relativeConcentration = (key: CompoundKey, massG: number) =>
   100 * Math.exp(-massG / SCHMIEDER_FIT[key].lambda);
 
-/** 추출 비율(원두 1 대비 음료) → First drop 이후 대략 초. 프리인퓨전 제외 */
-export const ratioToSeconds = (ratio: number) => (ratio * DOSE_G) / FLOW_G_PER_S;
-
 // 측정: 같은 논문 Table 2, 잔에 담긴 질량 (원두 20 g 기준)
 export const CUP_MASS = [
   { ratio: 1, massG: 20, trigonellineMg: 75.9, caffeineMg: 129.0, cqaMg: 86.5, tdsG: 2.92 },
@@ -43,7 +39,6 @@ export const cupSummary = () => {
   return CUP_MASS.map((c) => ({
     ratio: c.ratio,
     massG: c.massG,
-    seconds: ratioToSeconds(c.ratio),
     yieldPct: (c.tdsG / DOSE_G) * 100,
     cupTdsPct: (c.tdsG / c.massG) * 100,
     trigonellineShare: (c.trigonellineMg / last.trigonellineMg) * 100,
@@ -91,7 +86,7 @@ export const aromaShape = (ratio: number) => {
 
 // ── 해석: 배전도별 맛 모식도 ──
 export type RoastKey = 'medium' | 'mediumDark' | 'dark';
-export type FlavorKey = 'acidity' | 'aroma' | 'sweetness' | 'body' | 'bitterness' | 'burnt';
+export type FlavorKey = 'acidity' | 'aroma' | 'sweetness' | 'bitterness' | 'burnt';
 
 // 실선(shapeMeasured): 곡선 모양을 뒷받침하는 측정이 있음. 점선: 화학·전문가 의견에서 끌어낸 해석.
 // 높이는 어느 쪽도 측정값이 아니다.
@@ -99,7 +94,6 @@ export const FLAVORS: { key: FlavorKey; label: string; color: string; shapeMeasu
   { key: 'acidity', label: '산미', color: 'var(--chart-cat-1)', shapeMeasured: false },
   { key: 'aroma', label: '향미', color: 'var(--chart-cat-2)', shapeMeasured: true },
   { key: 'sweetness', label: '단맛', color: 'var(--chart-cat-3)', shapeMeasured: false },
-  { key: 'body', label: '바디', color: 'var(--chart-cat-4)', shapeMeasured: true },
   { key: 'bitterness', label: '쓴맛', color: 'var(--chart-cat-5)', shapeMeasured: false },
   { key: 'burnt', label: '탄내', color: 'var(--chart-cat-6)', shapeMeasured: false },
 ];
@@ -111,16 +105,15 @@ export const ROASTS: { key: RoastKey; label: string }[] = [
   { key: 'dark', label: '강배전' },
 ];
 
-// 중배전↔중강배전 비율만 근거가 있다: Shi 2024 콜드브루 Agtron 62→53 (산 ×0.86, 바디 ×1.36, 쓴맛 ×1.51). 에스프레소 값 아님.
+// 중배전↔중강배전 비율만 근거가 있다: Shi 2024 콜드브루 Agtron 62→53 (산 ×0.86, 쓴맛 ×1.51). 에스프레소 값 아님.
 // 강배전 값과 향미·단맛·탄내 높이는 방향만 근거가 있고 크기는 임의로 정한 값이다.
-// 강배전 바디는 감소 여부가 미확인이라 중강배전과 같게 둔다.
 export const ROAST_AMPLITUDES: Record<
   RoastKey,
-  { acidity: number; aroma: number; sweetness: number; body: number; bitterFast: number; bitterHarsh: number; burnt: number }
+  { acidity: number; aroma: number; sweetness: number; bitterFast: number; bitterHarsh: number; burnt: number }
 > = {
-  medium: { acidity: 0.81, aroma: 0.95, sweetness: 0.6, body: 0.7, bitterFast: 0.4, bitterHarsh: 0.05, burnt: 0.05 },
-  mediumDark: { acidity: 0.7, aroma: 0.85, sweetness: 0.5, body: 0.95, bitterFast: 0.6, bitterHarsh: 0.12, burnt: 0.2 },
-  dark: { acidity: 0.55, aroma: 0.65, sweetness: 0.3, body: 0.95, bitterFast: 0.7, bitterHarsh: 0.3, burnt: 0.6 },
+  medium: { acidity: 0.81, aroma: 0.95, sweetness: 0.6, bitterFast: 0.4, bitterHarsh: 0.05, burnt: 0.05 },
+  mediumDark: { acidity: 0.7, aroma: 0.85, sweetness: 0.5, bitterFast: 0.6, bitterHarsh: 0.12, burnt: 0.2 },
+  dark: { acidity: 0.55, aroma: 0.65, sweetness: 0.3, bitterFast: 0.7, bitterHarsh: 0.3, burnt: 0.6 },
 };
 
 const decay = (key: CompoundKey, ratio: number) => Math.exp(-(ratio * DOSE_G) / SCHMIEDER_FIT[key].lambda);
@@ -132,7 +125,6 @@ export const flavorAt = (roast: RoastKey, ratio: number): Record<FlavorKey, numb
     acidity: a.acidity * decay('trigonelline', ratio), // 산의 에스프레소 구간 측정이 없어 가장 빠른 성분을 대용
     aroma: a.aroma * aromaShape(ratio),
     sweetness: a.sweetness * Math.exp(-((ratio - 1.2) ** 2) / (2 * 0.8 ** 2)), // 설탕 곡선이 아니라 지각된 균형
-    body: a.body * decay('tds', ratio),
     bitterness:
       a.bitterFast * decay('caffeine', ratio) + // First drop부터 있고 줄어드는 쓴맛
       a.bitterHarsh * (1 - Math.exp(-ratio / 0.5)) * Math.exp(-ratio / 3), // 분쇄 입자에 오래 남는 거친 쓴맛

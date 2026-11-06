@@ -26,7 +26,7 @@ const ATTRIBUTES: { name: string; shape: ReactNode; roast: ReactNode; basis: str
     basis: '해석(드립 연구 기반)',
   },
   {
-    name: '바디',
+    name: '바디(그래프 제외)',
     shape: <>초반에 급격히 줄어든다.<TheoryCite ids={['schmieder', 'gloess', 'colloid']} /></>,
     roast: <>배전이 강할수록 올라간다. 강배전에서 줄어드는지는 미확인.<TheoryCite ids={['carcea', 'hu', 'shi']} /></>,
     basis: '측정(TDS)',
@@ -104,7 +104,6 @@ export function CupTable() {
   const r = 'text-right tabular';
   // md 미만은 행과 열을 바꾼다 — 끊는 지점 3개가 열이 되어 폰 폭에 들어간다.
   const metrics: { label: string; value: (c: (typeof rows)[number]) => string }[] = [
-    { label: 'First drop 후', value: (c) => `약 ${Math.round(c.seconds)}초` },
     { label: '수율(%)', value: (c) => c.yieldPct.toFixed(1) },
     { label: 'TDS(%)', value: (c) => c.cupTdsPct.toFixed(1) },
     { label: '트리고넬린 회수(%)', value: (c) => c.trigonellineShare.toFixed(0) },

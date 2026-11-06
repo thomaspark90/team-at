@@ -32,7 +32,6 @@ describe('배전도별 모식도', () => {
   it('중배전→중강배전 비율이 콜드브루 근거 배율을 유지한다', () => {
     const { medium: m, mediumDark: d } = ROAST_AMPLITUDES;
     expect(d.acidity / m.acidity).toBeCloseTo(0.86, 1);
-    expect(d.body / m.body).toBeCloseTo(1.36, 1);
     expect(d.bitterFast / m.bitterFast).toBeCloseTo(1.5, 1);
   });
 

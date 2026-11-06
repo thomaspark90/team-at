@@ -71,7 +71,7 @@ export default function GardenTheoryPage() {
         </section>
 
         <section>
-          <Heading>시간별 수율 및 TDS</Heading>
+          <Heading>비율별 수율 및 TDS</Heading>
           <p className="ta-prose m-0 mb-2 text-body text-muted-foreground">
             1:1에서 1:3 잔 고형물의 약 70%가 나옵니다. 그 뒤는 묽어지며 구성이 바뀝니다.
             <TheoryCite ids={['schmieder', 'rao-ratio']} />

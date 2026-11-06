@@ -8,7 +8,6 @@ import {
   flavorAt,
   RATIO_STEPS,
   formatRatio,
-  ratioToSeconds,
   type FlavorKey,
   type RoastKey,
 } from '@/lib/garden/extraction-theory';
@@ -24,7 +23,7 @@ function FlavorTip({ active, payload, label }: any) {
   return (
     <div className="rounded-md border border-border bg-background px-2.5 py-1.5 text-caption">
       <div className="text-muted-foreground">
-        {formatRatio(label)} · 약 {Math.round(ratioToSeconds(label))}초
+        {formatRatio(label)}
       </div>
       {rows.map((r: any) => (
         <div key={r.dataKey} className="mt-0.5 flex items-center gap-1.5">
