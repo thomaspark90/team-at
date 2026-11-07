@@ -8,7 +8,7 @@ import { normalize } from '@/lib/pricing';
 import { createClient } from '@/lib/supabase/server';
 import { requireGardenTab } from '@/lib/access/guard';
 import { serviceClient } from '@/lib/supabase/service';
-import { activeNames, staffNameRows } from '@/lib/staff/directory';
+import { baristaNames, staffNameRows } from '@/lib/staff/directory';
 import { staffLabel } from '@/lib/staff/names';
 
 // 태블릿 레시피 보드 한 방 조회 — 화면이 쓰던 7개 API(레시피·원두·발주·그라인더·얼라인·추출 평가·스탭 명단)를
@@ -78,6 +78,6 @@ export async function GET() {
     grinderProfiles: dropStaleProfiles(grinders?.profiles ?? {}, alignments),
     alignments,
     feedback: feedback.map((f) => ({ ...f, staffName: staffLabel(f.staffName, staffRows) })),
-    staffNames: activeNames(staffRows),
+    staffNames: baristaNames(staffRows), // 추출 평가는 커피 역할만
   });
 }

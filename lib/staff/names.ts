@@ -4,6 +4,7 @@
 export interface StaffNameRow {
   name: string;
   active: boolean;
+  roles?: string[]; // 스케줄 역할 키(barista 등) — 명부 조회에만 채워진다
 }
 
 export type RosterMatch = 'active' | 'left' | 'none';

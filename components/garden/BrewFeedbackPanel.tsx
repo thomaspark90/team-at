@@ -145,7 +145,7 @@ export default function BrewFeedbackPanel({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <span className="text-caption text-muted-foreground">이름</span>
         {staffNames.length === 0 ? (
-          <span className="text-caption text-muted-foreground">스케줄 › 직원 명부에 재직자를 등록해 주세요.</span>
+          <span className="text-caption text-muted-foreground">커피 역할인 재직자가 없습니다. 스케줄 › 직원 명부에서 역할을 지정해 주세요.</span>
         ) : (
           <div style={toggleRow}>
             {staffNames.map((n) => (
