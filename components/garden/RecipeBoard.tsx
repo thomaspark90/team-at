@@ -24,6 +24,7 @@ import { brewOnStyle } from '@/lib/garden/brew-colors';
 const PER_PAGE = 3; // 태블릿 가로·PC — 모바일(폭 700px 이하) 1장, 태블릿 세로(701~1023px) 2장 (2026-11-02)
 const MOBILE_QUERY = '(max-width: 700px)';
 const NARROW_QUERY = '(max-width: 1023px)';
+const COMPACT_QUERY = '(max-width: 1140px)'; // 아이패드 미니 가로(1024·1133px) 이하 — 크게 보기를 화면 전체로 (2026-11-10)
 const STORE_KEY = 'garden-board-store'; // 기기별 지점 기억
 const STAFF_KEY = 'garden-board-staff'; // 공용 태블릿 — 마지막으로 고른 이름 기억
 const CACHE_KEY = 'garden-recipe-board-cache-v1'; // 마지막 보드 응답 — 다음 열 때 즉시 그리기용
@@ -281,19 +282,24 @@ export default function RecipeBoard() {
   // 모바일이면 한 페이지에 카드 1장 — 3장을 좁은 폭에 넣으면 글자가 세로로 쪼개진다
   const [isMobile, setIsMobile] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false); // 아이패드 세로 등 — 3장은 너무 좁아 2장
+  const [isCompact, setIsCompact] = useState(false); // 아이패드 미니 등 작은 태블릿 — 크게 보기가 화면을 꽉 채운다
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_QUERY);
     const nq = window.matchMedia(NARROW_QUERY);
+    const cq = window.matchMedia(COMPACT_QUERY);
     const on = () => {
       setIsMobile(mq.matches);
       setIsNarrow(nq.matches);
+      setIsCompact(cq.matches);
     };
     on();
     mq.addEventListener('change', on);
     nq.addEventListener('change', on);
+    cq.addEventListener('change', on);
     return () => {
       mq.removeEventListener('change', on);
       nq.removeEventListener('change', on);
+      cq.removeEventListener('change', on);
     };
   }, []);
   const perPage = isMobile ? 1 : isNarrow ? 2 : PER_PAGE;
@@ -669,30 +675,39 @@ export default function RecipeBoard() {
           const r = g?.[focus.bt];
           if (!g || !r) return null;
           // 모바일은 두 카드를 위아래로 쌓고 화면 전체를 스크롤
+          // 작은 태블릿(아이패드 미니)은 어두운 배경 없이 두 카드가 화면을 반씩 꽉 채운다 — 닫기는 위쪽 버튼으로만
+          const full = isCompact && !isMobile;
           const box: React.CSSProperties = isMobile
             ? { width: '92vw', height: '82dvh', display: 'flex', minWidth: 0, flexShrink: 0 }
-            : { width: 'min(404px, 44vw)', height: 'min(690px, 86dvh)', display: 'flex', minWidth: 0 };
+            : full
+              ? { flex: 1, display: 'flex', minWidth: 0, minHeight: 0 }
+              : { width: 'min(404px, 44vw)', height: 'min(690px, 86dvh)', display: 'flex', minWidth: 0 };
           return (
             <div
-              onClick={() => setFocus(null)}
+              onClick={full ? undefined : () => setFocus(null)}
+              className={full ? 'bg-background' : undefined}
               style={{
                 position: 'fixed',
                 inset: 0,
                 zIndex: 50,
                 display: 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
-                alignItems: 'center',
+                alignItems: full ? 'stretch' : 'center',
                 justifyContent: isMobile ? 'flex-start' : 'center',
-                gap: 16,
-                padding: isMobile ? '56px 0 24px' : 0,
+                gap: full ? 12 : 16,
+                padding: isMobile ? '56px 0 24px' : full ? '48px 16px 16px' : 0,
                 overflowY: isMobile ? 'auto' : 'visible',
-                background: 'rgb(0 0 0 / 0.5)',
+                background: full ? undefined : 'rgb(0 0 0 / 0.5)',
               }}
             >
               <button
                 onClick={() => setFocus(null)}
-                className="text-body"
-                style={{ ...plainBtn, position: 'absolute', top: 18, right: 24, color: '#fff' }} // 어두운 배경 위 — 다크 모드에서도 흰 글자
+                className={full ? 'text-body text-foreground' : 'text-body'}
+                style={
+                  full
+                    ? { ...plainBtn, position: 'absolute', top: 12, right: 20 }
+                    : { ...plainBtn, position: 'absolute', top: 18, right: 24, color: '#fff' } // 어두운 배경 위 — 다크 모드에서도 흰 글자
+                }
               >
                 닫기 ×
               </button>
@@ -713,7 +728,7 @@ export default function RecipeBoard() {
                   }}
                   bt={focus.bt}
                   onBtChange={(bt) => setFocus({ beanKey: g.beanKey, bt })}
-                  floating
+                  floating={!full}
                   waiting={isWaiting}
                   onWaiting={(on) => {
                     if (!on) setFocus(null); // 판매 시작하면 보드 카드로 돌아간다
@@ -733,6 +748,7 @@ export default function RecipeBoard() {
                   onPickStaff={pickStaff}
                   feedback={feedback.filter((f) => f.beanKey === g.beanKey && f.brewType === focus.bt && f.store === store)}
                   onSaved={(rec) => setFeedback((xs) => [...xs, rec])}
+                  floating={!full}
                 />
               </div>
             </div>
@@ -1071,6 +1087,7 @@ function EvalCard({
   onPickStaff,
   feedback,
   onSaved,
+  floating = true,
 }: {
   store: StoreId;
   g: BoardBean;
@@ -1082,10 +1099,11 @@ function EvalCard({
   onPickStaff: (name: string) => void;
   feedback: BrewFeedback[];
   onSaved: (rec: BrewFeedback) => void;
+  floating?: boolean; // 어두운 배경 위(기본) — 화면 전체 보기에선 보드 카드와 같은 그림자
 }) {
   return (
     <div
-      className="rounded-md bg-background"
+      className={`rounded-md bg-background ${floating ? '' : 'shadow-soft'}`}
       style={{
         flex: 1,
         display: 'flex',
@@ -1093,7 +1111,7 @@ function EvalCard({
         minWidth: 0,
         minHeight: 0,
         overflow: 'hidden',
-        boxShadow: '3px 3px 8px hsl(45 8% 78% / 0.21), -3px -3px 8px hsl(0 0% 100% / 0.45)',
+        boxShadow: floating ? '3px 3px 8px hsl(45 8% 78% / 0.21), -3px -3px 8px hsl(0 0% 100% / 0.45)' : undefined,
       }}
     >
       <div style={{ flexShrink: 0, padding: '24px 24px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
