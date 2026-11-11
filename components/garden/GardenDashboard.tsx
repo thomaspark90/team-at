@@ -17,6 +17,7 @@ import { fmtDate } from '@/lib/garden/format';
 import { ETC, countryOf, isBeanArchived, resolveTasting } from '@/lib/garden/bean-groups';
 import { recipeChanges, recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
 import { recentDefaults } from '@/lib/garden/recent-defaults';
+import { POUR_COUNT_OPTS, pourCountOf, withPourCount } from '@/lib/garden/pour-count';
 import { brewOnStyle } from '@/lib/garden/brew-colors';
 import SegmentControl from '@/components/nav/SegmentControl';
 import TastingNoteEditor from '@/components/garden/TastingNoteEditor';
@@ -677,6 +678,9 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       const label = d.pours.length === 0 ? '뜸' : `${d.pours.length}차`;
       return { ...d, pours: [...d.pours, { water: 40, label }] };
     });
+  // 푸어링 횟수(뜸 제외) 전환 — 뜸·총 물량은 유지하고 뜸 뒤 물량만 다시 나눈다
+  const setPourCount = (n: number) =>
+    setDraft((d) => (d && pourCountOf(d.pours) !== n ? { ...d, pours: withPourCount(d.pours, n) } : d));
   const removePour = (i: number) =>
     setDraft((d) => (d ? { ...d, pours: d.pours.filter((_, j) => j !== i) } : d));
 
@@ -1244,6 +1248,22 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           {/* 푸어링 단계 — 물 투입량 30~60g, 5g 단위 드랍다운 */}
           <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <span className="text-caption text-muted-foreground">푸어링 (단계별 물 투입량)</span>
+            {/* 푸어링 횟수 — 뜸 뒤 2번/3번. 바꾸면 총 물량은 그대로 두고 차수별 물량만 다시 나눈다 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div className="inline-flex gap-1 ta-seg">
+                {POUR_COUNT_OPTS.map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setPourCount(n)}
+                    className={`ta-seg-item px-3 py-1 text-body transition-colors ${pourCountOf(draft.pours) === n ? 'ta-seg-on' : ''}`}
+                    title={`뜸 뒤 ${n}번에 나눠 붓기 — 총 물량은 그대로`}
+                  >
+                    {n}번 푸어
+                  </button>
+                ))}
+              </div>
+              <span className="text-caption text-muted-foreground">뜸 제외 · 바꾸면 총 물량은 그대로 두고 다시 나눠요</span>
+            </div>
             {draft.pours.map((p, i) => {
               const cum = draft.pours.slice(0, i + 1).reduce((a, s) => a + s.water, 0);
               return (
