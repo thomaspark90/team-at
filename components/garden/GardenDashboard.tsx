@@ -17,7 +17,7 @@ import { fmtDate } from '@/lib/garden/format';
 import { ETC, countryOf, isBeanArchived, resolveTasting } from '@/lib/garden/bean-groups';
 import { recipeChanges, recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
 import { recentDefaults } from '@/lib/garden/recent-defaults';
-import { POUR_COUNT_OPTS, pourCountOf, withPourCount } from '@/lib/garden/pour-count';
+import { POUR_COUNT_OPTS, TOTAL_WATER_OPTS, pourCountOf, withPourCount, withPourDelta, withTotalWater } from '@/lib/garden/pour-count';
 import { brewOnStyle } from '@/lib/garden/brew-colors';
 import SegmentControl from '@/components/nav/SegmentControl';
 import TastingNoteEditor from '@/components/garden/TastingNoteEditor';
@@ -675,14 +675,24 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   const addPour = () =>
     setDraft((d) => {
       if (!d) return d;
+      // 총 추출량은 그대로 — 뜸 뒤 물량을 한 번 더 나눈다. 뜸이 없거나 비어 있으면 예전처럼 한 단계 덧붙임
+      const resplit = d.pours.length > 1 ? withPourDelta(d.pours, 1) : null;
+      if (resplit) return { ...d, pours: resplit };
       const label = d.pours.length === 0 ? '뜸' : `${d.pours.length}차`;
       return { ...d, pours: [...d.pours, { water: 40, label }] };
     });
+  // 총 추출량 선택 — 뜸을 뺀 나머지를 현재 푸어링 횟수대로 5g 단위로 나눈다
+  const setTotalWater = (total: number) => setDraft((d) => (d ? { ...d, pours: withTotalWater(d.pours, total) } : d));
   // 푸어링 횟수(뜸 제외) 전환 — 뜸·총 물량은 유지하고 뜸 뒤 물량만 다시 나눈다
   const setPourCount = (n: number) =>
     setDraft((d) => (d && pourCountOf(d.pours) !== n ? { ...d, pours: withPourCount(d.pours, n) } : d));
+  // 차수 삭제 — 총 추출량은 그대로 두고 남은 횟수에 다시 나눈다. 뜸 삭제·마지막 한 차수 삭제는 그 단계만 뺀다(총량 감소)
   const removePour = (i: number) =>
-    setDraft((d) => (d ? { ...d, pours: d.pours.filter((_, j) => j !== i) } : d));
+    setDraft((d) => {
+      if (!d) return d;
+      const resplit = i > 0 ? withPourDelta(d.pours, -1) : null;
+      return { ...d, pours: resplit ?? d.pours.filter((_, j) => j !== i) };
+    });
 
   const draftWater = draft ? draft.pours.reduce((a, s) => a + s.water, 0) : 0;
 
@@ -1248,8 +1258,23 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           {/* 푸어링 단계 — 물 투입량 30~60g, 5g 단위 드랍다운 */}
           <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <span className="text-caption text-muted-foreground">푸어링 (단계별 물 투입량)</span>
-            {/* 푸어링 횟수 — 뜸 뒤 2번/3번. 바꾸면 총 물량은 그대로 두고 차수별 물량만 다시 나눈다 */}
+            {/* 총 추출량 먼저 → 푸어링 횟수(뜸 뒤 2번/3번). 둘 중 무엇을 바꿔도 뜸을 뺀 나머지를 5g 단위로 다시 나눈다 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span className="text-body text-foreground" style={{ width: 76, flexShrink: 0 }}>총 추출량</span>
+              <select
+                value={draftWater > 0 ? String(draftWater) : ''}
+                onChange={(e) => e.target.value && setTotalWater(Number(e.target.value))}
+                className="ta-input tabular"
+                style={{ width: 96, cursor: 'pointer' }}
+                title="총 추출량 — 뜸을 뺀 나머지를 푸어링 횟수대로 나눠요"
+              >
+                {draftWater === 0 && <option value="">선택</option>}
+                {withCur([...TOTAL_WATER_OPTS], draftWater || null).map((w) => (
+                  <option key={w} value={w}>
+                    {w}g
+                  </option>
+                ))}
+              </select>
               <div className="inline-flex gap-1 ta-seg">
                 {POUR_COUNT_OPTS.map((n) => (
                   <button
@@ -1262,7 +1287,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                   </button>
                 ))}
               </div>
-              <span className="text-caption text-muted-foreground">뜸 제외 · 바꾸면 총 물량은 그대로 두고 다시 나눠요</span>
+              <span className="text-caption text-muted-foreground">뜸 제외 · 총량·횟수를 바꾸거나 차수를 지우면 5g 단위로 다시 나눠요</span>
             </div>
             {draft.pours.map((p, i) => {
               const cum = draft.pours.slice(0, i + 1).reduce((a, s) => a + s.water, 0);
@@ -1292,7 +1317,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                     onClick={() => removePour(i)}
                     className="text-muted-foreground hover:text-foreground"
                     style={{ ...ghostBtn, fontSize: 13, flexShrink: 0 }}
-                    title="단계 삭제"
+                    title={i > 0 ? '차수 삭제 — 총 추출량은 그대로, 남은 차수에 다시 나눠요' : '단계 삭제'}
                   >
                     ×
                   </button>
