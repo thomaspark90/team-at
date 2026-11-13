@@ -32,7 +32,7 @@ export type LedgerRow = {
   roast: RoastInfo | null; // 로스팅일 — 미기재면 발주일+1 추정(estimated)
   price: number | null; // 책정 판매가(원, VAT 포함 소비자가)
   purchaseId: string | null; // 판매가가 저장된 최신 발주 기록 — 판매가 칸 인라인 수정 대상
-  base: { doseG: number; cost: number } | null; // 판단 기준 재료비 — ICE·HOT 도징 중간값(레시피 없는 쪽은 프리셋 22g·18g)
+  base: { doseG: number; cost: number } | null; // 판단 기준 재료비 — ICE·HOT 도징 중간값(레시피 없는 쪽은 기준값 20g·18g)
   buy: { capacityG: number; price: number; vatIncluded: boolean } | null; // 최신 발주 용량·구매가(입력 그대로)
   ice: LedgerSlot | null;
   hot: LedgerSlot | null;

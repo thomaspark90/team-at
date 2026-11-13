@@ -40,8 +40,8 @@ export const ratioLabel = (mult: number) => `${ratioPct(mult)}%`;
 export const ratioRangeLabel = (lo: number, hi: number) =>
   lo === hi ? ratioLabel(lo) : `${ratioPct(hi)}~${ratioPct(lo)}%`;
 
-// 재료비 → 1kg 매입가(VAT 별도) 환산 — 기본 설정(세팅 로스 10%·도징 20g·VAT 1.1) 기준
-export const kgPriceForCost = (cost: number) => (cost * 900) / 20 / 1.1;
+// 재료비 → 1kg 매입가(VAT 별도) 환산 — 기본 설정(세팅 로스 10%·도징 19g·VAT 1.1) 기준
+export const kgPriceForCost = (cost: number) => (cost * 900) / 19 / 1.1;
 
 // 참고표 칸 단위 권장 상태 — 판매가 설정 화면에서 칸을 클릭해 켜고 끈다 (서버 저장)
 // key = 재료비(원) 문자열, value = 활성(권장) 배수 목록

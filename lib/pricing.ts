@@ -3,7 +3,7 @@ import type { PricingSettings } from './types';
 export const DEFAULT_SETTINGS: PricingSettings = {
   capacityG: 1000,
   yieldRate: 0.9,
-  doseG: 20, // ICE 22g·HOT 18g의 평균 — 가격 산출용 공통 도징
+  doseG: 19, // ICE 20g·HOT 18g의 평균 — 가격 산출용 공통 도징 (2026-11-13, 이전 20g)
 
   minMult: 4,
   maxMult: 5.5,

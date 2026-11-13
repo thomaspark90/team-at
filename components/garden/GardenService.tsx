@@ -177,7 +177,7 @@ export default function GardenService() {
             <Field label="구매 용량(g)" value={settings.capacityG} onChange={(v) => setNum('capacityG', v)} />
             {/* 세팅 로스 — 발주 후 세팅(다이얼 맞추기)에 쓰는 양(기본 10%). 저장값은 기존대로 남는 비율(yieldRate = 1 − 로스) */}
             <Field label="세팅 로스(%)" value={Math.round((1 - settings.yieldRate) * 100)} onChange={(v) => setNum('yieldRate', 1 - v / 100)} />
-            {/* 기준 도징 — ICE·HOT 도징량 중간값(프리셋 22g·18g → 20g). 판매가 판단 기준 (2026-11-03) */}
+            {/* 기준 도징 — ICE·HOT 도징량 중간값(기준값 20g·18g → 19g). 판매가 판단 기준 (2026-11-03) */}
             <Field label="기준 도징(g, ICE·HOT 평균)" value={settings.doseG} onChange={(v) => setNum('doseG', v)} />
           </div>
         </div>

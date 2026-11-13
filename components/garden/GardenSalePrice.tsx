@@ -71,7 +71,7 @@ export default function GardenSalePrice() {
     refresh();
   }, []);
 
-  // ICE·HOT 원가율용 레시피 도징량 — 레시피가 없으면 매장 기준 프리셋(ICE 22g · HOT 18g). 실패해도 프리셋으로 표시
+  // ICE·HOT 원가율용 레시피 도징량 — 레시피가 없으면 산식 기준값(ICE 20g · HOT 18g). 실패해도 기준값으로 표시
   const [recipes, setRecipes] = useState<DripRecipe[]>([]);
   useEffect(() => {
     fetch('/api/garden-recipes', { cache: 'no-store' })
@@ -454,7 +454,7 @@ function RecordPricer({
   orderButton?: React.ReactNode; // 발주 카톡 [발주] — 허용 계정에만 (KakaoOrder)
 }) {
   // 권장 범위 = 참고표에서 이 기록 재료비가 속한 행의 초록 칸 범위(최솟값~최댓값, 내부 키는 배수)
-  // 재료비 = ICE·HOT 도징 중간값 기준 (2026-11-03) — 레시피 없으면 프리셋 22g·18g → 20g
+  // 재료비 = ICE·HOT 도징 중간값 기준 (2026-11-03) — 레시피 없으면 기준값 20g·18g → 19g
   const baseDose = baseDoseG(doses.ice.doseG, doses.hot.doseG);
   const cost = brewCost(rec, baseDose);
   const bandRow = guideRowForCost(cost);

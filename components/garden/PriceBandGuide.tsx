@@ -99,7 +99,7 @@ export default function PriceBandGuide({
       <p className="text-caption text-muted-foreground" style={{ margin: '0 0 12px' }}>
         세로 = 잔당 재료비(원, ICE·HOT 평균 도징) · 가로 = 목표 재료비율 · 칸 = 판매가(원, 500원 올림) / 실제 재료비율 · 잔당 이익(원). 초록 = 권장 · 회색 = 비활성 — {readOnly ? '권장 범위는 판매가 설정 화면에서 바꿔요.' : '칸을 클릭해 바꿀 수 있어요(모두에게 저장).'}
         <br />
-        ≈ kg = 그 재료비가 나오는 1kg 매입가(VAT 별도, 세팅 로스 10%·20g 기준).
+        ≈ kg = 그 재료비가 나오는 1kg 매입가(VAT 별도, 세팅 로스 10%·19g 기준).
       </p>
       {error && (
         <p className="ta-error text-caption" style={{ margin: '0 0 8px' }}>
