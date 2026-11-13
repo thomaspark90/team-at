@@ -6,6 +6,7 @@ import type { BeanMeta, BrewType, DripRecipe, DripRecipeSnapshot, PourStep, Purc
 import { STORES, STOCK_LEVELS, stockOf } from '@/lib/types';
 import { roastInfo, restClass, restStage, restTitle } from '@/lib/garden/roast';
 import { costPerCup, normalize } from '@/lib/pricing';
+import { currentCost } from '@/lib/garden/brew-cost';
 import { applyPreset, presetById } from '@/lib/drip-presets';
 import { flavorGradient } from '@/lib/flavor-colors';
 import BrewTimer from '@/components/garden/BrewTimer';
@@ -854,7 +855,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             {latest?.chosenPrice != null && latest.chosenPrice > 0 && (
               // 책정 판매가 / 재료비율(잔당 재료비 ÷ 판매가)
               <span className="tabular text-body text-muted-foreground" style={{ flexShrink: 0 }}>
-                {won(latest.chosenPrice)} / {Math.round((latest.costPerCup / latest.chosenPrice) * 100)}%
+                {won(latest.chosenPrice)} / {Math.round((currentCost(recipes, latest) / latest.chosenPrice) * 100)}%
               </span>
             )}
           </div>

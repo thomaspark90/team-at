@@ -27,7 +27,7 @@ export const DRIP_PRESETS: DripPreset[] = [
     name: 'ICE 필터커피',
     source: '매장 기준',
     dripper: '',
-    defaultDoseG: 22,
+    defaultDoseG: 20, // 2026-11-13 대표 지정 (이전 22g) — 물량 190g 은 그대로
     tempC: 92, // 기본 92°C — 에티오피아·케냐·페루·게이샤는 93으로 조정 (extra 안내)
     grindMesh: 6.5, // 권장 6.0~7.0의 가운데
     totalTime: '3:30',

@@ -6,7 +6,7 @@ import { PRICE_UNIT, normalize, roundUpPrice } from '@/lib/pricing';
 import { fmtDate } from '@/lib/garden/format';
 import PriceBandGuide from './PriceBandGuide';
 import { useKakaoOrder } from './KakaoOrder';
-import { baseDoseG, brewCost, dosesForBean, type BrewDoses } from '@/lib/garden/brew-cost';
+import { baseDoseG, brewCost, currentCost, dosesForBean, type BrewDoses } from '@/lib/garden/brew-cost';
 import { bandRange, defaultActiveCells, guideRowForCost, ratioRangeLabel, type ActiveCells } from '@/lib/garden/price-bands';
 
 // 판매가 설정 전용 화면 — 발주(GardenService)에서 저장된 기록의 판매가를 책정·공유한다.
@@ -81,10 +81,7 @@ export default function GardenSalePrice() {
   }, []);
   const dosesOf = (rec: PurchaseRecord) => dosesForBean(recipes, normalize(rec.bean));
   // 판단 기준 재료비 — ICE·HOT 도징 중간값 기준 (2026-11-03 대표 결정, 기록 당시 costPerCup(공통 20g) 대신)
-  const baseCostOf = (rec: PurchaseRecord) => {
-    const d = dosesOf(rec);
-    return brewCost(rec, baseDoseG(d.ice.doseG, d.hot.doseG));
-  };
+  const baseCostOf = (rec: PurchaseRecord) => currentCost(recipes, rec);
 
   // 판매가 확정/해제 — 판매가는 서버가 당시 설정 스냅샷 산식으로 다시 계산해 확정한다
   const decide = async (rec: PurchaseRecord, price: number | null) => {

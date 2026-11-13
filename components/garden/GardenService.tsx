@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { GardenOptions, PricingSettings, PurchaseRecord, StoreId } from '@/lib/types';
+import type { DripRecipe, GardenOptions, PricingSettings, PurchaseRecord, StoreId } from '@/lib/types';
+import { currentCost, currentDoseG, currentRange, dosesForBean } from '@/lib/garden/brew-cost';
 import { DEFAULT_SETTINGS, computePricing, normalize } from '@/lib/pricing';
 import { toast } from '@/components/Toast';
 import { fmtDate } from '@/lib/garden/format';
@@ -64,6 +65,24 @@ export default function GardenService() {
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => j && setOptions({ staffNames: j.staffNames ?? [], roasteries: j.roasteries ?? [] }));
   }, []);
+
+  // 레시피 도징 — 재료비는 발주 당시 스냅샷이 아니라 지금 레시피 도징(ICE·HOT 중간값)으로 본다 (2026-11-13 대표 지시).
+  // 발주 뒤 레시피가 바뀌면(예: ICE 20g → 22g) 발주 기록의 재료비도 따라간다. 불러오기 실패 시 기준값(20g·18g)으로 계산.
+  const [recipes, setRecipes] = useState<DripRecipe[]>([]);
+  useEffect(() => {
+    fetch('/api/garden-recipes', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((j) => setRecipes(Array.isArray(j) ? j : []))
+      .catch(() => {});
+  }, []);
+  // 입력 중인 원두에 레시피가 있으면(재발주) 기준 도징을 그 레시피 중간값으로 맞춘다 — 이후 손으로 고칠 수 있다
+  const beanKey = normalize(bean);
+  useEffect(() => {
+    if (!beanKey) return;
+    const d = dosesForBean(recipes, beanKey);
+    if (!d.ice.fromRecipe && !d.hot.fromRecipe) return;
+    setSettings((s) => ({ ...s, doseG: currentDoseG(recipes, beanKey) }));
+  }, [beanKey, recipes]);
 
   // 잔존율·투입량이 0이면(입력창 비움) 재료비 0원·판매가 0원이 그대로 저장되므로 결과 자체를 막는다
   const result = useMemo(
@@ -458,7 +477,9 @@ export default function GardenService() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {group.map((rec, i) => {
                       const older = group[i + 1];
-                      const delta = older ? rec.costPerCup - older.costPerCup : 0;
+                      const cost = currentCost(recipes, rec);
+                      const delta = older ? cost - currentCost(recipes, older) : 0;
+                      const range = currentRange(recipes, rec);
                       return (
                         <div key={rec.id} className="gs-row">
                           <span className="gs-meta">
@@ -498,7 +519,7 @@ export default function GardenService() {
                               {rec.settings?.vatIncluded && <span style={{ fontSize: 11 }}>·VAT포함</span>}
                             </span>
                             <span className="tabular text-foreground" style={{ flexShrink: 0 }}>
-                              재료비 {won(rec.costPerCup)}
+                              재료비 {won(cost)}
                               {older && delta !== 0 && (
                                 <span className="tabular text-foreground" style={{ marginLeft: 4 }}>
                                   {delta > 0 ? '▲' : '▼'}{won(Math.abs(delta))}
@@ -510,10 +531,10 @@ export default function GardenService() {
                             {rec.chosenPrice != null && rec.chosenPrice > 0 ? (
                               <span className="tabular text-foreground">
                                 책정 판매가 {won(rec.chosenPrice)}
-                                <span className="text-muted-foreground"> ({Math.round((rec.costPerCup / rec.chosenPrice) * 100)}%)</span>
+                                <span className="text-muted-foreground"> ({Math.round((cost / rec.chosenPrice) * 100)}%)</span>
                               </span>
                             ) : (
-                              <span className="tabular text-muted-foreground">판매 {won(rec.rangeLow)}~{won(rec.rangeHigh)}</span>
+                              <span className="tabular text-muted-foreground">판매 {won(range.low)}~{won(range.high)}</span>
                             )}
                           </span>
                           {kakao.button(rec)}
