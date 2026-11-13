@@ -24,6 +24,10 @@ export function recipesForStore(recipes: DripRecipe[], store: StoreId): { recipe
   return out;
 }
 
+// 수정자 표기 — 레시피 보드(공용 태블릿)에서 고른 스탭 이름이 있으면 그 이름, 없으면 저장 계정 앞부분
+export const recipeEditor = (r: { updatedBy?: string; updatedByName?: string }): string =>
+  r.updatedByName || (r.updatedBy ? r.updatedBy.split('@')[0] : '');
+
 // 수정 이력 변경점 — 한 버전(before)에서 다음 버전(after)으로 무엇이 바뀌었는지. 예: '분쇄도 7.1→7.0 · 2차 50→55g'
 type Comparable = Pick<DripRecipeSnapshot, 'doseG' | 'waterG' | 'tempC' | 'grindMesh' | 'totalTime' | 'pours'>;
 export function recipeChanges(before: Comparable, after: Comparable): string[] {

@@ -116,6 +116,10 @@ export async function POST(req: Request) {
     presetId: body.presetId ?? null,
     updatedAt: new Date().toISOString(),
     updatedBy: user.email ?? '',
+    // 레시피 보드(공용 태블릿) 바로 수정 — 고른 스탭 이름을 함께 남긴다
+    ...(typeof body.updatedByName === 'string' && body.updatedByName.trim()
+      ? { updatedByName: body.updatedByName.trim().slice(0, 40) }
+      : {}),
   };
   const prev = all.find((r) => sameRecipeSlot(r, recipe.beanKey, brewType, store));
   const isNew = !prev;

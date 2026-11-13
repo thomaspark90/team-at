@@ -7,18 +7,20 @@ import { STORES } from '@/lib/types';
 import { flavorColors, flavorGradient } from '@/lib/flavor-colors';
 import { fmtDate } from '@/lib/garden/format';
 import BrewFeedbackPanel from '@/components/garden/BrewFeedbackPanel';
+import RecipeQuickEdit from '@/components/garden/RecipeQuickEdit';
 import SegmentControl from '@/components/nav/SegmentControl';
 import { toast } from '@/components/Toast';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import { convertDial, pangyoDialText } from '@/lib/grinder-calibration';
 import { latestAlignmentDate, type AlignmentEvent } from '@/lib/grinder-alignments';
 import { ETC, countryOf, isBeanArchived, resolveTasting } from '@/lib/garden/bean-groups';
-import { recipesForStore } from '@/lib/garden/recipe-store';
+import { recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
 import { brewOnStyle } from '@/lib/garden/brew-colors';
 
 // 태블릿 레시피 보드 — 매장 태블릿(가로)에서 레시피 카드 3장을 한 화면에, 좌우 스와이프로 3장씩 넘긴다.
 // 추출용 카드(M2, 2026-10-30): ICE/HOT 전환 · 스펙(이 지점 분쇄도) · 푸어링 · 추출비, 맨 아래 접힌 추출 평가.
-// 타이머 없음(저울 타이머 사용). 편집은 필터 레시피 탭에서 — 보드는 보기 + 추출 평가만.
+// 타이머 없음(저울 타이머 사용). 전체 편집은 필터 레시피 탭에서 — 보드는 보기 + 추출 평가 +
+// 크게 보기의 '의견 · 레시피 수정' 탭(− / + 바로 수정, 2026-11-13).
 // 넘김은 CSS scroll-snap — 터치 스와이프는 브라우저 기본 동작, 마우스는 ‹ › 버튼.
 
 const PER_PAGE = 3; // 태블릿 가로·PC — 모바일(폭 700px 이하) 1장, 태블릿 세로(701~1023px) 2장 (2026-11-02)
@@ -81,6 +83,8 @@ export default function RecipeBoard() {
   const [openArchived, setOpenArchived] = useState<string | null>(null); // 아카이브에서 크게 펼쳐 본 원두 beanKey
   // 보드 카드를 누르면 레시피 카드 + 추출 평가 카드를 나란히 띄운다(F1, 2026-11-01)
   const [focus, setFocus] = useState<{ beanKey: string; bt: BrewType } | null>(null);
+  // 크게 보기에서 조절 중인 레시피 — 저장 전 값을 왼쪽 카드에 비춘다 (의견 · 레시피 수정 탭)
+  const [preview, setPreview] = useState<DripRecipe | null>(null);
   const [archiveTab, setArchiveTab] = useState<ArchiveTab>('전체');
   const [store, setStore] = useState<StoreId>('yangjae');
   const [feedback, setFeedback] = useState<BrewFeedback[]>([]);
@@ -674,6 +678,7 @@ export default function RecipeBoard() {
           const isWaiting = waitingSet.has(focus.beanKey);
           const r = g?.[focus.bt];
           if (!g || !r) return null;
+          const shown = preview && preview.beanKey === g.beanKey && btOf(preview) === focus.bt ? { ...g, [focus.bt]: preview } : g;
           // 모바일은 두 카드를 위아래로 쌓고 화면 전체를 스크롤
           // 작은 태블릿(아이패드 미니)은 어두운 배경 없이 두 카드가 화면을 반씩 꽉 채운다 — 닫기는 위쪽 버튼으로만
           const full = isCompact && !isMobile;
@@ -713,7 +718,7 @@ export default function RecipeBoard() {
               </button>
               <div onClick={(e) => e.stopPropagation()} style={box}>
                 <BoardCard
-                  g={g}
+                  g={shown}
                   store={store}
                   tasting={tastingByBean.get(g.beanKey) ?? ''}
                   storeMesh={storeMesh}
@@ -738,6 +743,24 @@ export default function RecipeBoard() {
               </div>
               <div onClick={(e) => e.stopPropagation()} style={box}>
                 <EvalCard
+                  key={`${g.beanKey}:${store}`}
+                  isFallback={!!g.fallback[focus.bt]}
+                  onPreview={setPreview}
+                  onRecipeSaved={(saved) => {
+                    setPreview(null);
+                    const merge = (xs: DripRecipe[]) => [...xs.filter((x) => !sameRecipeSlot(x, saved.beanKey, btOf(saved), store)), saved];
+                    setRecipes(merge);
+                    // 기기 캐시도 같이 고친다 — 다음에 보드를 열 때 옛 레시피가 잠깐 보이지 않게
+                    try {
+                      const raw = localStorage.getItem(CACHE_KEY);
+                      if (raw) {
+                        const d = JSON.parse(raw) as BoardData;
+                        localStorage.setItem(CACHE_KEY, JSON.stringify({ ...d, recipes: merge(d.recipes ?? []) }));
+                      }
+                    } catch {
+                      // 캐시는 선택 사항
+                    }
+                  }}
                   store={store}
                   g={g}
                   bt={focus.bt}
@@ -1088,7 +1111,13 @@ function EvalCard({
   feedback,
   onSaved,
   floating = true,
+  isFallback,
+  onPreview,
+  onRecipeSaved,
 }: {
+  isFallback: boolean;
+  onPreview: (r: DripRecipe | null) => void;
+  onRecipeSaved: (r: DripRecipe) => void;
   store: StoreId;
   g: BoardBean;
   bt: BrewType;
@@ -1101,6 +1130,20 @@ function EvalCard({
   onSaved: (rec: BrewFeedback) => void;
   floating?: boolean; // 어두운 배경 위(기본) — 화면 전체 보기에선 보드 카드와 같은 그림자
 }) {
+  // 탭 — 평가 남기기 / 의견 · 레시피 수정 (2026-11-13 시안 C). 원두·지점이 바뀌면 key 로 다시 만들어 평가 탭부터
+  const [tab, setTab] = useState<'eval' | 'edit'>('eval');
+  const currentCount = feedback.filter((f) => f.recipeVersion === recipe.updatedAt).length;
+  const tabBtn = (id: 'eval' | 'edit', label: string) => (
+    <button
+      onClick={() => setTab(id)}
+      role="tab"
+      aria-selected={tab === id}
+      className={`text-body ${tab === id ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+      style={{ ...plainBtn, padding: '0 0 10px', whiteSpace: 'nowrap', boxShadow: tab === id ? '0 2px 0 hsl(var(--foreground))' : undefined }}
+    >
+      {label}
+    </button>
+  );
   return (
     <div
       className={`rounded-md bg-background ${floating ? '' : 'shadow-soft'}`}
@@ -1114,28 +1157,46 @@ function EvalCard({
         boxShadow: floating ? '3px 3px 8px hsl(45 8% 78% / 0.21), -3px -3px 8px hsl(0 0% 100% / 0.45)' : undefined,
       }}
     >
-      <div style={{ flexShrink: 0, padding: '24px 24px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-        <p className="text-title font-medium" style={{ margin: 0 }}>
-          추출 평가
-        </p>
-        <span className="text-caption text-muted-foreground" style={{ whiteSpace: 'nowrap' }}>
+      <div role="tablist" className="border-b border-border" style={{ flexShrink: 0, margin: '24px 24px 0', display: 'flex', alignItems: 'baseline', gap: 20 }}>
+        {tabBtn('eval', '평가 남기기')}
+        {tabBtn('edit', `의견 ${currentCount} · 레시피 수정`)}
+        <span className="text-caption text-muted-foreground" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
           {STORES.find((s) => s.id === store)?.short} · {bt.toUpperCase()}
         </span>
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px 24px' }}>
-        <BrewFeedbackPanel
-          store={store}
-          beanKey={g.beanKey}
-          bean={g.bean}
-          brewType={bt}
-          recipe={recipe}
-          baseMesh={baseMesh}
-          staffNames={staffNames}
-          staff={staff}
-          onPickStaff={onPickStaff}
-          feedback={feedback}
-          onSaved={onSaved}
-        />
+        {tab === 'eval' ? (
+          <BrewFeedbackPanel
+            store={store}
+            beanKey={g.beanKey}
+            bean={g.bean}
+            brewType={bt}
+            recipe={recipe}
+            baseMesh={baseMesh}
+            staffNames={staffNames}
+            staff={staff}
+            onPickStaff={onPickStaff}
+            feedback={feedback}
+            onSaved={onSaved}
+          />
+        ) : (
+          <RecipeQuickEdit
+            key={bt}
+            store={store}
+            beanKey={g.beanKey}
+            bean={g.bean}
+            brewType={bt}
+            recipe={recipe}
+            baseMesh={baseMesh}
+            isFallback={isFallback}
+            feedback={feedback}
+            staffNames={staffNames}
+            staff={staff}
+            onPickStaff={onPickStaff}
+            onPreview={onPreview}
+            onSaved={onRecipeSaved}
+          />
+        )}
       </div>
     </div>
   );

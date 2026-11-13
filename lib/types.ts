@@ -105,6 +105,7 @@ export interface DripRecipe {
   createdAt?: string; // ISO — 최초 등록 시점 (구 기록은 저장 시 이력 최초 시각으로 백필)
   updatedAt: string; // ISO — 대시보드 정렬 기준
   updatedBy?: string; // 저장한 사람 이메일
+  updatedByName?: string; // 레시피 보드(공용 태블릿)에서 수정할 때 고른 스탭 이름 — 있으면 이쪽이 실제 수정자
   history?: DripRecipeSnapshot[]; // 이전 버전 (최신순, 최대 20개)
   // 판교 EK43 수동 보정 — 물 pH·미네랄 차이로 산식이 절대적이지 않아 지점에서 직접 조정.
   // null/없음 = 산식 자동 환산 사용. 양재천 grindMesh가 바뀌면 자동값으로 복귀(이력 기록).

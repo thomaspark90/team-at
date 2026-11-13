@@ -16,7 +16,7 @@ import { convertDial, pangyoDialText } from '@/lib/grinder-calibration';
 import { latestAlignmentDate, type AlignmentEvent } from '@/lib/grinder-alignments';
 import { fmtDate } from '@/lib/garden/format';
 import { ETC, countryOf, isBeanArchived, resolveTasting } from '@/lib/garden/bean-groups';
-import { recipeChanges, recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
+import { recipeChanges, recipeEditor, recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
 import { recentDefaults } from '@/lib/garden/recent-defaults';
 import { POUR_COUNT_OPTS, TOTAL_WATER_OPTS, pourCountOf, withPourCount, withPourDelta, withTotalWater } from '@/lib/garden/pour-count';
 import { brewOnStyle } from '@/lib/garden/brew-colors';
@@ -1043,7 +1043,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                       <span className="tabular text-caption text-muted-foreground">
                         {fmtDate(r.updatedAt)}
-                        {r.updatedBy && ` · ${r.updatedBy.split('@')[0]}`}
+                        {recipeEditor(r) && ` · ${recipeEditor(r)}`}
                       </span>
                       {(r.history?.length ?? 0) > 0 && (
                         <button
@@ -1078,7 +1078,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                                 .join(' · ')}
                               {changes.length > 0 && (
                                 <span className="text-muted-foreground" style={{ display: 'block' }}>
-                                  → {fmtDate(next.updatedAt)}{next.updatedBy ? ` ${next.updatedBy.split('@')[0]}` : ''} 수정: {changes.join(' · ')}
+                                  → {fmtDate(next.updatedAt)}{recipeEditor(next) ? ` ${recipeEditor(next)}` : ''} 수정: {changes.join(' · ')}
                                 </span>
                               )}
                             </span>

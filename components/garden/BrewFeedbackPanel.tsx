@@ -22,7 +22,7 @@ import { toast } from '@/components/Toast';
 // 레시피는 바꾸지 않는다. 아래에 같은 지점·같은 레시피 버전의 의견 집계와 최근 의견.
 
 // 선택지는 글자 토글(M1 스타일, 2026-10-30) — 면·그림자 없이 선택만 밑줄+진한 글자
-function TextToggle({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+export function TextToggle({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
