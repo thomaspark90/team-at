@@ -1,20 +1,22 @@
 import type { BrewFeedback, DripRecipe, PourStep } from '@/lib/types';
 import { pourCountOf, withPourCount, withTotalWater } from '@/lib/garden/pour-count';
-import { WATER_STEP_G, roundMesh } from '@/lib/garden/brew-feedback';
+import { BYPASS_SUGGEST_G, WATER_STEP_G, roundMesh, wantsBypass } from '@/lib/garden/brew-feedback';
+import { BYPASS_MAX_G, BYPASS_STEP_G, bypassOf, bypassText } from '@/lib/garden/bypass';
 
 // 레시피 보드 '의견 · 레시피 수정' 탭 — 태블릿에서 − / + 버튼으로 레시피를 바로 고친다 (2026-11-13 대표 지시, 시안 C).
 // 화면(components/garden/RecipeQuickEdit.tsx)은 그리기만 하고, 값 조절·의견 반영·저장 본문 계산은 전부 여기서 한다.
-// 조절 단위: 분쇄도 0.1 · 추출량 5g · 도징 1g · 온도 1° · 추출 시간 10초 — 범위는 필터 레시피 설정 창과 같다.
+// 조절 단위: 분쇄도 0.1 · 추출량 5g · 가수 5g · 도징 1g · 온도 1° · 추출 시간 10초 — 범위는 필터 레시피 설정 창과 같다.
 
 export interface QuickDraft {
   mesh: number | null; // 이 지점 EK43 다이얼
   waterG: number | null; // 총 추출량(푸어링 합)
+  bypassG: number; // 가수(g) — 0 = 없음
   doseG: number | null;
   tempC: number | null;
   timeSec: number | null; // 추출 시간(초)
   pourCount: number | null; // 푸어링 횟수(뜸 제외) — 뜸으로 시작하지 않는 구 기록은 null(조절 불가)
 }
-export type QuickField = 'mesh' | 'waterG' | 'doseG' | 'tempC' | 'timeSec';
+export type QuickField = 'mesh' | 'waterG' | 'bypassG' | 'doseG' | 'tempC' | 'timeSec';
 
 export const parseTime = (s: string | null | undefined): number | null => {
   const m = /^(\d+):([0-5]\d)$/.exec((s ?? '').trim());
@@ -26,11 +28,12 @@ export const fmtTime = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 
 export const QUICK_FIELDS: Record<QuickField, { label: string; step: number; min: number; max: number; fallback: number | null; show: (v: number) => string }> = {
   mesh: { label: '분쇄도 EK43', step: 0.1, min: 4, max: 9, fallback: null, show: (v) => v.toFixed(1) },
   waterG: { label: '추출량', step: 5, min: 150, max: 300, fallback: 200, show: (v) => `${v}g` },
+  bypassG: { label: '가수', step: BYPASS_STEP_G, min: 0, max: BYPASS_MAX_G, fallback: 0, show: bypassText },
   doseG: { label: '도징량', step: 1, min: 16, max: 24, fallback: 18, show: (v) => `${v}g` },
   tempC: { label: '온도', step: 1, min: 91, max: 94, fallback: 92, show: (v) => `${v}°` },
   timeSec: { label: '추출 시간', step: 10, min: 150, max: 240, fallback: 180, show: fmtTime },
 };
-export const QUICK_ORDER: QuickField[] = ['mesh', 'waterG', 'doseG', 'tempC', 'timeSec'];
+export const QUICK_ORDER: QuickField[] = ['mesh', 'waterG', 'bypassG', 'doseG', 'tempC', 'timeSec'];
 
 const total = (pours: PourStep[]) => pours.reduce((a, s) => a + s.water, 0);
 
@@ -40,6 +43,7 @@ export function draftOf(recipe: DripRecipe, storeMesh: number | null): QuickDraf
   return {
     mesh: storeMesh != null ? roundMesh(storeMesh) : null,
     waterG: pours.length ? total(pours) : recipe.waterG,
+    bypassG: bypassOf(recipe),
     doseG: recipe.doseG,
     tempC: recipe.tempC,
     timeSec: parseTime(recipe.totalTime),
@@ -78,6 +82,7 @@ export function applyDraft(recipe: DripRecipe, draft: QuickDraft, orig: QuickDra
     doseG: draft.doseG,
     waterG: pours ? total(pours) : draft.waterG,
     pours,
+    bypassG: draft.bypassG > 0 ? draft.bypassG : null,
     tempC: draft.tempC,
     grindMesh: draft.mesh,
     // 시간을 안 건드렸으면 원래 표기 그대로(형식이 다른 구 기록 보존)
@@ -97,7 +102,8 @@ export function quickChanges(orig: QuickDraft, draft: QuickDraft): string[] {
   return out;
 }
 
-// 의견 한 건에서 뽑는 '적용' 버튼 — 다음 분쇄도 제안, 농도 칩(진함 = 물 +10g, 연함 = 물 −10g: suggestWater 와 같은 규칙)
+// 의견 한 건에서 뽑는 '적용' 버튼 — 다음 분쇄도 제안, 농도 칩(진함 = 물 +10g, 연함 = 물 −10g: suggestWater 와 같은 규칙),
+// 떫음·텁텁함 = 가수 +10g(suggestBypass 와 같은 규칙, 상한 60g)
 export interface FeedbackAction {
   key: string;
   label: string;
@@ -112,6 +118,10 @@ export function feedbackActions(f: Pick<BrewFeedback, 'issues' | 'nextMesh'>, or
   if (waterEditable && orig.waterG != null) {
     const sign = f.issues.includes('strong') ? 1 : f.issues.includes('weak') ? -1 : 0;
     if (sign) out.push({ key: 'water', label: `물 ${sign > 0 ? '+' : '−'}${WATER_STEP_G}g 적용`, patch: { waterG: orig.waterG + sign * WATER_STEP_G } });
+  }
+  if (wantsBypass(f.issues) && orig.bypassG < BYPASS_MAX_G) {
+    const bypassG = Math.min(BYPASS_MAX_G, orig.bypassG + BYPASS_SUGGEST_G);
+    out.push({ key: 'bypass', label: `가수 +${bypassG - orig.bypassG}g 적용`, patch: { bypassG } });
   }
   return out;
 }

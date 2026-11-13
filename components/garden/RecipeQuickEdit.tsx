@@ -204,7 +204,7 @@ export default function RecipeQuickEdit({
         )}
       </div>
 
-      {/* 미세 조정 — 분쇄도 0.1 · 추출량 5g · 도징 1g · 온도 1° · 추출 시간 10초 */}
+      {/* 미세 조정 — 분쇄도 0.1 · 추출량 5g · 가수 5g · 도징 1g · 온도 1° · 추출 시간 10초 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <span className="text-caption text-muted-foreground">레시피 조절</span>
         {fields.map(row)}

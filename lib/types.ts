@@ -96,6 +96,7 @@ export interface DripRecipe {
   doseG: number | null; // 투입량(g)
   waterG: number | null; // 총 물량(g, 푸어링 합) — 물은 1g≈1ml지만 표기는 g로 통일
   pours?: PourStep[] | null; // 푸어링 단계 (구 기록엔 없음)
+  bypassG?: number | null; // 가수(g) — 추출 후 서버에 더하는 물. 추출량·추출비에 포함하지 않는다 (lib/garden/bypass.ts)
   tempC: number | null; // 물 온도(°C)
   grind: string; // 분쇄도 텍스트 (구 기록 호환 — grindMesh가 있으면 그쪽 우선)
   grindMesh?: number | null; // 분쇄도 수치 (EK43 양재천 기준, 0.1 단위)

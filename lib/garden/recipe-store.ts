@@ -29,7 +29,7 @@ export const recipeEditor = (r: { updatedBy?: string; updatedByName?: string }):
   r.updatedByName || (r.updatedBy ? r.updatedBy.split('@')[0] : '');
 
 // 수정 이력 변경점 — 한 버전(before)에서 다음 버전(after)으로 무엇이 바뀌었는지. 예: '분쇄도 7.1→7.0 · 2차 50→55g'
-type Comparable = Pick<DripRecipeSnapshot, 'doseG' | 'waterG' | 'tempC' | 'grindMesh' | 'totalTime' | 'pours'>;
+type Comparable = Pick<DripRecipeSnapshot, 'doseG' | 'waterG' | 'tempC' | 'grindMesh' | 'totalTime' | 'pours' | 'bypassG'>;
 export function recipeChanges(before: Comparable, after: Comparable): string[] {
   const out: string[] = [];
   const cmp = (label: string, a: unknown, b: unknown, unit = '') => {
@@ -49,5 +49,6 @@ export function recipeChanges(before: Comparable, after: Comparable): string[] {
     cmp(name, pa[i]?.water, pb[i]?.water, 'g');
   }
   if (pa.length === pb.length) cmp('추출량', before.waterG, after.waterG, 'g');
+  cmp('가수', before.bypassG || 0, after.bypassG || 0, 'g'); // 없음 = 0g
   return out;
 }

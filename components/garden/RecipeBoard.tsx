@@ -16,6 +16,7 @@ import { latestAlignmentDate, type AlignmentEvent } from '@/lib/grinder-alignmen
 import { ETC, countryOf, isBeanArchived, resolveTasting } from '@/lib/garden/bean-groups';
 import { recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
 import { brewOnStyle } from '@/lib/garden/brew-colors';
+import { bypassOf, drinkG } from '@/lib/garden/bypass';
 
 // 태블릿 레시피 보드 — 매장 태블릿(가로)에서 레시피 카드 3장을 한 화면에, 좌우 스와이프로 3장씩 넘긴다.
 // 추출용 카드(M2, 2026-10-30): ICE/HOT 전환 · 스펙(이 지점 분쇄도) · 푸어링 · 추출비, 맨 아래 접힌 추출 평가.
@@ -1047,6 +1048,18 @@ function BoardCard({
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* 가수 — 추출이 끝난 뒤 서버에 더하는 물. 푸어링 목록 바로 아래 한 줄, 오른쪽은 음료량(추출량 + 가수) */}
+          {bypassOf(r) > 0 && (
+            <div
+              className="tabular text-body border-t border-border"
+              style={{ display: 'grid', gridTemplateColumns: '1fr auto 64px', gap: 12, alignItems: 'baseline', marginTop: -16, paddingTop: 12 }}
+            >
+              <span className="text-muted-foreground">가수 (추출 후)</span>
+              <span>+{bypassOf(r)}g</span>
+              <span className="text-muted-foreground" style={{ textAlign: 'right' }}>{drinkG(r) != null ? `${drinkG(r)}g` : ''}</span>
             </div>
           )}
 

@@ -45,6 +45,15 @@ export function suggestWater(issues: string[]): string | null {
   return null;
 }
 
+// 떫음·텁텁함(잡미) → 가수 제안(텍스트·적용 버튼, 레시피는 자동으로 바꾸지 않음) — 2026-11-13 대표 결정.
+// 매장 경험상 추출 뒤 물을 더하면 깔끔해진다. '연함'이 같이 찍혔으면 더 묽어지므로 제안하지 않는다.
+export const BYPASS_CHIPS = ['astringent', 'muddy'];
+export const BYPASS_SUGGEST_G = 10;
+export const wantsBypass = (issues: string[]) => issues.some((id) => BYPASS_CHIPS.includes(id)) && !issues.includes('weak');
+export function suggestBypass(issues: string[]): string | null {
+  return wantsBypass(issues) ? `떫음·텁텁함 → 가수 +${BYPASS_SUGGEST_G}g 제안 (추출 뒤 물을 더해 깔끔하게)` : null;
+}
+
 export const chipLabel = (id: string) => FEEDBACK_CHIPS.find((c) => c.id === id)?.label ?? id;
 
 // 슬라이더 범위 — 그 지점 현재 분쇄도 ±0.5, 0.1 단위

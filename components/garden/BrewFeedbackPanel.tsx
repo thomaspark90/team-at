@@ -10,6 +10,7 @@ import {
   chipLabel,
   meshDeltaText,
   roundMesh,
+  suggestBypass,
   suggestMesh,
   suggestWater,
   summarize,
@@ -92,6 +93,7 @@ export default function BrewFeedbackPanel({
 
   const toggleIssue = (id: string) => setIssues((xs) => toggleChip(xs, id));
   const waterTip = suggestWater(issues);
+  const bypassTip = suggestBypass(issues);
 
   const pickStaff = (n: string) => onPickStaff(staff === n ? '' : n);
 
@@ -169,6 +171,7 @@ export default function BrewFeedbackPanel({
             ))}
           </div>
           {g.dir === 'strength' && waterTip && <span className="text-caption text-muted-foreground">{waterTip}</span>}
+          {g.dir === 'over' && bypassTip && <span className="text-caption text-muted-foreground">{bypassTip}</span>}
         </div>
       ))}
 

@@ -10,6 +10,7 @@ import { readGardenTopics } from '@/lib/garden-notify-topics-server';
 import { requireGardenTab } from '@/lib/access/guard';
 import { STORES, type StoreId } from '@/lib/types';
 import { sameRecipeSlot } from '@/lib/garden/recipe-store';
+import { cleanBypass } from '@/lib/garden/bypass';
 import { isBeanArchived } from '@/lib/garden/bean-groups';
 import { get } from '@vercel/blob';
 import type { BeanMetaStore } from '@/lib/types';
@@ -108,6 +109,7 @@ export async function POST(req: Request) {
     doseG: body.doseG ?? null,
     waterG: body.waterG ?? null,
     pours: Array.isArray(body.pours) && body.pours.length > 0 ? body.pours : null,
+    bypassG: cleanBypass(body.bypassG),
     tempC: body.tempC ?? null,
     grind: body.grind ?? '',
     grindMesh,

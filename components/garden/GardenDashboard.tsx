@@ -20,6 +20,7 @@ import { recipeChanges, recipeEditor, recipesForStore, sameRecipeSlot } from '@/
 import { recentDefaults } from '@/lib/garden/recent-defaults';
 import { POUR_COUNT_OPTS, TOTAL_WATER_OPTS, pourCountOf, withPourCount, withPourDelta, withTotalWater } from '@/lib/garden/pour-count';
 import { brewOnStyle } from '@/lib/garden/brew-colors';
+import { BYPASS_OPTS, bypassOf, bypassText } from '@/lib/garden/bypass';
 import SegmentControl from '@/components/nav/SegmentControl';
 import TastingNoteEditor from '@/components/garden/TastingNoteEditor';
 import RecipeLedger, { type LedgerRow, type LedgerSlot } from '@/components/garden/RecipeLedger';
@@ -95,6 +96,7 @@ interface Draft {
   grindMesh: string; // '' = 미설정, 그 외 '6.5' 형태
   totalTime: string;
   pours: PourStep[];
+  bypassG: number; // 가수(g) — 0 = 없음. 추출량·비율에 포함하지 않는다
   notes: string; // 사용자가 직접 쓴 메모만 — 추천 안내문은 notesHint(placeholder)로만 노출
   notesHint: string;
   tasting: string; // 테이스팅 노트 (원두 공통 — 저장 시 garden-beans로 별도 업서트)
@@ -127,6 +129,7 @@ const draftFromRecipe = (r: DripRecipe): Draft => ({
   totalTime: r.totalTime,
   // 푸어링 없이 총 물량만 있는 구 기록은 한 단계로 변환해 표시
   pours: r.pours ?? (r.waterG != null ? [{ water: r.waterG, label: '총 물량' }] : []),
+  bypassG: bypassOf(r),
   notes: r.notes,
   notesHint: houseHint(btOf(r)),
   tasting: '', // openEditor에서 원두 공통 노트로 채움
@@ -148,6 +151,7 @@ const presetDraft = (beanKey: string, bean: string, brewType: BrewType, store: S
     grindMesh: a.grindMesh != null ? meshFmt(a.grindMesh) : '',
     totalTime: a.totalTime,
     pours: a.pours,
+    bypassG: 0,
     notes: '',
     notesHint: a.notes,
     tasting: '', // openEditor에서 원두 공통 노트로 채움
@@ -482,6 +486,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       doseG: s.doseG,
       waterG: s.waterG,
       pours: s.pours,
+      bypassG: s.bypassG,
       tempC: s.tempC,
       grind: s.grind,
       grindMesh: s.grindMesh,
@@ -597,6 +602,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
         doseG: num(draft.doseG),
         waterG: waterG > 0 ? waterG : null,
         pours: draft.pours,
+        bypassG: draft.bypassG,
         tempC: num(draft.tempC),
         grind: '',
         grindMesh: num(draft.grindMesh),
@@ -989,6 +995,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       <SpecRow label="도징량" value={r.doseG != null ? `${r.doseG}g` : null} />
                       <SpecRow label="총 물량" value={r.waterG != null ? `${r.waterG}g` : null} />
+                      {bypassOf(r) > 0 && <SpecRow label="가수 (추출 후)" value={bypassText(bypassOf(r))} />}
                       <SpecRow label="물 온도" value={r.tempC != null ? `${r.tempC}°C` : null} />
                       {r.grindMesh != null ? (
                         isFallback(r) ? (
@@ -1335,6 +1342,28 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                 </span>
               )}
             </div>
+          </div>
+
+          {/* 가수 — 추출 뒤 서버에 더하는 물(5g 단위). 추출량·비율에는 넣지 않고 음료량으로만 더한다 (2026-11-13) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
+            <span className="text-body text-foreground" style={{ width: 76, flexShrink: 0 }}>가수</span>
+            <select
+              value={String(draft.bypassG)}
+              onChange={(e) => setDraft((d) => (d ? { ...d, bypassG: Number(e.target.value) } : d))}
+              className="ta-input tabular"
+              style={{ width: 96, cursor: 'pointer' }}
+              title="가수 — 추출이 끝난 뒤 서버에 더하는 물"
+            >
+              {withCur(BYPASS_OPTS, draft.bypassG).map((g) => (
+                <option key={g} value={g}>
+                  {bypassText(g)}
+                </option>
+              ))}
+            </select>
+            <span className="tabular text-caption text-muted-foreground">
+              추출 후 서버에 더하는 물 · 추출량·비율에는 포함 안 함
+              {draft.bypassG > 0 && draftWater > 0 && ` · 음료량 ${draftWater + draft.bypassG}g`}
+            </span>
           </div>
 
           {/* 테이스팅 노트 — 발주 때 입력한 노트가 그대로 채워져 있고, 칩으로 더하거나 지운다 */}

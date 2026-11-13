@@ -10,7 +10,7 @@ const orig = draftOf(recipe, 7.6);
 
 describe('레시피 보드 바로 수정', () => {
   it('시작값 — 시간은 초, 횟수는 뜸 제외', () => {
-    expect(orig).toEqual({ mesh: 7.6, waterG: 230, doseG: 18, tempC: 91, timeSec: 180, pourCount: 3 });
+    expect(orig).toEqual({ mesh: 7.6, waterG: 230, bypassG: 0, doseG: 18, tempC: 91, timeSec: 180, pourCount: 3 });
     expect(parseTime('2:5')).toBeNull();
   });
 
@@ -48,6 +48,21 @@ describe('레시피 보드 바로 수정', () => {
     expect(isApplied({ ...orig, mesh: 7.5 }, acts[0].patch)).toBe(true);
     expect(feedbackActions({ issues: ['good'], nextMesh: 7.6 }, orig, true)).toEqual([]);
     expect(feedbackActions({ issues: ['strong'], nextMesh: null }, orig, true)[0].patch).toEqual({ waterG: 240 });
+  });
+
+  it('가수 — 5g 단위 0~60g, 추출량·푸어링은 그대로, 떫음·텁텁함이면 +10g 제안(연함이 같이 있으면 제외)', () => {
+    const d = bump(bump(orig, orig, 'bypassG', 1), orig, 'bypassG', 1);
+    expect(d.bypassG).toBe(10);
+    expect(bump(orig, orig, 'bypassG', -1).bypassG).toBe(0);
+    const a = applyDraft(recipe, d, orig);
+    expect(a.bypassG).toBe(10);
+    expect(a.waterG).toBe(230);
+    expect(a.pours).toBe(recipe.pours);
+    expect(applyDraft(recipe, orig, orig).bypassG).toBeNull();
+    expect(quickChanges(orig, d)).toEqual(['가수 없음 → +10g']);
+    expect(feedbackActions({ issues: ['astringent'], nextMesh: 7.6 }, orig, true).map((x) => x.label)).toEqual(['가수 +10g 적용']);
+    expect(feedbackActions({ issues: ['muddy', 'weak'], nextMesh: 7.6 }, orig, true).map((x) => x.key)).toEqual(['water']);
+    expect(feedbackActions({ issues: ['astringent'], nextMesh: 7.6 }, { ...orig, bypassG: 55 }, true)[0].label).toBe('가수 +5g 적용');
   });
 
   it('뜸으로 시작하지 않는 구 기록은 추출량을 못 바꾼다', () => {
