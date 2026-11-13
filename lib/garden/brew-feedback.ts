@@ -45,13 +45,17 @@ export function suggestWater(issues: string[]): string | null {
   return null;
 }
 
-// 떫음·텁텁함(잡미) → 가수 제안(텍스트·적용 버튼, 레시피는 자동으로 바꾸지 않음) — 2026-11-13 대표 결정.
-// 매장 경험상 추출 뒤 물을 더하면 깔끔해진다. '연함'이 같이 찍혔으면 더 묽어지므로 제안하지 않는다.
+// 떫음·텁텁함(잡미) → 추출량 −10g + 가수 +10g 묶음 제안(텍스트·적용 버튼, 레시피는 자동으로 바꾸지 않음) — 2026-11-13 대표 결정.
+// 떫음·잡미는 추출 후반부에서 나오므로 후반부를 덜 뽑고 그만큼 가수로 채운다(음료량·농도 유지).
+// '연함'이 같이 찍혔으면 제안하지 않고, '진함'이 같이 찍혔으면 추출량은 두고 가수만 더한다(농도도 낮추려고).
 export const BYPASS_CHIPS = ['astringent', 'muddy'];
 export const BYPASS_SUGGEST_G = 10;
 export const wantsBypass = (issues: string[]) => issues.some((id) => BYPASS_CHIPS.includes(id)) && !issues.includes('weak');
 export function suggestBypass(issues: string[]): string | null {
-  return wantsBypass(issues) ? `떫음·텁텁함 → 가수 +${BYPASS_SUGGEST_G}g 제안 (추출 뒤 물을 더해 깔끔하게)` : null;
+  if (!wantsBypass(issues)) return null;
+  return issues.includes('strong')
+    ? `떫음·텁텁함 + 진함 → 가수 +${BYPASS_SUGGEST_G}g 제안 (추출은 그대로, 물을 더해 연하고 깔끔하게)`
+    : `떫음·텁텁함 → 추출량 −${BYPASS_SUGGEST_G}g + 가수 +${BYPASS_SUGGEST_G}g 제안 (후반부를 덜 뽑고 그만큼 가수, 음료량은 그대로)`;
 }
 
 export const chipLabel = (id: string) => FEEDBACK_CHIPS.find((c) => c.id === id)?.label ?? id;

@@ -103,7 +103,8 @@ export function quickChanges(orig: QuickDraft, draft: QuickDraft): string[] {
 }
 
 // 의견 한 건에서 뽑는 '적용' 버튼 — 다음 분쇄도 제안, 농도 칩(진함 = 물 +10g, 연함 = 물 −10g: suggestWater 와 같은 규칙),
-// 떫음·텁텁함 = 가수 +10g(suggestBypass 와 같은 규칙, 상한 60g)
+// 떫음·텁텁함 = 추출량 −10g + 가수 +10g 묶음(suggestBypass 와 같은 규칙, 가수 상한 60g).
+// 진함이 같이 있으면 물 +10g 대신 가수만 +10g — 두 제안이 추출량을 서로 반대로 건드리지 않게 하나로 합친다
 export interface FeedbackAction {
   key: string;
   label: string;
@@ -115,13 +116,21 @@ export function feedbackActions(f: Pick<BrewFeedback, 'issues' | 'nextMesh'>, or
     const mesh = roundMesh(f.nextMesh);
     out.push({ key: 'mesh', label: `분쇄도 ${mesh.toFixed(1)} 적용`, patch: { mesh } });
   }
-  if (waterEditable && orig.waterG != null) {
+  const bypass = wantsBypass(f.issues) && orig.bypassG < BYPASS_MAX_G;
+  if (waterEditable && orig.waterG != null && !bypass) {
     const sign = f.issues.includes('strong') ? 1 : f.issues.includes('weak') ? -1 : 0;
     if (sign) out.push({ key: 'water', label: `물 ${sign > 0 ? '+' : '−'}${WATER_STEP_G}g 적용`, patch: { waterG: orig.waterG + sign * WATER_STEP_G } });
   }
-  if (wantsBypass(f.issues) && orig.bypassG < BYPASS_MAX_G) {
+  if (bypass) {
     const bypassG = Math.min(BYPASS_MAX_G, orig.bypassG + BYPASS_SUGGEST_G);
-    out.push({ key: 'bypass', label: `가수 +${bypassG - orig.bypassG}g 적용`, patch: { bypassG } });
+    const add = bypassG - orig.bypassG;
+    // 추출량을 같은 양만큼 줄일 수 있을 때만 묶음 — 진함이 같이 있거나, 추출량을 못 바꾸는 레시피·하한(150g)이면 가수만
+    const swap = waterEditable && orig.waterG != null && orig.waterG - add >= QUICK_FIELDS.waterG.min && !f.issues.includes('strong');
+    out.push(
+      swap
+        ? { key: 'bypass', label: `추출량 −${add}g + 가수 +${add}g 적용`, patch: { waterG: (orig.waterG as number) - add, bypassG } }
+        : { key: 'bypass', label: `가수 +${add}g 적용`, patch: { bypassG } }
+    );
   }
   return out;
 }

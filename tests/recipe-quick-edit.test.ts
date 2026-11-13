@@ -60,9 +60,18 @@ describe('레시피 보드 바로 수정', () => {
     expect(a.pours).toBe(recipe.pours);
     expect(applyDraft(recipe, orig, orig).bypassG).toBeNull();
     expect(quickChanges(orig, d)).toEqual(['가수 없음 → +10g']);
-    expect(feedbackActions({ issues: ['astringent'], nextMesh: 7.6 }, orig, true).map((x) => x.label)).toEqual(['가수 +10g 적용']);
+    // 떫음 → 추출량 −10g + 가수 +10g 묶음(음료량 유지)
+    const swap = feedbackActions({ issues: ['astringent'], nextMesh: 7.6 }, orig, true);
+    expect(swap.map((x) => x.label)).toEqual(['추출량 −10g + 가수 +10g 적용']);
+    expect(swap[0].patch).toEqual({ waterG: 220, bypassG: 10 });
+    const sw = applyDraft(recipe, { ...orig, ...swap[0].patch }, orig);
+    expect(sw.pours?.map((p) => p.water)).toEqual([35, 65, 60, 60]);
+    expect((sw.waterG ?? 0) + (sw.bypassG ?? 0)).toBe(230);
+    // 연함이 같이 있으면 가수 제안 없음, 진함이 같이 있으면 가수만(물 +10g 과 합침), 추출량을 못 바꾸면 가수만
     expect(feedbackActions({ issues: ['muddy', 'weak'], nextMesh: 7.6 }, orig, true).map((x) => x.key)).toEqual(['water']);
-    expect(feedbackActions({ issues: ['astringent'], nextMesh: 7.6 }, { ...orig, bypassG: 55 }, true)[0].label).toBe('가수 +5g 적용');
+    expect(feedbackActions({ issues: ['astringent', 'strong'], nextMesh: 7.6 }, orig, true).map((x) => x.label)).toEqual(['가수 +10g 적용']);
+    expect(feedbackActions({ issues: ['astringent'], nextMesh: 7.6 }, orig, false).map((x) => x.label)).toEqual(['가수 +10g 적용']);
+    expect(feedbackActions({ issues: ['astringent'], nextMesh: 7.6 }, { ...orig, bypassG: 55 }, true)[0].label).toBe('추출량 −5g + 가수 +5g 적용');
   });
 
   it('뜸으로 시작하지 않는 구 기록은 추출량을 못 바꾼다', () => {
