@@ -123,6 +123,11 @@ export default function RecipeQuickEdit({
       <div key={k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <span className="text-body">{f.label}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {k === 'mesh' && (
+            <button className={stepBtn} style={stepStyle} onClick={() => setDraft((d) => bump(d, orig, k, -1, 5))} aria-label={`${f.label} 0.5 줄이기`}>
+              «
+            </button>
+          )}
           <button className={stepBtn} style={stepStyle} onClick={() => setDraft((d) => bump(d, orig, k, -1))} aria-label={`${f.label} 줄이기`}>
             −
           </button>
@@ -133,6 +138,11 @@ export default function RecipeQuickEdit({
           <button className={stepBtn} style={stepStyle} onClick={() => setDraft((d) => bump(d, orig, k, 1))} aria-label={`${f.label} 늘리기`}>
             +
           </button>
+          {k === 'mesh' && (
+            <button className={stepBtn} style={stepStyle} onClick={() => setDraft((d) => bump(d, orig, k, 1, 5))} aria-label={`${f.label} 0.5 늘리기`}>
+              »
+            </button>
+          )}
         </span>
       </div>
     );
@@ -204,7 +214,7 @@ export default function RecipeQuickEdit({
         )}
       </div>
 
-      {/* 미세 조정 — 분쇄도 0.1 · 추출량 5g · 가수 5g · 도징 1g · 온도 1° · 추출 시간 10초 */}
+      {/* 미세 조정 — 분쇄도 0.1(« » 는 0.5) · 추출량 5g · 가수 5g · 도징 1g · 온도 1° · 추출 시간 10초 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <span className="text-caption text-muted-foreground">레시피 조절</span>
         {fields.map(row)}

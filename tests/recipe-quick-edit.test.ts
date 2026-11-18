@@ -16,6 +16,8 @@ describe('레시피 보드 바로 수정', () => {
 
   it('조절 단위 — 분쇄도 0.1 · 추출량 5g · 시간 10초', () => {
     expect(bump(orig, orig, 'mesh', -1).mesh).toBe(7.5);
+    expect(bump(orig, orig, 'mesh', 1, 5).mesh).toBe(8.1); // « » 큰 걸음 0.5
+    expect(bump({ ...orig, mesh: 11.8 }, orig, 'mesh', 1, 5).mesh).toBe(12); // 상한 12
     expect(bump(orig, orig, 'waterG', 1).waterG).toBe(235);
     expect(bump(orig, orig, 'timeSec', 1).timeSec).toBe(190);
     expect(bump(orig, orig, 'tempC', -1).tempC).toBe(91); // 범위 하한

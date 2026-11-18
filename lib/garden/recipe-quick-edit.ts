@@ -54,14 +54,14 @@ export function draftOf(recipe: DripRecipe, storeMesh: number | null): QuickDraf
 /** 추출량·횟수를 바꿀 수 있는 레시피인지 — 푸어링이 없거나(총량만) 뜸으로 시작해야 다시 나눌 수 있다 */
 export const canEditWater = (recipe: DripRecipe) => !recipe.pours?.length || pourCountOf(recipe.pours) != null;
 
-/** − / + 한 번. 범위는 설정 창 옵션과 같되, 지금 값이 범위 밖이면 그 값까지는 허용한다 */
-export function bump(draft: QuickDraft, orig: QuickDraft, field: QuickField, dir: 1 | -1): QuickDraft {
+/** − / + 한 번(mult = 큰 걸음 배수 — 분쇄도 « » 는 5배 = 0.5). 범위는 설정 창 옵션과 같되, 지금 값이 범위 밖이면 그 값까지는 허용한다 */
+export function bump(draft: QuickDraft, orig: QuickDraft, field: QuickField, dir: 1 | -1, mult = 1): QuickDraft {
   const f = QUICK_FIELDS[field];
   const cur = draft[field];
   if (cur == null) return f.fallback == null ? draft : { ...draft, [field]: f.fallback };
   const lo = Math.min(f.min, orig[field] ?? f.min);
   const hi = Math.max(f.max, orig[field] ?? f.max);
-  const next = Math.min(hi, Math.max(lo, Math.round((cur + dir * f.step) * 10) / 10));
+  const next = Math.min(hi, Math.max(lo, Math.round((cur + dir * f.step * mult) * 10) / 10));
   return { ...draft, [field]: next };
 }
 
