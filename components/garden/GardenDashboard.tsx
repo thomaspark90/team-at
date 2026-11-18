@@ -18,9 +18,11 @@ import { fmtDate } from '@/lib/garden/format';
 import { ETC, countryOf, isBeanArchived, resolveTasting } from '@/lib/garden/bean-groups';
 import { recipeChanges, recipeEditor, recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
 import { recentDefaults } from '@/lib/garden/recent-defaults';
-import { POUR_COUNT_OPTS, TOTAL_WATER_OPTS, pourCountOf, withPourCount, withPourDelta, withTotalWater } from '@/lib/garden/pour-count';
+import { POUR_COUNT_OPTS, pourCountOf, withPourCount, withPourDelta, withTotalWater } from '@/lib/garden/pour-count';
 import { brewOnStyle } from '@/lib/garden/brew-colors';
-import { BYPASS_OPTS, bypassOf, bypassText } from '@/lib/garden/bypass';
+import { bypassOf, bypassText } from '@/lib/garden/bypass';
+import { QUICK_FIELDS, fmtTime, parseTime, type QuickField } from '@/lib/garden/recipe-quick-edit';
+import StepField, { Stepper, stepValue } from '@/components/garden/StepField';
 import SegmentControl from '@/components/nav/SegmentControl';
 import TastingNoteEditor from '@/components/garden/TastingNoteEditor';
 import RecipeLedger, { type LedgerRow, type LedgerSlot } from '@/components/garden/RecipeLedger';
@@ -40,16 +42,9 @@ const btOf = (r: DripRecipe): BrewType => r.brewType ?? 'ice';
 const btLabel = (bt: BrewType) => bt.toUpperCase();
 const housePresetId = (bt: BrewType) => (bt === 'ice' ? 'house-ice' : 'house-hot');
 
-// ---- 드랍다운 선택지 ----
-const DOSE_OPTS = Array.from({ length: 9 }, (_, i) => 16 + i); // 도징량 16~24g (1g)
-const TEMP_OPTS = [91, 92, 93, 94]; // 물 온도 °C
+// ---- 드랍다운 선택지 (도징·온도·시간·총 추출량·가수는 − / + 스테퍼 — 범위는 QUICK_FIELDS) ----
 const POUR_OPTS = Array.from({ length: 17 }, (_, i) => 20 + i * 5); // 푸어링당 20~100g (5g, 2026-10-31 확장)
-const TIME_OPTS = Array.from({ length: 10 }, (_, i) => {
-  const s = 150 + i * 10; // 2:30 ~ 4:00 (10초)
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-});
-
-// 분쇄도 (EK43 양재천 기준) — 0.1 단위 스테퍼, 4.0~9.0
+// 분쇄도 (EK43 양재천 기준) — 0.1 단위 스테퍼(« » 0.5), 4.0~12.0
 const MESH_MIN = 4;
 const MESH_MAX = 12;
 const meshFmt = (n: number) => n.toFixed(1);
@@ -57,21 +52,8 @@ const meshFmt = (n: number) => n.toFixed(1);
 // 프리셋/구 기록 값이 범위 밖이면 그 값도 선택지에 포함해 표기 유지
 const withCur = (opts: number[], cur: number | null) =>
   cur != null && !opts.includes(cur) ? [...opts, cur].sort((a, b) => a - b) : opts;
-const withCurStr = (opts: string[], cur: string) =>
-  cur && !opts.includes(cur) ? [...opts, cur].sort() : opts;
 
 const pourName = (p: PourStep, i: number) => p.label ?? (i === 0 ? '뜸' : `${i}차`);
-
-const meshBtn: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  fontSize: 15,
-  lineHeight: 1,
-  padding: '0 10px',
-  height: '100%',
-  fontFamily: 'inherit',
-};
 
 const ghostBtn: React.CSSProperties = {
   background: 'none',
@@ -703,6 +685,23 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
 
   const draftWater = draft ? draft.pours.reduce((a, s) => a + s.water, 0) : 0;
 
+  // − / + 스테퍼 한 개 분량의 props — 범위·단위는 태블릿 '바로 수정' 탭과 같은 QUICK_FIELDS
+  const stepProps = (k: QuickField, cur: number | null, set: (n: number) => void) => {
+    const f = QUICK_FIELDS[k];
+    const to = (dir: 1 | -1) => stepValue(cur, dir * f.step, f);
+    return {
+      label: f.label,
+      text: cur != null ? f.show(cur) : '—',
+      minusOff: to(-1) === cur,
+      plusOff: to(1) === cur,
+      onStep: (dir: 1 | -1) => {
+        const n = to(dir);
+        if (n != null && n !== cur) set(n);
+      },
+    };
+  };
+  const meshCur = draft?.grindMesh && Number.isFinite(Number(draft.grindMesh)) ? Number(draft.grindMesh) : null;
+
   // 원두 카드 한 장
   // sideBySide — 레시피 목록 펼침 전용: 가로 두 칸(좁으면 세로로 접힘). 아카이브는 세로 카드 유지
   const renderBeanCard = (g: BeanGroup, sideBySide = false) => {
@@ -1216,46 +1215,21 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             })}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 12px' }}>
-            <SelField
-              label="도징량(g)"
-              value={draft.doseG}
-              onChange={(v) => setD('doseG', v)}
-              options={withCur(DOSE_OPTS, Number(draft.doseG) || null).map(String)}
-              unit="g"
-            />
-            <SelField
-              label="물 온도(°C)"
-              value={draft.tempC}
-              onChange={(v) => setD('tempC', v)}
-              options={withCur(TEMP_OPTS, Number(draft.tempC) || null).map(String)}
-              unit="°C"
-            />
-            <SelField
-              label="추출 시간(최대)"
-              value={draft.totalTime}
-              onChange={(v) => setD('totalTime', v)}
-              options={withCurStr(TIME_OPTS, draft.totalTime)}
-            />
+          {/* 기본 스펙 — 태블릿 '바로 수정' 탭과 같은 − / + 조절 (분쇄도는 « » 0.5) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 460 }}>
+            <StepField {...stepProps('doseG', Number(draft.doseG) || null, (n) => setD('doseG', String(n)))} />
+            <StepField {...stepProps('tempC', Number(draft.tempC) || null, (n) => setD('tempC', String(n)))} />
+            <StepField {...stepProps('timeSec', parseTime(draft.totalTime), (n) => setD('totalTime', fmtTime(n)))} label="추출 시간(최대)" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-              <span className="text-caption text-muted-foreground">분쇄도 (Mesh · EK43 {draft.store === 'pangyo' ? '판교' : '양재천'})</span>
-              <div className="rounded-md border border-input" style={{ display: 'flex', alignItems: 'center', height: 36 }}>
-                <button onClick={() => adjMesh(-0.5)} className="text-muted-foreground hover:text-foreground" style={meshBtn} title="0.5 곱게">
-                  «
-                </button>
-                <button onClick={() => adjMesh(-0.1)} className="text-muted-foreground hover:text-foreground" style={meshBtn} title="0.1 곱게">
-                  ‹
-                </button>
-                <span className="tabular text-body text-foreground" style={{ flex: 1, textAlign: 'center' }}>
-                  {draft.grindMesh || '—'}
-                </span>
-                <button onClick={() => adjMesh(0.1)} className="text-muted-foreground hover:text-foreground" style={meshBtn} title="0.1 굵게">
-                  ›
-                </button>
-                <button onClick={() => adjMesh(0.5)} className="text-muted-foreground hover:text-foreground" style={meshBtn} title="0.5 굵게">
-                  »
-                </button>
-              </div>
+              <StepField
+                label="분쇄도 EK43"
+                sub={draft.store === 'pangyo' ? '판교' : '양재천'}
+                text={draft.grindMesh || '—'}
+                big
+                minusOff={meshCur != null && meshCur <= MESH_MIN}
+                plusOff={meshCur != null && meshCur >= MESH_MAX}
+                onStep={(dir, big) => adjMesh(dir * (big ? 0.5 : 0.1))}
+              />
               {draft.store === 'yangjae' && draft.grindMesh && pangyoMeshText(Number(draft.grindMesh)) === '재측정 필요' && (
                 <p className="text-body text-muted-foreground" style={{ margin: '4px 0 0' }}>
                   판교점 EK43 메쉬 — 재얼라인 이후 재측정 필요 (6/8/10 프로토콜 측정을 올려주세요)
@@ -1269,26 +1243,13 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             </div>
           </div>
 
-          {/* 푸어링 단계 — 물 투입량 30~60g, 5g 단위 드랍다운 */}
+          {/* 푸어링 단계 — 총 추출량은 − / + 5g, 차수별 물량은 5g 단위 드랍다운 */}
           <div style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <span className="text-caption text-muted-foreground">푸어링 (단계별 물 투입량)</span>
             {/* 총 추출량 먼저 → 푸어링 횟수(뜸 뒤 2번/3번). 둘 중 무엇을 바꿔도 뜸을 뺀 나머지를 5g 단위로 다시 나눈다 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <span className="text-body text-foreground" style={{ width: 76, flexShrink: 0 }}>총 추출량</span>
-              <select
-                value={draftWater > 0 ? String(draftWater) : ''}
-                onChange={(e) => e.target.value && setTotalWater(Number(e.target.value))}
-                className="ta-input tabular"
-                style={{ width: 96, cursor: 'pointer' }}
-                title="총 추출량 — 뜸을 뺀 나머지를 푸어링 횟수대로 나눠요"
-              >
-                {draftWater === 0 && <option value="">선택</option>}
-                {withCur([...TOTAL_WATER_OPTS], draftWater || null).map((w) => (
-                  <option key={w} value={w}>
-                    {w}g
-                  </option>
-                ))}
-              </select>
+              <Stepper {...stepProps('waterG', draftWater || null, setTotalWater)} label="총 추출량" />
               <div className="inline-flex gap-1 ta-seg">
                 {POUR_COUNT_OPTS.map((n) => (
                   <button
@@ -1353,19 +1314,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           {/* 가수 — 추출 뒤 서버에 더하는 물(5g 단위). 추출량·비율에는 넣지 않고 음료량으로만 더한다 (2026-11-13) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
             <span className="text-body text-foreground" style={{ width: 76, flexShrink: 0 }}>가수</span>
-            <select
-              value={String(draft.bypassG)}
-              onChange={(e) => setDraft((d) => (d ? { ...d, bypassG: Number(e.target.value) } : d))}
-              className="ta-input tabular"
-              style={{ width: 96, cursor: 'pointer' }}
-              title="가수 — 추출이 끝난 뒤 서버에 더하는 물"
-            >
-              {withCur(BYPASS_OPTS, draft.bypassG).map((g) => (
-                <option key={g} value={g}>
-                  {bypassText(g)}
-                </option>
-              ))}
-            </select>
+            <Stepper {...stepProps('bypassG', draft.bypassG, (n) => setDraft((d) => (d ? { ...d, bypassG: n } : d)))} />
             <span className="tabular text-caption text-muted-foreground">
               추출 후 서버에 더하는 물 · 추출량·비율에는 포함 안 함
               {draft.bypassG > 0 && draftWater > 0 && ` · 음료량 ${draftWater + draft.bypassG}g`}
@@ -1693,35 +1642,5 @@ function SpecRow({ label, value }: { label: string; value: string | null }) {
       <span className="text-muted-foreground">{label}</span>
       <span className="tabular text-foreground">{value}</span>
     </div>
-  );
-}
-
-// 드랍다운 필드 — '' 선택지는 미설정(—)
-function SelField({
-  label,
-  value,
-  onChange,
-  options,
-  unit,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
-  unit?: string;
-}) {
-  return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-      <span className="text-caption text-muted-foreground">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="ta-input w-full tabular" style={{ cursor: 'pointer' }}>
-        <option value="">—</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-            {unit ?? ''}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
