@@ -51,7 +51,7 @@ const TIME_OPTS = Array.from({ length: 10 }, (_, i) => {
 
 // 분쇄도 (EK43 양재천 기준) — 0.1 단위 스테퍼, 4.0~9.0
 const MESH_MIN = 4;
-const MESH_MAX = 9;
+const MESH_MAX = 12;
 const meshFmt = (n: number) => n.toFixed(1);
 
 // 프리셋/구 기록 값이 범위 밖이면 그 값도 선택지에 포함해 표기 유지
@@ -68,7 +68,7 @@ const meshBtn: React.CSSProperties = {
   cursor: 'pointer',
   fontSize: 15,
   lineHeight: 1,
-  padding: '0 14px',
+  padding: '0 10px',
   height: '100%',
   fontFamily: 'inherit',
 };
@@ -662,7 +662,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   const resetToHouse = () =>
     setDraft((d) => (d ? { ...defaultDraft(d.beanKey, d.bean, d.brewType, d.store), tasting: d.tasting } : d));
 
-  // 분쇄도 ±0.1 — 미설정이면 타입별 매장 기준값에서 시작
+  // 분쇄도 ±0.1(‹ ›) · ±0.5(« ») — 미설정이면 타입별 매장 기준값에서 시작
   const adjMesh = (delta: number) =>
     setDraft((d) => {
       if (!d) return d;
@@ -1240,6 +1240,9 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
               <span className="text-caption text-muted-foreground">분쇄도 (Mesh · EK43 {draft.store === 'pangyo' ? '판교' : '양재천'})</span>
               <div className="rounded-md border border-input" style={{ display: 'flex', alignItems: 'center', height: 36 }}>
+                <button onClick={() => adjMesh(-0.5)} className="text-muted-foreground hover:text-foreground" style={meshBtn} title="0.5 곱게">
+                  «
+                </button>
                 <button onClick={() => adjMesh(-0.1)} className="text-muted-foreground hover:text-foreground" style={meshBtn} title="0.1 곱게">
                   ‹
                 </button>
@@ -1248,6 +1251,9 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                 </span>
                 <button onClick={() => adjMesh(0.1)} className="text-muted-foreground hover:text-foreground" style={meshBtn} title="0.1 굵게">
                   ›
+                </button>
+                <button onClick={() => adjMesh(0.5)} className="text-muted-foreground hover:text-foreground" style={meshBtn} title="0.5 굵게">
+                  »
                 </button>
               </div>
               {draft.store === 'yangjae' && draft.grindMesh && pangyoMeshText(Number(draft.grindMesh)) === '재측정 필요' && (

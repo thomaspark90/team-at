@@ -26,7 +26,7 @@ export const fmtTime = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 
 
 // 값이 비어 있을 때 첫 조절로 채울 기본값(fallback) — 매장 기준 HOT 레시피 근처
 export const QUICK_FIELDS: Record<QuickField, { label: string; step: number; min: number; max: number; fallback: number | null; show: (v: number) => string }> = {
-  mesh: { label: '분쇄도 EK43', step: 0.1, min: 4, max: 9, fallback: null, show: (v) => v.toFixed(1) },
+  mesh: { label: '분쇄도 EK43', step: 0.1, min: 4, max: 12, fallback: null, show: (v) => v.toFixed(1) },
   waterG: { label: '추출량', step: 5, min: 150, max: 300, fallback: 200, show: (v) => `${v}g` },
   bypassG: { label: '가수', step: BYPASS_STEP_G, min: 0, max: BYPASS_MAX_G, fallback: 0, show: bypassText },
   doseG: { label: '도징량', step: 1, min: 16, max: 24, fallback: 18, show: (v) => `${v}g` },
