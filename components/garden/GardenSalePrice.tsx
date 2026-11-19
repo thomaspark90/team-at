@@ -5,6 +5,7 @@ import type { DripRecipe, PurchaseRecord } from '@/lib/types';
 import { PRICE_UNIT, normalize, roundUpPrice } from '@/lib/pricing';
 import { fmtDate } from '@/lib/garden/format';
 import PriceBandGuide from './PriceBandGuide';
+import StorePriceLines from './StorePriceLines';
 import { useKakaoOrder } from './KakaoOrder';
 import { baseDoseG, brewCost, currentCost, dosesForBean, type BrewDoses } from '@/lib/garden/brew-cost';
 import { bandRange, defaultActiveCells, guideRowForCost, ratioRangeLabel, type ActiveCells } from '@/lib/garden/price-bands';
@@ -329,16 +330,10 @@ export default function GardenSalePrice() {
                       <div className="gs-row">
                         <span className="gs-meta">
                           <span className="tabular text-muted-foreground" style={{ width: 64, flexShrink: 0 }}>{fmtDate(rec.createdAt)}</span>
-                          <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>재료비 {won(baseCostOf(rec))}</span>
                         </span>
+                        {/* 책정 판매가 — 양재천·판교 따로(판교 = 양재천 −1,000원), 재료비는 지점 레시피 도징 기준 */}
                         <span className="gs-price">
-                          <span className="tabular text-foreground">
-                            책정 판매가 {won(rec.chosenPrice!)}
-                            <span className="text-muted-foreground">
-                              {' '}(재료비율 {Math.round((baseCostOf(rec) / rec.chosenPrice!) * 100)}% · ICE {Math.round((brewCost(rec, dosesOf(rec).ice.doseG) / rec.chosenPrice!) * 100)}% · HOT{' '}
-                              {Math.round((brewCost(rec, dosesOf(rec).hot.doseG) / rec.chosenPrice!) * 100)}%)
-                            </span>
-                          </span>
+                          <StorePriceLines rec={rec} recipes={recipes} />
                         </span>
                         {kakao.button(rec)}
                         <button
