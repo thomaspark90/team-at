@@ -7,12 +7,39 @@ import { normalize } from '@/lib/pricing';
 import { topicEmails } from '@/lib/garden-notify-topics-server';
 import { notifyGardenEvent } from '@/lib/notify';
 import { APP_URL } from '@/lib/app-url';
+import { isOwner } from '@/lib/finance/access';
+import { readGardenTopics } from '@/lib/garden-notify-topics-server';
+import { receiveAssigned } from '@/lib/garden/receive';
 
 // 원두 수령 기재: { id, roastDate?, beanEn? } — 둘 중 하나 이상.
 // - roastDate: 발주 시점엔 로스팅 날짜를 모르므로(봉투에 찍혀 옴) 택배 수령 후 기재한다.
 // - beanEn: 발주 때 영문명은 임시 — 봉투 표기를 보고(촬영·타이핑) 확정한다(2026-11-19 대표 결정).
 //   처음 확정되면 원두카드 담당자에게 알린다: 신규 원두는 정식 제작 요청, 재발주는 표기가 바뀐 경우만.
-// 발주와 같은 pricing 탭 권한.
+// 권한: 설정 › 항목별 담당자 › '원두 수령 담당'에 지정된 사람만(발주 탭 권한이 없어도 된다 — 작업 보드에서 누른다).
+// 담당자를 비워 두면 예전처럼 발주(pricing) 탭 권한. 대표는 항상 가능. (2026-11-19 대표 지시)
+async function denyReceive(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  user: { id: string; email?: string | null }
+): Promise<NextResponse | null> {
+  if (isOwner(user.email)) return null;
+  const assigned = receiveAssigned((await readGardenTopics()).beanReceive, user.email);
+  if (assigned === true) return null;
+  if (assigned === false) {
+    return NextResponse.json({ error: '수령 담당자로 지정된 사람만 기재할 수 있어요.' }, { status: 403 });
+  }
+  return requireGardenTab(supabase, user, 'pricing');
+}
+
+// 내가 수령을 기재할 수 있는지 — 화면이 [수령] 버튼을 켜고 끄는 데 쓴다
+export async function GET() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
+  return NextResponse.json({ allowed: !(await denyReceive(supabase, user)) });
+}
+
 export async function POST(req: Request) {
   const supabase = await createClient();
   const {
@@ -20,7 +47,7 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
   {
-    const denied = await requireGardenTab(supabase, user, 'pricing');
+    const denied = await denyReceive(supabase, user);
     if (denied) return denied;
   }
 

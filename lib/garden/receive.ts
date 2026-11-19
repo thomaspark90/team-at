@@ -23,6 +23,17 @@ export function confirmedEnFor(records: Rec[], bean: string): string | null {
   return best?.beanEn?.trim() ?? null;
 }
 
+/** 수령 창에 필요한 발주 기록 조각 — 발주 화면은 기록 전체를, 작업 보드는 이 조각만 넘긴다 */
+export type ReceiveTarget = Pick<PurchaseRecord, 'id' | 'bean' | 'roastery' | 'roastDate' | 'beanEn' | 'beanEnConfirmed'>;
+
+/** 수령 담당자(설정 › 항목별 담당자 › 원두 수령 담당)가 지정돼 있으면 그 사람들만.
+ *  null = 지정 없음 → 발주(pricing) 탭 권한으로 판단한다. 대표는 호출 쪽에서 항상 통과. */
+export function receiveAssigned(assignees: string[] | undefined, email: string | null | undefined): boolean | null {
+  const list = (assignees ?? []).map((e) => e.toLowerCase());
+  if (list.length === 0) return null;
+  return list.includes((email ?? '').toLowerCase());
+}
+
 /** 수령 단계에서 아직 남은 일 — 둘 다 끝나야 수령 완료 */
 export function receiveTodo(p: Pick<PurchaseRecord, 'roastDate' | 'beanEnConfirmed'>): {
   roastDate: boolean;

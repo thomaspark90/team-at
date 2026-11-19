@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { BoardCard, BoardScope, BoardType } from '@/lib/garden/board';
+import type { BoardCard, BoardScope, BoardType, GrinderUpkeepRow } from '@/lib/garden/board';
 import { BOARD_COLUMNS, BOARD_TYPES } from '@/lib/garden/board';
+import BeanReceiveDialog from './BeanReceiveDialog';
+import { toast } from '@/components/Toast';
+import GrinderUpkeep from './GrinderUpkeep';
 
-// 작업 보드 — 브랜드별로 나뉜다. 가든(scope='garden')은 발주·측정·점검·리뷰·송금·투두,
+// 작업 보드 — 브랜드별로 나뉜다. 가든(scope='garden')은 발주·리뷰·투두(+맨 아래 그라인더 관리 표),
 // 스탭밀(scope='staffmeal')은 메뉴 스토리·송금. 카드마다 흐름의 현재 단계를 표시하고,
 // 내 차례인 일은 위쪽 '내 차례'에 먼저 모아준다.
 // 데이터는 /api/garden-board 가 권한(섹션·가든 탭·재무 역할)까지 적용해 내려준다.
@@ -46,7 +49,7 @@ function Steps({ steps }: { steps: BoardCard['steps'] }) {
   );
 }
 
-function Card({ card }: { card: BoardCard }) {
+function Card({ card, onReceive }: { card: BoardCard; onReceive: (c: BoardCard) => void }) {
   const t = typeOf(card.type);
   return (
     <div
@@ -133,7 +136,19 @@ function Card({ card }: { card: BoardCard }) {
           )}
         </span>
         <span style={{ flex: 1 }} />
-        {card.column !== 'done' && (
+        {/* 수령 카드는 화면 이동 없이 수령 창을 바로 연다 — 누를 수 없는 사람에겐 버튼을 숨긴다 */}
+        {card.receive ? (
+          card.receive.allowed && (
+            <button
+              type="button"
+              onClick={() => onReceive(card)}
+              className={card.mine ? 'ta-btn-primary' : 'ta-btn'}
+              style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 13, display: 'inline-flex', alignItems: 'center' }}
+            >
+              {card.actionLabel}
+            </button>
+          )
+        ) : card.column !== 'done' && (
           <Link
             href={card.href}
             className={card.mine ? 'ta-btn-primary' : 'ta-btn'}
@@ -149,14 +164,21 @@ function Card({ card }: { card: BoardCard }) {
 
 export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) {
   const [cards, setCards] = useState<BoardCard[] | null>(null);
+  // 그라인더 측정·얼라인 점검 — 카드가 아니라 맨 아래 표의 날짜 버튼(리마인더 없음)
+  const [grinder, setGrinder] = useState<GrinderUpkeepRow[]>([]);
   const [filter, setFilter] = useState<'all' | 'mine' | BoardType>('all');
   // 팀 전체 보드는 접힌 한 줄로 시작 — 첫 화면은 '내 차례'만(2026-09-09 소프트 UI 4단계)
   const [teamOpen, setTeamOpen] = useState(false);
+  // 수령 카드에서 연 수령 창 — 저장하면 보드를 다시 불러온다
+  const [receiving, setReceiving] = useState<BoardCard | null>(null);
 
   const load = useCallback(() => {
     fetch(`/api/garden-board?scope=${scope}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : { cards: [] }))
-      .then((j) => setCards(Array.isArray(j.cards) ? j.cards : []))
+      .then((j) => {
+        setCards(Array.isArray(j.cards) ? j.cards : []);
+        setGrinder(Array.isArray(j.grinder) ? j.grinder : []);
+      })
       .catch(() => setCards([]));
   }, [scope]);
 
@@ -190,6 +212,17 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
 
   return (
     <div className="space-y-6">
+      {receiving?.receive && (
+        <BeanReceiveDialog
+          record={receiving.receive}
+          onClose={() => setReceiving(null)}
+          onSaved={(updated) => {
+            setReceiving(null);
+            toast(updated.beanEnConfirmed ? `수령 저장 — 영문명 ${updated.beanEn} 확정` : '수령 저장');
+            load();
+          }}
+        />
+      )}
       {/* 내 차례 — 주 패널. 들어오자마자 자기 일이 먼저 보이게. 검은 버튼은 첫 행 하나, 나머지는 텍스트 › */}
       <div className="ta-panel min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
@@ -219,7 +252,28 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
                   {c.meta[0] ? ` · ${c.meta[0].text}` : ''}
                 </span>
                 <span style={{ flex: 1 }} />
-                {i === 0 ? (
+                {c.receive ? (
+                  c.receive.allowed &&
+                  (i === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setReceiving(c)}
+                      className="ta-btn-primary"
+                      style={{ height: 28, paddingLeft: 12, paddingRight: 12, fontSize: 13, display: 'inline-flex', alignItems: 'center' }}
+                    >
+                      {c.actionLabel}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setReceiving(c)}
+                      className="whitespace-nowrap text-body text-foreground hover:underline"
+                      style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer' }}
+                    >
+                      {c.actionLabel} ›
+                    </button>
+                  ))
+                ) : i === 0 ? (
                   <Link
                     href={c.href}
                     className="ta-btn-primary"
@@ -294,7 +348,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {list.map((c) => (
-                    <Card key={c.id} card={c} />
+                    <Card key={c.id} card={c} onReceive={setReceiving} />
                   ))}
                 </div>
               )}
@@ -304,6 +358,8 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
       </div>
       </>)}
       </div>
+
+      <GrinderUpkeep rows={grinder} />
     </div>
   );
 }

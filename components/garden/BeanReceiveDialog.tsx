@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import type { PurchaseRecord } from '@/lib/types';
+import type { ReceiveTarget } from '@/lib/garden/receive';
 
 // 원두 수령 창 — 택배를 받은 뒤 봉투를 보고 ① 로스팅 날짜 ② 영문 원두명을 확정한다 (2026-11-19).
 // 발주 때 적은 영문명은 임시라서, 여기서 봉투 표기를 촬영하거나 직접 타이핑해 확정한다.
 // 촬영 결과는 입력칸에만 채운다 — 사람이 봉투와 대조하고 [저장]을 눌러야 확정된다.
-// 발주 리스트의 [수령]과 작업 보드의 수령 카드(/garden/pricing?receive=<id>)가 이 창을 연다.
+// 발주 리스트의 [수령]과 작업 보드의 수령 카드가 이 창을 연다. 누를 수 있는 사람은 설정 › '원두 수령 담당'.
 
 const todayKst = () => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
 
@@ -15,7 +16,7 @@ export default function BeanReceiveDialog({
   onClose,
   onSaved,
 }: {
-  record: PurchaseRecord;
+  record: ReceiveTarget;
   onClose: () => void;
   onSaved: (updated: PurchaseRecord) => void;
 }) {

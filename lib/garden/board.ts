@@ -2,6 +2,8 @@
 // 새 데이터를 만들지 않고 기존 상태값(발주·레시피·측정·리뷰·송금·투두)을 읽어 카드를 세우므로,
 // 각자 자기 화면에서 일을 처리하면 보드가 자동으로 따라온다.
 
+import type { ReceiveTarget } from '@/lib/garden/receive';
+
 export type BoardColumn = 'todo' | 'doing' | 'done';
 
 /** 보드는 브랜드별로 나뉜다 — 가든 화면엔 가든 일만, 스탭밀 화면엔 스탭밀 일만 */
@@ -51,12 +53,25 @@ export interface BoardCard {
   mineReason?: string;
   href: string;
   actionLabel: string;
+  /** 수령 카드 — 있으면 버튼이 화면 이동 대신 수령 창을 바로 연다. allowed=false 면 버튼을 숨긴다 */
+  receive?: ReceiveTarget & { allowed: boolean };
   /** 0~1 — 있으면 진행률 바 표시 */
   progress?: number;
   /** 이 카드를 열려면 필요한 가든 탭 (권한 필터용). null = 탭 체계 밖(섹션 권한만 본다) */
   tab: string | null;
   /** 정렬용 — 오래된 일이 위로 */
   sortAt: string;
+}
+
+/** 그라인더 관리 표의 한 지점 — 카드가 아니라 보드 맨 아래 버튼으로 보여준다(리마인더 없음, 2026-11-19).
+ *  날짜는 KST YYYY-MM-DD, 기록이 없으면 null. */
+export interface GrinderUpkeepRow {
+  store: string;
+  label: string;
+  /** 분쇄도 측정(6/8/10 × 3샷 등)을 마지막으로 올린 날 */
+  lastMeasure: string | null;
+  /** 재정렬·점검을 통틀어 마지막으로 얼라인을 확인한 날 */
+  lastInspect: string | null;
 }
 
 /** 카드 유형 → 필요한 가든 탭. 권한이 없는 탭의 카드는 서버에서 걸러낸다.

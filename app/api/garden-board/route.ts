@@ -9,15 +9,13 @@ import { STORES } from '@/lib/types';
 import type { BeanMetaStore, DripRecipe } from '@/lib/types';
 import { isBeanArchived } from '@/lib/garden/bean-groups';
 import type { GardenTodo } from '@/lib/garden-todos';
-import { fitDialToMicron } from '@/lib/grinder-calibration';
 import type { AlignmentEvent } from '@/lib/grinder-alignments';
-import { alignmentOverdue, ALIGN_REMINDER_MONTHS } from '@/lib/grinder-alignments';
-import type { GrinderProfiles } from '@/lib/grinder-calibration';
+import { latestInspectionDate } from '@/lib/grinder-alignments';
 import type { StaffMealRecord } from '@/lib/types';
-import type { BoardCard, BoardScope } from '@/lib/garden/board';
+import type { BoardCard, BoardScope, GrinderUpkeepRow } from '@/lib/garden/board';
 import { TYPE_TAB, daysAgo, shortDate, stepsAt, kstDay } from '@/lib/garden/board';
 import { roastInfo, restStage } from '@/lib/garden/roast';
-import { RECEIVE_FLOW_FROM, receiveTodo } from '@/lib/garden/receive';
+import { RECEIVE_FLOW_FROM, receiveAssigned, receiveTodo } from '@/lib/garden/receive';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -39,8 +37,6 @@ const readJson = async <T,>(path: string): Promise<T | null> => {
   }
 };
 
-const PROTOCOL_DIALS = [6, 8, 10];
-const SHOTS_PER_DIAL = 3;
 const storeLabel = (id: string) => STORES.find((s) => s.id === id)?.label ?? id;
 
 export async function GET(req: Request) {
@@ -71,7 +67,7 @@ export async function GET(req: Request) {
   // 섹션 권한 — 이 보드를 볼 수 있는 사람인지 (미들웨어는 라우트 단위라 scope 별 판단은 여기서)
   const needSection = scope === 'staffmeal' ? 'studio' : 'garden';
   if (allowedSections && !allowedSections.includes(needSection)) {
-    return NextResponse.json({ cards: [], me });
+    return NextResponse.json({ cards: [], me, grinder: [] });
   }
 
   const cards: BoardCard[] = [];
@@ -79,14 +75,13 @@ export async function GET(req: Request) {
   const owns = (emails: string[]) => emails.map((e) => e.toLowerCase()).includes(me);
 
   const isGarden = scope === 'garden';
-  const [purchases, recipes, measurements, todos, profiles, mealsStore, alignEvents, beanStore] =
+  const [purchases, recipes, measurements, todos, mealsStore, alignEvents, beanStore] =
     await Promise.all([
       isGarden ? purchaseRecords.readAll().catch(() => []) : [],
       isGarden ? dripRecipeRecords.readAll().catch(() => [] as DripRecipe[]) : [],
       isGarden ? grindMeasurementRecords.readAll().catch(() => []) : [],
       // 투두는 브랜드별 컬렉션 — 가든 보드엔 가든 투두, 스탭밀 보드엔 스탭밀 투두
       (isGarden ? gardenTodoRecords : staffmealTodoRecords).readAll().catch(() => [] as GardenTodo[]),
-      isGarden ? readJson<{ profiles: GrinderProfiles }>('data/garden-grinders.json') : null,
       isGarden ? null : readJson<{ records: StaffMealRecord[] }>('data/staffmeals.json'),
       isGarden ? alignmentRecords.readAll().catch(() => [] as AlignmentEvent[]) : [],
       isGarden ? readJson<BeanMetaStore>('data/garden-beans.json') : null,
@@ -194,7 +189,12 @@ export async function GET(req: Request) {
 
   // ── 원두 수령 : 로스팅 날짜 기재 · 영문명 확정 ── (2026-11-19 대표 결정)
   // 발주 흐름(레시피·판매가·원두카드)과 담당이 달라 별도 카드로 세운다 — 택배를 받는 건 발주한 사람 쪽이다.
-  // 카드를 누르면 발주 화면에서 그 발주의 수령 창이 바로 열린다. 둘 다 기재되면 카드가 사라진다.
+  // 카드 버튼이 보드에서 수령 창을 바로 연다. 둘 다 기재되면 카드가 사라진다.
+  // 누를 수 있는 사람: 설정의 '원두 수령 담당'이 지정돼 있으면 그 사람들(발주 탭 권한 불필요),
+  // 비어 있으면 발주 탭 권한이 있는 사람 — 이때 '내 차례'는 발주한 계정.
+  const receivers = (topics.beanReceive ?? []).map((e) => e.toLowerCase());
+  const receiveAssignedMe = receiveAssigned(receivers, me);
+  const canReceive = owner || (receiveAssignedMe ?? (!allowedTabs || allowedTabs.includes('pricing')));
   for (const p of purchases) {
     if (kstDay(p.createdAt) < RECEIVE_FLOW_FROM) continue;
     const todo = receiveTodo(p);
@@ -215,75 +215,44 @@ export async function GET(req: Request) {
         ...(p.staffName ? [{ text: `${p.staffName}님` }] : []),
         ...(d >= 5 ? [{ text: `${d}일째 미수령`, tone: 'late' as const }] : []),
       ],
-      assignees: orderer ? [orderer] : [],
-      mine: !!orderer && orderer === me,
-      mineReason: '발주한 원두',
+      assignees: receivers.length ? receivers : orderer ? [orderer] : [],
+      mine: receivers.length ? receiveAssignedMe === true : !!orderer && orderer === me,
+      mineReason: receivers.length ? '수령 담당' : '발주한 원두',
+      receive: {
+        id: p.id,
+        bean: p.bean,
+        roastery: p.roastery,
+        roastDate: p.roastDate,
+        beanEn: p.beanEn,
+        beanEnConfirmed: p.beanEnConfirmed,
+        allowed: canReceive,
+      },
       href: `/garden/pricing?receive=${p.id}`,
       actionLabel: todo.roastDate ? '수령 기재' : '영문명 확정',
-      tab: 'pricing',
+      // 담당자가 지정돼 있으면 발주 탭이 없는 담당자도 보드에서 봐야 한다 — 탭 필터를 거치지 않는다
+      tab: receivers.length ? null : 'pricing',
       sortAt: p.createdAt,
     });
   }
 
-  // ── 분쇄도 측정 : 요청 · 업로드 · 환산 적용 ──
-  const calOwners = topics.calibration ?? [];
-  const today = kstDay(new Date().toISOString());
-  for (const s of isGarden ? STORES : []) {
-    const mine = measurements.filter((m) => m.store === s.id);
-    const todayShots = mine.filter(
-      (m) => kstDay(m.createdAt) === today && PROTOCOL_DIALS.includes(Math.round(m.dial * 10) / 10)
-    );
-    const total = PROTOCOL_DIALS.length * SHOTS_PER_DIAL;
-    const done = Math.min(todayShots.length, total);
-    const applied = !!fitDialToMicron(profiles?.profiles?.[s.id]?.points);
-    // 오늘 아무것도 안 올렸고 이미 환산까지 적용돼 있으면 할 일이 아니다
-    if (done === 0 && applied) continue;
-    const stage = done === 0 ? 0 : done < total ? 1 : applied ? 3 : 2;
-    cards.push({
-      id: `measure:${s.id}`,
-      type: 'measure',
-      title: `${s.label} 6/8/10 × 3샷 측정`,
-      column: stage === 0 ? 'todo' : stage >= 3 ? 'done' : 'doing',
-      steps: stepsAt(['요청', '업로드', '환산 적용'], Math.min(stage, 2)),
-      meta: [
-        { text: `${done}/${total}샷` },
-        ...(applied ? [{ text: '환산 적용됨', tone: 'ok' as const }] : []),
-      ],
-      assignees: calOwners,
-      mine: stage < 3 && owns(calOwners),
-      mineReason: '캘리브레이션 담당',
-      href: '/garden/calibration',
-      actionLabel: done < total ? '측정 업로드' : '환산 적용',
-      progress: done / total,
-      tab: TYPE_TAB.measure,
-      sortAt: todayShots[0]?.createdAt ?? new Date().toISOString(),
-    });
-  }
-
-  // ── 정기 얼라인 점검 : 마지막 확인(재정렬·점검) 후 3개월 지나면 리마인더 ──
-  for (const s of isGarden ? STORES : []) {
-    const { due, last } = alignmentOverdue(alignEvents, s.id);
-    if (!due) continue;
-    cards.push({
-      id: `align:${s.id}`,
-      type: 'align',
-      title: `${s.label} EK43 · 정기 얼라인 점검`,
-      column: 'todo',
-      steps: stepsAt(['점검', '기록'], 0),
-      meta: [
-        last
-          ? { text: `마지막 확인 ${last} — ${ALIGN_REMINDER_MONTHS}개월 경과`, tone: 'late' as const }
-          : { text: '점검 기록 없음', tone: 'late' as const },
-      ],
-      assignees: calOwners,
-      mine: owns(calOwners),
-      mineReason: '캘리브레이션 담당',
-      href: '/garden/calibration',
-      actionLabel: '점검 기록',
-      tab: TYPE_TAB.align,
-      sortAt: last ?? '2000-01-01',
-    });
-  }
+  // ── 그라인더 관리 : 측정·얼라인 점검은 카드로 띄우지 않는다 (2026-11-19 대표 결정) ──
+  // 정기 리마인더·내 차례 알림 없이, 보드 맨 아래 표에 지점별 마지막 기록일만 버튼으로 보여준다.
+  // 캘리브레이션 탭을 열 수 없는 사람에겐 보내지 않는다(눌러도 튕기므로).
+  const canCalibrate = !allowedTabs || allowedTabs.includes('calibration');
+  const grinder: GrinderUpkeepRow[] =
+    isGarden && canCalibrate
+      ? STORES.map((s) => ({
+          store: s.id,
+          label: s.label,
+          lastMeasure:
+            measurements
+              .filter((m) => m.store === s.id)
+              .map((m) => kstDay(m.createdAt))
+              .sort()
+              .at(-1) ?? null,
+          lastInspect: latestInspectionDate(alignEvents, s.id),
+        }))
+      : [];
 
   // ── 네이버 리뷰 : 수집 · 초안 · 승인 · 등록 ──
   const reviewOwners = topics.reviewIssue ?? [];
@@ -346,5 +315,5 @@ export async function GET(req: Request) {
   const visible = cards.filter((c) => c.tab === null || !allowedTabs || allowedTabs.includes(c.tab));
   visible.sort((a, b) => Number(b.mine) - Number(a.mine) || a.sortAt.localeCompare(b.sortAt));
 
-  return NextResponse.json({ cards: visible, me });
+  return NextResponse.json({ cards: visible, me, grinder });
 }

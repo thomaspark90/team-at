@@ -158,6 +158,14 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
     refreshPurchases();
   };
 
+  // [수령]을 누를 수 있는지 — 설정 › '원두 수령 담당'이 지정돼 있으면 그 사람들만 (서버가 판정)
+  const [canReceive, setCanReceive] = useState(true);
+  useEffect(() => {
+    fetch('/api/purchases/receive', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j && setCanReceive(j.allowed !== false))
+      .catch(() => {});
+  }, []);
   const receiving = useMemo(() => purchases.find((r) => r.id === receivingId) ?? null, [purchases, receivingId]);
   // 같은 원두에 이미 확정된 영문명 — 재발주면 비워 둬도 서버가 이어받는다
   const inheritedEn = useMemo(() => (bean.trim() ? confirmedEnFor(purchases, bean) : null), [purchases, bean]);
@@ -180,7 +188,7 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
 
   return (
     <div style={{ width: '100%', minWidth: 0 }}>
-      {receiving && (
+      {receiving && canReceive && (
         <BeanReceiveDialog
           record={receiving}
           onClose={() => setReceivingId(null)}
@@ -481,12 +489,13 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
                               return (
                                 <button
                                   onClick={() => setReceivingId(rec.id)}
-                                  className={`tabular ${todo.done ? 'text-muted-foreground' : 'text-foreground'}`}
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: todo.done ? undefined : 11, flexShrink: 0, padding: 0, textDecoration: todo.done ? 'none' : 'underline' }}
-                                  title={todo.done ? `영문명 ${rec.beanEn} — 눌러서 수정` : '수령 — 봉투의 로스팅 날짜·영문명 확정'}
+                                  disabled={!canReceive}
+                                  className={`tabular ${todo.done || !canReceive ? 'text-muted-foreground' : 'text-foreground'}`}
+                                  style={{ background: 'none', border: 'none', cursor: canReceive ? 'pointer' : 'default', fontSize: todo.done ? undefined : 11, flexShrink: 0, padding: 0, textDecoration: todo.done || !canReceive ? 'none' : 'underline' }}
+                                  title={!canReceive ? '수령 담당자로 지정된 사람만 기재할 수 있어요 (설정 › 원두 수령 담당)' : todo.done ? `영문명 ${rec.beanEn} — 눌러서 수정` : '수령 — 봉투의 로스팅 날짜·영문명 확정'}
                                 >
-                                  {rec.roastDate ? `로스팅 ${fmtDate(rec.roastDate)}` : '수령'}
-                                  {rec.roastDate && todo.beanEn && ' · 영문명 확정'}
+                                  {rec.roastDate ? `로스팅 ${fmtDate(rec.roastDate)}` : canReceive ? '수령' : '수령 전'}
+                                  {rec.roastDate && todo.beanEn && (canReceive ? ' · 영문명 확정' : ' · 영문명 미확정')}
                                 </button>
                               );
                             })()}

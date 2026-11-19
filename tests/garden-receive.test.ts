@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { confirmedEnFor, receiveTodo } from '@/lib/garden/receive';
+import { confirmedEnFor, receiveAssigned, receiveTodo } from '@/lib/garden/receive';
 
 const rec = (bean: string, beanEn: string | undefined, confirmedAt?: string) => ({
   bean,
@@ -31,5 +31,17 @@ describe('수령 남은 일', () => {
     expect(receiveTodo({})).toEqual({ roastDate: true, beanEn: true, done: false });
     expect(receiveTodo({ roastDate: '2026-11-18' }).done).toBe(false);
     expect(receiveTodo({ roastDate: '2026-11-18', beanEnConfirmed: { by: 'a', at: 'x' } }).done).toBe(true);
+  });
+});
+
+describe('수령 담당 판정', () => {
+  it('담당자가 비어 있으면 null — 발주 탭 권한으로 넘긴다', () => {
+    expect(receiveAssigned([], 'a@b.c')).toBeNull();
+    expect(receiveAssigned(undefined, 'a@b.c')).toBeNull();
+  });
+  it('지정돼 있으면 그 사람만(대소문자 무시)', () => {
+    expect(receiveAssigned(['Staff@b.c'], 'staff@B.C')).toBe(true);
+    expect(receiveAssigned(['staff@b.c'], 'other@b.c')).toBe(false);
+    expect(receiveAssigned(['staff@b.c'], null)).toBe(false);
   });
 });
