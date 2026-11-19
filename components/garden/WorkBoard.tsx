@@ -223,7 +223,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
           }}
         />
       )}
-      {/* 내 차례 — 주 패널. 들어오자마자 자기 일이 먼저 보이게. 검은 버튼은 첫 행 하나, 나머지는 텍스트 › */}
+      {/* 내 차례 — 주 패널. 들어오자마자 자기 일이 먼저 보이게. 행동은 모든 행이 같은 텍스트 › (2026-11-19 대표 지시 — 첫 행만 검은 버튼이면 같은 행동이 다르게 보여 통일) */}
       <div className="ta-panel min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           <span className="text-title font-medium text-foreground">내 차례</span>
@@ -240,7 +240,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
           </p>
         ) : (
           <div className="divide-y divide-border" style={{ display: 'flex', flexDirection: 'column' }}>
-            {mineCards.map((c, i) => (
+            {mineCards.map((c) => (
               <div
                 key={c.id}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 0' }}
@@ -253,17 +253,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
                 </span>
                 <span style={{ flex: 1 }} />
                 {c.receive ? (
-                  c.receive.allowed &&
-                  (i === 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => setReceiving(c)}
-                      className="ta-btn-primary"
-                      style={{ height: 28, paddingLeft: 12, paddingRight: 12, fontSize: 13, display: 'inline-flex', alignItems: 'center' }}
-                    >
-                      {c.actionLabel}
-                    </button>
-                  ) : (
+                  c.receive.allowed && (
                     <button
                       type="button"
                       onClick={() => setReceiving(c)}
@@ -272,15 +262,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
                     >
                       {c.actionLabel} ›
                     </button>
-                  ))
-                ) : i === 0 ? (
-                  <Link
-                    href={c.href}
-                    className="ta-btn-primary"
-                    style={{ height: 28, paddingLeft: 12, paddingRight: 12, fontSize: 13, display: 'inline-flex', alignItems: 'center' }}
-                  >
-                    {c.actionLabel}
-                  </Link>
+                  )
                 ) : (
                   <Link href={c.href} className="whitespace-nowrap text-body text-foreground hover:underline">
                     {c.actionLabel} ›
