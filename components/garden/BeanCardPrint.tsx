@@ -231,7 +231,7 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
             <p className="text-caption" style={{ margin: 0, color: record.beanEnConfirmed ? 'hsl(var(--muted-foreground))' : 'hsl(0 72% 45%)' }}>
               {record.beanEnConfirmed
                 ? `영문명 확정됨 — ${record.beanEn}`
-                : '영문명 미확정 — 원두가 도착하면 봉투 표기로 확정돼요. 확정 알림을 받은 뒤 인쇄해 주세요.'}
+                : '영문명 미확정 — 원두가 도착하면 봉투 표기로 확정돼요. 원두카드 요청 메일을 받은 뒤 인쇄해 주세요.'}
             </p>
           )}
 

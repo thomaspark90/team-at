@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { confirmedEnFor, receiveAssigned, receiveTodo } from '@/lib/garden/receive';
+import { confirmedEnFor, matchScanToPending, receiveAssigned, receiveTodo } from '@/lib/garden/receive';
 
 const rec = (bean: string, beanEn: string | undefined, confirmedAt?: string) => ({
   bean,
@@ -27,10 +27,39 @@ describe('영문명 확정 승계', () => {
 });
 
 describe('수령 남은 일', () => {
-  it('로스팅 날짜와 영문명 확정이 모두 있어야 완료', () => {
-    expect(receiveTodo({})).toEqual({ roastDate: true, beanEn: true, done: false });
+  const ok = { by: 'a', at: 'x' };
+  it('로스팅 날짜 → 영문명 확정 → 원두카드 요청이 모두 끝나야 완료', () => {
+    expect(receiveTodo({})).toEqual({ roastDate: true, beanEn: true, cardRequest: false, done: false });
     expect(receiveTodo({ roastDate: '2026-11-18' }).done).toBe(false);
-    expect(receiveTodo({ roastDate: '2026-11-18', beanEnConfirmed: { by: 'a', at: 'x' } }).done).toBe(true);
+    const confirmed = { roastDate: '2026-11-18', beanEnConfirmed: ok };
+    expect(receiveTodo(confirmed)).toMatchObject({ cardRequest: true, done: false });
+    expect(receiveTodo({ ...confirmed, cardRequested: ok }).done).toBe(true);
+  });
+  it('영문명 확정 전에는 원두카드 요청이 생기지 않는다', () => {
+    expect(receiveTodo({ roastDate: '2026-11-18' }).cardRequest).toBe(false);
+  });
+  it('이미 인쇄 완료한 카드는 다시 요청하라고 하지 않는다', () => {
+    expect(receiveTodo({ roastDate: '2026-11-18', beanEnConfirmed: ok, cardDone: ok }).done).toBe(true);
+  });
+});
+
+describe('봉투 촬영 → 발주 찾기', () => {
+  const a = { bean: '에티오피아 게뎁 워시드', beanEn: undefined, roastery: '언스페셜티' };
+  const b = { bean: '케냐 니에리 AA', beanEn: 'Kenya Nyeri', roastery: '프릳츠' };
+  it('후보가 하나면 그 발주', () => {
+    expect(matchScanToPending({ beanName: '전혀 다른 이름' }, [a])).toBe(a);
+  });
+  it('한글 원두명이 겹치는 발주를 고른다', () => {
+    expect(matchScanToPending({ beanName: '에티오피아 게뎁' }, [a, b])).toBe(a);
+  });
+  it('영문 표기·로스팅사로도 찾는다', () => {
+    expect(matchScanToPending({ beanNameEn: 'Kenya Nyeri AA Washed' }, [a, b])).toBe(b);
+    expect(matchScanToPending({ roastery: '프릳츠' }, [a, b])).toBe(b);
+  });
+  it('겹치는 게 없거나 동점이면 고르지 않는다 — 사람이 목록에서 고른다', () => {
+    expect(matchScanToPending({ beanName: '콜롬비아 핑크 버번' }, [a, b])).toBeNull();
+    expect(matchScanToPending({ beanName: '에티오피아 케냐' }, [a, b])).toBeNull();
+    expect(matchScanToPending({ beanName: '에티오피아' }, [])).toBeNull();
   });
 });
 

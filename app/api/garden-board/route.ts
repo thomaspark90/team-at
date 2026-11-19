@@ -187,7 +187,7 @@ export async function GET(req: Request) {
     });
   }
 
-  // ── 원두 수령 : 로스팅 날짜 기재 · 영문명 확정 ── (2026-11-19 대표 결정)
+  // ── 원두 수령 : 로스팅 날짜 기재 · 영문명 확정 · 원두카드 요청 ── (2026-11-19 대표 결정)
   // 발주 흐름(레시피·판매가·원두카드)과 담당이 달라 별도 카드로 세운다 — 택배를 받는 건 발주한 사람 쪽이다.
   // 카드 버튼이 보드에서 수령 창을 바로 연다. 둘 다 기재되면 카드가 사라진다.
   // 누를 수 있는 사람: 설정의 '원두 수령 담당'이 지정돼 있으면 그 사람들(발주 탭 권한 불필요),
@@ -208,7 +208,7 @@ export async function GET(req: Request) {
       type: 'order',
       title: `${p.bean} 수령`,
       column: todo.roastDate ? 'todo' : 'doing',
-      steps: stepsAt(['발주', '로스팅 날짜', '영문명 확정'], todo.roastDate ? 1 : 2),
+      steps: stepsAt(['발주', '로스팅 날짜', '영문명 확정', '원두카드 요청'], todo.roastDate ? 1 : todo.beanEn ? 2 : 3),
       meta: [
         { text: `${shortDate(p.createdAt)} 발주` },
         ...(p.store ? [{ text: storeLabel(p.store) }] : []),
@@ -222,13 +222,16 @@ export async function GET(req: Request) {
         id: p.id,
         bean: p.bean,
         roastery: p.roastery,
+        store: p.store,
+        cardRequested: p.cardRequested,
+        cardDone: p.cardDone,
         roastDate: p.roastDate,
         beanEn: p.beanEn,
         beanEnConfirmed: p.beanEnConfirmed,
         allowed: canReceive,
       },
       href: `/garden/pricing?receive=${p.id}`,
-      actionLabel: todo.roastDate ? '수령 기재' : '영문명 확정',
+      actionLabel: todo.roastDate ? '수령 기재' : todo.beanEn ? '영문명 확정' : '원두카드 요청',
       // 담당자가 지정돼 있으면 발주 탭이 없는 담당자도 보드에서 봐야 한다 — 탭 필터를 거치지 않는다
       tab: receivers.length ? null : 'pricing',
       sortAt: p.createdAt,
@@ -315,5 +318,6 @@ export async function GET(req: Request) {
   const visible = cards.filter((c) => c.tab === null || !allowedTabs || allowedTabs.includes(c.tab));
   visible.sort((a, b) => Number(b.mine) - Number(a.mine) || a.sortAt.localeCompare(b.sortAt));
 
-  return NextResponse.json({ cards: visible, me, grinder });
+  // canReceive — 보드 상단 [원두 수령] 버튼을 켜고 끈다
+  return NextResponse.json({ cards: visible, me, grinder, canReceive: isGarden && canReceive });
 }

@@ -24,7 +24,10 @@ export function confirmedEnFor(records: Rec[], bean: string): string | null {
 }
 
 /** 수령 창에 필요한 발주 기록 조각 — 발주 화면은 기록 전체를, 작업 보드는 이 조각만 넘긴다 */
-export type ReceiveTarget = Pick<PurchaseRecord, 'id' | 'bean' | 'roastery' | 'roastDate' | 'beanEn' | 'beanEnConfirmed'>;
+export type ReceiveTarget = Pick<
+  PurchaseRecord,
+  'id' | 'bean' | 'roastery' | 'store' | 'roastDate' | 'beanEn' | 'beanEnConfirmed' | 'cardRequested' | 'cardDone'
+>;
 
 /** 수령 담당자(설정 › 항목별 담당자 › 원두 수령 담당)가 지정돼 있으면 그 사람들만.
  *  null = 지정 없음 → 발주(pricing) 탭 권한으로 판단한다. 대표는 호출 쪽에서 항상 통과. */
@@ -34,13 +37,46 @@ export function receiveAssigned(assignees: string[] | undefined, email: string |
   return list.includes((email ?? '').toLowerCase());
 }
 
-/** 수령 단계에서 아직 남은 일 — 둘 다 끝나야 수령 완료 */
-export function receiveTodo(p: Pick<PurchaseRecord, 'roastDate' | 'beanEnConfirmed'>): {
+/** 수령 단계에서 아직 남은 일 — 로스팅 날짜 → 영문명 확정 → 원두카드 요청 순.
+ *  원두카드 요청은 영문명이 확정된 뒤에만 생긴다(확정 전 표기로 카드가 만들어지지 않게). */
+export function receiveTodo(p: Pick<PurchaseRecord, 'roastDate' | 'beanEnConfirmed' | 'cardRequested' | 'cardDone'>): {
   roastDate: boolean;
   beanEn: boolean;
+  cardRequest: boolean;
   done: boolean;
 } {
   const roastDate = !p.roastDate;
   const beanEn = !p.beanEnConfirmed;
-  return { roastDate, beanEn, done: !roastDate && !beanEn };
+  const cardRequest = !beanEn && !p.cardRequested && !p.cardDone;
+  return { roastDate, beanEn, cardRequest, done: !roastDate && !beanEn && !cardRequest };
+}
+
+const tokens = (s: string | null | undefined) =>
+  normalize(s ?? '')
+    .split(/[^0-9a-z가-힣]+/)
+    .filter((t) => t.length >= 2);
+
+/** 봉투 촬영 결과로 '어느 발주를 받은 건지' 고른다 — 한글 원두명·영문 표기·로스팅사가 겹치는 정도로 점수.
+ *  후보가 하나뿐이면 그 발주, 여럿이면 점수가 가장 높은(동점 없는) 발주, 못 고르면 null(사람이 목록에서 고른다).
+ *  골라 준 결과도 수령 창에서 한글 원두명을 보여 주고 사람이 확인한다. */
+export function matchScanToPending<T extends Pick<PurchaseRecord, 'bean' | 'beanEn' | 'roastery'>>(
+  scan: { beanName?: string | null; beanNameEn?: string | null; roastery?: string | null },
+  pending: T[]
+): T | null {
+  if (pending.length === 0) return null;
+  if (pending.length === 1) return pending[0];
+  const ko = new Set(tokens(scan.beanName));
+  const en = new Set(tokens(scan.beanNameEn));
+  const roastery = normalize(scan.roastery ?? '');
+  const scored = pending
+    .map((p) => {
+      let score = tokens(p.bean).filter((t) => ko.has(t)).length * 2;
+      score += tokens(p.beanEn).filter((t) => en.has(t)).length * 2;
+      const r = normalize(p.roastery ?? '');
+      if (roastery && r && (r.includes(roastery) || roastery.includes(r))) score += 1;
+      return { p, score };
+    })
+    .sort((a, b) => b.score - a.score);
+  if (scored[0].score === 0 || scored[0].score === scored[1].score) return null;
+  return scored[0].p;
 }

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import type { DripRecipe, GardenOptions, PricingSettings, PurchaseRecord, StoreId } from '@/lib/types';
 import { currentCost, currentDoseG, currentRange, dosesForBean } from '@/lib/garden/brew-cost';
 import { DEFAULT_SETTINGS, computePricing, normalize } from '@/lib/pricing';
-import { toast } from '@/components/Toast';
 import { fmtDate } from '@/lib/garden/format';
 import { useKakaoOrder } from './KakaoOrder';
 import { bandRange, defaultActiveCells, guideRowForCost, ratioRangeLabel, type ActiveCells } from '@/lib/garden/price-bands';
@@ -192,11 +191,7 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
         <BeanReceiveDialog
           record={receiving}
           onClose={() => setReceivingId(null)}
-          onSaved={(updated) => {
-            setPurchases((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
-            setReceivingId(null);
-            toast(updated.beanEnConfirmed ? `수령 저장 — 영문명 ${updated.beanEn} 확정` : '수령 저장');
-          }}
+          onSaved={(updated) => setPurchases((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))}
         />
       )}
       <div className="divide-y divide-border">
@@ -492,10 +487,11 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
                                   disabled={!canReceive}
                                   className={`tabular ${todo.done || !canReceive ? 'text-muted-foreground' : 'text-foreground'}`}
                                   style={{ background: 'none', border: 'none', cursor: canReceive ? 'pointer' : 'default', fontSize: todo.done ? undefined : 11, flexShrink: 0, padding: 0, textDecoration: todo.done || !canReceive ? 'none' : 'underline' }}
-                                  title={!canReceive ? '수령 담당자로 지정된 사람만 기재할 수 있어요 (설정 › 원두 수령 담당)' : todo.done ? `영문명 ${rec.beanEn} — 눌러서 수정` : '수령 — 봉투의 로스팅 날짜·영문명 확정'}
+                                  title={!canReceive ? '수령 담당자로 지정된 사람만 기재할 수 있어요 (설정 › 원두 수령 담당)' : todo.done ? `영문명 ${rec.beanEn} — 눌러서 수정·원두카드 다시 요청` : '수령 — 봉투의 로스팅 날짜·영문명 확정 → 원두카드 요청'}
                                 >
                                   {rec.roastDate ? `로스팅 ${fmtDate(rec.roastDate)}` : canReceive ? '수령' : '수령 전'}
                                   {rec.roastDate && todo.beanEn && (canReceive ? ' · 영문명 확정' : ' · 영문명 미확정')}
+                                  {rec.roastDate && todo.cardRequest && (canReceive ? ' · 원두카드 요청' : ' · 원두카드 요청 전')}
                                 </button>
                               );
                             })()}

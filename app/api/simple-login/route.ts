@@ -71,9 +71,19 @@ export async function POST(req: Request) {
   }
 
   await svc.from('profiles').update({ failed_attempts: 0, locked_until: null }).eq('user_id', profile.user_id);
+  // 로그인하면 작업 보드로 (2026-11-19 대표 지시). 작업 보드 탭이 꺼진 계정은 미들웨어가 허용된 첫 탭으로
+  // 돌려보내 엉뚱한 화면에 떨어지므로, 그 경우엔 예전처럼 교육 탭으로 보낸다.
+  const { data: tabAccess } = await svc
+    .schema('finance')
+    .from('garden_tab_access')
+    .select('tabs')
+    .eq('user_id', profile.user_id)
+    .maybeSingle();
+  const tabs = (tabAccess?.tabs as string[] | null | undefined) ?? null;
+  const home = !tabs || tabs.includes('dashboard') ? '/garden' : '/garden/teaching';
   return NextResponse.json({
     ok: true,
     pinResetRequired: !!profile.pin_reset_required,
-    next: profile.pin_reset_required ? '/account/pin' : '/garden/teaching',
+    next: profile.pin_reset_required ? '/account/pin' : home,
   });
 }

@@ -55,6 +55,7 @@ export interface PurchaseRecord {
   priceReview?: StageReview; // 레시피 담당자가 요청한 판매가 재검토
   priceDismissed?: StageReview; // 판매가 설정 화면에서 X로 미책정 목록에서 숨김 (기록은 유지, 다시 보이기 가능)
   recipeReview?: StageReview; // 원두카드 담당자가 요청한 레시피 재검토
+  cardRequested?: StageReview; // 원두카드 제작 요청 — 수령 후 [원두카드 요청하기]를 누른 표시(note 있으면 '요청 안 함'). 메일은 이때만 나간다 (2026-11-19)
   cardDone?: StageReview; // 원두카드 인쇄 완료 — 원두카드 담당(디자이너)이 표시, 발주한 사람에게 알림 (2026-11-03)
 }
 

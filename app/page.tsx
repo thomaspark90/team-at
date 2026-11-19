@@ -13,8 +13,9 @@ export default async function LandingPage({ searchParams }: { searchParams: { de
   const userAllowed = !!user && (await isAllowedUser(supabase, user.email));
   const denied = searchParams.denied === '1' || (!!user && !userAllowed);
   // denied=1 로 되돌아온 경우엔 자동 이동하지 않는다 — 접근 권한이 하나도 없는 계정이
-  // 여기서 다시 /dashboard 로 튀면 미들웨어와 무한히 왕복해 아무 화면도 못 연다.
-  if (userAllowed && !denied) redirect('/dashboard');
+  // 여기서 다시 /garden 으로 튀면 미들웨어와 무한히 왕복해 아무 화면도 못 연다.
+  // 로그인하면 모두 가든 작업 보드로 (2026-11-19 대표 지시) — 가든 권한이 없으면 미들웨어가 허용된 첫 화면으로 보낸다
+  if (userAllowed && !denied) redirect('/garden');
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6">

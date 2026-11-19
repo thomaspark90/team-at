@@ -5,7 +5,8 @@ import Link from 'next/link';
 import type { BoardCard, BoardScope, BoardType, GrinderUpkeepRow } from '@/lib/garden/board';
 import { BOARD_COLUMNS, BOARD_TYPES } from '@/lib/garden/board';
 import BeanReceiveDialog from './BeanReceiveDialog';
-import { toast } from '@/components/Toast';
+import BeanReceivePicker from './BeanReceivePicker';
+import type { ReceiveTarget } from '@/lib/garden/receive';
 import GrinderUpkeep from './GrinderUpkeep';
 
 // 작업 보드 — 브랜드별로 나뉜다. 가든(scope='garden')은 발주·리뷰·투두(+맨 아래 그라인더 관리 표),
@@ -170,7 +171,11 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
   // 팀 전체 보드는 접힌 한 줄로 시작 — 첫 화면은 '내 차례'만(2026-09-09 소프트 UI 4단계)
   const [teamOpen, setTeamOpen] = useState(false);
   // 수령 카드에서 연 수령 창 — 저장하면 보드를 다시 불러온다
-  const [receiving, setReceiving] = useState<BoardCard | null>(null);
+  // receiving = 수령 창에 올린 발주(+ 봉투를 먼저 찍었으면 읽은 값), pickerOpen = [원두 수령] 지점·봉투 선택 창
+  const [receiving, setReceiving] = useState<{ target: ReceiveTarget; initial?: { beanEn?: string | null; roastDate?: string | null } } | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [canReceive, setCanReceive] = useState(false);
+  const openReceive = useCallback((c: BoardCard) => c.receive && setReceiving({ target: c.receive }), []);
 
   const load = useCallback(() => {
     fetch(`/api/garden-board?scope=${scope}`, { cache: 'no-store' })
@@ -178,6 +183,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
       .then((j) => {
         setCards(Array.isArray(j.cards) ? j.cards : []);
         setGrinder(Array.isArray(j.grinder) ? j.grinder : []);
+        setCanReceive(j.canReceive === true);
       })
       .catch(() => setCards([]));
   }, [scope]);
@@ -190,6 +196,11 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [load]);
 
+  // 수령 대기 발주 — 수령 카드가 들고 온 조각. [원두 수령] 창이 지점별로 나눠 보여준다
+  const receiveTargets = useMemo(
+    () => (cards ?? []).flatMap((c) => (c.receive ? [c.receive] : [])),
+    [cards]
+  );
   const mineCards = useMemo(() => (cards ?? []).filter((c) => c.mine && c.column !== 'done'), [cards]);
 
   const shown = useMemo(() => {
@@ -212,15 +223,23 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
 
   return (
     <div className="space-y-6">
-      {receiving?.receive && (
+      {pickerOpen && !receiving && (
+        <BeanReceivePicker
+          targets={receiveTargets}
+          onClose={() => setPickerOpen(false)}
+          onPick={(target, initial) => setReceiving({ target, initial })}
+        />
+      )}
+      {receiving && (
         <BeanReceiveDialog
-          record={receiving.receive}
-          onClose={() => setReceiving(null)}
-          onSaved={(updated) => {
+          key={receiving.target.id}
+          record={receiving.target}
+          initial={receiving.initial}
+          onClose={() => {
             setReceiving(null);
-            toast(updated.beanEnConfirmed ? `수령 저장 — 영문명 ${updated.beanEn} 확정` : '수령 저장');
-            load();
+            setPickerOpen(false);
           }}
+          onSaved={() => load()}
         />
       )}
       {/* 내 차례 — 주 패널. 들어오자마자 자기 일이 먼저 보이게. 행동은 모든 행이 같은 텍스트 › (2026-11-19 대표 지시 — 첫 행만 검은 버튼이면 같은 행동이 다르게 보여 통일) */}
@@ -233,6 +252,19 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
           >
             {mineCards.length}
           </span>
+          <span style={{ flex: 1 }} />
+          {/* 원두 수령 — 지점 선택 → 받은 봉투 촬영 → 영문명 확정 → 원두카드 요청 (수령 담당만 보인다) */}
+          {canReceive && (
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="ta-btn-primary"
+              style={{ height: 34, paddingLeft: 14, paddingRight: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              📷 원두 수령
+              {receiveTargets.length > 0 && <span className="tabular" style={{ opacity: 0.7 }}>{receiveTargets.length}</span>}
+            </button>
+          )}
         </div>
         {mineCards.length === 0 ? (
           <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
@@ -256,7 +288,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
                   c.receive.allowed && (
                     <button
                       type="button"
-                      onClick={() => setReceiving(c)}
+                      onClick={() => openReceive(c)}
                       className="whitespace-nowrap text-body text-foreground hover:underline"
                       style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer' }}
                     >
@@ -330,7 +362,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {list.map((c) => (
-                    <Card key={c.id} card={c} onReceive={setReceiving} />
+                    <Card key={c.id} card={c} onReceive={openReceive} />
                   ))}
                 </div>
               )}
