@@ -9,6 +9,8 @@ import { fmtDate } from '@/lib/garden/format';
 import { useKakaoOrder } from './KakaoOrder';
 import { bandRange, defaultActiveCells, guideRowForCost, ratioRangeLabel, type ActiveCells } from '@/lib/garden/price-bands';
 import PriceBandGuide from './PriceBandGuide';
+import BeanReceiveDialog from './BeanReceiveDialog';
+import { confirmedEnFor, receiveTodo } from '@/lib/garden/receive';
 
 // 인라인 스타일에서 참조할 midday 토큰 (HSL 변수)
 const C = {
@@ -25,16 +27,17 @@ const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 
 // 발주 전용 화면 — 판매가 책정(판매가 선택·공유)은 권한이 분리된 '판매가 설정' 탭
 // (GardenSalePrice)이 담당한다. 여기서는 발주 기록 저장과 원가 확인까지만 한다.
-export default function GardenService() {
+// receiveId — 작업 보드의 수령 카드에서 넘어오면(?receive=<id>) 그 발주의 수령 창을 바로 연다
+export default function GardenService({ receiveId = null }: { receiveId?: string | null }) {
   const [settings, setSettings] = useState<PricingSettings>(DEFAULT_SETTINGS);
   const [bean, setBean] = useState('');
-  const [beanEn, setBeanEn] = useState(''); // 영문 원두명 — 원두카드 인쇄용
-  const [translating, setTranslating] = useState(false); // 한글 원두명 → 영문 AI 변환 중
+  // 영문 원두명 — 발주 때는 선택 입력(임시). 수령 후 봉투 표기를 보고 확정한다 (2026-11-19)
+  const [beanEn, setBeanEn] = useState('');
   const [tastingNotes, setTastingNotes] = useState(''); // 테이스팅 노트 — 원두카드 인쇄용
   const [roastery, setRoastery] = useState('');
   // 발주 날짜 — 기본 오늘(KST). 로스팅 날짜는 발주 시점엔 모르므로 수령 후 [수령] 버튼으로 기재
   const [orderDate, setOrderDate] = useState(() => new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10));
-  const [receivingId, setReceivingId] = useState<string | null>(null); // [수령] 클릭한 기록 — 날짜 입력창 노출
+  const [receivingId, setReceivingId] = useState<string | null>(receiveId); // [수령] 클릭한 기록 — 수령 창(로스팅 날짜·영문명 확정)
   const [staffName, setStaffName] = useState('');
   // 받을 지점 — 발주 카톡 문구에 들어간다(로스터리가 매번 배송지를 물어서, 2026-11-03).
   // 기본값은 이 기기의 지점 선택(레시피 탭·보드와 같은 localStorage 키)
@@ -155,21 +158,9 @@ export default function GardenService() {
     refreshPurchases();
   };
 
-  // [수령] — 택배 도착 후 봉투에 찍힌 로스팅 날짜를 기재한다 (발주 시점엔 알 수 없는 값)
-  const receiveBean = async (rec: PurchaseRecord, date: string) => {
-    if (!date) return;
-    const res = await fetch('/api/purchases/receive', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: rec.id, roastDate: date }),
-    });
-    if (!res.ok) {
-      const j = await res.json().catch(() => null);
-      toast(j?.error ?? '수령 기재에 실패했습니다.', 'error');
-    }
-    setReceivingId(null);
-    refreshPurchases();
-  };
+  const receiving = useMemo(() => purchases.find((r) => r.id === receivingId) ?? null, [purchases, receivingId]);
+  // 같은 원두에 이미 확정된 영문명 — 재발주면 비워 둬도 서버가 이어받는다
+  const inheritedEn = useMemo(() => (bean.trim() ? confirmedEnFor(purchases, bean) : null), [purchases, bean]);
 
   // 발주 기록 — 원두별 그룹(각 그룹 최신순), 그룹은 최근 기록순
   const purchaseGroups = useMemo(() => {
@@ -189,6 +180,17 @@ export default function GardenService() {
 
   return (
     <div style={{ width: '100%', minWidth: 0 }}>
+      {receiving && (
+        <BeanReceiveDialog
+          record={receiving}
+          onClose={() => setReceivingId(null)}
+          onSaved={(updated) => {
+            setPurchases((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+            setReceivingId(null);
+            toast(updated.beanEnConfirmed ? `수령 저장 — 영문명 ${updated.beanEn} 확정` : '수령 저장');
+          }}
+        />
+      )}
       <div className="divide-y divide-border">
         <div className="min-w-0 pb-[54px]">
           <p className="ta-label">판매가 산식 기준</p>
@@ -227,6 +229,7 @@ export default function GardenService() {
                     if (!res.ok) throw new Error(j.error ?? '인식에 실패했어요.');
                     const x = j.extraction as {
                       beanName: string | null;
+                      beanNameEn?: string | null;
                       roastery: string | null;
                       weightG: number | null;
                       roastLevel: string | null;
@@ -237,6 +240,8 @@ export default function GardenService() {
                       if (/^[\x00-\x7F]*$/.test(x.beanName)) setBeanEn(x.beanName);
                       else setBean(x.beanName);
                     }
+                    // 봉투에 로마자로 인쇄된 표기가 있으면 그 철자 그대로
+                    if (x.beanNameEn) setBeanEn(x.beanNameEn);
                     if (x.tastingNotes) setTastingNotes(x.tastingNotes);
                     if (x.roastery) setRoastery(x.roastery);
                     if (x.weightG) setSettings((s) => ({ ...s, capacityG: x.weightG! }));
@@ -271,42 +276,21 @@ export default function GardenService() {
               placeholder="원두명 (예: 에티오피아 게뎁)"
               className="ta-input w-full"
             />
-            <div style={{ display: 'flex', gap: 8, minWidth: 0 }}>
+            {/* 영문명은 선택 — 한글만 보고 적으면 철자가 틀리기 쉬워, 수령 때 봉투 표기로 확정한다 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
               <input
                 value={beanEn}
                 onChange={(e) => setBeanEn(e.target.value)}
-                placeholder="영문 원두명 (예: Ethiopia Gedeb) — 원두카드용"
-                className="ta-input"
-                style={{ flex: 1, minWidth: 0 }}
+                placeholder="영문 원두명 (선택 — 몰라도 돼요)"
+                autoCorrect="off"
+                spellCheck={false}
+                className="ta-input w-full"
               />
-              {/* 한글 원두명 → 영문 표기 AI 변환 */}
-              <button
-                onClick={async () => {
-                  if (translating || !bean.trim()) return;
-                  setTranslating(true);
-                  setScanMsg(null);
-                  try {
-                    const res = await fetch('/api/garden-bean-translate', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ bean: bean.trim() }),
-                    });
-                    const j = await res.json();
-                    if (!res.ok) throw new Error(j.error ?? '영문 변환에 실패했어요.');
-                    setBeanEn(j.beanEn);
-                  } catch (err) {
-                    setScanMsg(`⚠ ${(err as Error).message}`);
-                  } finally {
-                    setTranslating(false);
-                  }
-                }}
-                disabled={translating || !bean.trim()}
-                className="ta-btn"
-                style={{ height: 'auto', paddingLeft: 10, paddingRight: 10, fontSize: 13, flexShrink: 0 }}
-                title="한글 원두명을 업계 표준 영문 표기로 자동 변환"
-              >
-                {translating ? '변환 중…' : '영문 자동'}
-              </button>
+              <span className="text-caption text-muted-foreground">
+                {inheritedEn && (!beanEn.trim() || beanEn.trim() === inheritedEn)
+                  ? `확정된 영문명 ${inheritedEn} — 그대로 이어받아요`
+                  : '비워 둬도 저장돼요. 원두를 받으면 봉투를 보고 확정해요'}
+              </span>
             </div>
             <input
               value={tastingNotes}
@@ -491,28 +475,21 @@ export default function GardenService() {
                                 {rec.staffName ? `${rec.staffName}님` : rec.createdBy!.split('@')[0]}
                               </span>
                             )}
-                            {/* 로스팅 날짜: 있으면 표시, 없으면 [수령] — 클릭 시 날짜 입력으로 바뀜 */}
-                            {rec.roastDate ? (
-                              <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>로스팅 {fmtDate(rec.roastDate)}</span>
-                            ) : receivingId === rec.id ? (
-                              <input
-                                type="date"
-                                autoFocus
-                                onChange={(e) => e.target.value && receiveBean(rec, e.target.value)}
-                                onBlur={() => setReceivingId(null)}
-                                className="ta-input tabular"
-                                style={{ height: 22, fontSize: 11, padding: '0 4px', flexShrink: 0, width: 130 }}
-                              />
-                            ) : (
-                              <button
-                                onClick={() => setReceivingId(rec.id)}
-                                className="text-foreground"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, flexShrink: 0, padding: 0, textDecoration: 'underline' }}
-                                title="수령 완료 — 봉투의 로스팅 날짜 기재"
-                              >
-                                수령
-                              </button>
-                            )}
+                            {/* 수령 — 로스팅 날짜·영문명 확정. 남은 게 있으면 밑줄 버튼, 다 끝났으면 날짜(눌러서 수정) */}
+                            {(() => {
+                              const todo = receiveTodo(rec);
+                              return (
+                                <button
+                                  onClick={() => setReceivingId(rec.id)}
+                                  className={`tabular ${todo.done ? 'text-muted-foreground' : 'text-foreground'}`}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: todo.done ? undefined : 11, flexShrink: 0, padding: 0, textDecoration: todo.done ? 'none' : 'underline' }}
+                                  title={todo.done ? `영문명 ${rec.beanEn} — 눌러서 수정` : '수령 — 봉투의 로스팅 날짜·영문명 확정'}
+                                >
+                                  {rec.roastDate ? `로스팅 ${fmtDate(rec.roastDate)}` : '수령'}
+                                  {rec.roastDate && todo.beanEn && ' · 영문명 확정'}
+                                </button>
+                              );
+                            })()}
                             <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>
                               원가 {won(rec.purchasePrice)}
                               {/* VAT 포함가로 입력한 기록만 표시 — 무표시 = 별도(구 기록 포함) */}

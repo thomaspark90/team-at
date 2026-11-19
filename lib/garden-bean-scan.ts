@@ -3,6 +3,8 @@
 
 export interface BeanScanExtraction {
   beanName: string | null; // 산지/품종 포함 원두명 (예: 에티오피아 게뎁 워시드)
+  beanNameEn: string | null; // 봉투에 로마자로 인쇄된 원두명 — 철자 그대로(번역·추측 없음). 수령 시 영문명 확정용
+  roastDate: string | null; // 봉투에 찍힌 로스팅 날짜 YYYY-MM-DD
   roastery: string | null; // 로스팅사/브랜드
   weightG: number | null; // 봉투 표기 용량(g)
   roastLevel: string | null; // 배전도 표기 (라이트/미디엄/다크 등)
@@ -12,11 +14,13 @@ export interface BeanScanExtraction {
 const PROMPT = `이 이미지는 커피 원두 봉투(패키지) 사진이야. 라벨이 기울거나 일부만 보일 수 있어.
 봉투에 인쇄된 정보만 읽어서 아래 JSON 스키마로만 답해. 보이지 않는 항목은 null.
 - bean_name: 산지 국가·지역·품종·가공방식을 포함한 원두 이름 (한국어로, 예: "에티오피아 게뎁 워시드"). 로스팅사 이름은 제외.
+- bean_name_en: 봉투에 영문(로마자)으로 인쇄된 원두 이름을 철자·띄어쓰기 그대로 옮겨 적어 (예: "Ethiopia Gedeb Washed"). 한글을 번역하거나 추측해서 만들지 마. 영문 표기가 없으면 null. 로스팅사 이름은 제외.
+- roast_date: 봉투에 찍히거나 적힌 로스팅 날짜를 YYYY-MM-DD 로 (연도가 없으면 오늘 __TODAY__ 기준 가장 가까운 과거 날짜의 연도). 유통기한·제조일 아님. 안 보이면 null.
 - roastery: 로스팅사/브랜드 이름 (예: "언스페셜티", "프릳츠")
 - weight_g: 봉투에 표기된 용량을 그램 숫자로 (예: 200, 1000. "1kg"→1000)
 - roast_level: 배전도 표기가 있으면 그대로 (예: "라이트", "미디엄 다크")
 - tasting_notes: 테이스팅/컵 노트가 있으면 쉼표로 이어서 (예: "자스민, 청포도, 얼그레이")
-{"bean_name": string|null, "roastery": string|null, "weight_g": number|null, "roast_level": string|null, "tasting_notes": string|null}`;
+{"bean_name": string|null, "bean_name_en": string|null, "roast_date": string|null, "roastery": string|null, "weight_g": number|null, "roast_level": string|null, "tasting_notes": string|null}`;
 
 const MODELS = [
   'gemini-2.5-flash',
@@ -30,9 +34,10 @@ export async function extractBeanBagInfo(
   mimeType: string,
   apiKey: string
 ): Promise<BeanScanExtraction> {
+  const todayKst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10);
   const body = JSON.stringify({
     contents: [
-      { parts: [{ inline_data: { mime_type: mimeType, data: imageBase64 } }, { text: PROMPT }] },
+      { parts: [{ inline_data: { mime_type: mimeType, data: imageBase64 } }, { text: PROMPT.replace('__TODAY__', todayKst) }] },
     ],
     generationConfig: {
       response_mime_type: 'application/json',
@@ -77,6 +82,12 @@ export async function extractBeanBagInfo(
   };
   return {
     beanName: str(raw.bean_name),
+    beanNameEn: str(raw.bean_name_en),
+    // 형식이 맞고 미래가 아닌 날짜만 받는다 — 잘못 읽은 값이 로스팅 경과일(D+)을 흐리지 않게
+    roastDate: (() => {
+      const d = str(raw.roast_date);
+      return d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= todayKst ? d : null;
+    })(),
     roastery: str(raw.roastery),
     weightG: num(raw.weight_g),
     roastLevel: str(raw.roast_level),

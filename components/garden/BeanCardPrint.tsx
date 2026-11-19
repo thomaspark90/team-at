@@ -226,6 +226,15 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
             </div>
           )}
 
+          {/* 영문명 확정 여부 — 확정 전 표기로 인쇄하면 철자가 틀릴 수 있다 (2026-11-19) */}
+          {record && (
+            <p className="text-caption" style={{ margin: 0, color: record.beanEnConfirmed ? 'hsl(var(--muted-foreground))' : 'hsl(0 72% 45%)' }}>
+              {record.beanEnConfirmed
+                ? `영문명 확정됨 — ${record.beanEn}`
+                : '영문명 미확정 — 원두가 도착하면 봉투 표기로 확정돼요. 확정 알림을 받은 뒤 인쇄해 주세요.'}
+            </p>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <input value={roastery} onChange={(e) => setRoastery(e.target.value)} placeholder="로스터리 (예: UFO coffee)" className="ta-input w-full" />
             <div style={{ display: 'flex', gap: 8, minWidth: 0 }}>

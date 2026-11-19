@@ -9,6 +9,7 @@ import { kakaoNotifyJobs } from '@/lib/kakao-notify';
 import { topicEmails } from '@/lib/garden-notify-topics-server';
 import { notifyGardenEvent } from '@/lib/notify';
 import { APP_URL } from '@/lib/app-url';
+import { confirmedEnFor } from '@/lib/garden/receive';
 
 // 같은 발주를 하루에 여러 번 저장(범위 확인 → 배수 책정)해도 기록이 한 건으로 정리되도록,
 // 같은 원두·같은 매입가·같은 날(KST)은 append 대신 대체한다.
@@ -94,6 +95,15 @@ export async function POST(req: Request) {
   const replaced = allRecords.filter(dup);
   // 같은 원두의 이전 발주(같은 날 재저장 제외)가 있으면 재발주 — 원두카드 요청 메일 제목에 표시
   const reorder = allRecords.some((r) => normalize(r.bean) === normalize(record.bean) && !dup(r));
+  // 영문명 — 발주 때 적은 값은 임시다(수령 후 봉투 표기로 확정). 같은 원두에 확정된 영문명이 있으면
+  // 그대로 이어받아 확정 상태로 저장한다. 발주자가 다른 표기를 적었으면 그 값을 임시로 두고 수령 때 다시 확정.
+  {
+    const confirmed = confirmedEnFor(allRecords, record.bean);
+    if (confirmed && (!record.beanEn || record.beanEn === confirmed)) {
+      record.beanEn = confirmed;
+      record.beanEnConfirmed = { by: user.email ?? '', at: record.createdAt, note: '재발주 — 확정명 이어받음' };
+    }
+  }
   // 책정가 없이 재저장해도 이미 책정된 판매가는 잃지 않는다 — 단, 재저장으로 원가가
   // 바뀌었으면(예: VAT 포함 여부 정정) 옛 책정가는 새 원가와 모순이라 상속하지 않는다
   if (record.chosenPrice == null) {
@@ -154,6 +164,8 @@ export async function POST(req: Request) {
     }
   }
   // 발주 → 원두카드 제작 담당자(beanCard 토픽)에게 바로 요청 (2026-11-03 대표 지시).
+  // 신규 원두는 영문명이 확정되지 않았으므로 여기선 '예고'만 보내고, 수령 후 영문명이 확정되면
+  // /api/purchases/receive 가 정식 요청을 보낸다. 재발주는 지금처럼 바로 요청 (2026-11-19 대표 결정).
   // 판매가는 매장에서 카드 위에 수기로 적으므로(입고 후 품질 따라 조정) 가격 없이 원두 정보만 보낸다.
   // 같은 날 재저장(대체)은 제외. 실패해도 발주 저장은 막지 않는다.
   if (replaced.length === 0) {
@@ -161,11 +173,21 @@ export async function POST(req: Request) {
       const by = record.staffName ? `${record.staffName}님` : (user.email ?? '').split('@')[0];
       await notifyGardenEvent(supabase, {
         emails: await topicEmails(supabase, 'beanCard'),
-        subject: `[원두카드 요청${reorder ? ' · 재발주' : ''}] ${record.bean}`,
+        subject: reorder ? `[원두카드 요청 · 재발주] ${record.bean}` : `[원두카드 예고] ${record.bean}`,
         html: `
         <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
-          <p><strong>${record.bean}</strong> 발주가 저장됐어요. 원두카드 제작을 부탁드려요.${reorder ? ' (이전에 발주한 적 있는 원두예요 — 기존 카드가 있으면 그대로 써도 돼요)' : ''}</p>
-          ${record.beanEn ? `<p>영문: ${record.beanEn}</p>` : ''}
+          <p><strong>${record.bean}</strong> 발주가 저장됐어요. ${
+            reorder
+              ? '원두카드 제작을 부탁드려요. (이전에 발주한 적 있는 원두예요 — 기존 카드가 있으면 그대로 써도 돼요)'
+              : '새 원두라 곧 원두카드가 필요해요. <strong>영문명은 원두가 도착하면 봉투 표기로 확정</strong>해서 다시 알려드릴게요 — 그때 인쇄해 주세요.'
+          }</p>
+          ${
+            record.beanEn
+              ? `<p>영문${record.beanEnConfirmed ? '(확정)' : '(임시 — 바뀔 수 있어요)'}: ${record.beanEn}</p>`
+              : reorder
+                ? '<p>영문: 미확정 — 수령 후 확정되면 알려드릴게요</p>'
+                : ''
+          }
           ${record.roastery ? `<p>로스팅사: ${record.roastery}</p>` : ''}
           ${record.tastingNotes ? `<p>테이스팅 노트: ${record.tastingNotes}</p>` : ''}
           <p>판매가는 매장에서 카드에 수기로 적어요 — 디자인에 넣지 않아도 돼요.</p>
@@ -173,8 +195,10 @@ export async function POST(req: Request) {
           <p><a href="${APP_URL}/garden/beancard">원두카드 열기 →</a></p>
         </div>`,
         push: {
-          title: `원두카드 제작 요청 · ${record.bean}`,
-          body: `${record.tastingNotes ?? '원두카드 제작을 부탁드려요'} — ${by} 발주`,
+          title: reorder ? `원두카드 제작 요청 · ${record.bean}` : `원두카드 예고 · ${record.bean}`,
+          body: reorder
+            ? `${record.tastingNotes ?? '원두카드 제작을 부탁드려요'} — ${by} 발주`
+            : `영문명은 수령 후 확정돼요 — ${by} 발주`,
           url: '/garden/beancard',
         },
       });

@@ -17,6 +17,7 @@ import type { StaffMealRecord } from '@/lib/types';
 import type { BoardCard, BoardScope } from '@/lib/garden/board';
 import { TYPE_TAB, daysAgo, shortDate, stepsAt, kstDay } from '@/lib/garden/board';
 import { roastInfo, restStage } from '@/lib/garden/roast';
+import { RECEIVE_FLOW_FROM, receiveTodo } from '@/lib/garden/receive';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -177,6 +178,8 @@ export async function GET(req: Request) {
           : []),
         ...(current === 1 && missing.length === 1 ? [{ text: `${missing[0]} 레시피 없음`, tone: 'late' as const }] : []),
         ...(p.chosenPrice != null ? [{ text: `${p.chosenPrice.toLocaleString()}원` }] : []),
+        // 원두카드 단계인데 영문명이 아직 확정 전 — 수령 후 확정되면 담당자에게 알림이 간다
+        ...(current === 3 && !p.beanEnConfirmed ? [{ text: '영문명 미확정 · 수령 대기', tone: 'late' as const }] : []),
         ...(!allDone && d >= 3 ? [{ text: `${d}일째 진행 중`, tone: 'late' as const }] : []),
       ],
       assignees: owners,
@@ -185,6 +188,39 @@ export async function GET(req: Request) {
       href: info?.href ?? '/garden/recipes',
       actionLabel: info?.action ?? '레시피 보기',
       tab: info?.tab ?? TYPE_TAB.order,
+      sortAt: p.createdAt,
+    });
+  }
+
+  // ── 원두 수령 : 로스팅 날짜 기재 · 영문명 확정 ── (2026-11-19 대표 결정)
+  // 발주 흐름(레시피·판매가·원두카드)과 담당이 달라 별도 카드로 세운다 — 택배를 받는 건 발주한 사람 쪽이다.
+  // 카드를 누르면 발주 화면에서 그 발주의 수령 창이 바로 열린다. 둘 다 기재되면 카드가 사라진다.
+  for (const p of purchases) {
+    if (kstDay(p.createdAt) < RECEIVE_FLOW_FROM) continue;
+    const todo = receiveTodo(p);
+    if (todo.done) continue;
+    const key = normalize(p.bean);
+    if (isBeanArchived(metaByBean.get(key), latestByBean.get(key))) continue;
+    const orderer = (p.createdBy ?? '').toLowerCase();
+    const d = daysAgo(p.createdAt);
+    cards.push({
+      id: `receive:${p.id}`,
+      type: 'order',
+      title: `${p.bean} 수령`,
+      column: todo.roastDate ? 'todo' : 'doing',
+      steps: stepsAt(['발주', '로스팅 날짜', '영문명 확정'], todo.roastDate ? 1 : 2),
+      meta: [
+        { text: `${shortDate(p.createdAt)} 발주` },
+        ...(p.store ? [{ text: storeLabel(p.store) }] : []),
+        ...(p.staffName ? [{ text: `${p.staffName}님` }] : []),
+        ...(d >= 5 ? [{ text: `${d}일째 미수령`, tone: 'late' as const }] : []),
+      ],
+      assignees: orderer ? [orderer] : [],
+      mine: !!orderer && orderer === me,
+      mineReason: '발주한 원두',
+      href: `/garden/pricing?receive=${p.id}`,
+      actionLabel: todo.roastDate ? '수령 기재' : '영문명 확정',
+      tab: 'pricing',
       sortAt: p.createdAt,
     });
   }

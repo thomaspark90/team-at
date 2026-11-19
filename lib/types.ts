@@ -37,6 +37,7 @@ export interface PurchaseRecord {
   createdAt: string; // ISO
   bean: string;
   beanEn?: string; // 영문 원두명 — 원두카드 인쇄용 (구 기록엔 없음)
+  beanEnConfirmed?: StageReview; // 영문명 확정 — 수령 후 봉투 표기를 보고 확정(또는 재발주 때 이어받음). 없으면 임시 표기 (2026-11-19)
   roastery?: string; // 로스팅사 (구 기록엔 없음)
   orderDate?: string; // 발주 날짜 YYYY-MM-DD (구 기록엔 없음 — createdAt 으로 대체 표시)
   roastDate?: string; // 로스팅 날짜 YYYY-MM-DD — 발주 시점엔 모르고, 택배 수령 후 [수령]으로 기재
