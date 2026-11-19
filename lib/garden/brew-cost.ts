@@ -1,4 +1,4 @@
-import type { BrewType, DripRecipe, PurchaseRecord } from '@/lib/types';
+import type { BrewType, DripRecipe, PurchaseRecord, StoreId } from '@/lib/types';
 import { costPerCup, DEFAULT_SETTINGS, normalize, priceAtMult } from '@/lib/pricing';
 
 // ICE·HOT 별 잔당 재료비 — 판매가 설정 화면의 원가율을 ICE/HOT 따로 보여주기 위해(2026-11-03 대표 결정).
@@ -11,10 +11,13 @@ export type BrewDoses = Record<BrewType, { doseG: number; fromRecipe: boolean }>
 // 추출 레시피 프리셋(lib/drip-presets.ts 의 defaultDoseG, 현재 같은 20g·18g)과는 따로 둔다 — 한쪽을 바꿔도 다른 쪽은 그대로.
 export const PRESET_DOSE: Record<BrewType, number> = { ice: 20, hot: 18 };
 
-export function dosesForBean(recipes: DripRecipe[], beanKey: string): BrewDoses {
+// 지점별 재료비(2026-11-19 대표 지시) — store 를 주면 그 지점 레시피 도징을 먼저 쓰고, 없으면 양재천(→ 아무 지점) 레시피로 대신한다.
+// 화면의 레시피 폴백(판교에 없으면 양재천 레시피를 보여줌)과 같은 순서. 기본값은 양재천 — 기존 호출은 그대로.
+export function dosesForBean(recipes: DripRecipe[], beanKey: string, store: StoreId = 'yangjae'): BrewDoses {
   const pick = (bt: BrewType) => {
     const mine = recipes.filter((r) => r.beanKey === beanKey && (r.brewType ?? 'ice') === bt && r.doseG != null);
-    const r = mine.find((x) => (x.store ?? 'yangjae') === 'yangjae') ?? mine[0];
+    const at = (id: StoreId) => mine.find((x) => (x.store ?? 'yangjae') === id);
+    const r = at(store) ?? at('yangjae') ?? mine[0];
     return r ? { doseG: r.doseG as number, fromRecipe: true } : { doseG: PRESET_DOSE[bt], fromRecipe: false };
   };
   return { ice: pick('ice'), hot: pick('hot') };
@@ -33,14 +36,14 @@ export function brewCost(rec: PurchaseRecord, doseG: number): number {
 // 재료비도 따라가야 하므로, 화면은 저장값 대신 이 함수로 지금 레시피 도징(ICE·HOT 중간값)에 맞춰 다시 계산한다.
 
 /** 그 원두의 지금 기준 도징(g) — 레시피 ICE·HOT 중간값, 레시피 없는 쪽은 기준값 */
-export function currentDoseG(recipes: DripRecipe[], bean: string): number {
-  const d = dosesForBean(recipes, normalize(bean));
+export function currentDoseG(recipes: DripRecipe[], bean: string, store: StoreId = 'yangjae'): number {
+  const d = dosesForBean(recipes, normalize(bean), store);
   return baseDoseG(d.ice.doseG, d.hot.doseG);
 }
 
 /** 발주 기록의 지금 기준 잔당 재료비 */
-export const currentCost = (recipes: DripRecipe[], rec: PurchaseRecord): number =>
-  brewCost(rec, currentDoseG(recipes, rec.bean));
+export const currentCost = (recipes: DripRecipe[], rec: PurchaseRecord, store: StoreId = 'yangjae'): number =>
+  brewCost(rec, currentDoseG(recipes, rec.bean, store));
 
 /** 발주 기록의 지금 기준 권장 판매 범위 — 배수는 발주 당시 스냅샷(settings.minMult·maxMult) 그대로 */
 export function currentRange(recipes: DripRecipe[], rec: PurchaseRecord): { low: number; high: number } {

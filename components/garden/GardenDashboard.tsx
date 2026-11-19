@@ -28,6 +28,7 @@ import TastingNoteEditor from '@/components/garden/TastingNoteEditor';
 import RecipeLedger, { type LedgerRow, type LedgerSlot } from '@/components/garden/RecipeLedger';
 import { fetchMyAccess } from '@/lib/access/tab-access-client';
 import { baseDoseG } from '@/lib/garden/brew-cost';
+import { storePrice, storePriceNote } from '@/lib/garden/store-price';
 
 // 카드 헤더의 지점별 재고량 칩(판교 100% · 양재천 100%) — 2026-10-31 대표 지시로 '일단' 숨김.
 // 재고 데이터·알림 로직은 그대로라 true 로 바꾸면 바로 복구된다.
@@ -361,7 +362,9 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
         roastery: latest?.roastery,
         orderDate: latest ? latest.orderDate ?? latest.createdAt : null,
         roast: roastInfo(latest),
-        price: latest?.chosenPrice && latest.chosenPrice > 0 ? latest.chosenPrice : null,
+        // 판매가는 선택 지점 기준 — 양재천 책정가에 지점 차액(판교 −1,000원)을 더한 값 (lib/garden/store-price)
+        price: storePrice(latest?.chosenPrice, store),
+        priceNote: storePriceNote(store),
         purchaseId: latest?.id ?? null,
         base: latest
           ? (() => {
@@ -382,7 +385,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     const need = (r: LedgerRow) => (!r.ice || !r.hot ? 1 : 0);
     return rows.sort((a, b) => need(b) - need(a) || (b.orderDate ?? '').localeCompare(a.orderDate ?? ''));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- isFallback 는 fallbackIds 만 참조
-  }, [activeGroups, unsetBeans, latestByBean, fallbackIds]);
+  }, [activeGroups, unsetBeans, latestByBean, fallbackIds, store]);
   const ledgerCountries = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of ledgerRows) m.set(r.country, (m.get(r.country) ?? 0) + 1);
@@ -706,6 +709,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   // sideBySide — 레시피 목록 펼침 전용: 가로 두 칸(좁으면 세로로 접힘). 아카이브는 세로 카드 유지
   const renderBeanCard = (g: BeanGroup, sideBySide = false) => {
     const latest = latestByBean.get(g.beanKey);
+    const sellPrice = storePrice(latest?.chosenPrice, store); // 선택 지점 판매가(판교 = 양재천 −1,000원)
     const roast = roastInfo(latest);
     return (
       <div key={g.beanKey} className="rounded-md bg-muted/40" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
@@ -857,10 +861,10 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                 </button>
               )}
             </div>
-            {latest?.chosenPrice != null && latest.chosenPrice > 0 && (
-              // 책정 판매가 / 재료비율(잔당 재료비 ÷ 판매가)
+            {latest && sellPrice != null && sellPrice > 0 && (
+              // 선택 지점 판매가 / 재료비율(그 지점 레시피 도징 기준 잔당 재료비 ÷ 판매가)
               <span className="tabular text-body text-muted-foreground" style={{ flexShrink: 0 }}>
-                {won(latest.chosenPrice)} / {Math.round((currentCost(recipes, latest) / latest.chosenPrice) * 100)}%
+                {won(sellPrice)} / {Math.round((currentCost(recipes, latest, store) / sellPrice) * 100)}%
               </span>
             )}
           </div>
@@ -1012,8 +1016,8 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                         value={
                           matCost != null
                             ? `${won(matCost)}${
-                                latest?.chosenPrice != null && latest.chosenPrice > 0
-                                  ? ` / ${Math.round((matCost / latest.chosenPrice) * 100)}%`
+                                sellPrice != null && sellPrice > 0
+                                  ? ` / ${Math.round((matCost / sellPrice) * 100)}%`
                                   : ''
                               }`
                             : null

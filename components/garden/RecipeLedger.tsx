@@ -30,7 +30,8 @@ export type LedgerRow = {
   roastery?: string;
   orderDate: string | null; // YYYY-MM-DD 또는 ISO
   roast: RoastInfo | null; // 로스팅일 — 미기재면 발주일+1 추정(estimated)
-  price: number | null; // 책정 판매가(원, VAT 포함 소비자가)
+  price: number | null; // 보고 있는 지점의 판매가(원, VAT 포함 소비자가) — 판교는 양재천 책정가 −1,000원
+  priceNote: string | null; // 양재천 대비 차액 문구('양재천 −1,000원') — 있으면 파생값이라 이 화면에서 수정하지 않는다
   purchaseId: string | null; // 판매가가 저장된 최신 발주 기록 — 판매가 칸 인라인 수정 대상
   base: { doseG: number; cost: number } | null; // 판단 기준 재료비 — ICE·HOT 도징 중간값(레시피 없는 쪽은 기준값 20g·18g)
   buy: { capacityG: number; price: number; vatIncluded: boolean } | null; // 최신 발주 용량·구매가(입력 그대로)
@@ -290,12 +291,18 @@ export default function RecipeLedger({
                     <td style={cell}>{slotCell(row, 'hot')}</td>
                     <td style={cell}>{slotCell(row, 'ice')}</td>
                     <td style={{ ...cell, textAlign: 'right' }}>
-                      <LedgerPriceCell
-                        purchaseId={row.purchaseId}
-                        price={row.price}
-                        canEdit={canEditPrice && !!onPriceSaved}
-                        onSaved={(rec) => onPriceSaved?.(rec)}
-                      />
+                      {/* 판교 판매가는 양재천 책정가에서 나오는 값 — 수정은 양재천 화면에서만 */}
+                      <span title={row.priceNote ? `${row.priceNote} — 수정은 양재천 화면에서` : undefined}>
+                        <LedgerPriceCell
+                          purchaseId={row.purchaseId}
+                          price={row.price}
+                          canEdit={canEditPrice && !!onPriceSaved && !row.priceNote}
+                          onSaved={(rec) => onPriceSaved?.(rec)}
+                        />
+                      </span>
+                      {row.priceNote && row.price != null && (
+                        <div className="text-caption text-muted-foreground">{row.priceNote}</div>
+                      )}
                     </td>
                     <td style={cell}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
@@ -329,7 +336,7 @@ export default function RecipeLedger({
                             <p className="text-body font-medium" style={{ margin: 0 }}>원가 계산</p>
                             <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
                               판매가 {row.price != null ? `${num(row.price)}원` : '미책정'}
-                              <span className="text-caption"> (VAT 포함 소비자가)</span>
+                              <span className="text-caption"> (VAT 포함 소비자가{row.priceNote && row.price != null ? ` · ${row.priceNote}` : ''})</span>
                             </p>
                             {costLine(row, 'hot')}
                             {costLine(row, 'ice')}

@@ -10,7 +10,8 @@ import TabNav from '@/components/TabNav';
 // divide: 섹션 사이 헤어라인(divide-y) + py-[54px] 리듬을 쓰는 페이지용(DESIGN_SYSTEM §6). 새 화면은 .ta-panel 로 면을 나누고 divide 는 안 쓴다.
 // 서버·클라이언트 컴포넌트 어디서든 쓸 수 있게 훅 없음(TabNav 는 자체 'use client').
 
-const WIDTH = { default: 'max-w-[1400px]', wide: 'max-w-[1400px]', narrow: 'max-w-[640px]' } as const;
+//   full — 화면 폭 전체(좌우 여백만). 열이 많은 표 화면용 — 필터 레시피(2026-11-19 대표 지시). 상단 바·로컬 내비는 1400 그대로다.
+const WIDTH = { default: 'max-w-[1400px]', wide: 'max-w-[1400px]', narrow: 'max-w-[640px]', full: 'max-w-none' } as const;
 
 export default function PageShell({
   nav,
