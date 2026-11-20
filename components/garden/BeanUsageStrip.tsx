@@ -29,7 +29,7 @@ export default function BeanUsageStrip({ alignEnd = false }: { alignEnd?: boolea
   if (!stores || stores.length === 0) return null;
 
   return (
-    <div className="mt-3 space-y-3">
+    <div className="mt-7 space-y-3">
       {stores.map((s) => {
         const open = openStore === s.store;
         return (

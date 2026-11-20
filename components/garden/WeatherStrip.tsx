@@ -183,6 +183,8 @@ export default function WeatherStrip({ compact = false, alignEnd = false }: { co
             )}
           </>
         )}
+        {/* 2주 예보·판매 분석은 날씨 아랫줄에 따로(2026-11-20 대표 지시) */}
+        <span className={`flex w-full flex-wrap gap-x-3 ${alignEnd ? 'justify-end' : ''}`}>
         <button
           type="button"
           onClick={() => setExpanded(true)}
@@ -194,6 +196,7 @@ export default function WeatherStrip({ compact = false, alignEnd = false }: { co
         <Link href="/garden/weather" className="underline underline-offset-2 hover:text-foreground">
           판매 분석 ›
         </Link>
+        </span>
       </div>
     );
   }
