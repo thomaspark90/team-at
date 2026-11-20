@@ -218,7 +218,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
     `ta-seg-item ${active ? 'ta-seg-on' : ''}`;
 
   if (cards === null) {
-    return <p className="text-body text-muted-foreground">작업 보드를 불러오는 중…</p>;
+    return <p className="text-body text-muted-foreground">할 일을 불러오는 중…</p>;
   }
 
   const colCount = (id: string) => (cards ?? []).filter((c) => c.column === id).length;

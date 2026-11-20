@@ -45,7 +45,7 @@ export async function POST(req: Request) {
         <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
           <p><strong>${record.bean}</strong> 원두카드 인쇄가 끝났어요.</p>
           <p>완료: ${by}</p>
-          <p><a href="${APP_URL}/garden">작업 보드 열기 →</a></p>
+          <p><a href="${APP_URL}/garden">가든 홈 열기 →</a></p>
         </div>`,
         push: {
           title: `원두카드 완료 · ${record.bean}`,

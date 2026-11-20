@@ -5,7 +5,7 @@ export type GardenTab = { key: string; href: string; label: string; desc?: strin
 
 // 대시보드 | 필터(운영) | 리뷰·단어·설정 세 그룹
 export const GARDEN_TAB_GROUPS: GardenTab[][] = [
-  [{ key: 'dashboard', href: '/garden', label: '작업 보드', desc: '재고·레시피 미설정 원두 한눈에 보기' }],
+  [{ key: 'dashboard', href: '/garden', label: '홈', desc: '가든 홈 — 내 차례인 일 · 재고·레시피 미설정 원두 한눈에 보기' }],
   [
     { key: 'pricing', href: '/garden/pricing', label: '필터 원두 발주', desc: '원두 정보·매입가 입력 · 발주 기록' },
     // 발주(pricing)와 판매가 책정을 분리 — 책정 권한만 다른 인원에게 줄 수 있다
@@ -46,7 +46,7 @@ export const SIMPLE_ACCOUNT_TABS = ['dashboard', 'teaching', 'theory', 'beanguid
 // 묶음은 화면 표시 전용 — 권한 키·경로는 위 GARDEN_TAB_GROUPS 그대로. 항목은 key 로 참조한다.
 export type GardenNavEntry = { label: string; keys: string[] };
 export const GARDEN_NAV: GardenNavEntry[] = [
-  { label: '작업 보드', keys: ['dashboard'] },
+  { label: '홈', keys: ['dashboard'] }, // 2026-11-20 대표 결정: '작업 보드' → '홈'(화면 제목은 가든서비스 로고 + 홈)
   { label: '커피(필터)', keys: ['pricing', 'saleprice', 'calibration', 'beancard', 'theory', 'beanguide'] }, // 2026-10-30 '운영'→'커피(필터)', 원두카드를 레시피에서 이동
   { label: '필터 레시피', keys: ['recipes', 'recommended'] }, // 제철 단어는 2026-10-30 메뉴에서 제거 (페이지·권한 키는 유지)
   { label: '분석', keys: ['sales', 'weather', 'reviews'] },
