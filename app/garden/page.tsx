@@ -15,25 +15,20 @@ import WorkBoard from '@/components/garden/WorkBoard';
 //  · 그 아래 미설정 원두·그라인더 캘리브레이션은 그대로, 구분선 없이 간격으로만 나눈다.
 export default function GardenPage() {
   return (
-    <PageShell
-      nav={<GardenNav />}
-      // 제목 = 가든서비스 로고 + "홈" (2026-11-20 대표 결정: "작업 보드" → "가든 홈", "가든" 글자 자리에 로고).
-      // 로고 아랫선이 글자 밑선과 맞도록 items-end. 로고는 초록 한 색 SVG(public/brand) — 일러스트 원본 GS Logo 에서 내보냄.
-      title={
-        <span className="flex items-end gap-3">
+    <PageShell nav={<GardenNav />}>
+      {/* 머리줄(2026-11-20 대표 지시): 왼쪽엔 가든서비스 로고만, 날씨·원두 사용량은 오른쪽 정렬.
+          좁은 화면에서는 오른쪽 묶음이 로고 아래로 내려가 폭 전체를 쓰고(basis 320px), 정렬은 그대로 오른쪽.
+          로고는 초록 한 색 SVG(public/brand) — 일러스트 원본 GS Logo 에서 내보냄. 화면 이름은 "가든 홈"(내비 표기 "홈"). */}
+      <header className="mb-10 flex flex-wrap items-start justify-between gap-x-10 gap-y-5">
+        <h1 className="m-0 shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/garden-service-logo.svg" alt="가든 서비스" className="block h-11 w-auto" />
-          <span className="leading-none">홈</span>
-        </span>
-      }
-      subtitleWide
-      subtitle={
-        <>
-          <WeatherStrip compact />
-          <BeanUsageStrip />
-        </>
-      }
-    >
+          <img src="/brand/garden-service-logo.svg" alt="가든 서비스 홈" className="block h-12 w-auto" />
+        </h1>
+        <div className="min-w-0 flex-1 basis-[320px]">
+          <WeatherStrip compact alignEnd />
+          <BeanUsageStrip alignEnd />
+        </div>
+      </header>
       <div className="space-y-12">
         <WorkBoard />
         <GardenDashboard section="unset" />

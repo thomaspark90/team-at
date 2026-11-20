@@ -91,7 +91,8 @@ const iconOf = (code: number) => {
 };
 
 // compact: 제목 아래 한 줄(오늘·내일)만 — '2주 예보 ›'를 누르면 이 자리에서 전체 스트립이 펼쳐진다(2026-09-09 소프트 UI 4단계).
-export default function WeatherStrip({ compact = false }: { compact?: boolean }) {
+// alignEnd: 접힌 한 줄을 오른쪽 정렬 — 가든 홈 머리줄(왼쪽 로고, 오른쪽 날씨·사용량, 2026-11-20 대표 지시).
+export default function WeatherStrip({ compact = false, alignEnd = false }: { compact?: boolean; alignEnd?: boolean }) {
   const [expanded, setExpanded] = useState(!compact);
   const [days, setDays] = useState<ForecastDay[] | null>(null);
   const [hours, setHours] = useState<Map<string, HourPoint[]>>(new Map());
@@ -170,7 +171,7 @@ export default function WeatherStrip({ compact = false }: { compact?: boolean })
       </span>
     );
     return (
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body text-muted-foreground">
+      <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-body text-muted-foreground ${alignEnd ? 'justify-end' : ''}`}>
         {!visible ? (
           <span>날씨 불러오는 중…</span>
         ) : (
