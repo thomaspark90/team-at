@@ -125,3 +125,47 @@ export async function PATCH(req: Request) {
   if (done) await logActivity(a.supabase, a.user, '가든서비스 네임택 프린트 완료', `${cur.lines.length}종 · ${nameOf(cur.by)} 요청분`);
   return NextResponse.json({ ok: true, request: next });
 }
+
+// 요청 삭제·취소 — ?id= (2026-11-20). 인쇄·메뉴 관리 권한이면 어떤 요청이든 지우고(시험 요청·중복 정리),
+// 스탭은 아직 인쇄 대기 중인 자기 요청만 취소할 수 있다. 대기 중이던 요청이 사라지면 상대편에게 알린다:
+// 스탭이 취소 → 알림 받았던 인쇄 담당에게 / 담당이 삭제 → 요청자에게. 완료된 요청은 기록 정리일 뿐이라 알리지 않는다.
+export async function DELETE(req: Request) {
+  const a = await requireNametagActor();
+  if (a instanceof NextResponse) return a;
+  const id = new URL(req.url).searchParams.get('id') ?? '';
+  const cur = await nametagRequests.readOne(id);
+  if (!cur) return badRequest('요청을 찾지 못했습니다. 이미 지워졌을 수 있어요.');
+  const me = (a.user.email ?? '').toLowerCase();
+  const mine = !!me && (cur.by ?? '').toLowerCase() === me;
+  if (!a.canManage) {
+    if (!mine) return NextResponse.json({ error: '내가 보낸 요청만 취소할 수 있습니다.' }, { status: 403 });
+    if (cur.status === 'done') return badRequest('이미 인쇄가 끝난 요청은 취소할 수 없습니다.');
+  }
+  await nametagRequests.deleteOne(id);
+
+  const summary = `${cur.lines.length}종 ${tagTotal(cur.lines)}장`;
+  if (cur.status !== 'done') {
+    const emails = (mine ? (cur.sentTo ?? []).map((c) => c.email) : cur.by ? [cur.by] : []).filter((e) => e && e.toLowerCase() !== me);
+    if (emails.length > 0) {
+      const who = nameOf(a.user.email ?? '');
+      const names = cur.lines.slice(0, 3).map((l) => oneLine(l.ko)).join(', ') + (cur.lines.length > 3 ? ` 외 ${cur.lines.length - 3}종` : '');
+      await notifyGardenEvent(a.supabase, {
+        emails,
+        subject: `[네임택 프린트 요청 취소] ${summary}`,
+        html: `
+        <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
+          <p><strong>네임택 프린트 요청이 취소됐어요</strong> — ${summary}</p>
+          <p>${esc(names)}</p>
+          <p>${mine ? `${esc(who)}님이 요청을 취소했습니다. 인쇄하지 않아도 됩니다.` : `${esc(who)}님이 요청을 지웠습니다. 필요하면 다시 요청해 주세요.`}</p>
+        </div>`,
+        push: {
+          title: `네임택 프린트 요청 취소 · ${summary}`,
+          body: mine ? `${who}님이 취소 — 인쇄하지 않아도 됩니다` : `${who}님이 요청을 지웠어요 — 필요하면 다시 요청해 주세요`,
+          url: mine ? '/garden/nametags/manage' : '/garden/nametags',
+        },
+      });
+    }
+  }
+  await logActivity(a.supabase, a.user, mine && cur.status !== 'done' ? '가든서비스 네임택 프린트 요청 취소' : '가든서비스 네임택 프린트 요청 삭제', `${summary} · ${nameOf(cur.by)} 요청분`);
+  return NextResponse.json({ ok: true });
+}

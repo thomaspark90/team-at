@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildNametagJsx } from '@/lib/garden/nametag-jsx';
+import { buildDraftPrompt, cleanDraft } from '@/lib/garden/nametag-draft';
 import { NAMETAG_SEED } from '@/lib/garden/nametag-seed';
 import { cleanPhone, contactName, deliveryText, expandLines, groupByCategory, sanitizeItem, sheetCount, type NametagLine } from '@/lib/garden/nametags';
 import { GARDEN_TABS, tabForPath } from '@/lib/garden/tabs';
@@ -88,5 +89,20 @@ describe('담당자 표시 · 수령 안내', () => {
     const c = { email: 'graphic@team.at', name: '홍길동', phone: '010-1234-5678' };
     expect(deliveryText({ delivery: 'direct', doneBy: c.email, doneByContact: c, deliveryNote: '3시쯤' })).toBe('홍길동님이 직접 전달합니다 · 3시쯤');
     expect(deliveryText({ delivery: 'other', doneBy: c.email, doneByContact: c, deliveryNote: '김매니저님 편에 보냈어요' })).toBe('다른 분이 전달합니다 · 김매니저님 편에 보냈어요');
+  });
+});
+
+describe('네임택 문구 초안', () => {
+  it('지시문에 메뉴 이름과 카테고리 id·기존 예시가 들어간다', () => {
+    const p = buildDraftPrompt('감자 뇨끼', NAMETAG_SEED);
+    expect(p).toContain('한글 메뉴 이름: 감자 뇨끼');
+    expect(p).toContain('[soup]');
+    expect(p).not.toContain('[notice]'); // 안내 택은 메뉴 예시가 아니다
+  });
+  it('응답을 다듬는다 — 줄 수 제한, 없는 카테고리는 버림', () => {
+    const d = cleanDraft({ en: '  Potato   Gnocchi ', desc: 'a\n\nb\nc\nd', category: 'nope' }, NAMETAG_SEED);
+    expect(d).toEqual({ en: 'Potato Gnocchi', desc: 'a\nb\nc', category: null });
+    expect(cleanDraft({ category: 'rice' }, NAMETAG_SEED).category).toBe('rice');
+    expect(cleanDraft(null, NAMETAG_SEED)).toEqual({ en: '', desc: '', category: null });
   });
 });

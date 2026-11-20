@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from '@/components/Toast';
-import { MAX_QTY, deliveryText, groupByCategory, oneLine, type NametagContact, type NametagItem } from '@/lib/garden/nametags';
+import { MAX_QTY, deliveryText, groupByCategory, oneLine, type NametagContact, type NametagItem, type NametagRequest } from '@/lib/garden/nametags';
 import ContactList from './ContactList';
-import { API, call, failed, fmtWhen, jsonInit, lineLabel, nameOf, summaryOf, type NametagData } from './shared';
+import { ACT_SUB, API, call, failed, fmtWhen, jsonInit, lineLabel, nameOf, summaryOf, type NametagData } from './shared';
 
 // 브런치 네임택 고르기 — 카테고리별로 내려가며 필요한 메뉴만 체크하고 한 번에 프린트를 요청한다.
 // 휴대폰 한 손 사용 기준: 행 전체가 누르는 영역, 요청 버튼은 화면 아래에 붙어 있다.
@@ -24,6 +24,7 @@ export default function NametagPicker() {
   const [reviewing, setReviewing] = useState(false);
   const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
+  const [canceling, setCanceling] = useState<string | null>(null);
   const [active, setActive] = useState<string>(ALL);
   const chipRefs = useRef<Record<string, HTMLElement | null>>({});
   const touch = useRef<{ x: number; y: number } | null>(null);
@@ -104,6 +105,17 @@ export default function NametagPicker() {
     setPicked({});
     setNote('');
     setReviewing(false);
+    load();
+  };
+
+  // 내가 보낸 요청 취소 — 인쇄 대기 중일 때만. 알림 받았던 인쇄 담당에게 취소 알림이 간다.
+  const cancel = async (r: NametagRequest) => {
+    if (!window.confirm(`${summaryOf(r.lines)} 요청을 취소할까요? 인쇄 담당에게 취소 알림이 갑니다.`)) return;
+    setCanceling(r.id);
+    const j = await call<{ ok: true }>(`${API}/requests?id=${encodeURIComponent(r.id)}`, { method: 'DELETE' });
+    setCanceling(null);
+    if (failed(j)) return toast(j.error, 'error');
+    toast('요청을 취소했어요');
     load();
   };
 
@@ -196,6 +208,11 @@ export default function NametagPicker() {
                   </span>
                 </div>
                 <p className="m-0 mt-1 text-caption text-muted-foreground">{r.lines.map(lineLabel).join(', ')}</p>
+                {r.status !== 'done' && !!data.me && r.by?.toLowerCase() === data.me.toLowerCase() && (
+                  <button type="button" className={`${ACT_SUB} mt-1`} disabled={canceling === r.id} onClick={() => cancel(r)}>
+                    {canceling === r.id ? '취소하는 중' : '요청 취소'}
+                  </button>
+                )}
                 {r.status === 'done' && r.delivery ? (
                   <div className="mt-1 text-caption">
                     <span>수령: {deliveryText(r)}</span>

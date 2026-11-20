@@ -29,6 +29,18 @@ export default function NametagPrintQueue({ requests, onChange }: { requests: Na
     onChange();
   };
 
+  // 요청 삭제 — 시험·중복 요청 정리. 대기 중이던 요청이면 서버가 요청자에게 알린다.
+  const remove = async (r: NametagRequest) => {
+    const pendingNow = r.status !== 'done';
+    if (!window.confirm(`${nameOf(r.by)}님의 요청(${summaryOf(r.lines)})을 지울까요?${pendingNow ? ' 요청자에게 알림이 갑니다.' : ''}`)) return;
+    setBusy(r.id);
+    const j = await call<{ ok: true }>(`${API}/requests?id=${encodeURIComponent(r.id)}`, { method: 'DELETE' });
+    setBusy(null);
+    if (failed(j)) return toast(j.error, 'error');
+    toast('요청을 지웠어요');
+    onChange();
+  };
+
   return (
     <div className="space-y-5">
       <ol className="ta-prose m-0 list-decimal space-y-1 pl-5 text-body text-muted-foreground">
@@ -62,6 +74,11 @@ export default function NametagPrintQueue({ requests, onChange }: { requests: Na
             {finishing !== r.id && (
               <button type="button" className={ACT_SUB} onClick={() => setFinishing(r.id)}>
                 인쇄 완료
+              </button>
+            )}
+            {finishing !== r.id && (
+              <button type="button" className={ACT_SUB} disabled={busy === r.id} onClick={() => remove(r)}>
+                삭제
               </button>
             )}
           </div>
@@ -114,6 +131,9 @@ export default function NametagPrintQueue({ requests, onChange }: { requests: Na
                   </a>
                   <button type="button" className={ACT_SUB} disabled={busy === r.id} onClick={() => mark(r, false)}>
                     완료 취소
+                  </button>
+                  <button type="button" className={ACT_SUB} disabled={busy === r.id} onClick={() => remove(r)}>
+                    삭제
                   </button>
                 </div>
               </li>
