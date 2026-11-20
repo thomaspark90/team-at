@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import PageShell from '@/components/PageShell';
 import GardenNav from '@/components/garden/GardenNav';
 import GardenDashboard from '@/components/garden/GardenDashboard';
@@ -14,6 +15,8 @@ import WorkBoard from '@/components/garden/WorkBoard';
 //  · 내 차례가 주 패널로 맨 위, 팀 전체 보드는 접힌 한 줄(WorkBoard 안에서 처리).
 //  · 그 아래 미설정 원두·그라인더 캘리브레이션은 그대로, 구분선 없이 간격으로만 나눈다.
 export default function GardenPage() {
+  // 휴대폰에서는 날씨·원두 사용량을 접어 두고 로고 오른쪽의 동그란 i 버튼으로 연다(2026-11-20 대표 지시). 넓은 화면은 항상 보인다.
+  const [infoOpen, setInfoOpen] = useState(false);
   return (
     <PageShell nav={<GardenNav />}>
       {/* 머리줄(2026-11-20 대표 지시): 왼쪽엔 가든서비스 로고만, 날씨·원두 사용량은 오른쪽 정렬.
@@ -24,7 +27,20 @@ export default function GardenPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/garden-service-logo.svg" alt="가든 서비스 홈" className="block h-12 w-auto" />
         </h1>
-        <div className="min-w-0 flex-1 basis-[320px]">
+        <button
+          type="button"
+          aria-expanded={infoOpen}
+          aria-controls="garden-home-info"
+          aria-label={infoOpen ? '날씨·원두 사용량 접기' : '날씨·원두 사용량 보기'}
+          onClick={() => setInfoOpen((v) => !v)}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-body shadow-soft-sm sm:hidden ${
+            infoOpen ? 'bg-foreground text-background' : 'bg-background text-foreground'
+          }`}
+          style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic' }}
+        >
+          i
+        </button>
+        <div id="garden-home-info" className={`min-w-0 flex-1 basis-full sm:block sm:basis-[320px] ${infoOpen ? '' : 'hidden'}`}>
           <WeatherStrip compact alignEnd />
           <BeanUsageStrip alignEnd />
         </div>
