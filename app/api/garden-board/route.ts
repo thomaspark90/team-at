@@ -319,5 +319,7 @@ export async function GET(req: Request) {
   visible.sort((a, b) => Number(b.mine) - Number(a.mine) || a.sortAt.localeCompare(b.sortAt));
 
   // canReceive — 보드 상단 [원두 수령] 버튼을 켜고 끈다
-  return NextResponse.json({ cards: visible, me, grinder, canReceive: isGarden && canReceive });
+  // canNametag — 보드 상단 [네임택 프린트] 버튼(브런치 네임택 고르기 화면으로 가는 지름길, 2026-11-20). 네임택 탭 권한을 따른다
+  const canNametag = isGarden && (!allowedTabs || allowedTabs.includes('nametags') || allowedTabs.includes('nametags_manage'));
+  return NextResponse.json({ cards: visible, me, grinder, canReceive: isGarden && canReceive, canNametag });
 }

@@ -175,6 +175,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
   const [receiving, setReceiving] = useState<{ target: ReceiveTarget; initial?: { beanEn?: string | null; roastDate?: string | null } } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [canReceive, setCanReceive] = useState(false);
+  const [canNametag, setCanNametag] = useState(false);
   const openReceive = useCallback((c: BoardCard) => c.receive && setReceiving({ target: c.receive }), []);
 
   const load = useCallback(() => {
@@ -184,6 +185,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
         setCards(Array.isArray(j.cards) ? j.cards : []);
         setGrinder(Array.isArray(j.grinder) ? j.grinder : []);
         setCanReceive(j.canReceive === true);
+        setCanNametag(j.canNametag === true);
       })
       .catch(() => setCards([]));
   }, [scope]);
@@ -253,6 +255,12 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
             {mineCards.length}
           </span>
           <span style={{ flex: 1 }} />
+          {/* 네임택 프린트 — 브런치 네임택 고르기 화면으로 가는 지름길 (네임택 탭 권한이 있는 사람만 보인다, 2026-11-20) */}
+          {canNametag && (
+            <Link href="/garden/nametags" className="ta-btn" style={{ height: 34, paddingLeft: 14, paddingRight: 14, display: 'inline-flex', alignItems: 'center' }}>
+              네임택 프린트
+            </Link>
+          )}
           {/* 원두 수령 — 지점 선택 → 받은 봉투 촬영 → 영문명 확정 → 원두카드 요청 (수령 담당만 보인다) */}
           {canReceive && (
             <button
