@@ -1,4 +1,7 @@
 import type { StoreId } from '@/lib/types';
+import { GARDEN_TAB_KEYS } from '@/lib/garden/tabs';
+import { STUDIO_TAB_KEYS } from '@/lib/studio/tabs';
+import { SECTION_KEYS } from '@/lib/access/sections';
 
 // 설정 > 계정 — 간편 계정(프로필)과 로그인 계정(auth + 접근 권한)을 한 줄로 합친 모델 (2026-11-03 통합)
 
@@ -31,6 +34,10 @@ export type UserRow = {
 };
 
 export type AccessKind = 'tabs' | 'sections' | 'studioTabs';
+
+// 화면 출입 권한 — null(제한 없음)은 전체 키로 펼쳐서 다룬다
+export const KIND_KEYS: Record<AccessKind, string[]> = { tabs: GARDEN_TAB_KEYS, studioTabs: STUDIO_TAB_KEYS, sections: SECTION_KEYS };
+export const allowedSet = (u: UserRow, kind: AccessKind) => new Set(u[kind] ?? KIND_KEYS[kind]);
 
 export type Account = {
   id: string; // auth user id (= profile user_id)

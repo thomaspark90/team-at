@@ -7,7 +7,7 @@ import Accounts from '@/components/settings/accounts/Accounts';
 // 한 목록에서 다룬다(2026-11-03 통합, 이전엔 '간편 계정' + '페이지 접근 권한' 두 섹션).
 export default function SettingsPage() {
   return (
-    <PageShell divide>
+    <PageShell divide width="full">
       <Accounts />
     </PageShell>
   );

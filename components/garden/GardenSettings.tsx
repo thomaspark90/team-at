@@ -11,6 +11,7 @@ import NotifySettings from '@/components/NotifySettings';
 import GardenOptionsManager from '@/components/garden/GardenOptionsManager';
 import EmailAddPicker, { useTeamEmails } from '@/components/EmailAddPicker';
 import NametagContacts from '@/components/garden/nametags/NametagContacts';
+import { groupByNav } from '@/lib/garden/notify-topic-groups';
 
 // 가든 설정 — 알림(내 채널 + 항목별 담당자), 요청 보내기, 발주 명단, 접근 권한, 투두리스트.
 // 흩어져 있던 알림 3종(항목별 담당자·수신자 관리·내 채널)과 요청 폼 2종을 각각 하나로 합쳤다.
@@ -46,9 +47,10 @@ const chip: React.CSSProperties = {
 // 재무 쪽 수신자(송금·재고)는 저장 위치가 달라 별도 API 를 쓰지만, 화면에서는 가든 항목과
 // 같은 '항목별 담당자' 표에 함께 보여준다 — 사용자 입장에선 똑같이 "누가 이 알림을 받나"다.
 type FinanceTopic = 'transfer' | 'stock';
-const FINANCE_TOPICS: { id: FinanceTopic; label: string; desc: string }[] = [
+// tab = 속한 가든 탭 key. 송금 요청은 가든 메뉴에 없어 맨 끝 '회계' 묶음으로 간다.
+const FINANCE_TOPICS: { id: FinanceTopic; label: string; desc: string; tab?: string }[] = [
   { id: 'transfer', label: '송금 요청', desc: '새 송금 요청이 등록되면 알림' },
-  { id: 'stock', label: '원두 재고', desc: '재고 20%·소진 시 알림' },
+  { id: 'stock', label: '원두 재고', desc: '재고 20%·소진 시 알림', tab: 'pricing' },
 ];
 
 function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null }) {
@@ -131,8 +133,8 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
     onRemove: (email: string) => void;
   }) => (
     <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-        <span className="text-body font-medium text-foreground">{label}</span>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+        <span className="text-body text-foreground">{label}</span>
         <span className="text-caption text-muted-foreground">{desc}</span>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -156,6 +158,32 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
     </div>
   );
 
+  // 가든 항목 + (관리자만) 재무 항목을 한 목록으로 만든 뒤 내비 순서로 묶는다.
+  // 스탭밀 항목은 /studio/settings 에서 관리한다. 송금·재고는 수신자 API 가 admin 전용이라 관리자에게만 보인다.
+  const groups = groupByNav(
+    [
+      ...topicsOfScope('garden').map((t) => ({
+        tab: t.tab,
+        label: t.label,
+        desc: t.desc,
+        emails: map[t.id],
+        k: t.id as string,
+        onAdd: (email: string) => saveGarden(t.id, Array.from(new Set([...map[t.id], email]))),
+        onRemove: (email: string) => saveGarden(t.id, map[t.id].filter((e) => e !== email)),
+      })),
+      ...(recipients ? FINANCE_TOPICS : []).map((t) => ({
+        tab: t.tab,
+        label: t.label,
+        desc: t.desc,
+        emails: rows.filter((r) => r[t.id]).map((r) => r.email),
+        k: t.id as string,
+        onAdd: (email: string) => saveFinance(email, t.id, true),
+        onRemove: (email: string) => saveFinance(email, t.id, false),
+      })),
+    ],
+    '회계'
+  );
+
   return (
     <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       <div>
@@ -172,33 +200,19 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
         <NotifySettings bare />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
         <p className="ta-label" style={{ margin: 0 }}>항목별 담당자</p>
-        {/* 가든 항목만 — 스탭밀 항목은 /studio/settings 에서 관리한다 */}
-        {topicsOfScope('garden').map((t) =>
-          row({
-            label: t.label,
-            desc: t.desc,
-            emails: map[t.id],
-            k: t.id,
-            onAdd: (email) => saveGarden(t.id, Array.from(new Set([...map[t.id], email]))),
-            onRemove: (email) => saveGarden(t.id, map[t.id].filter((e) => e !== email)),
-          })
-        )}
-        {/* 송금·재고는 관리자만 편집 가능(수신자 API가 admin 전용) */}
-        {recipients &&
-          FINANCE_TOPICS.map((t) =>
-            row({
-              label: t.label,
-              desc: t.desc,
-              emails: rows.filter((r) => r[t.id]).map((r) => r.email),
-              k: t.id,
-              onAdd: (email) => saveFinance(email, t.id, true),
-              onRemove: (email) => saveFinance(email, t.id, false),
-            })
-          )}
+        {/* 내비 메뉴 순서대로 묶는다 — 왼쪽에 메뉴 이름, 오른쪽에 그 메뉴의 항목(모바일은 위아래) */}
+        {groups.map((g) => (
+          <div key={g.key} className="grid gap-x-8 gap-y-4 md:grid-cols-[132px_minmax(0,1fr)]">
+            <p className="text-body font-medium text-foreground" style={{ margin: 0 }}>{g.label}</p>
+            <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              {g.items.map((it) => row(it))}
+              {g.key === 'nametags' && <NametagContacts assignees={map.nametagPrint} />}
+            </div>
+          </div>
+        ))}
       </div>
-      <NametagContacts assignees={map.nametagPrint} />
       <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
         담당자를 지정하지 않으면 요청류·이슈 리뷰·측정 업로드 알림은 원두 알림
         수신자 전체에게 발송됩니다. 레시피 등록·수정만 담당자 지정 시에 발송됩니다(옵트인).

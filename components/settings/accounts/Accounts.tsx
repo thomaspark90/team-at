@@ -4,13 +4,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { STORES, type StoreId } from '@/lib/types';
 import type { ProfileRole } from '@/lib/account/roles';
 import { TEAM_DOMAIN } from '@/lib/finance/access';
-import AccountRow, { KIND_KEYS, allowedSet } from './AccountRow';
+import AccountInfo from './AccountInfo';
+import PermissionMatrix from './PermissionMatrix';
 import RoleManager from './RoleManager';
 import EmailPreRegister from './EmailPreRegister';
-import { mergeAccounts, type Account, type AccessKind, type ProfileRow, type UserRow } from './types';
+import { KIND_KEYS, allowedSet, mergeAccounts, type Account, type AccessKind, type ProfileRow, type UserRow } from './types';
 
-// 설정 > 계정 — 간편 계정(이름+6자리)과 이메일 계정을 한 목록에서 관리한다 (2026-11-03 대표 지시로
-// 이전의 '간편 계정' 표 + '페이지 접근 권한' 목록을 통합). 줄을 펼치면 기본 정보와 볼 수 있는 화면을 함께 바꾼다.
+// 설정 > 계정 — 간편 계정(이름+6자리)과 이메일 계정을 한 표에서 관리한다 (2026-11-03 통합).
+// 2026-11-20 대표 지시로 줄을 펼치는 방식 → '사람 × 권한' 표(PermissionMatrix): 첫 열 인원, 둘째 열부터 권한.
+// 이름을 누르면 그 줄 아래에 기본 정보(역할·지점·비밀번호·삭제)가 펼쳐진다.
 // 발급·초기화 때 나오는 6자리 비밀번호는 그 자리에서 본인에게 전달하고, 첫 로그인 때 본인이 바꾼다.
 // 가입 신청(로그인 화면에서 본인이 신청)은 '가입 신청 대기'에 모이고, 역할·지점을 지정해 승인해야 로그인이 열린다.
 
@@ -192,12 +194,12 @@ export default function Accounts() {
         <h2 className="text-title font-medium" style={{ margin: '0 0 4px' }}>계정</h2>
         <p className="ta-prose text-body text-muted-foreground">
           팀이 쓰는 모든 로그인 계정을 한곳에서 관리해요. <b>간편 계정</b>은 이름 + 숫자 6자리로, <b>이메일 계정</b>은 이메일로 로그인해요.
-          줄을 펼치면 그 사람의 기본 정보와 볼 수 있는 화면을 함께 바꿀 수 있어요. 끈 화면은 나비에서 숨겨지고 주소로 들어와도 서버에서
-          막혀요. 대표 계정은 항상 전체 접근이라 목록에 없어요.
+          아래 표는 한 줄이 한 사람, 한 칸이 권한 하나예요 — 칸을 누르면 바로 저장되고, 이름을 누르면 역할·지점·비밀번호를 바꿀 수 있어요.
+          끈 화면은 나비에서 숨겨지고 주소로 들어와도 서버에서 막혀요. 대표 계정은 항상 전체 접근이에요.
         </p>
       </div>
 
-      {/* 간편 계정 발급 — 기본 권한은 가든 섹션의 교육 탭, 발급 후 줄을 펼쳐 넓힌다 */}
+      {/* 간편 계정 발급 — 기본 권한은 SIMPLE_ACCOUNT_TABS, 발급 후 표에서 넓힌다 */}
       <div>
         <p className="ta-label">간편 계정 발급</p>
         <div className="flex flex-wrap items-end gap-3">
@@ -286,25 +288,28 @@ export default function Accounts() {
         ) : shown.length === 0 ? (
           <p className="ta-prose text-body text-muted-foreground">표시할 계정이 없어요.</p>
         ) : (
-          <div className="flex flex-col gap-3">
-            {shown.map((a) => (
-              <AccountRow
-                key={a.id}
+          <PermissionMatrix
+            accounts={shown}
+            roles={roles}
+            busyId={busyId}
+            openId={openId}
+            onToggleOpen={(id) => setOpenId(openId === id ? null : id)}
+            onAccess={(a, kind, key) => void toggleAccess(a, kind, key)}
+            onComments={(a, on) => void run(() => accountsApi('PATCH', { userId: a.id, canViewComments: on }), a.id)}
+            externalBadge={externalBadge}
+            onError={setError}
+            renderInfo={(a) => (
+              <AccountInfo
                 a={a}
-                open={openId === a.id}
                 busy={busyId === a.id}
                 roles={roles}
-                external={externalBadge(a)}
-                onToggleOpen={() => setOpenId(openId === a.id ? null : a.id)}
-                onAccess={(kind, key) => toggleAccess(a, kind, key)}
                 onRole={(r) => void run(() => accountsApi('PATCH', { userId: a.id, role: r }), a.id)}
                 onStore={(id) => toggleStore(a, id)}
-                onComments={(on) => void run(() => accountsApi('PATCH', { userId: a.id, canViewComments: on }), a.id)}
                 onResetPin={() => void resetPin(a)}
                 onDelete={() => remove(a)}
               />
-            ))}
-          </div>
+            )}
+          />
         )}
       </div>
 
@@ -320,7 +325,7 @@ export default function Accounts() {
           });
           if (json.allowed && !allowed.includes(email)) setAllowed((prev) => [...prev, email].sort());
           setFilter('all');
-          setOpenId(u.id); // 바로 권한을 걸 수 있게 펼쳐준다
+          setOpenId(u.id); // 새 계정 줄을 펼쳐 어디 생겼는지 보이게
         }}
         onAllowedRemoved={(email) => setAllowed((prev) => prev.filter((e) => e !== email))}
       />

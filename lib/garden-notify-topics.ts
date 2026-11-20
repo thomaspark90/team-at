@@ -17,18 +17,20 @@ export type GardenTopicId =
 /** 담당자 설정 화면이 브랜드별로 나뉘어 있어 토픽에도 소속을 둔다 */
 export type TopicScope = 'garden' | 'staffmeal';
 
-export const GARDEN_TOPICS: { id: GardenTopicId; label: string; desc: string; scope: TopicScope }[] = [
-  { id: 'recipeNew', label: '신규 레시피 등록', desc: '레시피가 처음 저장되면 알림', scope: 'garden' },
-  { id: 'recipeEdit', label: '기존 레시피 수정', desc: '기존 레시피가 수정되면 알림', scope: 'garden' },
-  { id: 'calibration', label: 'EK43 캘리브레이션 요청', desc: '분쇄도 측정 요청의 기본 수신자', scope: 'garden' },
-  { id: 'beanCard', label: '원두카드 제작 요청', desc: '원두카드 제작 요청의 기본 수신자', scope: 'garden' },
-  { id: 'nametagPrint', label: '브런치 네임택 프린트 요청', desc: '스탭이 네임택 프린트를 요청하면 알림 (그래픽 담당)', scope: 'garden' },
+// tab = 이 항목이 속한 가든 탭 key(lib/garden/tabs.ts) — 설정 화면이 내비 순서대로 묶는 데 쓴다
+export const GARDEN_TOPICS: { id: GardenTopicId; label: string; desc: string; scope: TopicScope; tab?: string }[] = [
+  { id: 'recipeNew', label: '신규 레시피 등록', desc: '레시피가 처음 저장되면 알림', scope: 'garden', tab: 'recipes' },
+  { id: 'recipeEdit', label: '기존 레시피 수정', desc: '기존 레시피가 수정되면 알림', scope: 'garden', tab: 'recipes' },
+  { id: 'calibration', label: 'EK43 캘리브레이션 요청', desc: '분쇄도 측정 요청의 기본 수신자', scope: 'garden', tab: 'calibration' },
+  { id: 'beanCard', label: '원두카드 제작 요청', desc: '원두카드 제작 요청의 기본 수신자', scope: 'garden', tab: 'beancard' },
+  { id: 'nametagPrint', label: '브런치 네임택 프린트 요청', desc: '스탭이 네임택 프린트를 요청하면 알림 (그래픽 담당)', scope: 'garden', tab: 'nametags' },
   // 알림이 아니라 권한 지정 — 비워 두면 발주 탭 권한이 있는 사람 누구나 수령을 기재한다(2026-11-19 대표 지시)
   {
     id: 'beanReceive',
     label: '원두 수령 담당',
     desc: '지정한 사람만 [수령](로스팅 날짜·영문명 확정)을 누를 수 있어요 · 비워 두면 발주 권한이 있는 사람 누구나',
     scope: 'garden',
+    tab: 'pricing',
   },
   // 발주·판매가 책정이 권한 분리된 2단계 플로라, 발주가 저장되면 책정 담당자를 호출한다(2026-08-08)
   {
@@ -36,6 +38,7 @@ export const GARDEN_TOPICS: { id: GardenTopicId; label: string; desc: string; sc
     label: '판매가 책정 대기',
     desc: '새 발주가 저장되면 판매가 설정 담당자에게 알림',
     scope: 'garden',
+    tab: 'saleprice',
   },
   // 이슈 리뷰는 지점별 담당자 — 그 지점 리뷰만 그 지점 담당자에게 간다(2026-08-08)
   {
@@ -43,12 +46,14 @@ export const GARDEN_TOPICS: { id: GardenTopicId; label: string; desc: string; sc
     label: '이슈 리뷰 접수 · 양재천점',
     desc: '양재천점의 불만·개선 지적 리뷰가 수집되면 알림',
     scope: 'garden',
+    tab: 'reviews',
   },
   {
     id: 'reviewIssuePangyo',
     label: '이슈 리뷰 접수 · 판교점',
     desc: '판교점의 불만·개선 지적 리뷰가 수집되면 알림',
     scope: 'garden',
+    tab: 'reviews',
   },
   {
     id: 'receiptAnomaly',
