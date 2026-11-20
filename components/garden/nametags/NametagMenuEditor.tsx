@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { toast } from '@/components/Toast';
 import { groupByCategory, oneLine, type NametagCatalog, type NametagItem } from '@/lib/garden/nametags';
 import NametagItemForm, { type ItemFormValue } from './NametagItemForm';
-import { API, call, failed, jsonInit } from './shared';
+import { ACT_SUB, API, call, failed, jsonInit } from './shared';
 
 // 메뉴 관리 — 추가·수정·삭제. 바꾸면 바로 저장되고 다음 요청부터 적용된다(이미 보낸 요청의 문구는 그대로).
 
@@ -54,7 +54,7 @@ export default function NametagMenuEditor({ catalog, onCatalog }: { catalog: Nam
       {adding === '' ? (
         form()
       ) : (
-        <button type="button" className="ta-btn" onClick={() => setAdding('')}>
+        <button type="button" className={ACT_SUB} onClick={() => setAdding('')}>
           + 메뉴 추가
         </button>
       )}
@@ -64,7 +64,7 @@ export default function NametagMenuEditor({ catalog, onCatalog }: { catalog: Nam
             <h3 className="m-0 text-body font-medium">
               {g.category.label} <span className="text-caption text-muted-foreground">{g.items.length}</span>
             </h3>
-            <button type="button" className="text-caption text-muted-foreground" onClick={() => setAdding(g.category.id)}>
+            <button type="button" className="text-caption text-muted-foreground underline decoration-border underline-offset-4" onClick={() => setAdding(g.category.id)}>
               + 여기에 추가
             </button>
           </div>
@@ -81,11 +81,11 @@ export default function NametagMenuEditor({ catalog, onCatalog }: { catalog: Nam
                     <p className="m-0 text-body">{oneLine(i.ko)}</p>
                     <p className="m-0 truncate text-caption text-muted-foreground">{[i.en, oneLine(i.desc)].filter(Boolean).join(' · ')}</p>
                   </div>
-                  <div className="flex shrink-0 gap-2">
-                    <button type="button" className="ta-btn" onClick={() => setEditing(i.id)}>
+                  <div className="flex shrink-0 gap-5">
+                    <button type="button" className={ACT_SUB} onClick={() => setEditing(i.id)}>
                       수정
                     </button>
-                    <button type="button" className="ta-btn" onClick={() => remove(i)}>
+                    <button type="button" className={ACT_SUB} onClick={() => remove(i)}>
                       삭제
                     </button>
                   </div>

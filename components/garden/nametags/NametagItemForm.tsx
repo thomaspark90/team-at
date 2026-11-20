@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ACT, ACT_SUB, FIELD } from './shared';
 import { NAMETAG_KINDS, type NametagCategory, type NametagItem, type NametagKind } from '@/lib/garden/nametags';
 
 // 메뉴 추가·수정 폼 — 종류에 따라 필요한 칸만 보인다(큰 안내는 한글만, 안내는 한글+영문).
@@ -42,9 +43,9 @@ export default function NametagItemForm({
   };
 
   return (
-    <form onSubmit={submit} className="ta-panel space-y-3">
-      <div className="flex flex-wrap gap-3">
-        <select className="ta-input" value={category} onChange={(e) => setCategory(e.target.value)} aria-label="카테고리">
+    <form onSubmit={submit} className="space-y-4 border-l-[2.5px] border-foreground py-1 pl-4">
+      <div className="flex flex-wrap gap-x-6 gap-y-3">
+        <select className={FIELD} value={category} onChange={(e) => setCategory(e.target.value)} aria-label="카테고리">
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.label}
@@ -53,9 +54,9 @@ export default function NametagItemForm({
           <option value={NEW_CATEGORY}>+ 새 카테고리</option>
         </select>
         {isNew && (
-          <input className="ta-input" placeholder="새 카테고리 이름" value={categoryLabel} maxLength={30} onChange={(e) => setCategoryLabel(e.target.value)} />
+          <input className={FIELD} placeholder="새 카테고리 이름" value={categoryLabel} maxLength={30} onChange={(e) => setCategoryLabel(e.target.value)} />
         )}
-        <select className="ta-input" value={kind} onChange={(e) => setKind(e.target.value as NametagKind)} aria-label="택 종류">
+        <select className={FIELD} value={kind} onChange={(e) => setKind(e.target.value as NametagKind)} aria-label="택 종류">
           {NAMETAG_KINDS.map((k) => (
             <option key={k.id} value={k.id}>
               {k.label}
@@ -65,30 +66,30 @@ export default function NametagItemForm({
       </div>
       {kind === 'big' ? (
         <textarea
-          className="ta-input h-20 w-full py-2"
+          className={`${FIELD} h-20 w-full resize-none`}
           placeholder={'안내 문구 (두 줄까지)\n예: 보울 메뉴는 카운터에서'}
           value={ko}
           rows={2}
           onChange={(e) => setKo(e.target.value)}
         />
       ) : (
-        <input className="ta-input w-full" placeholder="한글 이름" value={ko} maxLength={60} onChange={(e) => setKo(e.target.value)} />
+        <input className={`${FIELD} w-full`} placeholder="한글 이름" value={ko} maxLength={60} onChange={(e) => setKo(e.target.value)} />
       )}
-      {kind !== 'big' && <input className="ta-input w-full" placeholder="영문 이름" value={en} maxLength={80} onChange={(e) => setEn(e.target.value)} />}
+      {kind !== 'big' && <input className={`${FIELD} w-full`} placeholder="영문 이름" value={en} maxLength={80} onChange={(e) => setEn(e.target.value)} />}
       {kind === 'menu' && (
         <textarea
-          className="ta-input h-20 w-full py-2"
+          className={`${FIELD} h-20 w-full resize-none`}
           placeholder="설명 (세 줄까지 · 줄을 바꾸면 인쇄물에서도 줄이 바뀝니다)"
           value={desc}
           rows={3}
           onChange={(e) => setDesc(e.target.value)}
         />
       )}
-      <div className="flex gap-3">
-        <button type="submit" className="ta-btn-primary" disabled={!ready || saving}>
+      <div className="flex gap-6">
+        <button type="submit" className={ACT} disabled={!ready || saving}>
           {saving ? '저장 중' : initial ? '저장' : '추가'}
         </button>
-        <button type="button" className="ta-btn" onClick={onCancel}>
+        <button type="button" className={ACT_SUB} onClick={onCancel}>
           취소
         </button>
       </div>
