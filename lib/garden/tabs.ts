@@ -26,6 +26,9 @@ export const GARDEN_TAB_GROUPS: GardenTab[][] = [
     // 하위 경로라 체크리스트보다 먼저 둔다(tabForPath 는 앞에서부터 찾는다). 끄면 항목을 못 바꾼다.
     { key: 'checklist_items', href: '/garden/checklist/items', label: '체크리스트 항목 관리', desc: '항목 추가 · 삭제 · 순서 · 사진 필수 (체크리스트 탭과 함께 켜기)' },
     { key: 'checklist', href: '/garden/checklist', label: '체크리스트', desc: '오픈 · 마감 담당 체크' },
+    // 브런치 네임택(2026-11-20) — 하위 경로라 관리 탭을 먼저 둔다(tabForPath 는 앞에서부터 찾는다).
+    { key: 'nametags_manage', href: '/garden/nametags/manage', label: '네임택 인쇄·메뉴 관리', desc: '요청분 일러스트 인쇄 파일 받기 · 메뉴 추가·수정 (그래픽 담당)' },
+    { key: 'nametags', href: '/garden/nametags', label: '브런치 네임택', desc: '필요한 메뉴만 골라 프린트 요청' },
     { key: 'teaching', href: '/garden/teaching', label: '교육', desc: '배우고 싶은 주제 · 매니저 출근 일정 · 교육 기록' },
     { key: 'reviews', href: '/garden/reviews', label: '네이버 리뷰', desc: '리뷰 확인 · 답글 초안 작성' },
     { key: 'words', href: '/garden/words', label: '제철 단어', desc: '고객 제출 단어 검수' },
@@ -49,6 +52,7 @@ export const GARDEN_NAV: GardenNavEntry[] = [
   { label: '분석', keys: ['sales', 'weather', 'reviews'] },
   { label: '스케줄', keys: ['schedule'] },
   { label: '체크리스트', keys: ['checklist'] }, // 항목 관리는 체크리스트 화면에서 들어간다 — 직원이 매일 쓰는 메뉴를 한 번에 열리게
+  { label: '네임택', keys: ['nametags'] }, // 인쇄·메뉴 관리는 네임택 화면에서 들어간다(체크리스트 항목 관리와 같은 방식)
   { label: '교육', keys: ['teaching'] },
   { label: '설정', keys: ['settings'] },
 ];

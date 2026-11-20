@@ -5,6 +5,7 @@ export type GardenTopicId =
   | 'recipeEdit'
   | 'calibration'
   | 'beanCard'
+  | 'nametagPrint' // 브런치 네임택 프린트 요청 수신자 — 그래픽 담당(2026-11-20)
   | 'beanReceive' // 원두 수령 담당 — 지정된 사람만 [수령](로스팅 날짜·영문명 확정)을 누를 수 있다 (2026-11-19)
   | 'salePriceRequest' // 발주 저장 → 판매가 설정(saleprice 탭) 담당자에게 책정 요청
   | 'reviewIssue' // (구) 지점 공통 — 화면에서 제거, 지점 토픽 미지정 시 폴백으로만 읽는다(2026-08-08 지점 분리)
@@ -21,6 +22,7 @@ export const GARDEN_TOPICS: { id: GardenTopicId; label: string; desc: string; sc
   { id: 'recipeEdit', label: '기존 레시피 수정', desc: '기존 레시피가 수정되면 알림', scope: 'garden' },
   { id: 'calibration', label: 'EK43 캘리브레이션 요청', desc: '분쇄도 측정 요청의 기본 수신자', scope: 'garden' },
   { id: 'beanCard', label: '원두카드 제작 요청', desc: '원두카드 제작 요청의 기본 수신자', scope: 'garden' },
+  { id: 'nametagPrint', label: '브런치 네임택 프린트 요청', desc: '스탭이 네임택 프린트를 요청하면 알림 (그래픽 담당)', scope: 'garden' },
   // 알림이 아니라 권한 지정 — 비워 두면 발주 탭 권한이 있는 사람 누구나 수령을 기재한다(2026-11-19 대표 지시)
   {
     id: 'beanReceive',
@@ -66,6 +68,7 @@ export const EMPTY_TOPICS: GardenTopicMap = {
   recipeEdit: [],
   calibration: [],
   beanCard: [],
+  nametagPrint: [],
   beanReceive: [],
   salePriceRequest: [],
   reviewIssue: [],

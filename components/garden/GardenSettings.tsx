@@ -10,6 +10,7 @@ import { type RecipientRow } from '@/components/NotifyRecipients';
 import NotifySettings from '@/components/NotifySettings';
 import GardenOptionsManager from '@/components/garden/GardenOptionsManager';
 import EmailAddPicker, { useTeamEmails } from '@/components/EmailAddPicker';
+import NametagContacts from '@/components/garden/nametags/NametagContacts';
 
 // 가든 설정 — 알림(내 채널 + 항목별 담당자), 요청 보내기, 발주 명단, 접근 권한, 투두리스트.
 // 흩어져 있던 알림 3종(항목별 담당자·수신자 관리·내 채널)과 요청 폼 2종을 각각 하나로 합쳤다.
@@ -197,6 +198,7 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
             })
           )}
       </div>
+      <NametagContacts assignees={map.nametagPrint} />
       <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
         담당자를 지정하지 않으면 요청류·이슈 리뷰·측정 업로드 알림은 원두 알림
         수신자 전체에게 발송됩니다. 레시피 등록·수정만 담당자 지정 시에 발송됩니다(옵트인).
