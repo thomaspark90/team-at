@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from '@/components/Toast';
 import { MAX_QTY, deliveryText, groupByCategory, oneLine, type NametagContact, type NametagItem, type NametagRequest } from '@/lib/garden/nametags';
 import ContactList from './ContactList';
+import RecipientEditor from './RecipientEditor';
 import { ACT_SUB, API, call, failed, fmtWhen, jsonInit, lineLabel, nameOf, summaryOf, type NametagData } from './shared';
 
 // 브런치 네임택 고르기 — 카테고리별로 내려가며 필요한 메뉴만 체크하고 한 번에 프린트를 요청한다.
@@ -22,6 +23,7 @@ export default function NametagPicker() {
   const [picked, setPicked] = useState<Record<string, number>>({}); // itemId → 장수
   const [query, setQuery] = useState('');
   const [reviewing, setReviewing] = useState(false);
+  const [editingRecipients, setEditingRecipients] = useState(false);
   const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
   const [canceling, setCanceling] = useState<string | null>(null);
@@ -95,6 +97,12 @@ export default function NametagPicker() {
     });
   const setQty = (id: string, qty: number) => setPicked((cur) => ({ ...cur, [id]: Math.min(MAX_QTY, Math.max(1, qty)) }));
 
+  // 확인 패널 닫기 — 고른 메뉴는 그대로 두고 고르는 화면으로 돌아간다
+  const closeReview = () => {
+    setReviewing(false);
+    setEditingRecipients(false);
+  };
+
   const send = async () => {
     if (sending || lines.length === 0) return;
     setSending(true);
@@ -104,7 +112,7 @@ export default function NametagPicker() {
     toast(j.sentTo.length > 0 ? '프린트를 요청했어요' : '요청은 저장했지만 알림 받을 담당자가 없어요', j.sentTo.length > 0 ? 'success' : 'error');
     setPicked({});
     setNote('');
-    setReviewing(false);
+    closeReview();
     load();
   };
 
@@ -231,7 +239,14 @@ export default function NametagPicker() {
         <div className="fixed inset-x-0 bottom-0 z-20 bg-background">
           <div className="mx-auto max-w-[720px] border-t-[2.5px] border-foreground px-6 pb-6 pt-4">
             {reviewing && (
-              <div className="mb-4 space-y-3">
+              <div className="mb-4 max-h-[62vh] space-y-3 overflow-y-auto">
+                {/* 오른쪽 위 ✕ — 고른 메뉴는 그대로 두고 고르는 화면으로 돌아간다 */}
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-caption text-muted-foreground">요청 확인</span>
+                  <button type="button" className="-mr-2 -mt-1 px-2 py-1 text-title leading-none text-foreground" onClick={closeReview} aria-label="닫고 메뉴 고르기로 돌아가기">
+                    ✕
+                  </button>
+                </div>
                 <div className="flex max-h-40 flex-wrap gap-x-4 gap-y-1 overflow-y-auto">
                   {lines.map((l) => (
                     <button
@@ -245,11 +260,24 @@ export default function NametagPicker() {
                     </button>
                   ))}
                 </div>
-                {data.recipients.length > 0 ? (
-                  <ContactList label="받는 사람" contacts={data.recipients} />
-                ) : (
-                  <p className="m-0 text-caption text-amber-600">알림 받을 담당자가 지정되지 않았어요. 운영진에게 알려주세요.</p>
-                )}
+                {/* 받는 사람 + [···] — 누르면 바로 아래에서 등록·편집 */}
+                <div className="flex items-baseline justify-between gap-3">
+                  {data.recipients.length > 0 ? (
+                    <ContactList label="받는 사람" contacts={data.recipients} />
+                  ) : (
+                    <p className="m-0 text-caption text-amber-600">받는 사람이 없어요. 오른쪽 ···를 눌러 등록해 주세요.</p>
+                  )}
+                  <button
+                    type="button"
+                    className={`shrink-0 px-2 text-body leading-none ${editingRecipients ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
+                    onClick={() => setEditingRecipients((v) => !v)}
+                    aria-expanded={editingRecipients}
+                    aria-label="받는 사람 등록·편집"
+                  >
+                    ···
+                  </button>
+                </div>
+                {editingRecipients && <RecipientEditor onChanged={(recipients) => setData((cur) => (cur ? { ...cur, recipients } : cur))} />}
                 <input
                   className="w-full border-b border-border bg-transparent pb-2 text-body outline-none placeholder:text-muted-foreground"
                   placeholder="메모 (선택) — 예: 오늘 오후까지 필요해요"
@@ -260,7 +288,7 @@ export default function NametagPicker() {
               </div>
             )}
             <div className="flex items-baseline justify-between gap-3">
-              <button type="button" className="min-w-0 text-left text-body" onClick={() => setReviewing((v) => !v)}>
+              <button type="button" className="min-w-0 text-left text-body" onClick={() => (reviewing ? closeReview() : setReviewing(true))}>
                 {summaryOf(lines)} <span className="text-muted-foreground">{reviewing ? '접기' : '보기'}</span>
               </button>
               {reviewing ? (
