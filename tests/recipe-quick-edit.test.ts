@@ -20,7 +20,8 @@ describe('레시피 보드 바로 수정', () => {
     expect(bump({ ...orig, mesh: 11.8 }, orig, 'mesh', 1, 5).mesh).toBe(12); // 상한 12
     expect(bump(orig, orig, 'waterG', 1).waterG).toBe(235);
     expect(bump(orig, orig, 'timeSec', 1).timeSec).toBe(190);
-    expect(bump(orig, orig, 'tempC', -1).tempC).toBe(91); // 범위 하한
+    expect(bump({ ...orig, tempC: 88 }, orig, 'tempC', -1).tempC).toBe(88); // 범위 하한 88
+    expect(bump({ ...orig, tempC: 95 }, orig, 'tempC', 1).tempC).toBe(95); // 범위 상한 95
   });
 
   it('아무것도 안 바꾸면 차수별 물량·시간 표기를 그대로 둔다', () => {

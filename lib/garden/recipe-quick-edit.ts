@@ -30,7 +30,7 @@ export const QUICK_FIELDS: Record<QuickField, { label: string; step: number; min
   waterG: { label: '추출량', step: 5, min: 150, max: 300, fallback: 200, show: (v) => `${v}g` },
   bypassG: { label: '가수', step: BYPASS_STEP_G, min: 0, max: BYPASS_MAX_G, fallback: 0, show: bypassText },
   doseG: { label: '도징량', step: 1, min: 16, max: 24, fallback: 18, show: (v) => `${v}g` },
-  tempC: { label: '온도', step: 1, min: 91, max: 94, fallback: 92, show: (v) => `${v}°` },
+  tempC: { label: '온도', step: 1, min: 88, max: 95, fallback: 92, show: (v) => `${v}°` },
   timeSec: { label: '추출 시간', step: 10, min: 150, max: 240, fallback: 180, show: fmtTime },
 };
 export const QUICK_ORDER: QuickField[] = ['mesh', 'waterG', 'bypassG', 'doseG', 'tempC', 'timeSec'];
