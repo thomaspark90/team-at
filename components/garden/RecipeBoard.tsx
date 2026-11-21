@@ -389,20 +389,23 @@ export default function RecipeBoard() {
         {/* 모바일 — 제목 줄 아래 새 줄에 대기·준비 중·아카이브·지점 */}
         {isMobile && <span style={{ flexBasis: '100%', height: 0 }} />}
         {/* 판매 대기 — 레시피는 있지만 아직 판매 전. 누르면 목록, 원두를 누르면 크게 보기(레시피 + 추출 평가) */}
-        {view === 'board' && waitingBeans.length > 0 && (
+        {/* 대기가 0건이어도 자리는 지킨다 — 흐리게, 눌리지 않게 (2026-11-21) */}
+        {view === 'board' && (
           <span style={{ position: 'relative' }}>
             <button
               onClick={() => {
                 setWaitingOpen((o) => !o);
                 setPendingOpen(false);
               }}
-              className="tabular text-body text-muted-foreground hover:text-foreground"
-              style={plainBtn}
+              disabled={waitingBeans.length === 0}
+              className={`tabular text-body text-muted-foreground ${waitingBeans.length === 0 ? '' : 'hover:text-foreground'}`}
+              style={waitingBeans.length === 0 ? { ...plainBtn, opacity: 0.35, cursor: 'default' } : plainBtn}
               aria-expanded={waitingOpen}
+              title={waitingBeans.length === 0 ? '이 지점에 판매 대기 중인 원두가 없어요' : undefined}
             >
-              대기 {waitingBeans.length} {waitingOpen ? '▴' : '▾'}
+              대기 {waitingBeans.length} {waitingBeans.length > 0 && (waitingOpen ? '▴' : '▾')}
             </button>
-            {waitingOpen && (
+            {waitingOpen && waitingBeans.length > 0 && (
               <div
                 className="rounded-md bg-background shadow-soft"
                 style={{ position: 'absolute', top: 'calc(100% + 10px)', ...(isMobile ? { left: 0 } : { right: 0 }), width: 'min(360px, 88vw)', padding: '16px 18px', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 4 }}
