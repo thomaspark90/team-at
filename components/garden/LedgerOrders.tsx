@@ -11,7 +11,7 @@ import { toast } from '@/components/Toast';
 import { useKakaoOrder } from './KakaoOrder';
 import BeanReceiveDialog from './BeanReceiveDialog';
 
-// 원두 장부(필터 원두·레시피) 줄 펼침의 '발주 기록' — 2026-11-24 발주 화면의 '이전 발주 리스트'를 옮겨 왔다.
+// 원두 장부(필터커피) 줄 펼침의 '발주 기록' — 2026-11-24 발주 화면의 '이전 발주 리스트'를 옮겨 왔다.
 // 한 원두의 발주 건을 최신순으로 보여주고, 건마다 수령·카톡 발주(직접 발주 완료)·원두카드·삭제를 한다.
 // 데이터(발주 기록·레시피)는 장부(GardenDashboard)가 들고 있고, 여기는 발주 건 단위 조작과 그 창(수령·발주 미리보기)만 맡는다.
 

@@ -56,7 +56,7 @@ export async function POST(req: Request) {
         : (await readGardenTopics()).recipeEdit;
     if (emails.length === 0 && target === 'recipe') return NextResponse.json(record);
     const label = target === 'price' ? '판매가' : '레시피';
-    const url = target === 'price' ? `${APP_URL}/garden/saleprice` : `${APP_URL}/garden/recipes`;
+    const url = target === 'price' ? `${APP_URL}/garden/saleprice` : `${APP_URL}/garden/filtercoffee`;
     await notifyGardenEvent(supabase, {
       emails,
       subject: `[${label} 재검토 요청] ${record.bean}`,
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
       push: {
         title: `${label} 재검토 요청 · ${record.bean}`,
         body: `${note ?? '다시 확인해 주세요'} — ${by} 요청`,
-        url: target === 'price' ? '/garden/saleprice' : '/garden/recipes',
+        url: target === 'price' ? '/garden/saleprice' : '/garden/filtercoffee',
       },
     });
   } catch (e) {

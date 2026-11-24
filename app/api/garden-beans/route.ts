@@ -53,7 +53,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   {
     // 재고·테이스팅 변경은 대시보드에서만 이뤄진다 — 쓰기는 해당 탭 권한으로 엄격하게.
-    // 보관(소진 → 필터 커피 아카이브)만 보내는 요청은 레시피 보드에서도 오므로 필터 레시피 권한도 허용.
+    // 보관(소진 → 필터 커피 아카이브)만 보내는 요청은 레시피 보드에서도 오므로 필터커피 권한도 허용.
     // 판매 대기(waiting)도 보드에서 오는 요청이라 같은 규칙
     const archiveOnly =
       (typeof body.archived === 'boolean' || body.waiting != null) &&

@@ -9,11 +9,11 @@ import LocalNav from '@/components/nav/LocalNav';
 import NavLink from '@/components/nav/NavLink';
 import NavMenu from '@/components/nav/NavMenu';
 
-// 가든 로컬 내비 — 한 줄: 홈 · 필터 원두·레시피 · 커피(필터) ▾ · 분석 ▾ · … · 설정 (구성은 lib/garden/tabs.ts GARDEN_NAV).
+// 가든 로컬 내비 — 한 줄: 홈 · 필터커피 · 커피(필터) ▾ · 분석 ▾ · … · 설정 (구성은 lib/garden/tabs.ts GARDEN_NAV).
 // 2026-09-09 탭 14개 나열 → 묶음으로 접음(소프트 UI 내비 통합). 권한·배지·리다이렉트 동작은 이전과 같다:
 //  · 설정의 '가든 탭 권한'에서 허용된 탭만 활성, 미허용은 흐리게 자리 유지(왜 못 가는지 보이게).
 //  · 미허용 경로 직접 접근 → 첫 허용 탭으로.
-//  · 배지: 네이버 리뷰(처리 필요)·판매가 설정(책정 대기)·필터 레시피(레시피 미설정 원두)·제철 단어(검수 대기). 묶음 라벨엔 합계.
+//  · 배지: 네이버 리뷰(처리 필요)·판매가 설정(책정 대기)·필터커피(레시피 미설정 원두)·제철 단어(검수 대기). 묶음 라벨엔 합계.
 export default function GardenNav() {
   const pathname = usePathname();
   const router = useRouter();

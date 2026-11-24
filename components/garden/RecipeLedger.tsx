@@ -7,7 +7,7 @@ import { brewOnStyle } from '@/lib/garden/brew-colors';
 import LedgerPriceCell from '@/components/garden/LedgerPriceCell';
 import type { PurchaseRecord } from '@/lib/types';
 
-// 필터 레시피 목록(2026-11-03 대표 결정: 시안 C3 '인덱스 + 펼침').
+// 필터커피 목록(2026-11-03 대표 결정: 시안 C3 '인덱스 + 펼침').
 // 한 원두 = 한 줄 인덱스 — 날짜는 발주 → 로스팅 → D+N 흐름, ICE·HOT 은 비율(없으면 '레시피 설정 필요'),
 // 이익은 재료비/이익 막대(ICE·HOT 평균 도징 기준, 2026-11-03 — 이전엔 HOT 우선). 줄을 누르면 원가 계산 + 기존 카드(타이머·수정·이력·보관)가 펼쳐진다.
 // 정렬: 설정 필요 먼저(기본) · 이익 높은순 · 로스팅 오래된순. 데이터 가공은 GardenDashboard 가 하고, 여기는 표시만 맡는다.

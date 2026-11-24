@@ -31,12 +31,12 @@ export async function POST(req: Request) {
       <p>원두: ${bean}</p>
       ${note ? `<p>메모: ${note}</p>` : ''}
       ${by ? `<p>요청: ${by}</p>` : ''}
-      <p><a href="${APP_URL}/garden/recipes">필터 레시피 열기 →</a></p>
+      <p><a href="${APP_URL}/garden/filtercoffee">필터커피 열기 →</a></p>
     </div>`,
     push: {
       title: `원두카드 제작 요청 · ${bean}`,
       body: `${note ?? '원두카드 제작을 부탁드려요'}${by ? ` — ${by} 요청` : ''}`,
-      url: '/garden/recipes',
+      url: '/garden/filtercoffee',
     },
   });
   await logActivity(supabase, user, '가든서비스 원두카드 제작 요청', `${bean}${note ? ` · ${note}` : ''}`);

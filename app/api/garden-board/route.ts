@@ -137,7 +137,7 @@ export async function GET(req: Request) {
   const stageOwners = [[], topics.recipeNew ?? [], topics.salePriceRequest ?? [], topics.beanCard ?? []];
   const stageInfo = [
     null,
-    { reason: '레시피 담당', href: '/garden/recipes', action: '레시피 설정', tab: 'recipes' },
+    { reason: '레시피 담당', href: '/garden/filtercoffee', action: '레시피 설정', tab: 'recipes' },
     { reason: '판매가 담당', href: '/garden/saleprice', action: '판매가 설정', tab: 'saleprice' },
     { reason: '원두카드 담당', href: '/garden/beancard', action: '원두카드 인쇄', tab: 'beancard' },
   ];
@@ -180,7 +180,7 @@ export async function GET(req: Request) {
       assignees: owners,
       mine: !allDone && owns(owners),
       mineReason: info?.reason,
-      href: info?.href ?? '/garden/recipes',
+      href: info?.href ?? '/garden/filtercoffee',
       actionLabel: info?.action ?? '레시피 보기',
       tab: info?.tab ?? TYPE_TAB.order,
       sortAt: p.createdAt,

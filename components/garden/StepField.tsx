@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-// − / + 스테퍼 — 필터 레시피 설정 창을 태블릿 '바로 수정' 탭(RecipeQuickEdit)과 같은 조작으로 맞춘다 (2026-11-18 대표 지시).
+// − / + 스테퍼 — 필터커피 설정 창을 태블릿 '바로 수정' 탭(RecipeQuickEdit)과 같은 조작으로 맞춘다 (2026-11-18 대표 지시).
 // 그리기만 한다. 값 계산은 stepValue, 범위는 lib/garden/recipe-quick-edit.ts 의 QUICK_FIELDS 를 같이 쓴다.
 
 const btnCls = 'rounded-md bg-background text-title shadow-soft-sm active:shadow-inset disabled:opacity-30 disabled:shadow-none';

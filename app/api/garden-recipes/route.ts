@@ -202,12 +202,12 @@ export async function POST(req: Request) {
           <p><strong>${isNew ? '신규 레시피가 등록됐어요' : '레시피가 수정됐어요'}</strong></p>
           <p>${summary}</p>
           ${by ? `<p>저장: ${by}</p>` : ''}
-          <p><a href="${APP_URL}/garden/recipes">필터 레시피 열기 →</a></p>
+          <p><a href="${APP_URL}/garden/filtercoffee">필터커피 열기 →</a></p>
         </div>`,
         push: {
           title: `레시피 ${isNew ? '등록' : '수정'} · ${recipe.bean}`,
           body: `${summary}${by ? ` — ${by}` : ''}`,
-          url: '/garden/recipes',
+          url: '/garden/filtercoffee',
         },
       });
     }

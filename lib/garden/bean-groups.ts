@@ -1,7 +1,7 @@
 import type { BeanMeta, PurchaseRecord } from '@/lib/types';
 import { normalize } from '@/lib/pricing';
 
-// 원두명에서 국가 추출 — 필터 레시피·태블릿 보드의 국가별 정렬용 (구 GardenRecipes에서 이식)
+// 원두명에서 국가 추출 — 필터커피·태블릿 보드의 국가별 정렬용 (구 GardenRecipes에서 이식)
 const COUNTRIES = [
   '에티오피아', '케냐', '콜롬비아', '브라질', '과테말라', '온두라스', '파나마', '페루',
   '코스타리카', '엘살바도르', '니카라과', '볼리비아', '에콰도르', '르완다', '부룬디',

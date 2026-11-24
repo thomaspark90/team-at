@@ -11,7 +11,7 @@ describe('sectionForPath — 페이지 → 섹션', () => {
   it('4개 섹션 대표 경로', () => {
     expect(sectionForPath('/studio')).toBe('studio');
     expect(sectionForPath('/studio/sales')).toBe('studio');
-    expect(sectionForPath('/garden/recipes')).toBe('garden');
+    expect(sectionForPath('/garden/filtercoffee')).toBe('garden');
     expect(sectionForPath('/dashboard/transfer')).toBe('accounting');
     expect(sectionForPath('/finance/pnl')).toBe('report');
   });

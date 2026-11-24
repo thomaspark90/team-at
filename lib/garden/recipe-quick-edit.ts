@@ -5,7 +5,7 @@ import { BYPASS_MAX_G, BYPASS_STEP_G, bypassOf, bypassText } from '@/lib/garden/
 
 // 레시피 보드 '의견 · 레시피 수정' 탭 — 태블릿에서 − / + 버튼으로 레시피를 바로 고친다 (2026-11-13 대표 지시, 시안 C).
 // 화면(components/garden/RecipeQuickEdit.tsx)은 그리기만 하고, 값 조절·의견 반영·저장 본문 계산은 전부 여기서 한다.
-// 조절 단위: 분쇄도 0.1 · 추출량 5g · 가수 5g · 도징 1g · 온도 1° · 추출 시간 10초 — 범위는 필터 레시피 설정 창과 같다.
+// 조절 단위: 분쇄도 0.1 · 추출량 5g · 가수 5g · 도징 1g · 온도 1° · 추출 시간 10초 — 범위는 필터커피 설정 창과 같다.
 
 export interface QuickDraft {
   mesh: number | null; // 이 지점 EK43 다이얼

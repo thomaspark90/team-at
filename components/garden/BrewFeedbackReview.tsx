@@ -68,8 +68,8 @@ export default function BrewFeedbackReview() {
     <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <h1 className="text-title font-medium" style={{ margin: 0 }}>추출 평가 모아보기</h1>
-        <Link href="/garden/recipes" className="text-body text-muted-foreground underline hover:text-foreground">
-          ← 필터 레시피
+        <Link href="/garden/filtercoffee" className="text-body text-muted-foreground underline hover:text-foreground">
+          ← 필터커피
         </Link>
       </div>
 

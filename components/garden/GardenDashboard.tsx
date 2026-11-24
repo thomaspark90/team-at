@@ -152,7 +152,7 @@ interface BeanGroup {
   latestUpdate: string;
 }
 
-// section: 'unset' = 가든 대시보드(미설정 원두만) / 'recipes' = 필터 레시피 탭(카드 전체, 국가별)
+// section: 'unset' = 가든 대시보드(미설정 원두만) / 'recipes' = 필터커피 탭(카드 전체, 국가별)
 // 편집기·타이머 오버레이는 두 모드 공통.
 // toolbar·reloadKey·receiveId 는 원두 장부(BeanLedger)가 넘긴다 — 지점 선택 줄 오른쪽 버튼 · 발주 저장 뒤 다시 불러오기 · 수령 창 바로 열기
 export default function GardenDashboard({
@@ -167,7 +167,7 @@ export default function GardenDashboard({
   receiveId?: string | null;
 }) {
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
-  // 필터 레시피 목록 판매가 인라인 수정 — saleprice 탭 권한(mine=null 은 전체 허용). 실제 검증은 서버 PATCH
+  // 필터커피 목록 판매가 인라인 수정 — saleprice 탭 권한(mine=null 은 전체 허용). 실제 검증은 서버 PATCH
   const [canEditPrice, setCanEditPrice] = useState(false);
   useEffect(() => {
     fetchMyAccess().then((a) => setCanEditPrice(a.mine == null || a.mine.includes('saleprice')));
@@ -1150,7 +1150,7 @@ export default function GardenDashboard({
     );
   };
 
-  // 레시피 미설정 원두 카드 — 대시보드(unset)와 필터 레시피 탭 양쪽에서 노출.
+  // 레시피 미설정 원두 카드 — 대시보드(unset)와 필터커피 탭 양쪽에서 노출.
   // 발주 직후 레시피 페이지에서도 바로 설정을 유도하기 위함.
   const unsetCard = unsetBeans.length > 0 && (
     <div className="ta-panel min-w-0">
@@ -1204,7 +1204,7 @@ export default function GardenDashboard({
         </span>
         <span style={{ flex: 1 }} />
         <Link
-          href="/garden/recipes"
+          href="/garden/filtercoffee"
           className="ta-btn"
           style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 13, flexShrink: 0, textDecoration: 'none' }}
         >
@@ -1393,7 +1393,7 @@ export default function GardenDashboard({
         </div>
       )}
 
-      {/* 필터 레시피 — 모든 레시피 원두를 국가별 그룹으로, 카드 전체 기능(수정·타이머·이력·재고칩) */}
+      {/* 필터커피 — 모든 레시피 원두를 국가별 그룹으로, 카드 전체 기능(수정·타이머·이력·재고칩) */}
       {section === 'recipes' && (
         <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
           {loading && <p className="text-body text-muted-foreground">불러오는 중…</p>}
@@ -1414,11 +1414,11 @@ export default function GardenDashboard({
           {/* 태블릿 레시피 보드 — 3장씩 좌우 스와이프로 넘겨 보는 매장용 화면 · 거기서 남긴 추출 평가 모아보기 */}
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             {!loading && activeGroups.length > 0 && (
-              <Link href="/garden/recipes/board" className="text-body text-muted-foreground underline hover:text-foreground">
+              <Link href="/garden/filtercoffee/board" className="text-body text-muted-foreground underline hover:text-foreground">
                 태블릿 레시피 보드로 보기 →
               </Link>
             )}
-            <Link href="/garden/recipes/feedback" className="text-body text-muted-foreground underline hover:text-foreground">
+            <Link href="/garden/filtercoffee/feedback" className="text-body text-muted-foreground underline hover:text-foreground">
               추출 평가 모아보기 →
             </Link>
           </div>
@@ -1539,7 +1539,7 @@ export default function GardenDashboard({
       {section === 'unset' && unsetBeans.length === 0 && !loading && (
         <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
           레시피 미설정 원두가 없어요. 레시피 카드는{' '}
-          <Link href="/garden/recipes" className="underline hover:text-foreground">필터 레시피</Link>
+          <Link href="/garden/filtercoffee" className="underline hover:text-foreground">필터커피</Link>
           에서 관리합니다.
         </p>
       )}

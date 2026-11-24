@@ -5,7 +5,7 @@ import type { PurchaseRecord } from '@/lib/types';
 import { PRICE_UNIT } from '@/lib/pricing';
 import { toast } from '@/components/Toast';
 
-// 필터 레시피 목록의 판매가 칸 — 숫자를 누르면 그 자리에서 수정(2026-11-03 대표 요청).
+// 필터커피 목록의 판매가 칸 — 숫자를 누르면 그 자리에서 수정(2026-11-03 대표 요청).
 // 원두별 판매가 하나(ICE·HOT 공통). 저장은 판매가 설정 화면과 같은 PATCH /api/purchases { id, chosenPrice } —
 // 서버가 500원 단위·saleprice 탭 권한을 검증하고, 실제 배수(판매가÷재료비)도 함께 기록한다.
 // 수정 권한이 없거나 발주 기록이 없으면 숫자만 보여준다.

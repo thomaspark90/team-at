@@ -473,7 +473,7 @@ export default function GardenService({
               <p className="text-caption text-muted-foreground">
                 {embedded
                   ? '저장하면 장부 맨 위에 새 줄로 나타나요. 판매가 책정은 그 줄을 펼쳐서 담당자가 진행해요'
-                  : '저장하면 발주 기록으로 남고, 판매가 책정은 필터 원두·레시피의 원두 줄을 펼쳐서 담당자가 진행해요'}
+                  : '저장하면 발주 기록으로 남고, 판매가 책정은 필터커피의 원두 줄을 펼쳐서 담당자가 진행해요'}
               </p>
 
               <button

@@ -24,7 +24,7 @@ import { toast } from '@/components/Toast';
 
 // 레시피 보드 '의견 · 레시피 수정' 탭 (2026-11-13 대표 지시, 시안 C).
 // 위: 이 레시피 버전에 남긴 최근 의견 + 제안을 한 번에 반영하는 '적용' 버튼. 아래: − / + 미세 조정 → 저장.
-// 값 계산은 lib/garden/recipe-quick-edit.ts. 저장은 필터 레시피 탭과 같은 API(이력·알림 동일).
+// 값 계산은 lib/garden/recipe-quick-edit.ts. 저장은 필터커피 탭과 같은 API(이력·알림 동일).
 
 const RECENT_MAX = 5;
 const stepBtn = 'rounded-md bg-background text-title shadow-soft-sm active:shadow-inset disabled:opacity-30 disabled:shadow-none';
@@ -151,7 +151,7 @@ export default function RecipeQuickEdit({
   if (blocked) {
     return (
       <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
-        판교 분쇄도가 아직 확정되지 않아 여기서는 수정할 수 없어요. 필터 레시피 탭에서 판교 레시피를 먼저 저장해 주세요.
+        판교 분쇄도가 아직 확정되지 않아 여기서는 수정할 수 없어요. 필터커피 탭에서 판교 레시피를 먼저 저장해 주세요.
       </p>
     );
   }
@@ -234,7 +234,7 @@ export default function RecipeQuickEdit({
             </div>
           </div>
         )}
-        {!waterOk && <span className="text-caption text-muted-foreground">이 레시피는 푸어링 구성이 달라 추출량은 필터 레시피 탭에서 바꿔 주세요.</span>}
+        {!waterOk && <span className="text-caption text-muted-foreground">이 레시피는 푸어링 구성이 달라 추출량은 필터커피 탭에서 바꿔 주세요.</span>}
       </div>
 
       {/* 수정하는 사람 — 공용 태블릿이라 이름을 골라 이력에 남긴다(추출 평가와 같은 이름 선택) */}

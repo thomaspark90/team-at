@@ -20,7 +20,7 @@ import { bypassOf, drinkG } from '@/lib/garden/bypass';
 
 // 태블릿 레시피 보드 — 매장 태블릿(가로)에서 레시피 카드 3장을 한 화면에, 좌우 스와이프로 3장씩 넘긴다.
 // 추출용 카드(M2, 2026-10-30): ICE/HOT 전환 · 스펙(이 지점 분쇄도) · 푸어링 · 추출비, 맨 아래 접힌 추출 평가.
-// 타이머 없음(저울 타이머 사용). 전체 편집은 필터 레시피 탭에서 — 보드는 보기 + 추출 평가 +
+// 타이머 없음(저울 타이머 사용). 전체 편집은 필터커피 탭에서 — 보드는 보기 + 추출 평가 +
 // 크게 보기의 '의견 · 레시피 수정' 탭(− / + 바로 수정, 2026-11-13).
 // 넘김은 CSS scroll-snap — 터치 스와이프는 브라우저 기본 동작, 마우스는 ‹ › 버튼.
 
@@ -156,7 +156,7 @@ export default function RecipeBoard() {
     })();
   }, []);
 
-  // 레시피 원두 — 필터 레시피 탭과 같은 순서(국가 가나다순·기타 맨 뒤, 국가 안에서는 최신 업데이트순).
+  // 레시피 원두 — 필터커피 탭과 같은 순서(국가 가나다순·기타 맨 뒤, 국가 안에서는 최신 업데이트순).
   // 보드엔 보관하지 않은 것(beans), 아카이브 화면엔 보관한 것(archivedBeans)
   const [allLiveBeans, archivedBeans] = useMemo(() => {
     const metaByBean = new Map(beanMetas.map((b) => [b.beanKey, b]));
@@ -277,7 +277,7 @@ export default function RecipeBoard() {
     toast(on ? `${bean} — ${st} 판매 대기로 옮겼어요.` : `${bean} — ${st} 판매를 시작했어요.`);
   };
 
-  // 노트 — 레시피에서 쓴 노트 우선, 없으면 발주 때 입력한 노트 (필터 레시피 탭과 같은 규칙)
+  // 노트 — 레시피에서 쓴 노트 우선, 없으면 발주 때 입력한 노트 (필터커피 탭과 같은 규칙)
   const tastingByBean = useMemo(() => {
     const m = new Map(Object.entries(purchaseTasting));
     for (const b of beanMetas) m.set(b.beanKey, resolveTasting(b, m.get(b.beanKey)));
@@ -332,7 +332,7 @@ export default function RecipeBoard() {
     if (r.grindMesh == null) return { text: null, value: null };
     return { text: pangyoText(r), value: convertDial(grinderProfiles, 'yangjae', 'pangyo', r.grindMesh) };
   };
-  // 판교 EK43 표기 — 수동 보정 우선, 없으면 산식 자동값(필터 레시피 카드와 같은 규칙)
+  // 판교 EK43 표기 — 수동 보정 우선, 없으면 산식 자동값(필터커피 카드와 같은 규칙)
   const pangyoText = (r: DripRecipe) => {
     if (r.pangyoMesh != null) return meshFmt(r.pangyoMesh);
     if (r.grindMesh == null) return null;
@@ -374,8 +374,8 @@ export default function RecipeBoard() {
         }}
       >
         {view === 'board' ? (
-          <Link href="/garden/recipes" className="text-body text-muted-foreground hover:text-foreground">
-            {isMobile ? '←' : '← 필터 레시피'}
+          <Link href="/garden/filtercoffee" className="text-body text-muted-foreground hover:text-foreground">
+            {isMobile ? '←' : '← 필터커피'}
           </Link>
         ) : (
           <button onClick={() => setView('board')} className="text-body text-muted-foreground hover:text-foreground" style={plainBtn}>
@@ -459,7 +459,7 @@ export default function RecipeBoard() {
                 style={{ position: 'absolute', top: 'calc(100% + 10px)', ...(isMobile ? { left: 0 } : { right: 0 }), width: 'min(360px, 88vw)', padding: '16px 18px', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 12 }}
               >
                 <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
-                  레시피 준비 중 — 필터 레시피에서 설정하면 보드에 올라와요
+                  레시피 준비 중 — 필터커피에서 설정하면 보드에 올라와요
                 </p>
                 {pendingBeans.map((p) => {
                   const notes = tastingByBean.get(p.beanKey) ?? '';
