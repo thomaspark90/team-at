@@ -89,13 +89,13 @@ export function useLedgerOrders({
     const group = byBean.get(beanKey) ?? [];
     if (group.length === 0) return null;
     return (
-      <div className="min-w-0">
+      <div className={`min-w-0 ${ro ? 'text-caption' : 'text-body'}`}>
         {group.length > 1 && (
           <p className="text-caption text-muted-foreground" style={{ margin: '0 0 10px' }}>
             {group.length}건 · 재료비는 지금 레시피 도징 기준
           </p>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           {group.map((rec, i) => {
             const older = group[i + 1];
             const cost = currentCost(recipes, rec);
@@ -103,36 +103,54 @@ export function useLedgerOrders({
             const range = currentRange(recipes, rec);
             const todo = receiveTodo(rec);
             return (
-              <div key={rec.id} className="gs-row">
-                <span className="gs-meta">
-                  <span className="tabular text-muted-foreground" style={{ width: 64, flexShrink: 0 }}>
-                    {fmtDate(rec.orderDate ?? rec.createdAt)}
-                  </span>
-                  {rec.store && (
-                    <span className="text-muted-foreground" style={{ flexShrink: 0 }}>
-                      {rec.store === 'pangyo' ? '판교' : '양재천'}
-                    </span>
-                  )}
+              // 왼쪽 = 기록(날짜 · 지점·담당 · 원가 · 재료비 · 판매가), 오른쪽 = 글자 버튼(수령 · 발주 · 카드 · 삭제)
+              <div
+                key={rec.id}
+                className={i > 0 ? 'fc-shade-t' : ''}
+                style={{ display: 'flex', alignItems: 'baseline', gap: '6px 18px', flexWrap: 'wrap', padding: i > 0 ? '12px 0 0' : 0, marginTop: i > 0 ? 12 : 0 }}
+              >
+                <span className="tabular text-muted-foreground" style={{ display: 'flex', alignItems: 'baseline', gap: '4px 18px', flexWrap: 'wrap', minWidth: 0 }}>
+                  <span className="font-medium text-foreground">{fmtDate(rec.orderDate ?? rec.createdAt)}</span>
                   {/* 스탭이름이 있으면 'OOO님' 우선, 없으면 저장 계정(구 기록) */}
-                  {(rec.staffName || rec.createdBy) && (
-                    <span className="text-muted-foreground" style={{ flexShrink: 0 }}>
-                      {rec.staffName ? `${rec.staffName}님` : rec.createdBy!.split('@')[0]}
+                  {(rec.store || rec.staffName || rec.createdBy) && (
+                    <span>
+                      {[
+                        rec.store ? (rec.store === 'pangyo' ? '판교' : '양재천') : null,
+                        rec.staffName ? `${rec.staffName}님` : rec.createdBy ? rec.createdBy.split('@')[0] : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </span>
                   )}
-                  {/* 수령 — 로스팅 날짜·영문명 확정. 남은 게 있으면 밑줄 버튼, 다 끝났으면 날짜(눌러서 수정) */}
+                  {/* VAT 포함가로 입력한 기록만 '포함' — 그 밖(구 기록 포함)은 별도 */}
+                  <span>
+                    원가 {won(rec.purchasePrice)} · VAT {rec.settings?.vatIncluded ? '포함' : '별도'}
+                  </span>
+                  <span>
+                    재료비 {won(cost)}
+                    {older && delta !== 0 && (
+                      <span style={{ marginLeft: 4 }}>
+                        {delta > 0 ? '▲' : '▼'}
+                        {won(Math.abs(delta))}
+                      </span>
+                    )}
+                  </span>
+                  {rec.chosenPrice != null && rec.chosenPrice > 0 ? (
+                    <span>
+                      판매가 {won(rec.chosenPrice)} ({Math.round((cost / rec.chosenPrice) * 100)}%)
+                    </span>
+                  ) : (
+                    <span>
+                      권장 {won(range.low)}~{won(range.high)}
+                    </span>
+                  )}
+                </span>
+                <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'baseline', gap: 18, flexWrap: 'wrap' }}>
+                  {/* 수령 — 로스팅 날짜·영문명 확정. 남은 게 있으면 진한 글자, 다 끝났으면 날짜(눌러서 수정) */}
                   <button
                     onClick={() => setReceivingId(rec.id)}
                     disabled={!can}
-                    className={`tabular ${todo.done || !can ? 'text-muted-foreground' : 'text-foreground'}`}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: can ? 'pointer' : 'default',
-                      fontSize: todo.done ? undefined : 11,
-                      flexShrink: 0,
-                      padding: 0,
-                      textDecoration: todo.done || !can ? 'none' : 'underline',
-                    }}
+                    className={`fc-txt tabular ${todo.done || !can ? '' : 'on'}`}
                     title={
                       !can
                         ? '수령 담당자로 지정된 사람만 기재할 수 있어요 (설정 › 원두 수령 담당)'
@@ -145,53 +163,16 @@ export function useLedgerOrders({
                     {rec.roastDate && todo.beanEn && (can ? ' · 영문명 확정' : ' · 영문명 미확정')}
                     {rec.roastDate && todo.cardRequest && (can ? ' · 원두카드 요청' : ' · 원두카드 요청 전')}
                   </button>
-                  <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>
-                    원가 {won(rec.purchasePrice)}
-                    {/* VAT 포함가로 입력한 기록만 표시 — 무표시 = 별도(구 기록 포함) */}
-                    {rec.settings?.vatIncluded && <span style={{ fontSize: 11 }}>·VAT포함</span>}
-                  </span>
-                  <span className="tabular text-foreground" style={{ flexShrink: 0 }}>
-                    재료비 {won(cost)}
-                    {older && delta !== 0 && (
-                      <span className="tabular text-foreground" style={{ marginLeft: 4 }}>
-                        {delta > 0 ? '▲' : '▼'}
-                        {won(Math.abs(delta))}
-                      </span>
-                    )}
-                  </span>
-                </span>
-                <span className="gs-price">
-                  {rec.chosenPrice != null && rec.chosenPrice > 0 ? (
-                    <span className="tabular text-foreground">
-                      책정 판매가 {won(rec.chosenPrice)}
-                      <span className="text-muted-foreground"> ({Math.round((cost / rec.chosenPrice) * 100)}%)</span>
-                    </span>
-                  ) : (
-                    <span className="tabular text-muted-foreground">
-                      판매 {won(range.low)}~{won(range.high)}
-                    </span>
+                  {!ro && <span className="fc-kakao">{kakao.button(rec)}</span>}
+                  <a href={`/garden/beancard?recordId=${rec.id}`} className="fc-txt" title="원두카드 인쇄 (A4 3×3)">
+                    카드
+                  </a>
+                  {canOrder && !ro && (
+                    <button onClick={() => remove(rec)} disabled={deleting === rec.id} className="fc-txt" title="이 발주 기록 삭제">
+                      삭제
+                    </button>
                   )}
                 </span>
-                {!ro && kakao.button(rec)}
-                <a
-                  href={`/garden/beancard?recordId=${rec.id}`}
-                  className="text-muted-foreground hover:text-foreground"
-                  style={{ fontSize: 11, flexShrink: 0, textDecoration: 'none' }}
-                  title="원두카드 인쇄 (A4 3×3)"
-                >
-                  카드
-                </a>
-                {canOrder && !ro && (
-                  <button
-                    onClick={() => remove(rec)}
-                    disabled={deleting === rec.id}
-                    className="gs-del text-muted-foreground hover:text-foreground"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: 6, margin: -6 }}
-                    title="이 발주 기록 삭제"
-                  >
-                    ×
-                  </button>
-                )}
               </div>
             );
           })}

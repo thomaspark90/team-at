@@ -9,7 +9,7 @@ import { fmtDate } from '@/lib/garden/format';
 import { fetchMyAccess } from '@/lib/access/tab-access-client';
 import { toast } from '@/components/Toast';
 import StorePriceLines from './StorePriceLines';
-import RecordPricer from './RecordPricer';
+import PricePicks from './PricePicks';
 import PriceBandGuide from './PriceBandGuide';
 
 // 원두 장부(필터커피) 줄 펼침의 '판매가' 블록 — 2026-11-24 판매가 설정 화면을 장부로 옮겨 왔다.
@@ -18,7 +18,6 @@ import PriceBandGuide from './PriceBandGuide';
 // 금액은 VAT 포함 소비자가, 재료비는 ICE·HOT 평균 도징 기준 잔당 금액, 판교 = 양재천 −1,000원.
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
-const textBtn: React.CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 };
 
 export function useLedgerPricing({
   enabled,
@@ -127,8 +126,8 @@ export function useLedgerPricing({
     const pricerOpen = editable && (!priced || openId === rec.id);
     const guideOpen = editable && guideFor === beanKey;
     return (
-      <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div className="text-caption" style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+      <div className={`min-w-0 ${opts?.readOnly ? 'text-caption' : 'text-body'}`} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px 18px', flexWrap: 'wrap' }}>
           {priced ? (
             <StorePriceLines rec={rec} recipes={recipes} />
           ) : (
@@ -138,18 +137,18 @@ export function useLedgerPricing({
             </span>
           )}
           {editable && (
-            <span style={{ marginLeft: 'auto', display: 'flex', gap: 16 }}>
+            <span style={{ marginLeft: 'auto', display: 'flex', gap: 18 }}>
               {priced && (
-                <button onClick={() => share(rec)} className="text-muted-foreground hover:text-foreground" style={textBtn} title="판매가 공유 링크 (카톡방 공지용)">
+                <button onClick={() => share(rec)} className="fc-txt" title="판매가 공유 링크 (카톡방 공지용)">
                   {copiedId === rec.id ? '링크 복사됨 ✓' : sharingId === rec.id ? '…' : '공유'}
                 </button>
               )}
               {priced && (
-                <button onClick={() => setOpenId(openId === rec.id ? null : rec.id)} className="text-muted-foreground hover:text-foreground" style={textBtn}>
+                <button onClick={() => setOpenId(openId === rec.id ? null : rec.id)} className={`fc-txt ${openId === rec.id ? 'on' : ''}`}>
                   {openId === rec.id ? '접기' : '변경'}
                 </button>
               )}
-              <button onClick={() => setGuideFor(guideOpen ? null : beanKey)} className="text-muted-foreground hover:text-foreground" style={textBtn}>
+              <button onClick={() => setGuideFor(guideOpen ? null : beanKey)} className={`fc-txt ${guideOpen ? 'on' : ''}`}>
                 가격대 참고표 {guideOpen ? '▴' : '▾'}
               </button>
             </span>
@@ -162,8 +161,8 @@ export function useLedgerPricing({
           </p>
         )}
         {pricerOpen && (
-          <div style={{ maxWidth: 900, minWidth: 0 }}>
-            <RecordPricer
+          <div style={{ minWidth: 0 }}>
+            <PricePicks
               rec={rec}
               doses={dosesForBean(recipes, beanKey)}
               pick={picks[rec.id] ?? rec.chosenPrice ?? null}
@@ -172,7 +171,6 @@ export function useLedgerPricing({
               onDecide={(p) => decide(rec, p)}
               onClear={priced ? () => decide(rec, null) : undefined}
               busy={busyId === rec.id}
-              compact
             />
           </div>
         )}

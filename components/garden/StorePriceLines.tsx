@@ -14,18 +14,19 @@ const ORDER: StoreId[] = ['yangjae', 'pangyo'];
 
 export default function StorePriceLines({ rec, recipes }: { rec: PurchaseRecord; recipes: DripRecipe[] }) {
   return (
-    <span className="tabular" style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
+    <span className="tabular" style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
       {ORDER.map((id) => {
         const price = storePrice(rec.chosenPrice, id);
         if (price == null) return null;
         const d = dosesForBean(recipes, normalize(rec.bean), id);
         const base = brewCost(rec, baseDoseG(d.ice.doseG, d.hot.doseG));
         return (
-          <span key={id} className="text-foreground">
-            {STORES.find((s) => s.id === id)?.short} {won(price)}
+          <span key={id} style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '2px 16px', alignItems: 'baseline' }}>
+            <span className="font-medium text-foreground">
+              {STORES.find((s) => s.id === id)?.short} {won(price)}
+            </span>
             <span className="text-muted-foreground">
-              {' '}(재료비 {won(base)} · 재료비율 {pct(base, price)} · ICE {pct(brewCost(rec, d.ice.doseG), price)} · HOT{' '}
-              {pct(brewCost(rec, d.hot.doseG), price)})
+              재료비 {won(base)} · 재료비율 {pct(base, price)} · ICE {pct(brewCost(rec, d.ice.doseG), price)} · HOT {pct(brewCost(rec, d.hot.doseG), price)}
             </span>
           </span>
         );

@@ -208,6 +208,11 @@ export default function GardenService({
     return groups;
   }, [purchases]);
 
+  // 창 모드 — 짝이 되는 항목(로스팅사·스탭 / 발주 날짜·받을 지점)은 두 칸으로. 예전 화면은 한 줄에 하나 그대로
+  const pair: React.CSSProperties = embedded
+    ? { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px 24px', alignItems: 'center', minWidth: 0 }
+    : { display: 'contents' };
+
   return (
     <div style={{ width: '100%', minWidth: 0 }}>
       {!embedded && receiving && canReceive && (
@@ -217,7 +222,7 @@ export default function GardenService({
           onSaved={(updated) => setPurchases((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))}
         />
       )}
-      <div className={embedded ? '' : 'divide-y divide-border'}>
+      <div className={embedded ? 'fc-form' : 'divide-y divide-border'}>
         <div className="min-w-0 pb-[54px]" style={{ display: embedded ? 'none' : undefined }}>
           <p className="ta-label">판매가 산식 기준</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 12px' }}>
@@ -233,8 +238,8 @@ export default function GardenService({
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
             <p className="ta-label">{embedded ? '원두' : '원두 정보 입력'}</p>
             {/* 원두봉투 촬영 → AI 인식으로 원두명·로스팅사·용량 자동 기입 (영수증 인식과 동일 패턴) */}
-            <label className="ta-btn" style={{ height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 13, cursor: 'pointer' }}>
-              {scanning ? '인식 중…' : '📷 원두봉투 스캔'}
+            <label className={embedded ? 'fc-txt text-body' : 'ta-btn'} style={embedded ? { cursor: 'pointer' } : { height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 13, cursor: 'pointer' }}>
+              {scanning ? '인식 중…' : embedded ? '원두봉투 스캔' : '📷 원두봉투 스캔'}
               <input
                 type="file"
                 accept="image/*"
@@ -325,6 +330,7 @@ export default function GardenService({
               className="ta-input w-full"
             />
             {embedded && <p className="ta-label" style={{ margin: '12px 0 -8px' }}>발주</p>}
+            <div style={pair}>
             <PickOrType
               value={roastery}
               onChange={setRoastery}
@@ -340,6 +346,8 @@ export default function GardenService({
               inputPlaceholder="스탭이름 (예: 홍길동)"
               optionLabel={(n) => `${n}님`}
             />
+            </div>
+            <div style={pair}>
             {/* 로스팅 날짜는 봉투에 찍혀 와서 발주 시점엔 모른다 — 수령 후 발주 리스트의 [수령]으로 기재 */}
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
               <span className="text-caption text-muted-foreground" style={{ flexShrink: 0 }}>발주 날짜</span>
@@ -364,6 +372,7 @@ export default function GardenService({
                   </button>
                 ))}
               </div>
+            </div>
             </div>
             {embedded && <p className="ta-label" style={{ margin: '12px 0 -8px' }}>가격</p>}
             {/* 구매 용량 — 500g/1000g 프리셋 + 직접 입력 (잔당 재료비 계산 기준) */}
@@ -451,6 +460,33 @@ export default function GardenService({
 
           {result && (
             <div style={{ marginTop: embedded ? 28 : 40, display: 'flex', flexDirection: 'column', gap: 28, minWidth: 0 }}>
+              {embedded ? (
+                <>
+                  {/* 창 모드 — 결과는 요약 면 하나, 저장 버튼은 오른쪽 아래 */}
+                  <div className="fc-lift tabular" style={{ display: 'flex', gap: '14px 32px', flexWrap: 'wrap', padding: '16px 18px' }}>
+                    <span className="text-caption text-muted-foreground">
+                      <span className="text-title text-foreground" style={{ display: 'block' }}>{won(result.costPerCup)}</span>
+                      잔당 재료비 (VAT 포함)
+                    </span>
+                    <span className="text-caption text-muted-foreground">
+                      <span className="text-title text-foreground" style={{ display: 'block' }}>
+                        {won(result.rangeLow)} ~ {won(result.rangeHigh)}
+                      </span>
+                      권장 판매 범위 (VAT 포함) · 재료비율 {ratioRangeLabel(settings.minMult, settings.maxMult)}
+                      {bandRow != null && ` · 참고표 ${bandRow.toLocaleString('ko-KR')}원 행`}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px 20px', flexWrap: 'wrap' }}>
+                    <p className="text-caption text-muted-foreground" style={{ margin: 0, flex: '1 1 240px' }}>
+                      저장하면 장부 맨 위에 새 줄로 나타나요. 판매가 책정은 그 줄을 펼쳐서 담당자가 진행해요
+                    </p>
+                    <button onClick={savePurchase} disabled={saving} className="ta-btn-primary" style={{ marginLeft: 'auto' }}>
+                      {saving ? '저장 중…' : '원두 저장하기'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <span className="text-caption text-muted-foreground">잔당 재료비 (VAT 포함)</span>
@@ -483,6 +519,9 @@ export default function GardenService({
               >
                 {saving ? '저장 중…' : `${bean.trim() ? bean.trim() + ' ' : ''}원두 저장하기`}
               </button>
+
+                </>
+              )}
 
               {/* 참고표 — 지금 원두 재료비 행 강조, 보기 전용(권장 범위 변경은 판매가 설정 화면) */}
               {embedded && (

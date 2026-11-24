@@ -13,7 +13,7 @@ export const GARDEN_TAB_GROUPS: GardenTab[][] = [
     // 발주(pricing)와 판매가 책정을 분리 — 책정 권한만 다른 인원에게 줄 수 있다
     // 2026-11-24 판매가 설정 화면도 장부로 합쳤다 — 이 키는 '장부 줄 펼침의 판매가 책정·변경·공유' 권한으로 남는다.
     { key: 'saleprice', href: '/garden/saleprice', label: '판매가 설정', desc: '원두 장부 줄 펼침의 [판매가] — 드립 판매가 책정 · 변경 · 공유' },
-    { key: 'recipes', href: '/garden/filtercoffee', label: '필터커피', desc: '원두 장부 — 발주 기록 · ICE/HOT 레시피 편집 · 추출 타이머' },
+    { key: 'recipes', href: '/garden/filtercoffee', label: '필터커피', desc: '원두 장부 — 발주 기록 · 판매가 · ICE/HOT 레시피 편집' },
     { key: 'recommended', href: '/garden/recommended', label: '필터 레시피 추천', desc: '원두별 추천 레시피 조회' },
     { key: 'calibration', href: '/garden/calibration', label: '분쇄도 측정', desc: 'EK43 캘리브레이션 업로드 · 차트' },
     { key: 'beancard', href: '/garden/beancard', label: '원두카드', desc: '매장 비치용 원두카드 인쇄' },

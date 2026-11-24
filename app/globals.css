@@ -255,9 +255,161 @@ select.ta-input {
   scrollbar-width: none;
 }
 
-/* 원두 장부(RecipeLedger) — 넓은 화면은 표, 태블릿(세로)은 줄을 두 칸으로, 휴대폰은 한 칸으로 쌓는다(가로 스크롤 없이, 2026-11-24) */
+/* 필터커피 화면 공통(2026-11-24 디자인 개선) — 흰 바탕, 구분은 선 대신 옅은 음영, 떠 있는 면은 그림자로만 */
+:root {
+  --fc-shade: hsl(0 0% 0% / 0.055);
+  --fc-shade-strong: hsl(0 0% 0% / 0.1);
+  --fc-lift: 0 1px 2px hsl(0 0% 0% / 0.04), 0 6px 22px hsl(0 0% 0% / 0.06);
+  --fc-lift-strong: 0 1px 2px hsl(0 0% 0% / 0.08), 0 4px 16px hsl(0 0% 0% / 0.13);
+}
+.dark {
+  --fc-shade: hsl(0 0% 100% / 0.06);
+  --fc-shade-strong: hsl(0 0% 100% / 0.14);
+  --fc-lift: 0 0 0 1px hsl(0 0% 100% / 0.05), 0 6px 22px hsl(0 0% 0% / 0.5);
+  --fc-lift-strong: 0 0 0 1px hsl(0 0% 100% / 0.16), 0 4px 16px hsl(0 0% 0% / 0.6);
+}
+/* 위쪽에 번지는 음영 — 줄·블록 사이 구분 */
+.fc-shade-t {
+  background-image: linear-gradient(to bottom, var(--fc-shade), transparent 9px);
+  background-repeat: no-repeat;
+}
+.fc-lift {
+  background-color: hsl(var(--background));
+  box-shadow: var(--fc-lift);
+  border-radius: 14px;
+}
+/* 글자 버튼 — 선택된 것만 진하게 */
+.fc-txt {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  color: hsl(var(--muted-foreground));
+  transition: color 0.15s;
+}
+.fc-txt:hover,
+.fc-txt.on {
+  color: hsl(var(--foreground));
+}
+.fc-txt.on {
+  font-weight: 500;
+}
+.fc-txt:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+/* 할 일 표시 — 「● ○○ 필요」 한 가지 */
+.fc-need {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-weight: 500;
+  white-space: nowrap;
+  color: hsl(var(--foreground));
+}
+.fc-need::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: #f59e0b;
+  flex-shrink: 0;
+}
+button.fc-need {
+  cursor: pointer;
+}
+button.fc-need:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* 발주 기록의 카톡 발주 버튼 — 공용 버튼의 11px 지정을 줄 글자 크기로 맞춘다 */
+.fc-kakao button {
+  font-size: inherit !important;
+}
+.fc-kakao:empty {
+  display: none;
+}
+/* 가격 후보 버튼 */
+.fc-pick {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  height: 46px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  line-height: 1.25;
+  background: hsl(var(--background));
+  color: hsl(var(--muted-foreground));
+  box-shadow: 0 1px 2px hsl(0 0% 0% / 0.05), 0 2px 10px hsl(0 0% 0% / 0.06);
+}
+.fc-pick small {
+  font-size: 12px;
+  opacity: 0.75;
+}
+.fc-pick.rec {
+  color: hsl(var(--foreground));
+  box-shadow: var(--fc-lift-strong);
+}
+.fc-pick.on {
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  box-shadow: none;
+}
+.dark .fc-pick {
+  box-shadow: 0 0 0 1px hsl(0 0% 100% / 0.06);
+}
+/* 발주 창 입력 폼 — 파인 상자 대신 아래쪽 옅은 음영 한 줄 */
+.fc-form .ta-input {
+  border: 0;
+  border-radius: 0;
+  padding-left: 0;
+  box-shadow: none;
+  background-color: transparent;
+  background-image: linear-gradient(to top, var(--fc-shade-strong), transparent 9px);
+  background-repeat: no-repeat;
+}
+.fc-form .ta-input:focus {
+  background-image: linear-gradient(to top, hsl(var(--foreground) / 0.3), transparent 9px);
+}
+.fc-form select.ta-input {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"),
+    linear-gradient(to top, var(--fc-shade-strong), transparent 9px);
+  background-repeat: no-repeat, no-repeat;
+  background-position: right 6px center, 0 0;
+  background-size: 14px 14px, 100% 100%;
+}
+.fc-form .ta-seg {
+  box-shadow: none;
+  padding: 0;
+  gap: 14px;
+}
+.fc-form .ta-seg-item {
+  padding: 0;
+}
+.fc-form .ta-seg-on {
+  box-shadow: none;
+}
+
+/* 원두 장부(RecipeLedger) — 넓은 화면은 표, 그보다 좁으면 원두 하나가 흰 카드 하나(가로 스크롤 없이) */
 .ledger-table {
   min-width: 900px;
+}
+.ledger-table tr.lr + tr.lr > td {
+  background-image: linear-gradient(to bottom, var(--fc-shade), transparent 9px);
+  background-repeat: no-repeat;
+}
+.fc-open {
+  margin: 2px 0 16px;
+  padding: 22px 24px 26px;
 }
 @media (max-width: 1179px) {
   .ledger-table {
@@ -270,15 +422,22 @@ select.ta-input {
   .ledger-table tbody {
     display: block;
   }
-  .ledger-table tr {
+  .ledger-table tr.lr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 8px 24px;
+    gap: 10px 24px;
     align-items: center;
-    padding: 16px 4px;
+    padding: 18px 18px 16px;
+    margin-bottom: 14px;
+    border-radius: 14px;
+    background-color: hsl(var(--background));
+    box-shadow: var(--fc-lift);
   }
-  .ledger-table td.lc-open {
-    grid-column: 1 / -1;
+  .ledger-table tr.lo {
+    display: block;
+  }
+  .ledger-table tr.lr + tr.lr > td {
+    background-image: none;
   }
   .ledger-table td {
     display: block;
@@ -286,6 +445,9 @@ select.ta-input {
     min-width: 0 !important;
     white-space: normal !important;
     text-align: left !important;
+  }
+  .ledger-table td.lc-span {
+    grid-column: 1 / -1;
   }
   .ledger-table td[data-label] {
     display: flex;
@@ -295,17 +457,19 @@ select.ta-input {
   .ledger-table td[data-label]::before {
     content: attr(data-label);
     flex-shrink: 0;
-    width: 68px;
+    width: 56px;
     font-size: 12px;
     color: hsl(var(--muted-foreground));
   }
-  .ledger-table td.lc-open {
-    padding: 2px 8px 6px !important;
+  .fc-open {
+    margin: -4px 0 14px;
+    padding: 18px;
   }
 }
 @media (max-width: 639px) {
-  .ledger-table tr {
-    grid-template-columns: minmax(0, 1fr);
+  .ledger-table td.lc-bean,
+  .ledger-table td.lc-date {
+    grid-column: 1 / -1;
   }
   .ledger-block {
     grid-template-columns: minmax(0, 1fr) !important;

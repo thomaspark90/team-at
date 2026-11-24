@@ -9,7 +9,6 @@ import { costPerCup, normalize } from '@/lib/pricing';
 import { currentCost } from '@/lib/garden/brew-cost';
 import { applyPreset, presetById } from '@/lib/drip-presets';
 import { flavorGradient } from '@/lib/flavor-colors';
-import BrewTimer from '@/components/garden/BrewTimer';
 import { toast } from '@/components/Toast';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import { convertDial, pangyoDialText } from '@/lib/grinder-calibration';
@@ -153,7 +152,7 @@ interface BeanGroup {
 }
 
 // section: 'unset' = 가든 대시보드(미설정 원두만) / 'recipes' = 필터커피 탭(카드 전체, 국가별)
-// 편집기·타이머 오버레이는 두 모드 공통.
+// 편집기 오버레이는 두 모드 공통.
 // toolbar·reloadKey·receiveId 는 원두 장부(BeanLedger)가 넘긴다 — 지점 선택 줄 오른쪽 버튼 · 발주 저장 뒤 다시 불러오기 · 수령 창 바로 열기
 export default function GardenDashboard({
   section = 'recipes',
@@ -189,8 +188,6 @@ export default function GardenDashboard({
   const [openHistory, setOpenHistory] = useState<Set<string>>(new Set());
   // 재고량 칩 → 퍼센트 선택 중인 원두·지점
   const [stockPicker, setStockPicker] = useState<{ beanKey: string; store: StoreId } | null>(null);
-  // 추출 타이머 오버레이 — 열려 있는 레시피
-  const [timerFor, setTimerFor] = useState<{ bean: string; brewType: BrewType; recipe: DripRecipe } | null>(null);
   // 지점별 그라인더 측정 프로파일 (분쇄도 지점 간 환산용)
   const [grinderProfiles, setGrinderProfiles] = useState<GrinderProfiles>({});
   // 얼라인먼트 이력 — 07-16 오프셋 폴백이 아직 유효한지 판정용 (실패해도 화면은 동작)
@@ -751,23 +748,30 @@ export default function GardenDashboard({
     const sellPrice = storePrice(latest?.chosenPrice, store); // 선택 지점 판매가(판교 = 양재천 −1,000원)
     const roast = roastInfo(latest);
     return (
-      <div key={g.beanKey} className="rounded-md bg-muted/40" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-        {/* 원두명 헤더 — muted 배경 밴드 + 테이스팅 노트 색 그라데이션(카운터컬처 플레이버 휠 차용) */}
+      // 2026-11-24 디자인 개선: 미색 면 없이 흰 바탕. 장부 펼침(sideBySide)은 틀 없이 HOT·ICE 칸만 그림자로 띄우고,
+      // 아카이브 카드는 카드 하나를 띄운다(머리띠의 테이스팅 노트 색 그라데이션은 아카이브에만 남긴다)
+      <div
+        key={g.beanKey}
+        className={sideBySide ? '' : 'fc-lift'}
+        style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: sideBySide ? 'visible' : 'hidden' }}
+      >
         <div
-          className="bg-muted"
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: 4,
-            padding: '10px 16px',
-            backgroundImage: flavorGradient(tastingByBean.get(g.beanKey) ?? '') ?? undefined,
+            gap: 6,
+            padding: sideBySide ? 0 : '10px 16px',
+            backgroundImage: sideBySide ? undefined : flavorGradient(tastingByBean.get(g.beanKey) ?? '') ?? undefined,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
-              <span className="text-title font-medium text-foreground" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {g.bean}
-              </span>
+              {/* 장부 펼침에서는 바로 위 줄에 원두명이 있어 생략 */}
+              {!sideBySide && (
+                <span className="text-title font-medium text-foreground" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {g.bean}
+                </span>
+              )}
               {/* 로스팅일 기준 경과일(2026-11-03) — 미기재면 발주일+1 추정(~). 숙성 중·지남은 경고색, 판매는 막지 않는다 */}
               {roast && (
                 <span
@@ -900,7 +904,8 @@ export default function GardenDashboard({
                 </button>
               )}
             </div>
-            {latest && sellPrice != null && sellPrice > 0 && (
+            {/* 장부 펼침에서는 위 '판매가' 블록에 같은 값이 있어 생략 */}
+            {!sideBySide && latest && sellPrice != null && sellPrice > 0 && (
               // 선택 지점 판매가 / 재료비율(그 지점 레시피 도징 기준 잔당 재료비 ÷ 판매가)
               <span className="tabular text-body text-muted-foreground" style={{ flexShrink: 0 }}>
                 {won(sellPrice)} / {Math.round((currentCost(recipes, latest, store) / sellPrice) * 100)}%
@@ -967,7 +972,7 @@ export default function GardenDashboard({
         <div
           style={
             sideBySide
-              ? { padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, alignItems: 'start' }
+              ? { padding: '14px 0 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, alignItems: 'start' }
               : { padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }
           }
         >
@@ -979,7 +984,11 @@ export default function GardenDashboard({
                 ? costPerCup(latest.purchasePrice, { ...latest.settings, doseG: r.doseG })
                 : null;
             return (
-              <div key={bt} style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0, borderTop: !sideBySide && idx > 0 ? '1px solid hsl(var(--border))' : 'none', paddingTop: !sideBySide && idx > 0 ? 12 : 0 }}>
+              <div
+                key={bt}
+                className={sideBySide ? 'fc-lift text-body' : idx > 0 ? 'fc-shade-t' : ''}
+                style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0, fontSize: sideBySide ? undefined : 13, padding: sideBySide ? '16px 18px' : idx > 0 ? '12px 0 0' : 0 }}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                     <BrewBadge bt={bt} />
@@ -989,14 +998,6 @@ export default function GardenDashboard({
                   </span>
                   {r ? (
                     <span style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
-                      <button
-                        onClick={() => setTimerFor({ bean: g.bean, brewType: bt, recipe: r })}
-                        className="text-caption text-muted-foreground hover:text-foreground"
-                        style={ghostBtn}
-                        title="추출 타이머 열기"
-                      >
-                        ▶ 타이머
-                      </button>
                       <button
                         onClick={() => openEditor(g.beanKey, g.bean, bt)}
                         className="text-caption text-muted-foreground hover:text-foreground"
@@ -1065,11 +1066,11 @@ export default function GardenDashboard({
                     </div>
 
                     {r.pours && r.pours.length > 0 && (
-                      <div className="rounded-md bg-muted/40" style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div className="fc-shade-t text-caption" style={{ padding: '10px 0 0', display: 'flex', flexDirection: 'column', gap: 4 }}>
                         {r.pours.map((s, i) => {
                           const cum = r.pours!.slice(0, i + 1).reduce((a, x) => a + x.water, 0);
                           return (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11 }}>
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                               <span className="text-muted-foreground">
                                 {s.at ? `${s.at} ` : ''}
                                 {pourName(s, i)}
@@ -1107,13 +1108,13 @@ export default function GardenDashboard({
 
                     {/* 이전 버전 목록 — 복원은 편집 폼에 불러온 뒤 저장해야 반영 */}
                     {openHistory.has(`${g.beanKey}:${bt}`) && (r.history?.length ?? 0) > 0 && (
-                      <div className="rounded-md bg-muted/40" style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div className="fc-shade-t text-caption" style={{ padding: '10px 0 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {/* 각 줄 = 그 버전으로 저장된 시점 + 바로 다음 버전에서 바뀐 점(최신 줄은 현재 레시피와 비교) */}
                         {r.history!.map((s, i) => {
                           const next = i === 0 ? r : r.history![i - 1];
                           const changes = recipeChanges(s, next);
                           return (
-                          <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 11, minWidth: 0 }}>
+                          <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
                             <span className="tabular text-muted-foreground" style={{ flexShrink: 0 }}>{fmtDate(s.updatedAt)}</span>
                             <span className="tabular text-foreground" style={{ minWidth: 0 }}>
                               {[
@@ -1398,42 +1399,41 @@ export default function GardenDashboard({
         </div>
       )}
 
-      {/* 필터커피 — 모든 레시피 원두를 국가별 그룹으로, 카드 전체 기능(수정·타이머·이력·재고칩) */}
+      {/* 필터커피 — 모든 레시피 원두를 국가별 그룹으로, 카드 전체 기능(수정·이력·재고칩) */}
       {section === 'recipes' && (
         <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
           {loading && <p className="text-body text-muted-foreground">불러오는 중…</p>}
           {/* 지점 — 레시피는 지점별(2026-10-30). 기기에 기억돼 레시피 보드와 공유 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <SegmentControl
-              items={[...STORES].reverse().map((s) => ({ id: s.id, label: s.label }))}
-              value={store}
-              onSelect={pickStore}
-              ariaLabel="레시피 지점"
-            />
-            <span className="text-caption text-muted-foreground">
-              {store === 'pangyo' ? '판교 레시피 — 없는 원두는 양재천 레시피를 보여줘요' : '양재천 레시피'}
-            </span>
+            <div role="tablist" aria-label="레시피 지점" className="text-body" style={{ display: 'flex', gap: 16 }}>
+              {[...STORES].reverse().map((s) => (
+                <button key={s.id} type="button" role="tab" aria-selected={store === s.id} onClick={() => pickStore(s.id)} className={`fc-txt ${store === s.id ? 'on' : ''}`}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            {store === 'pangyo' && <span className="text-caption text-muted-foreground">없는 원두는 양재천 레시피를 보여줘요</span>}
             {toolbar && <span style={{ marginLeft: 'auto' }}>{toolbar}</span>}
           </div>
 
           {/* 태블릿 레시피 보드 — 3장씩 좌우 스와이프로 넘겨 보는 매장용 화면 · 거기서 남긴 추출 평가 모아보기 */}
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <div className="text-body" style={{ display: 'flex', gap: '8px 22px', flexWrap: 'wrap', marginTop: -16 }}>
             {!loading && activeGroups.length > 0 && (
-              <Link href="/garden/filtercoffee/board" className="text-body text-muted-foreground underline hover:text-foreground">
-                태블릿 레시피 보드로 보기 →
+              <Link href="/garden/filtercoffee/board" className="fc-txt" title="태블릿 레시피 보드 — 3장씩 넘겨 보는 매장용 화면">
+                레시피 보드
               </Link>
             )}
-            <Link href="/garden/filtercoffee/feedback" className="text-body text-muted-foreground underline hover:text-foreground">
-              추출 평가 모아보기 →
+            <Link href="/garden/filtercoffee/feedback" className="fc-txt" title="레시피 보드에서 남긴 추출 평가 모아보기">
+              추출 평가
             </Link>
             {toolTabs.includes('calibration') && (
-              <Link href="/garden/calibration" className="text-body text-muted-foreground underline hover:text-foreground">
-                분쇄도 측정 →
+              <Link href="/garden/calibration" className="fc-txt">
+                분쇄도 측정
               </Link>
             )}
             {toolTabs.includes('beancard') && (
-              <Link href="/garden/beancard" className="text-body text-muted-foreground underline hover:text-foreground">
-                원두카드 인쇄 →
+              <Link href="/garden/beancard" className="fc-txt">
+                원두카드 인쇄
               </Link>
             )}
           </div>
@@ -1461,16 +1461,9 @@ export default function GardenDashboard({
                   <button
                     key={id}
                     onClick={() => setSelectedCountry(id)}
-                    className={`rounded-md border px-2.5 py-1 text-body transition-colors ${
-                      on
-                        ? warn
-                          ? 'border-amber-600 bg-amber-600 text-white'
-                          : 'border-foreground bg-foreground text-background'
-                        : warn
-                          ? 'border-amber-500/40 text-amber-700 dark:text-amber-400'
-                          : 'border-border text-muted-foreground hover:text-foreground'
-                    }`}
-                    style={warn && arr[i + 1] ? { marginRight: 10 } : undefined}
+                    aria-pressed={on}
+                    className={`fc-txt ${on ? 'on' : ''} ${warn ? 'fc-need' : ''}`}
+                    style={warn ? { fontWeight: on ? 500 : 400, color: on ? undefined : 'hsl(var(--muted-foreground))' } : undefined}
                   >
                     {label}
                     <span style={{ marginLeft: 4, opacity: 0.7 }}>{n}</span>
@@ -1564,16 +1557,6 @@ export default function GardenDashboard({
 
       {/* 발주 기록의 수령 창 · 발주 메시지 미리보기 */}
       {orders.overlays}
-
-      {/* 추출 타이머 오버레이 — 카드의 ▶ 타이머로 열기 */}
-      {timerFor && (
-        <BrewTimer
-          bean={timerFor.bean}
-          brewType={timerFor.brewType}
-          recipe={timerFor.recipe}
-          onClose={() => setTimerFor(null)}
-        />
-      )}
     </div>
   );
 }
@@ -1705,7 +1688,7 @@ function PangyoMeshRow({
 function SpecRow({ label, value }: { label: string; value: string | null }) {
   if (!value) return null;
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
       <span className="text-muted-foreground">{label}</span>
       <span className="tabular text-foreground">{value}</span>
     </div>
