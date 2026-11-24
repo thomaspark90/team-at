@@ -21,11 +21,10 @@ const TASKS: {
 export default function GrinderUpkeep({ rows }: { rows: GrinderUpkeepRow[] }) {
   if (rows.length === 0) return null;
   return (
-    <div className="ta-panel min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-        <span className="text-body font-medium text-foreground">그라인더 관리</span>
-        <span className="text-caption text-muted-foreground">마지막 기록일 · 누르면 기록 화면으로</span>
-      </div>
+    <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
+        그라인더 관리 · 마지막 기록일(누르면 기록 화면으로)
+      </p>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
@@ -43,26 +42,26 @@ export default function GrinderUpkeep({ rows }: { rows: GrinderUpkeepRow[] }) {
         </thead>
         <tbody>
           {TASKS.map((t) => (
-            <tr key={t.id} className="border-t border-border">
-              <td style={{ padding: '10px 0' }}>
+            <tr key={t.id}>
+              <td className="fc-shade-t" style={{ padding: '12px 0' }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <span
                     aria-hidden
                     style={{ width: 7, height: 7, borderRadius: 2, background: colorOf(t.id), flexShrink: 0 }}
                   />
-                  <span className="text-body font-medium text-foreground">{t.title}</span>
-                  <span className="text-caption text-muted-foreground">{t.caption}</span>
+                  <span className="text-body text-foreground">{t.title}</span>
                 </span>
               </td>
               {rows.map((r) => {
                 const date = t.pick(r);
                 return (
-                  <td key={r.store} style={{ padding: '10px 0 10px 12px', textAlign: 'right', width: 1 }}>
+                  <td key={r.store} className="fc-shade-t" style={{ padding: '12px 0 12px 16px', textAlign: 'right', width: 1 }}>
                     <Link
                       href="/garden/calibration"
                       aria-label={`${r.label} ${t.title} — ${t.caption} ${date ?? '기록 없음'}`}
-                      className={`ta-btn tabular whitespace-nowrap ${date ? '' : 'text-muted-foreground'}`}
-                      style={{ height: 28, paddingLeft: 10, paddingRight: 10, fontSize: 13 }}
+                      className={`fc-txt tabular text-body ${date ? 'on' : ''}`}
+                      style={{ fontWeight: 400 }}
+                      title={t.caption}
                     >
                       {date ?? '기록 없음'}
                     </Link>

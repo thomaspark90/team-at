@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { BoardCard, BoardScope, BoardType, GrinderUpkeepRow } from '@/lib/garden/board';
 import { BOARD_COLUMNS, BOARD_TYPES } from '@/lib/garden/board';
@@ -13,6 +13,8 @@ import GrinderUpkeep from './GrinderUpkeep';
 // 스탭밀(scope='staffmeal')은 메뉴 스토리·송금. 카드마다 흐름의 현재 단계를 표시하고,
 // 내 차례인 일은 위쪽 '내 차례'에 먼저 모아준다.
 // 데이터는 /api/garden-board 가 권한(섹션·가든 탭·재무 역할)까지 적용해 내려준다.
+// 2026-11-24 디자인 개선: 패널(그림자 상자) 없이 흰 바탕, 줄 구분은 옅은 음영, 행동은 글자 버튼.
+// aside 를 넘기면(가든 홈) 넓은 화면에서 두 단 — 왼쪽 내 차례·팀 전체, 오른쪽 참고 칸(그라인더 관리 + aside).
 
 const typeOf = (t: BoardType) => BOARD_TYPES.find((x) => x.id === t)!;
 
@@ -54,9 +56,9 @@ function Card({ card, onReceive }: { card: BoardCard; onReceive: (c: BoardCard) 
   const t = typeOf(card.type);
   return (
     <div
-      className="rounded-md bg-background shadow-soft-sm"
+      className="fc-lift"
       style={{
-        padding: '11px 12px',
+        padding: '14px 16px',
         display: 'flex',
         flexDirection: 'column',
         gap: 8,
@@ -163,7 +165,7 @@ function Card({ card, onReceive }: { card: BoardCard; onReceive: (c: BoardCard) 
   );
 }
 
-export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) {
+export default function WorkBoard({ scope = 'garden', aside }: { scope?: BoardScope; aside?: ReactNode }) {
   const [cards, setCards] = useState<BoardCard[] | null>(null);
   // 그라인더 측정·얼라인 점검 — 카드가 아니라 맨 아래 표의 날짜 버튼(리마인더 없음)
   const [grinder, setGrinder] = useState<GrinderUpkeepRow[]>([]);
@@ -214,8 +216,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
 
   const countOf = (t: BoardType) => (cards ?? []).filter((c) => c.type === t).length;
 
-  const chip = (active: boolean): string =>
-    `ta-seg-item ${active ? 'ta-seg-on' : ''}`;
+  const chip = (active: boolean): string => `fc-txt ${active ? 'on' : ''}`;
 
   if (cards === null) {
     return <p className="text-body text-muted-foreground">할 일을 불러오는 중…</p>;
@@ -224,7 +225,8 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
   const colCount = (id: string) => (cards ?? []).filter((c) => c.column === id).length;
 
   return (
-    <div className="space-y-6">
+    <div className={aside ? 'grid items-start gap-x-16 gap-y-12 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]' : 'space-y-10'}>
+      <div className="min-w-0 space-y-8">
       {pickerOpen && !receiving && (
         <BeanReceivePicker
           targets={receiveTargets}
@@ -245,19 +247,15 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
         />
       )}
       {/* 내 차례 — 주 패널. 들어오자마자 자기 일이 먼저 보이게. 행동은 모든 행이 같은 텍스트 › (2026-11-19 대표 지시 — 첫 행만 검은 버튼이면 같은 행동이 다르게 보여 통일) */}
-      <div className="ta-panel min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-          <span className="text-title font-medium text-foreground">내 차례</span>
-          <span
-            className="tabular text-caption"
-            style={{ padding: '1px 8px', borderRadius: 999, background: 'hsl(var(--foreground))', color: 'hsl(var(--background))' }}
-          >
-            {mineCards.length}
+      <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px 18px', flexWrap: 'wrap' }}>
+          <span className="text-title font-medium text-foreground">
+            내 차례 <span className="tabular">{mineCards.length}</span>
           </span>
           <span style={{ flex: 1 }} />
           {/* 네임택 프린트 — 브런치 네임택 고르기 화면으로 가는 지름길 (네임택 탭 권한이 있는 사람만 보인다, 2026-11-20) */}
           {canNametag && (
-            <Link href="/garden/nametags" className="ta-btn" style={{ height: 34, paddingLeft: 14, paddingRight: 14, display: 'inline-flex', alignItems: 'center' }}>
+            <Link href="/garden/nametags" className="fc-txt text-body">
               네임택 프린트
             </Link>
           )}
@@ -267,45 +265,50 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
               type="button"
               onClick={() => setPickerOpen(true)}
               className="ta-btn-primary"
-              style={{ height: 34, paddingLeft: 14, paddingRight: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              title="지점 선택 → 받은 봉투 촬영 → 영문명 확정 → 원두카드 요청"
             >
-              📷 원두 수령
+              원두 수령
               {receiveTargets.length > 0 && <span className="tabular" style={{ opacity: 0.7 }}>{receiveTargets.length}</span>}
             </button>
           )}
         </div>
         {mineCards.length === 0 ? (
           <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
-            지금 내 차례인 일은 없어요. 아래 보드에서 팀 전체 진행 상황을 볼 수 있습니다.
+            지금 내 차례인 일은 없어요. 아래 「팀 전체」에서 진행 상황을 볼 수 있습니다.
           </p>
         ) : (
-          <div className="divide-y divide-border" style={{ display: 'flex', flexDirection: 'column' }}>
-            {mineCards.map((c) => (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {mineCards.map((c, i) => (
+              // 한 줄 = 할 일 이름 + 아래 작은 설명, 오른쪽에 글자 버튼. 줄 사이는 옅은 음영
               <div
                 key={c.id}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 0' }}
+                className={i > 0 ? 'fc-shade-t' : ''}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 0' }}
               >
-                {dot(typeOf(c.type).color)}
-                <span className="text-body font-medium text-foreground">{c.title}</span>
-                <span className="text-caption text-muted-foreground">
-                  {c.mineReason}
-                  {c.meta[0] ? ` · ${c.meta[0].text}` : ''}
+                <span className="min-w-0" style={{ flex: 1 }}>
+                  <span className="text-body text-foreground" style={{ display: 'flex', alignItems: 'baseline', gap: 9 }}>
+                    <span style={{ alignSelf: 'center', display: 'inline-flex' }}>{dot(typeOf(c.type).color)}</span>
+                    <span className="min-w-0">{c.title}</span>
+                  </span>
+                  <span className="text-caption text-muted-foreground" style={{ display: 'block', marginLeft: 16, marginTop: 2 }}>
+                    {c.mineReason}
+                    {c.meta[0] ? ` · ${c.meta[0].text}` : ''}
+                  </span>
                 </span>
-                <span style={{ flex: 1 }} />
                 {c.receive ? (
                   c.receive.allowed && (
                     <button
                       type="button"
                       onClick={() => openReceive(c)}
-                      className="whitespace-nowrap text-body text-foreground hover:underline"
-                      style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer' }}
+                      className="fc-txt on text-body"
                     >
-                      {c.actionLabel} ›
+                      {c.actionLabel}
                     </button>
                   )
                 ) : (
-                  <Link href={c.href} className="whitespace-nowrap text-body text-foreground hover:underline">
-                    {c.actionLabel} ›
+                  <Link href={c.href} className="fc-txt on text-body">
+                    {c.actionLabel}
                   </Link>
                 )}
               </div>
@@ -315,9 +318,9 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
       </div>
 
       {/* 팀 전체 — 접힌 한 줄. 펼치면 필터 + 3열 보드 */}
-      <div className="ta-panel" style={{ display: 'flex', flexDirection: 'column', gap: teamOpen ? 24 : 0 }}>
+      <div className="fc-shade-t" style={{ display: 'flex', flexDirection: 'column', gap: teamOpen ? 24 : 0, paddingTop: 18 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-        <span className="text-body font-medium text-foreground">팀 전체</span>
+        <span className="text-body text-muted-foreground">팀 전체</span>
         <span className="text-caption text-muted-foreground tabular">
           {BOARD_COLUMNS.map((col) => `${col.label} ${colCount(col.id)}`).join(' · ')}
         </span>
@@ -325,15 +328,14 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
         <button
           type="button"
           onClick={() => setTeamOpen((v) => !v)}
-          className="text-body text-foreground hover:underline"
-          style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer' }}
+          className={`fc-txt text-body ${teamOpen ? 'on' : ''}`}
         >
           {teamOpen ? '접기' : '보드 ›'}
         </button>
       </div>
       {teamOpen && (<>
-      {/* 필터 — 세그먼트 컨트롤(2026-09-10 옛 칩 교체) */}
-      <div className="ta-seg flex-wrap">
+      {/* 필터 — 글자 버튼(선택된 것만 진하게) */}
+      <div className="text-body" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px' }}>
         <button onClick={() => setFilter('all')} className={chip(filter === 'all')}>
           전체 <span className="tabular" style={{ opacity: 0.65 }}>{cards.length}</span>
         </button>
@@ -358,7 +360,7 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
         {BOARD_COLUMNS.map((col) => {
           const list = shown.filter((c) => c.column === col.id);
           return (
-            <div key={col.id} className="rounded-md bg-muted/40 p-6 min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div key={col.id} className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span className="text-caption font-medium text-foreground" style={{ letterSpacing: '0.04em' }}>{col.label}</span>
                 <span className="tabular text-caption text-muted-foreground">{list.length}</span>
@@ -380,8 +382,13 @@ export default function WorkBoard({ scope = 'garden' }: { scope?: BoardScope }) 
       </div>
       </>)}
       </div>
+      </div>
 
-      <GrinderUpkeep rows={grinder} />
+      {/* 참고 칸 — 그라인더 관리 + 화면이 넘긴 aside(가든 홈: 그라인더 캘리브레이션) */}
+      <div className="min-w-0 space-y-8">
+        <GrinderUpkeep rows={grinder} />
+        {aside}
+      </div>
     </div>
   );
 }

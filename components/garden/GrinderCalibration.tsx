@@ -71,15 +71,15 @@ export default function GrinderCalibration({
   const SAMPLE_DIALS = [5.5, 6, 6.5, 7, 7.5];
 
   return (
-    <div className="ta-panel min-w-0">
-      {/* 패널 한 줄로 접힘 — 위 패널들과 같은 문법(2026-09-10) */}
+    <div className="fc-shade-t min-w-0" style={{ paddingTop: 18 }}>
+      {/* 한 줄로 접힘 — 패널 상자 없이 위쪽 옅은 음영으로만 구분(2026-11-24) */}
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-3 text-left text-body"
         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: open ? 12 : 0 }}
       >
-        <span className="font-medium text-foreground">그라인더 캘리브레이션 <span className="font-normal text-muted-foreground">EK43 지점 연동</span></span>
-        <span className="text-foreground">{open ? '접기' : '열기 ›'}</span>
+        <span className="text-foreground">그라인더 캘리브레이션 <span className="text-muted-foreground">EK43 지점 연동</span></span>
+        <span className={`fc-txt ${open ? 'on' : ''}`}>{open ? '접기' : '열기 ›'}</span>
       </button>
 
       {open && (

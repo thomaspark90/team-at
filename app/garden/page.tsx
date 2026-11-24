@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import PageShell from '@/components/PageShell';
 import GardenNav from '@/components/garden/GardenNav';
-import GardenDashboard from '@/components/garden/GardenDashboard';
 import GardenOps from '@/components/garden/GardenOps';
 import WeatherStrip from '@/components/garden/WeatherStrip';
 import BeanUsageStrip from '@/components/garden/BeanUsageStrip';
@@ -12,8 +11,8 @@ import WorkBoard from '@/components/garden/WorkBoard';
 // 가든 홈(옛 이름 "작업 보드") — 2026-09-09 소프트 UI 4단계: 행동이 위, 참고는 한 줄.
 //  · 제목 아래 날씨는 오늘·내일 한 줄(WeatherStrip compact) — 2주 예보는 눌러야 펼쳐진다.
 //  · 날씨 줄 바로 아래 원두 일 사용량 한 줄(BeanUsageStrip, kg/일 주중·주말) — 1kg 단위 발주 참고(2026-09-13).
-//  · 내 차례가 주 패널로 맨 위, 팀 전체 보드는 접힌 한 줄(WorkBoard 안에서 처리).
-//  · 그 아래 미설정 원두·그라인더 캘리브레이션은 그대로, 구분선 없이 간격으로만 나눈다.
+//  · 2026-11-24 디자인 개선: 넓은 화면은 두 단 — 왼쪽 내 차례·팀 전체(접힌 한 줄), 오른쪽 참고 칸(그라인더 관리·캘리브레이션).
+//    패널 상자 없이 흰 바탕·옅은 음영으로만 나눈다. '레시피 미설정 원두' 카드는 「내 차례」·필터커피 「설정 필요」와 겹쳐 홈에서 뺐다.
 export default function GardenPage() {
   // 휴대폰에서는 날씨·원두 사용량을 접어 두고 로고 오른쪽의 동그란 i 버튼으로 연다(2026-11-20 대표 지시). 넓은 화면은 항상 보인다.
   const [infoOpen, setInfoOpen] = useState(false);
@@ -45,11 +44,7 @@ export default function GardenPage() {
           <BeanUsageStrip alignEnd />
         </div>
       </header>
-      <div className="space-y-12">
-        <WorkBoard />
-        <GardenDashboard section="unset" />
-        <GardenOps />
-      </div>
+      <WorkBoard aside={<GardenOps />} />
     </PageShell>
   );
 }

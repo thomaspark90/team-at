@@ -30,7 +30,7 @@ export default function GardenBeanGuidePage() {
   return (
     <PageShell nav={<GardenNav />}>
       <EducationTabs />
-      <header className="mb-16 pt-6 sm:mb-24 sm:pt-14">
+      <header className="mb-16 pt-2 sm:mb-24 sm:pt-6">
         <h1 className="m-0 text-display">원두에 대한 이해</h1>
         <div className="ta-prose mt-3 text-body text-muted-foreground">산지, 농장, 이름, 품종, 가공, 재배 조건으로 원두를 읽는 법을 정리했습니다.</div>
       </header>

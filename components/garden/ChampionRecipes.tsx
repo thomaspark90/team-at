@@ -1,21 +1,20 @@
 'use client';
 
 import { CHAMPION_RECIPES } from '@/lib/champion-recipes';
+import GuideHead from '@/components/garden/GuideHead';
 
 export default function ChampionRecipes() {
   return (
-    <div className="divide-y divide-border" style={{ width: '100%', minWidth: 0 }}>
-      <div className="min-w-0 pb-[54px]">
-        {/* 내비 활성 탭이 이미 "필터 레시피 추천"을 알려줘서 캡션엔 안 겹치는 부분만(2026-08-09) */}
-        <p className="ta-label" style={{ marginBottom: 4 }}>월드 브루어스컵 챔피언</p>
-        <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
-          24·25·26년 우승 레시피를 매장 카드 형식으로 정리했어요. 출처에 공개된 수치 그대로이며, 없는 값은 생략.
-          바리스타 챔피언십(WBC)은 에스프레소 종목이라 필터 레시피가 없어 브루어스컵 기준이에요.
-        </p>
-      </div>
+    <div style={{ width: '100%', minWidth: 0 }}>
+      {/* 머리 — 교육 자료 세 화면 공통 틀(제목 + 한 줄 설명 + 목차, 2026-11-24) */}
+      <GuideHead
+        title="필터 레시피 추천"
+        lead="월드 브루어스컵 챔피언의 24·25·26년 우승 레시피를 매장 카드 형식으로 정리했어요. 출처에 공개된 수치 그대로이며, 없는 값은 생략. 바리스타 챔피언십(WBC)은 에스프레소 종목이라 필터 레시피가 없어 브루어스컵 기준이에요."
+        sections={CHAMPION_RECIPES.map((r) => ({ id: `champion-${r.year}`, label: `${r.year} ${r.champion}` }))}
+      />
 
       {CHAMPION_RECIPES.map((r, idx) => (
-        <div key={r.year} className={`min-w-0 ${idx === CHAMPION_RECIPES.length - 1 ? 'pt-[54px]' : 'py-[54px]'}`} style={{ display: 'flex', flexDirection: 'column' }}>
+        <div key={r.year} id={`champion-${r.year}`} className={`min-w-0 scroll-mt-28 ${idx === 0 ? 'pb-[54px]' : idx === CHAMPION_RECIPES.length - 1 ? 'fc-shade-t pt-[54px]' : 'fc-shade-t py-[54px]'}`} style={{ display: 'flex', flexDirection: 'column' }}>
           {/* 헤더 — 연도·대회·챔피언 */}
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
             <span className="text-title font-medium text-foreground">
@@ -41,11 +40,11 @@ export default function ChampionRecipes() {
             </div>
 
             {/* 푸어링 단계 — 대시보드 카드와 동일 포맷 */}
-            <div className="rounded-md bg-muted/40" style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div className="fc-shade-t text-caption" style={{ padding: '10px 0 0', display: 'flex', flexDirection: 'column', gap: 4 }}>
               {r.steps.map((s, i) => {
                 const cum = r.steps.slice(0, i + 1).reduce((a, x) => a + x.water, 0);
                 return (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11 }}>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                     <span className="text-muted-foreground">
                       {s.at} {s.label}
                     </span>

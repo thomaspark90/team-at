@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import PageShell from '@/components/PageShell';
 import GardenNav from '@/components/garden/GardenNav';
 import EducationTabs from '@/components/garden/EducationTabs';
+import GuideHead from '@/components/garden/GuideHead';
 import TheoryCite from '@/components/garden/theory/TheoryCite';
 import { AttributeTable, CupTable, SourceList } from '@/components/garden/theory/TheoryTables';
 import { THEORY_SOURCES } from '@/lib/garden/extraction-theory';
@@ -33,16 +34,24 @@ export default function GardenTheoryPage() {
       nav={<GardenNav />}
     >
       <EducationTabs />
-      {/* 이 페이지만 여백을 넓게 쓴다 — PageShell 공통 제목 줄 대신 직접 그린다 */}
-      <header className="mb-16 pt-6 sm:mb-24 sm:pt-14">
-        <h1 className="m-0 text-display">커피 추출 이론</h1>
-        <div className="ta-prose mt-3 text-body text-muted-foreground">
-          모든 성분은 First drop에 가장 진하고, 줄어드는 속도만 다릅니다.
-          <TheoryCite ids={['schmieder', 'gute']} />
-        </div>
-      </header>
+      <GuideHead
+        title="커피 추출 이론"
+        lead={
+          <>
+            모든 성분은 First drop에 가장 진하고, 줄어드는 속도만 다릅니다.
+            <TheoryCite ids={['schmieder', 'gute']} />
+          </>
+        }
+        sections={[
+          { id: 'theory-roast', label: '배전도별 추출 양상' },
+          { id: 'theory-measured', label: '측정된 추출 양상' },
+          { id: 'theory-ratio', label: '비율별 수율 및 TDS' },
+          { id: 'theory-summary', label: '요소별 요약' },
+          { id: 'theory-sources', label: '출처' },
+        ]}
+      />
       <div className="space-y-16 pb-10 sm:space-y-24 sm:pb-20">
-        <section>
+        <section id="theory-roast" className="scroll-mt-28">
           <Heading>배전도별 추출 양상</Heading>
           <p className="ta-prose m-0 mb-2 text-body text-muted-foreground">측정값이 아닌 모식도라 눈금이 없습니다. 항목별 근거는 아래 표에 있습니다.</p>
           <RoastFlavorCharts />
@@ -51,7 +60,7 @@ export default function GardenTheoryPage() {
           </Note>
         </section>
 
-        <section>
+        <section id="theory-measured" className="scroll-mt-28">
           <Heading>측정된 추출 양상</Heading>
           <div className="grid gap-x-8 gap-y-6 md:grid-cols-2">
             <figure className="m-0 min-w-0">
@@ -73,7 +82,7 @@ export default function GardenTheoryPage() {
           </div>
         </section>
 
-        <section>
+        <section id="theory-ratio" className="scroll-mt-28">
           <Heading>비율별 수율 및 TDS</Heading>
           <p className="ta-prose m-0 mb-2 text-body text-muted-foreground">
             1:1에서 1:3 잔 고형물의 약 70%가 나옵니다.
@@ -83,12 +92,12 @@ export default function GardenTheoryPage() {
           <Note>수율은 원두에서 녹아 나온 비율, TDS(총용존고형물)는 음료에 녹아 있는 고형물의 비율, 회수는 1:3 잔 대비 비율입니다. 원두 1종의 측정값이므로 목표치로 쓰지 마세요.<TheoryCite ids={['schmieder']} /></Note>
         </section>
 
-        <section>
+        <section id="theory-summary" className="scroll-mt-28">
           <Heading>요소별 추출 과정 및 요약</Heading>
           <AttributeTable />
         </section>
 
-        <details id="theory-sources" className="group">
+        <details id="theory-sources" className="group scroll-mt-28">
           <summary className="flex w-fit cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
             <h2 className="m-0 text-title">출처</h2>
             <span className="text-caption text-muted-foreground">{THEORY_SOURCES.length}건</span>

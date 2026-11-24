@@ -8,9 +8,9 @@ export default function SectionNav() {
     if (id === GLOSSARY_ID) document.getElementById(id)?.setAttribute('open', '');
   };
   return (
-    <nav aria-label="섹션 바로가기" className="sticky top-11 z-20 -mt-8 mb-10 flex flex-wrap gap-x-4 gap-y-1 border-b border-border bg-background/90 py-2 backdrop-blur sm:-mt-12 sm:mb-16">
+    <nav aria-label="섹션 바로가기" className="sticky top-11 z-20 -mt-8 mb-10 flex flex-wrap gap-x-5 gap-y-1 bg-background/90 py-2 shadow-[0_8px_14px_-12px_rgba(0,0,0,0.16)] backdrop-blur sm:-mt-12 sm:mb-16">
       {BEAN_SECTIONS.map((s) => (
-        <a key={s.id} href={`#${s.id}`} onClick={() => open(s.id)} className="whitespace-nowrap text-body text-muted-foreground hover:text-foreground">
+        <a key={s.id} href={`#${s.id}`} onClick={() => open(s.id)} className="fc-txt text-body">
           {s.label}
         </a>
       ))}
