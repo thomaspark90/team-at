@@ -18,6 +18,7 @@ export type KakaoNotifyJob = {
   requestedBy: string; // [발주] 버튼을 누른 계정 이메일
   sentAt?: string;
   error?: string;
+  manual?: boolean; // 카톡 전송 없이 '직접 발주 완료'로 닫은 건 — 전화·직접 카톡 등 (2026-11-24)
 };
 
 // 로스터리 → 발주 카톡방 표시 이름 매핑 — 가든 설정(발주 드롭다운 관리)에서 입력.

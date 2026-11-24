@@ -11,10 +11,10 @@ import { toast } from '@/components/Toast';
 type Preview = { recId: string; room: string; message: string };
 
 // 버튼 라벨 — 대기(전송기가 아직 안 집어감)와 완료를 구분해 보여준다
-const labelOf = (status: string | undefined, sending: boolean) => {
+const labelOf = (status: string | undefined, sending: boolean, manual: boolean) => {
   if (sending) return '…';
   if (status === 'pending') return '대기중';
-  if (status === 'sent') return '발주됨 ✓';
+  if (status === 'sent') return manual ? '직접 발주 ✓' : '발주됨 ✓';
   if (status === 'failed') return '실패·재시도';
   return '발주';
 };
@@ -23,6 +23,7 @@ export function useKakaoOrder() {
   const [allowed, setAllowed] = useState(false);
   const [jobs, setJobs] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({}); // 실패 사유(맥 전송기가 보고)
+  const [manual, setManual] = useState<Record<string, true>>({}); // 카톡 없이 '직접 발주 완료'로 닫은 건
   const [sending, setSending] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
 
@@ -41,6 +42,7 @@ export function useKakaoOrder() {
           return j.jobs ?? {};
         });
         setErrors(j.errors ?? {});
+        setManual(j.manual ?? {});
       })
       .catch(() => {});
   useEffect(() => {
@@ -107,6 +109,30 @@ export function useKakaoOrder() {
     }
   };
 
+  // 직접 발주 완료 — 전화·직접 카톡 등으로 이미 발주한 건. 카톡을 보내지 않고 완료로만 바꾼다(리마인드 메일도 멈춘다)
+  const markManual = async () => {
+    if (!preview || sending) return;
+    setSending(preview.recId);
+    try {
+      const res = await fetch('/api/kakao-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purchaseId: preview.recId, manual: true }),
+      });
+      const j = await res.json().catch(() => null);
+      if (res.ok && j?.job) {
+        setJobs((m) => ({ ...m, [preview.recId]: j.job.status }));
+        if (j.job.manual) setManual((m) => ({ ...m, [preview.recId]: true }));
+        setPreview(null);
+        toast('직접 발주 완료로 바꿨어요. 카톡은 보내지 않아요.');
+      } else {
+        toast(j?.error ?? '직접 발주 완료 처리에 실패했습니다.', 'error');
+      }
+    } finally {
+      setSending(null);
+    }
+  };
+
   const button = (rec: PurchaseRecord) => {
     if (!allowed) return null;
     const status = jobs[rec.id];
@@ -117,9 +143,15 @@ export function useKakaoOrder() {
         disabled={sending === rec.id || status === 'pending' || status === 'sent'}
         className={status === 'sent' ? 'text-muted-foreground' : 'text-foreground hover:text-foreground'}
         style={{ background: 'none', border: 'none', cursor: status === 'sent' ? 'default' : 'pointer', fontSize: 11, flexShrink: 0, padding: 0 }}
-        title={status === 'failed' ? `전송 실패 — ${errors[rec.id] ?? '원인 미상'}\n눌러서 다시 보내기` : '카톡방에 발주 메시지 전송'}
+        title={
+          status === 'failed'
+            ? `전송 실패 — ${errors[rec.id] ?? '원인 미상'}\n눌러서 다시 보내기`
+            : status === 'sent' && manual[rec.id]
+              ? '카톡 전송 없이 직접 발주 완료로 처리됨'
+              : '카톡방에 발주 메시지 전송 · 직접 발주 완료 처리'
+        }
       >
-        {labelOf(status, sending === rec.id)}
+        {labelOf(status, sending === rec.id, !!manual[rec.id])}
       </button>
     );
   };
@@ -157,7 +189,17 @@ export function useKakaoOrder() {
           className="ta-input"
           style={{ width: '100%', minWidth: 0, height: 'auto', padding: 10, fontSize: 13, lineHeight: 1.6, resize: 'vertical', fontFamily: 'inherit' }}
         />
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          {/* 이미 직접 발주한 건 — 카톡 없이 완료로만 바꾼다. 전송 버튼과 떨어뜨려 왼쪽에 둔다 */}
+          <button
+            onClick={markManual}
+            disabled={sending != null}
+            className="ta-btn"
+            style={{ height: 34, paddingLeft: 14, paddingRight: 14, marginRight: 'auto' }}
+            title="카톡을 보내지 않고 발주 완료로 바꿉니다"
+          >
+            직접 발주 완료
+          </button>
           <button onClick={() => setPreview(null)} className="ta-btn" style={{ height: 34, paddingLeft: 14, paddingRight: 14 }}>
             취소
           </button>

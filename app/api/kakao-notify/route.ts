@@ -18,6 +18,8 @@ async function resolveRoom(record: { roastery?: string }): Promise<{ room: strin
 // GET ?purchaseId=...: 전송될 메시지 미리보기 — 버튼 클릭 시 담당자가 확인하는 원문.
 //   실제 전송분과 어긋나지 않도록 서버의 buildOrderMessage 를 그대로 쓴다.
 // POST { purchaseId }: 전송 잡 등록 — 실제 전송은 맥 로컬 전송기가 큐를 폴링해 수행
+// POST { purchaseId, manual: true }: 직접 발주 완료 — 카톡을 보내지 않고 완료(sent)로만 기록한다.
+//   전송기는 pending 만 집어가므로 건드리지 않고, 미전송 리마인드 메일도 sent 를 보고 멈춘다 (2026-11-24)
 
 export async function GET(req: Request) {
   const supabase = await createClient();
@@ -44,12 +46,15 @@ export async function GET(req: Request) {
   // readAll 은 오래된순 — 같은 발주의 잡이 여러 개면(실패 후 재시도) 최신 상태가 남는다
   const jobs: Record<string, KakaoNotifyJob['status']> = {};
   const errors: Record<string, string> = {}; // 실패 사유 — 버튼 툴팁·알림용 (2026-11-04)
+  const manual: Record<string, true> = {}; // 직접 발주 완료로 닫은 건 — 버튼 라벨 구분용
   for (const j of await kakaoNotifyJobs.readAll()) {
     jobs[j.purchaseId] = j.status;
+    if (j.manual) manual[j.purchaseId] = true;
+    else delete manual[j.purchaseId];
     if (j.status === 'failed' && j.error) errors[j.purchaseId] = j.error;
     else delete errors[j.purchaseId];
   }
-  return NextResponse.json({ allowed: true, jobs, errors });
+  return NextResponse.json({ allowed: true, jobs, errors, manual });
 }
 
 export async function POST(req: Request) {
@@ -78,6 +83,25 @@ export async function POST(req: Request) {
   const existing = (await kakaoNotifyJobs.readAll()).filter((j) => j.purchaseId === record.id);
   const active = existing.find((j) => j.status === 'pending' || j.status === 'sent');
   if (active) return NextResponse.json({ job: active, duplicated: true });
+
+  // 직접 발주 완료 — 카톡방 매핑·문구가 필요 없다. 처음부터 완료 상태로 남겨 전송기가 집어가지 않게 한다.
+  if (body?.manual === true) {
+    const now = new Date().toISOString();
+    const job: KakaoNotifyJob = {
+      id: crypto.randomUUID(),
+      createdAt: now,
+      purchaseId: record.id,
+      room: '',
+      message: '',
+      status: 'sent',
+      requestedBy: user.email ?? '',
+      sentAt: now,
+      manual: true,
+    };
+    await kakaoNotifyJobs.writeOne(job);
+    await logActivity(supabase, user, '가든서비스 직접 발주 완료', record.bean);
+    return NextResponse.json({ job });
+  }
 
   const target = await resolveRoom(record);
   if ('error' in target) return NextResponse.json({ error: target.error }, { status: 400 });

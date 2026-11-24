@@ -59,10 +59,10 @@ export async function GET(req: Request) {
     subject,
     html: `
     <div style="font-family:sans-serif;font-size:14px;line-height:1.7">
-      <p>아직 로스터리 카톡방에 발주 메시지를 보내지 않은 원두예요. 판매가 설정 화면에서 [발주]를 눌러 주세요.</p>
+      <p>아직 로스터리 카톡방에 발주 메시지를 보내지 않은 원두예요. 판매가 설정 화면에서 [발주]를 눌러 주세요. 이미 직접 발주했다면 [발주] → [직접 발주 완료]를 누르면 돼요.</p>
       <ul style="padding-left:18px">${items}</ul>
       <p><a href="${APP_URL}/garden/saleprice">판매가 설정 열기 →</a></p>
-      <p style="color:#888;font-size:12px">12·18·20시에 확인해 보내요. [발주]를 누르면(또는 저장 후 3일이 지나면) 더 오지 않아요.</p>
+      <p style="color:#888;font-size:12px">12·18·20시에 확인해 보내요. [발주]로 보내거나 [직접 발주 완료]를 누르면(또는 저장 후 3일이 지나면) 더 오지 않아요.</p>
     </div>`,
     push: {
       title: `발주 카톡 대기 ${waiting.length}건`,
