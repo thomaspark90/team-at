@@ -396,9 +396,9 @@ export default function GardenDashboard({
         roastery: latest?.roastery,
         orderDate: latest ? latest.orderDate ?? latest.createdAt : null,
         roast: roastInfo(latest),
-        // 판매가는 선택 지점 기준 — 양재천 책정가에 지점 차액(판교 −1,000원)을 더한 값 (lib/garden/store-price)
+        // 판매가는 선택 지점 기준 — 양재천 책정가에 구간별 지점 차액(판교 8,500원↑ −1,000 · 7,500원↑ −500)을 더한 값 (lib/garden/store-price)
         price: storePrice(latest?.chosenPrice, store),
-        priceNote: storePriceNote(store),
+        priceNote: storePriceNote(latest?.chosenPrice, store),
         purchaseId: latest?.id ?? null,
         // 미책정 — 예전 판매가 설정 화면에서 X로 숨겨 둔 기록은 표시하지 않는다
         priceNeeded: !!latest && latest.chosenPrice == null && !latest.priceDismissed,
@@ -745,7 +745,7 @@ export default function GardenDashboard({
   // sideBySide — 레시피 목록 펼침 전용: 가로 두 칸(좁으면 세로로 접힘). 아카이브는 세로 카드 유지
   const renderBeanCard = (g: BeanGroup, sideBySide = false) => {
     const latest = latestByBean.get(g.beanKey);
-    const sellPrice = storePrice(latest?.chosenPrice, store); // 선택 지점 판매가(판교 = 양재천 −1,000원)
+    const sellPrice = storePrice(latest?.chosenPrice, store); // 선택 지점 판매가(판교 = 양재천에서 구간별 차감)
     const roast = roastInfo(latest);
     return (
       // 2026-11-24 디자인 개선: 미색 면 없이 흰 바탕. 장부 펼침(sideBySide)은 틀 없이 HOT·ICE 칸만 그림자로 띄우고,

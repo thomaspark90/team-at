@@ -40,13 +40,24 @@ describe('지점별 판매가·재료비', () => {
   const at = (store: 'yangjae' | 'pangyo', brewType: 'ice' | 'hot', doseG: number) =>
     ({ ...recipe(brewType, doseG), store }) as unknown as DripRecipe;
 
-  it('판교 판매가는 양재천 책정가 −1,000원, 미책정은 그대로 미책정', () => {
-    expect(storePrice(7000, 'yangjae')).toBe(7000);
-    expect(storePrice(7000, 'pangyo')).toBe(6000);
+  it('판교 판매가는 구간제 — 8,500원 이상 −1,000 · 7,500원 이상 −500 · 그 아래 동일, 미책정은 그대로 미책정', () => {
+    expect(storePrice(9000, 'yangjae')).toBe(9000);
+    expect(storePrice(9000, 'pangyo')).toBe(8000);
+    expect(storePrice(8500, 'pangyo')).toBe(7500);
+    expect(storePrice(8000, 'pangyo')).toBe(7500);
+    expect(storePrice(7500, 'pangyo')).toBe(7000);
+    expect(storePrice(7000, 'pangyo')).toBe(7000);
+    expect(storePrice(6500, 'pangyo')).toBe(6500);
     expect(storePrice(null, 'pangyo')).toBeNull();
-    expect(storePrice(500, 'pangyo')).toBe(0);
-    expect(storePriceNote('pangyo')).toBe('양재천 −1,000원');
-    expect(storePriceNote('yangjae')).toBeNull();
+    expect(storePriceNote(8500, 'pangyo')).toBe('양재천 −1,000원');
+    expect(storePriceNote(7500, 'pangyo')).toBe('양재천 −500원');
+    expect(storePriceNote(7000, 'pangyo')).toBeNull();
+    expect(storePriceNote(null, 'pangyo')).toBeNull();
+    expect(storePriceNote(9000, 'yangjae')).toBeNull();
+  });
+
+  it('판교 판매가는 7,000원 이상 책정가에서 7,000원 밑으로 내려가지 않는다', () => {
+    for (let p = 7000; p <= 20000; p += 500) expect(storePrice(p, 'pangyo')).toBeGreaterThanOrEqual(7000);
   });
 
   it('판교 레시피가 있으면 판교 도징으로, 없으면 양재천 도징으로 재료비를 낸다', () => {

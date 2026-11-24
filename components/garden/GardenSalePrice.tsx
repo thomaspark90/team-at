@@ -307,7 +307,7 @@ export default function GardenSalePrice() {
                         <span className="gs-meta">
                           <span className="tabular text-muted-foreground" style={{ width: 64, flexShrink: 0 }}>{fmtDate(rec.createdAt)}</span>
                         </span>
-                        {/* 책정 판매가 — 양재천·판교 따로(판교 = 양재천 −1,000원), 재료비는 지점 레시피 도징 기준 */}
+                        {/* 책정 판매가 — 양재천·판교 따로(판교 = 양재천에서 구간별 차감, lib/garden/store-price), 재료비는 지점 레시피 도징 기준 */}
                         <span className="gs-price">
                           <StorePriceLines rec={rec} recipes={recipes} />
                         </span>

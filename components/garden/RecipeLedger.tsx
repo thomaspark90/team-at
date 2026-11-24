@@ -31,7 +31,7 @@ export type LedgerRow = {
   roastery?: string;
   orderDate: string | null; // YYYY-MM-DD 또는 ISO
   roast: RoastInfo | null; // 로스팅일 — 미기재면 발주일+1 추정(estimated)
-  price: number | null; // 보고 있는 지점의 판매가(원, VAT 포함 소비자가) — 판교는 양재천 책정가 −1,000원
+  price: number | null; // 보고 있는 지점의 판매가(원, VAT 포함 소비자가) — 판교는 양재천 책정가에서 구간별 차감
   priceNote: string | null; // 양재천 대비 차액 문구 — 있으면 파생값이라 이 화면에서 수정하지 않는다. 화면에는 표기하지 않는다(2026-11-19 대표 지시)
   purchaseId: string | null; // 판매가가 저장된 최신 발주 기록 — 판매가 칸 인라인 수정 대상
   priceNeeded: boolean; // 발주는 됐는데 판매가가 아직 없다 — '판매가 책정 필요'로 표시하고 '설정 필요' 필터에 잡힌다

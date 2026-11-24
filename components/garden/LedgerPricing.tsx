@@ -15,7 +15,7 @@ import PriceBandGuide from './PriceBandGuide';
 // 원두 장부(필터커피) 줄 펼침의 '판매가' 블록 — 2026-11-24 판매가 설정 화면을 장부로 옮겨 왔다.
 // 원두의 최신 발주 기록 기준으로 양재천·판교 판매가와 재료비율을 보여주고(누구나),
 // 판매가(saleprice) 권한 계정은 그 자리에서 책정·변경·해제·공유한다. 실제 권한 검증은 서버(PATCH /api/purchases).
-// 금액은 VAT 포함 소비자가, 재료비는 ICE·HOT 평균 도징 기준 잔당 금액, 판교 = 양재천 −1,000원.
+// 금액은 VAT 포함 소비자가, 재료비는 ICE·HOT 평균 도징 기준 잔당 금액, 판교 = 양재천에서 구간별 차감, lib/garden/store-price.
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 
