@@ -52,13 +52,13 @@ export type GardenNavEntry = { label: string; keys: string[]; hidden?: string[] 
 export const GARDEN_NAV: GardenNavEntry[] = [
   { label: '홈', keys: ['dashboard'] }, // 2026-11-20 대표 결정: '작업 보드' → '홈'(화면 제목은 가든서비스 로고 + 홈)
   // 2026-11-24 대표 결정: 발주 + 레시피 = 원두 장부 한 화면. 매일 쓰는 화면이라 묶음 없이 바로 연다. 발주(pricing)는 장부 안 버튼이라 메뉴에서 뺐다.
-  { label: '필터커피', keys: ['recipes'], hidden: ['pricing', 'saleprice'] },
-  { label: '커피(필터)', keys: ['recommended', 'calibration', 'beancard', 'theory', 'beanguide'] }, // 2026-10-30 '운영'→'커피(필터)', 원두카드를 레시피에서 이동 · 레시피 추천은 2026-11-24 이쪽으로
+  // 같은 날 '커피(필터) ▾' 묶음을 없앴다 — 작업 도구(분쇄도 측정·원두카드)는 필터커피 화면의 링크로, 읽는 자료(추출 이론·원두 이해·추천 레시피)는 교육의 탭으로.
+  { label: '필터커피', keys: ['recipes'], hidden: ['pricing', 'saleprice', 'calibration', 'beancard'] },
   { label: '분석', keys: ['sales', 'weather', 'reviews'] },
   { label: '스케줄', keys: ['schedule'] },
   { label: '체크리스트', keys: ['checklist'] }, // 항목 관리는 체크리스트 화면에서 들어간다 — 직원이 매일 쓰는 메뉴를 한 번에 열리게
   { label: '네임택', keys: ['nametags'] }, // 인쇄·메뉴 관리는 네임택 화면에서 들어간다(체크리스트 항목 관리와 같은 방식)
-  { label: '교육', keys: ['teaching'] },
+  { label: '교육', keys: ['teaching'], hidden: ['theory', 'beanguide', 'recommended'] }, // 읽는 자료는 화면 위 탭(EducationTabs)으로 오간다
   { label: '설정', keys: ['settings'] },
 ];
 export const GARDEN_TAB_KEYS = GARDEN_TABS.map((t) => t.key);

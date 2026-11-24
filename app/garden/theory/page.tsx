@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import PageShell from '@/components/PageShell';
 import GardenNav from '@/components/garden/GardenNav';
+import EducationTabs from '@/components/garden/EducationTabs';
 import TheoryCite from '@/components/garden/theory/TheoryCite';
 import { AttributeTable, CupTable, SourceList } from '@/components/garden/theory/TheoryTables';
 import { THEORY_SOURCES } from '@/lib/garden/extraction-theory';
@@ -31,6 +32,7 @@ export default function GardenTheoryPage() {
     <PageShell
       nav={<GardenNav />}
     >
+      <EducationTabs />
       {/* 이 페이지만 여백을 넓게 쓴다 — PageShell 공통 제목 줄 대신 직접 그린다 */}
       <header className="mb-16 pt-6 sm:mb-24 sm:pt-14">
         <h1 className="m-0 text-display">커피 추출 이론</h1>

@@ -169,8 +169,13 @@ export default function GardenDashboard({
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   // 필터커피 목록 판매가 인라인 수정 — saleprice 탭 권한(mine=null 은 전체 허용). 실제 검증은 서버 PATCH
   const [canEditPrice, setCanEditPrice] = useState(false);
+  // 필터커피 화면의 도구 링크(분쇄도 측정·원두카드) — 메뉴에서 뺀 화면이라 여기서 들어간다(2026-11-24). 권한 있는 것만 보인다
+  const [toolTabs, setToolTabs] = useState<string[]>([]);
   useEffect(() => {
-    fetchMyAccess().then((a) => setCanEditPrice(a.mine == null || a.mine.includes('saleprice')));
+    fetchMyAccess().then((a) => {
+      setCanEditPrice(a.mine == null || a.mine.includes('saleprice'));
+      setToolTabs(['calibration', 'beancard'].filter((k) => a.mine == null || a.mine.includes(k)));
+    });
   }, []);
   const [recipes, setRecipes] = useState<DripRecipe[]>([]);
   const [beanMetas, setBeanMetas] = useState<BeanMeta[]>([]);
@@ -1421,6 +1426,16 @@ export default function GardenDashboard({
             <Link href="/garden/filtercoffee/feedback" className="text-body text-muted-foreground underline hover:text-foreground">
               추출 평가 모아보기 →
             </Link>
+            {toolTabs.includes('calibration') && (
+              <Link href="/garden/calibration" className="text-body text-muted-foreground underline hover:text-foreground">
+                분쇄도 측정 →
+              </Link>
+            )}
+            {toolTabs.includes('beancard') && (
+              <Link href="/garden/beancard" className="text-body text-muted-foreground underline hover:text-foreground">
+                원두카드 인쇄 →
+              </Link>
+            )}
           </div>
           {!loading && activeGroups.length === 0 && unsetBeans.length === 0 && (
             <p className="text-body text-muted-foreground">

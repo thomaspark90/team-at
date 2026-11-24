@@ -2,6 +2,7 @@
 
 import PageShell from '@/components/PageShell';
 import GardenNav from '@/components/garden/GardenNav';
+import EducationTabs from '@/components/garden/EducationTabs';
 import GardenTeaching from '@/components/garden/teaching/GardenTeaching';
 
 // 매니저 교육 — 스탭은 배우고 싶은 주제를 고르고, 매니저·대표는 출근 일정과 지점별 요청·교육 기록을 본다.
@@ -9,6 +10,7 @@ import GardenTeaching from '@/components/garden/teaching/GardenTeaching';
 export default function GardenTeachingPage() {
   return (
     <PageShell nav={<GardenNav />}>
+      <EducationTabs />
       <GardenTeaching />
     </PageShell>
   );

@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { GARDEN_NAV, GARDEN_TABS, WORDS_CHANGED_EVENT, tabForPath } from '@/lib/garden/tabs';
+import { GARDEN_NAV, GARDEN_TABS, WORDS_CHANGED_EVENT, tabForPath, type GardenNavEntry } from '@/lib/garden/tabs';
 import { REVIEWS_CHANGED_EVENT } from '@/lib/garden/review-constants';
 import { fetchMyAccess } from '@/lib/access/tab-access-client';
 import LocalNav from '@/components/nav/LocalNav';
 import NavLink from '@/components/nav/NavLink';
 import NavMenu from '@/components/nav/NavMenu';
 
-// 가든 로컬 내비 — 한 줄: 홈 · 필터커피 · 커피(필터) ▾ · 분석 ▾ · … · 설정 (구성은 lib/garden/tabs.ts GARDEN_NAV).
+// 가든 로컬 내비 — 한 줄: 홈 · 필터커피 · 분석 ▾ · … · 교육 · 설정 (구성은 lib/garden/tabs.ts GARDEN_NAV).
 // 2026-09-09 탭 14개 나열 → 묶음으로 접음(소프트 UI 내비 통합). 권한·배지·리다이렉트 동작은 이전과 같다:
 //  · 설정의 '가든 탭 권한'에서 허용된 탭만 활성, 미허용은 흐리게 자리 유지(왜 못 가는지 보이게).
 //  · 미허용 경로 직접 접근 → 첫 허용 탭으로.
@@ -105,12 +105,25 @@ export default function GardenNav() {
     };
   };
 
+  // 한 칸짜리 메뉴 — 메뉴에서 뺀 화면(hidden)에 있어도 이 칸이 켜지고, 대표 화면 권한이 없으면 볼 수 있는 첫 화면으로 연다
+  const entryLink = (e: GardenNavEntry) => {
+    const all = [...e.keys, ...(e.hidden ?? [])];
+    const target = all.find(visible);
+    const main = itemOf(e.keys[0]);
+    return {
+      ...main,
+      href: target ? GARDEN_TABS.find((x) => x.key === target)!.href : main.href,
+      active: !!current && all.includes(current.key),
+      disabled: !target,
+    };
+  };
+
   // 설정도 같은 줄 끝에 — 오른쪽 슬롯은 모바일에서 숨겨져 설정에 못 들어가게 된다
   return (
     <LocalNav>
       {GARDEN_NAV.map((e) =>
         e.keys.length === 1 ? (
-          <NavLink key={e.label} {...itemOf(e.keys[0])} />
+          <NavLink key={e.label} {...entryLink(e)} />
         ) : (
           <NavMenu key={e.label} label={e.label} items={e.keys.map(itemOf)} />
         ),

@@ -2,6 +2,7 @@
 
 import PageShell from '@/components/PageShell';
 import GardenNav from '@/components/garden/GardenNav';
+import EducationTabs from '@/components/garden/EducationTabs';
 import BeanCite from '@/components/garden/bean-guide/BeanCite';
 import { AltitudeChain, AltitudeFindings, AltitudeMeasures, FactorTable, LatitudeTable, MythTable, ReviewCounts } from '@/components/garden/bean-guide/FactorTables';
 import FarmList from '@/components/garden/bean-guide/FarmTables';
@@ -28,6 +29,7 @@ const Note = ({ children }: { children: React.ReactNode }) => (
 export default function GardenBeanGuidePage() {
   return (
     <PageShell nav={<GardenNav />}>
+      <EducationTabs />
       <header className="mb-16 pt-6 sm:mb-24 sm:pt-14">
         <h1 className="m-0 text-display">원두에 대한 이해</h1>
         <div className="ta-prose mt-3 text-body text-muted-foreground">산지, 농장, 이름, 품종, 가공, 재배 조건으로 원두를 읽는 법을 정리했습니다.</div>
