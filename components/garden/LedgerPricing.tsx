@@ -11,11 +11,12 @@ import { toast } from '@/components/Toast';
 import StorePriceLines from './StorePriceLines';
 import PricePicks from './PricePicks';
 import PriceBandGuide from './PriceBandGuide';
+import StorePriceTable from './StorePriceTable';
 
 // 원두 장부(필터커피) 줄 펼침의 '판매가' 블록 — 2026-11-24 판매가 설정 화면을 장부로 옮겨 왔다.
 // 원두의 최신 발주 기록 기준으로 양재천·판교 판매가와 재료비율을 보여주고(누구나),
 // 판매가(saleprice) 권한 계정은 그 자리에서 책정·변경·해제·공유한다. 실제 권한 검증은 서버(PATCH /api/purchases).
-// 금액은 VAT 포함 소비자가, 재료비는 ICE·HOT 평균 도징 기준 잔당 금액, 판교 = 양재천에서 구간별 차감, lib/garden/store-price.
+// 금액은 VAT 포함 소비자가, 재료비는 ICE·HOT 평균 도징 기준 잔당 금액, 판교 = 양재천 − 산식표 차액(lib/garden/store-price, 이 블록의 '판교 가격 산식표'에서 수정).
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 
@@ -36,6 +37,7 @@ export function useLedgerPricing({
   const [picks, setPicks] = useState<Record<string, number>>({});
   const [openId, setOpenId] = useState<string | null>(null); // 책정된 기록의 [변경] 펼침
   const [guideFor, setGuideFor] = useState<string | null>(null); // 가격대 참고표를 펼친 원두
+  const [storeTableFor, setStoreTableFor] = useState<string | null>(null); // 판교 가격 산식표를 펼친 원두
   const [busyId, setBusyId] = useState<string | null>(null);
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -125,6 +127,7 @@ export function useLedgerPricing({
     const priced = rec.chosenPrice != null && rec.chosenPrice > 0;
     const pricerOpen = editable && (!priced || openId === rec.id);
     const guideOpen = editable && guideFor === beanKey;
+    const storeTableOpen = editable && storeTableFor === beanKey;
     return (
       <div className={`min-w-0 ${opts?.readOnly ? 'text-caption' : 'text-body'}`} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px 18px', flexWrap: 'wrap' }}>
@@ -148,6 +151,9 @@ export function useLedgerPricing({
                   {openId === rec.id ? '접기' : '변경'}
                 </button>
               )}
+              <button onClick={() => setStoreTableFor(storeTableOpen ? null : beanKey)} className={`fc-txt ${storeTableOpen ? 'on' : ''}`}>
+                판교 가격 산식표 {storeTableOpen ? '▴' : '▾'}
+              </button>
               <button onClick={() => setGuideFor(guideOpen ? null : beanKey)} className={`fc-txt ${guideOpen ? 'on' : ''}`}>
                 가격대 참고표 {guideOpen ? '▴' : '▾'}
               </button>
@@ -172,6 +178,11 @@ export function useLedgerPricing({
               onClear={priced ? () => decide(rec, null) : undefined}
               busy={busyId === rec.id}
             />
+          </div>
+        )}
+        {storeTableOpen && (
+          <div style={{ minWidth: 0 }}>
+            <StorePriceTable highlightPrice={picks[rec.id] ?? rec.chosenPrice ?? null} />
           </div>
         )}
         {guideOpen && (

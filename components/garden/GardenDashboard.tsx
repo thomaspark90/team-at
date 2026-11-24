@@ -28,6 +28,7 @@ import RecipeLedger, { type LedgerRow, type LedgerSlot } from '@/components/gard
 import { fetchMyAccess } from '@/lib/access/tab-access-client';
 import { baseDoseG } from '@/lib/garden/brew-cost';
 import { storePrice, storePriceNote } from '@/lib/garden/store-price';
+import { useStoreOffsets } from '@/lib/garden/store-offsets-client';
 import { useLedgerOrders } from '@/components/garden/LedgerOrders';
 import { useLedgerPricing } from '@/components/garden/LedgerPricing';
 
@@ -281,6 +282,7 @@ export default function GardenDashboard({
   };
 
   // 원두별 최신 발주 기록 (표시명·책정 판매가 참조용)
+  const storeOffsets = useStoreOffsets(); // 판교 가격 산식표 — 산식표에서 고치면 장부·카드 판매가가 바로 따라온다
   const latestByBean = useMemo(() => {
     const m = new Map<string, PurchaseRecord>();
     for (const r of purchases) {
@@ -396,9 +398,9 @@ export default function GardenDashboard({
         roastery: latest?.roastery,
         orderDate: latest ? latest.orderDate ?? latest.createdAt : null,
         roast: roastInfo(latest),
-        // 판매가는 선택 지점 기준 — 양재천 책정가에 구간별 지점 차액(판교 8,500원↑ −1,000 · 7,500원↑ −500)을 더한 값 (lib/garden/store-price)
-        price: storePrice(latest?.chosenPrice, store),
-        priceNote: storePriceNote(latest?.chosenPrice, store),
+        // 판매가는 선택 지점 기준 — 양재천 책정가에 산식표의 지점 차액을 더한 값 (lib/garden/store-price)
+        price: storePrice(latest?.chosenPrice, store, storeOffsets),
+        priceNote: storePriceNote(latest?.chosenPrice, store, storeOffsets),
         purchaseId: latest?.id ?? null,
         // 미책정 — 예전 판매가 설정 화면에서 X로 숨겨 둔 기록은 표시하지 않는다
         priceNeeded: !!latest && latest.chosenPrice == null && !latest.priceDismissed,
@@ -421,7 +423,7 @@ export default function GardenDashboard({
     const need = (r: LedgerRow) => (!r.ice || !r.hot || r.priceNeeded ? 1 : 0);
     return rows.sort((a, b) => need(b) - need(a) || (b.orderDate ?? '').localeCompare(a.orderDate ?? ''));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- isFallback 는 fallbackIds 만 참조
-  }, [activeGroups, unsetBeans, latestByBean, fallbackIds, store]);
+  }, [activeGroups, unsetBeans, latestByBean, fallbackIds, store, storeOffsets]);
   const ledgerCountries = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of ledgerRows) m.set(r.country, (m.get(r.country) ?? 0) + 1);
@@ -745,7 +747,7 @@ export default function GardenDashboard({
   // sideBySide — 레시피 목록 펼침 전용: 가로 두 칸(좁으면 세로로 접힘). 아카이브는 세로 카드 유지
   const renderBeanCard = (g: BeanGroup, sideBySide = false) => {
     const latest = latestByBean.get(g.beanKey);
-    const sellPrice = storePrice(latest?.chosenPrice, store); // 선택 지점 판매가(판교 = 양재천에서 구간별 차감)
+    const sellPrice = storePrice(latest?.chosenPrice, store, storeOffsets); // 선택 지점 판매가(판교 = 양재천 − 산식표 차액)
     const roast = roastInfo(latest);
     return (
       // 2026-11-24 디자인 개선: 미색 면 없이 흰 바탕. 장부 펼침(sideBySide)은 틀 없이 HOT·ICE 칸만 그림자로 띄우고,
