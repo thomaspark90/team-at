@@ -15,7 +15,7 @@ export function groupByNav<T extends { tab?: string }>(items: T[], otherLabel = 
   const groups: NavGroup<T>[] = [];
   const used = new Set<T>();
   for (const entry of GARDEN_NAV) {
-    const own = entry.keys.flatMap((k) => items.filter((it) => it.tab === k));
+    const own = [...entry.keys, ...(entry.hidden ?? [])].flatMap((k) => items.filter((it) => it.tab === k));
     if (own.length === 0) continue;
     own.forEach((it) => used.add(it));
     // 하위 탭이 하나뿐인 메뉴는 내비가 탭 이름을 그대로 보여준다(GardenNav 와 같은 규칙)

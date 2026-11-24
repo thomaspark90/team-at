@@ -19,7 +19,8 @@ const labelOf = (status: string | undefined, sending: boolean, manual: boolean) 
   return '발주';
 };
 
-export function useKakaoOrder() {
+// enabled=false 면 상태 조회를 하지 않는다 — 버튼·창을 쓰지 않는 화면(발주 입력 패널·홈)에서 불필요한 요청 방지
+export function useKakaoOrder(enabled = true) {
   const [allowed, setAllowed] = useState(false);
   const [jobs, setJobs] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({}); // 실패 사유(맥 전송기가 보고)
@@ -46,9 +47,9 @@ export function useKakaoOrder() {
       })
       .catch(() => {});
   useEffect(() => {
-    loadJobs();
+    if (enabled) loadJobs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [enabled]);
   // 대기 중인 잡이 있으면 15초마다 상태 확인 — 맥 전송기는 60초 주기로 집어간다
   const hasPending = Object.values(jobs).includes('pending');
   useEffect(() => {

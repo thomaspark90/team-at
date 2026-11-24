@@ -10,6 +10,7 @@ import { bandRange, defaultActiveCells, guideRowForCost, ratioRangeLabel, type A
 import PriceBandGuide from './PriceBandGuide';
 import BeanReceiveDialog from './BeanReceiveDialog';
 import { confirmedEnFor, receiveTodo } from '@/lib/garden/receive';
+import { toast } from '@/components/Toast';
 
 // 인라인 스타일에서 참조할 midday 토큰 (HSL 변수)
 const C = {
@@ -27,7 +28,17 @@ const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 // 발주 전용 화면 — 판매가 책정(판매가 선택·공유)은 권한이 분리된 '판매가 설정' 탭
 // (GardenSalePrice)이 담당한다. 여기서는 발주 기록 저장과 원가 확인까지만 한다.
 // receiveId — 작업 보드의 수령 카드에서 넘어오면(?receive=<id>) 그 발주의 수령 창을 바로 연다
-export default function GardenService({ receiveId = null }: { receiveId?: string | null }) {
+// embedded — 원두 장부(BeanLedger)의 [새 원두 발주] 패널로 쓸 때(2026-11-24). 입력 폼만 보여주고 '이전 발주 리스트'는
+//   장부 줄 펼침의 '발주 기록'(LedgerOrders)이 대신한다. 저장하면 onSaved 로 알려 장부가 다시 불러온다.
+export default function GardenService({
+  receiveId = null,
+  embedded = false,
+  onSaved,
+}: {
+  receiveId?: string | null;
+  embedded?: boolean;
+  onSaved?: (bean: string) => void;
+}) {
   const [settings, setSettings] = useState<PricingSettings>(DEFAULT_SETTINGS);
   const [bean, setBean] = useState('');
   // 영문 원두명 — 발주 때는 선택 입력(임시). 수령 후 봉투 표기를 보고 확정한다 (2026-11-19)
@@ -54,7 +65,10 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
   const [purchasesLoaded, setPurchasesLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   // 카톡 발주 [발주] 버튼·미리보기 — components/garden/KakaoOrder (판매가 설정 화면과 공유)
-  const kakao = useKakaoOrder();
+  const kakao = useKakaoOrder(!embedded);
+  // 창(embedded) 모드 — 산식 기준·참고표는 접어 두고 한 줄 요약만 보여준다
+  const [basisOpen, setBasisOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const refreshPurchases = async () => {
     const res = await fetch('/api/purchases', { cache: 'no-store' });
@@ -111,7 +125,7 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
   const savePurchase = async () => {
     if (!result || !bean.trim() || price <= 0 || saving) return;
     setSaving(true);
-    await fetch('/api/purchases', {
+    const saveRes = await fetch('/api/purchases', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -146,6 +160,15 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
     }
     await refreshPurchases();
     setSaving(false);
+    // 패널 모드 — 실패하면 닫지 않고 알린다(입력 내용 보존), 성공하면 장부에 알려 목록을 다시 불러오게 한다
+    if (embedded) {
+      if (!saveRes.ok) {
+        const j = await saveRes.json().catch(() => null);
+        toast(j?.error ?? '발주를 저장하지 못했어요.', 'error');
+        return;
+      }
+      onSaved?.(bean.trim());
+    }
   };
 
   const deletePurchase = async (id: string) => {
@@ -187,15 +210,15 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
 
   return (
     <div style={{ width: '100%', minWidth: 0 }}>
-      {receiving && canReceive && (
+      {!embedded && receiving && canReceive && (
         <BeanReceiveDialog
           record={receiving}
           onClose={() => setReceivingId(null)}
           onSaved={(updated) => setPurchases((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))}
         />
       )}
-      <div className="divide-y divide-border">
-        <div className="min-w-0 pb-[54px]">
+      <div className={embedded ? '' : 'divide-y divide-border'}>
+        <div className="min-w-0 pb-[54px]" style={{ display: embedded ? 'none' : undefined }}>
           <p className="ta-label">판매가 산식 기준</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 12px' }}>
             <Field label="구매 용량(g)" value={settings.capacityG} onChange={(v) => setNum('capacityG', v)} />
@@ -206,9 +229,9 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
           </div>
         </div>
 
-        <div className="min-w-0 py-[54px]">
+        <div className={embedded ? 'min-w-0' : 'min-w-0 py-[54px]'}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-            <p className="ta-label">원두 정보 입력</p>
+            <p className="ta-label">{embedded ? '원두' : '원두 정보 입력'}</p>
             {/* 원두봉투 촬영 → AI 인식으로 원두명·로스팅사·용량 자동 기입 (영수증 인식과 동일 패턴) */}
             <label className="ta-btn" style={{ height: 30, paddingLeft: 10, paddingRight: 10, fontSize: 13, cursor: 'pointer' }}>
               {scanning ? '인식 중…' : '📷 원두봉투 스캔'}
@@ -301,6 +324,7 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
               placeholder="테이스팅 노트 (예: 말린 무화과, 오렌지, 아카시아, 꿀) — 원두카드용"
               className="ta-input w-full"
             />
+            {embedded && <p className="ta-label" style={{ margin: '12px 0 -8px' }}>발주</p>}
             <PickOrType
               value={roastery}
               onChange={setRoastery}
@@ -341,6 +365,7 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
                 ))}
               </div>
             </div>
+            {embedded && <p className="ta-label" style={{ margin: '12px 0 -8px' }}>가격</p>}
             {/* 구매 용량 — 500g/1000g 프리셋 + 직접 입력 (잔당 재료비 계산 기준) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
               <span className="text-caption text-muted-foreground" style={{ flexShrink: 0 }}>구매 용량</span>
@@ -399,10 +424,33 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
                 })}
               </div>
             </div>
+            {/* 창 모드 — 산식 기준은 한 줄 요약, [변경]으로만 펼친다(이번 발주 건에만 적용) */}
+            {embedded && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+                <p className="text-caption text-muted-foreground tabular" style={{ margin: 0, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <span>
+                    산식 기준 — 기준 도징 {settings.doseG}g(ICE·HOT 평균) · 세팅 로스 {Math.round((1 - settings.yieldRate) * 100)}%
+                  </span>
+                  <button
+                    onClick={() => setBasisOpen((o) => !o)}
+                    className="text-muted-foreground hover:text-foreground"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                  >
+                    {basisOpen ? '접기' : '변경'}
+                  </button>
+                </p>
+                {basisOpen && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <Field label="기준 도징(g, ICE·HOT 평균)" value={settings.doseG} onChange={(v) => setNum('doseG', v)} />
+                    <Field label="세팅 로스(%)" value={Math.round((1 - settings.yieldRate) * 100)} onChange={(v) => setNum('yieldRate', 1 - v / 100)} />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {result && (
-            <div style={{ marginTop: 40, display: 'flex', flexDirection: 'column', gap: 28, minWidth: 0 }}>
+            <div style={{ marginTop: embedded ? 28 : 40, display: 'flex', flexDirection: 'column', gap: 28, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                   <span className="text-caption text-muted-foreground">잔당 재료비 (VAT 포함)</span>
@@ -423,7 +471,9 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
                 </span>
               </div>
               <p className="text-caption text-muted-foreground">
-                저장하면 발주 기록으로 남고, 판매가 책정은 &lsquo;판매가 설정&rsquo; 탭에서 담당자가 진행해요
+                {embedded
+                  ? '저장하면 장부 맨 위에 새 줄로 나타나요. 판매가 책정은 그 줄을 펼쳐서 담당자가 진행해요'
+                  : '저장하면 발주 기록으로 남고, 판매가 책정은 필터 원두·레시피의 원두 줄을 펼쳐서 담당자가 진행해요'}
               </p>
 
               <button
@@ -435,7 +485,17 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
               </button>
 
               {/* 참고표 — 지금 원두 재료비 행 강조, 보기 전용(권장 범위 변경은 판매가 설정 화면) */}
-              <div style={{ marginTop: 28 }}>
+              {embedded && (
+                <button
+                  onClick={() => setGuideOpen((o) => !o)}
+                  className="text-caption text-muted-foreground hover:text-foreground"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, alignSelf: 'flex-start' }}
+                >
+                  가격대 참고표 {guideOpen ? '▴' : '▾'}
+                </button>
+              )}
+              {/* 접혀 있어도 마운트는 유지 — 권장 재료비율을 이 표의 저장값에서 받아 온다 */}
+              <div style={{ marginTop: embedded ? 0 : 28, display: embedded && !guideOpen ? 'none' : undefined }}>
                 <PriceBandGuide readOnly highlightCost={bandRow} onChange={setBandCells} />
               </div>
             </div>
@@ -443,13 +503,13 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
         </div>
 
         {/* 발주 기록 — 같은 원두 재발주 시 원가·판매가 비교 */}
-        {!purchasesLoaded && (
+        {!embedded && !purchasesLoaded && (
           <div className="min-w-0 pt-[54px]">
             <p className="ta-label">이전 발주 리스트</p>
             <p className="text-body text-muted-foreground" style={{ margin: 0 }}>불러오는 중…</p>
           </div>
         )}
-        {purchasesLoaded && purchases.length > 0 && (
+        {!embedded && purchasesLoaded && purchases.length > 0 && (
           <div className="min-w-0 pt-[54px]">
             <p className="ta-label">이전 발주 리스트</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
@@ -546,7 +606,7 @@ export default function GardenService({ receiveId = null }: { receiveId?: string
         )}
       </div>
 
-        {kakao.modal}
+        {!embedded && kakao.modal}
       </div>
   );
 }

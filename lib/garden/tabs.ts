@@ -7,10 +7,13 @@ export type GardenTab = { key: string; href: string; label: string; desc?: strin
 export const GARDEN_TAB_GROUPS: GardenTab[][] = [
   [{ key: 'dashboard', href: '/garden', label: '홈', desc: '가든 홈 — 내 차례인 일 · 재고·레시피 미설정 원두 한눈에 보기' }],
   [
-    { key: 'pricing', href: '/garden/pricing', label: '필터 원두 발주', desc: '원두 정보·매입가 입력 · 발주 기록' },
+    // 2026-11-24 발주 화면을 원두 장부(recipes)로 합쳤다 — 이 키는 '[새 원두 발주] 입력·발주 기록 삭제' 권한으로 남는다.
+    // /garden/pricing 은 장부로 넘긴다(장부 권한이 없는 계정에만 예전 입력 화면을 보여준다).
+    { key: 'pricing', href: '/garden/pricing', label: '필터 원두 발주', desc: '원두 장부의 [새 원두 발주] — 원두 정보·매입가 입력 · 발주 기록 삭제' },
     // 발주(pricing)와 판매가 책정을 분리 — 책정 권한만 다른 인원에게 줄 수 있다
-    { key: 'saleprice', href: '/garden/saleprice', label: '판매가 설정', desc: '발주 원두 드립 판매가 책정 · 공유' },
-    { key: 'recipes', href: '/garden/recipes', label: '필터 레시피', desc: 'ICE/HOT 레시피 편집 · 추출 타이머' },
+    // 2026-11-24 판매가 설정 화면도 장부로 합쳤다 — 이 키는 '장부 줄 펼침의 판매가 책정·변경·공유' 권한으로 남는다.
+    { key: 'saleprice', href: '/garden/saleprice', label: '판매가 설정', desc: '원두 장부 줄 펼침의 [판매가] — 드립 판매가 책정 · 변경 · 공유' },
+    { key: 'recipes', href: '/garden/recipes', label: '필터 원두·레시피', desc: '원두 장부 — 발주 기록 · ICE/HOT 레시피 편집 · 추출 타이머' },
     { key: 'recommended', href: '/garden/recommended', label: '필터 레시피 추천', desc: '원두별 추천 레시피 조회' },
     { key: 'calibration', href: '/garden/calibration', label: '분쇄도 측정', desc: 'EK43 캘리브레이션 업로드 · 차트' },
     { key: 'beancard', href: '/garden/beancard', label: '원두카드', desc: '매장 비치용 원두카드 인쇄' },
@@ -44,11 +47,13 @@ export const SIMPLE_ACCOUNT_TABS = ['dashboard', 'teaching', 'theory', 'beanguid
 
 // 내비 한 줄 구성(2026-09-09 대표 결정: 탭 14개 → 작업 보드 + 묶음 3 + 교육 + 설정).
 // 묶음은 화면 표시 전용 — 권한 키·경로는 위 GARDEN_TAB_GROUPS 그대로. 항목은 key 로 참조한다.
-export type GardenNavEntry = { label: string; keys: string[] };
+// hidden — 메뉴에는 안 보이지만 이 묶음에 속하는 탭. 설정의 권한 표·항목별 담당자 묶음이 같은 자리에 놓도록(2026-11-24 발주 → 장부 통합).
+export type GardenNavEntry = { label: string; keys: string[]; hidden?: string[] };
 export const GARDEN_NAV: GardenNavEntry[] = [
   { label: '홈', keys: ['dashboard'] }, // 2026-11-20 대표 결정: '작업 보드' → '홈'(화면 제목은 가든서비스 로고 + 홈)
-  { label: '커피(필터)', keys: ['pricing', 'saleprice', 'calibration', 'beancard', 'theory', 'beanguide'] }, // 2026-10-30 '운영'→'커피(필터)', 원두카드를 레시피에서 이동
-  { label: '필터 레시피', keys: ['recipes', 'recommended'] }, // 제철 단어는 2026-10-30 메뉴에서 제거 (페이지·권한 키는 유지)
+  // 2026-11-24 대표 결정: 발주 + 레시피 = 원두 장부 한 화면. 매일 쓰는 화면이라 묶음 없이 바로 연다. 발주(pricing)는 장부 안 버튼이라 메뉴에서 뺐다.
+  { label: '필터 원두·레시피', keys: ['recipes'], hidden: ['pricing', 'saleprice'] },
+  { label: '커피(필터)', keys: ['recommended', 'calibration', 'beancard', 'theory', 'beanguide'] }, // 2026-10-30 '운영'→'커피(필터)', 원두카드를 레시피에서 이동 · 레시피 추천은 2026-11-24 이쪽으로
   { label: '분석', keys: ['sales', 'weather', 'reviews'] },
   { label: '스케줄', keys: ['schedule'] },
   { label: '체크리스트', keys: ['checklist'] }, // 항목 관리는 체크리스트 화면에서 들어간다 — 직원이 매일 쓰는 메뉴를 한 번에 열리게

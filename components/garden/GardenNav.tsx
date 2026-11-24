@@ -9,7 +9,7 @@ import LocalNav from '@/components/nav/LocalNav';
 import NavLink from '@/components/nav/NavLink';
 import NavMenu from '@/components/nav/NavMenu';
 
-// 가든 로컬 내비 — 한 줄: 작업 보드 · 운영 ▾ · 레시피 ▾ · 분석 ▾ · 교육 · 설정 (구성은 lib/garden/tabs.ts GARDEN_NAV).
+// 가든 로컬 내비 — 한 줄: 홈 · 필터 원두·레시피 · 커피(필터) ▾ · 분석 ▾ · … · 설정 (구성은 lib/garden/tabs.ts GARDEN_NAV).
 // 2026-09-09 탭 14개 나열 → 묶음으로 접음(소프트 UI 내비 통합). 권한·배지·리다이렉트 동작은 이전과 같다:
 //  · 설정의 '가든 탭 권한'에서 허용된 탭만 활성, 미허용은 흐리게 자리 유지(왜 못 가는지 보이게).
 //  · 미허용 경로 직접 접근 → 첫 허용 탭으로.
@@ -86,7 +86,8 @@ export default function GardenNav() {
       : key === 'saleprice'
         ? unpricedCount
         : key === 'recipes'
-          ? recipeUnsetCount
+          ? // 판매가 책정도 장부에서 한다(2026-11-24) — 판매가 권한이 있으면 미책정 건수를 장부 배지에 더한다
+            recipeUnsetCount + (visible('saleprice') ? unpricedCount : 0)
           : key === 'words'
             ? pendingWords
             : 0;

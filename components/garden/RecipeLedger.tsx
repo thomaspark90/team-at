@@ -33,6 +33,7 @@ export type LedgerRow = {
   price: number | null; // 보고 있는 지점의 판매가(원, VAT 포함 소비자가) — 판교는 양재천 책정가 −1,000원
   priceNote: string | null; // 양재천 대비 차액 문구 — 있으면 파생값이라 이 화면에서 수정하지 않는다. 화면에는 표기하지 않는다(2026-11-19 대표 지시)
   purchaseId: string | null; // 판매가가 저장된 최신 발주 기록 — 판매가 칸 인라인 수정 대상
+  priceNeeded: boolean; // 발주는 됐는데 판매가가 아직 없다 — '판매가 책정 필요'로 표시하고 '설정 필요' 필터에 잡힌다
   base: { doseG: number; cost: number } | null; // 판단 기준 재료비 — ICE·HOT 도징 중간값(레시피 없는 쪽은 기준값 20g·18g)
   buy: { capacityG: number; price: number; vatIncluded: boolean } | null; // 최신 발주 용량·구매가(입력 그대로)
   ice: LedgerSlot | null;
@@ -49,20 +50,20 @@ const SORTS: { id: SortKey; label: string }[] = [
 
 const num = (n: number) => Math.round(n).toLocaleString('ko-KR');
 const md = (s: string | null) => (s ? s.slice(5, 10).replace('-', '.') : '');
-const needs = (r: LedgerRow) => !r.ice || !r.hot;
+const needs = (r: LedgerRow) => !r.ice || !r.hot || r.priceNeeded;
 // 막대·정렬 기준 — ICE·HOT 평균 도징 재료비
 const baseProfit = (r: LedgerRow) => (r.base && r.price != null ? r.price - r.base.cost : null);
 const profitOf = (r: LedgerRow, s: LedgerSlot | null) => (s && r.price != null && s.cost != null ? r.price - s.cost : null);
 
 
-function NeedBadge() {
+function NeedBadge({ label = '레시피 설정 필요' }: { label?: string }) {
   return (
     <span
       className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 text-caption font-medium text-amber-700 dark:text-amber-400"
       style={{ padding: '2px 9px', whiteSpace: 'nowrap' }}
     >
       <span className="rounded-full bg-amber-500" style={{ width: 5, height: 5 }} />
-      레시피 설정 필요
+      {label}
     </span>
   );
 }
@@ -75,6 +76,26 @@ function Brew({ bt }: { bt: BrewType }) {
   );
 }
 
+// 펼침 안 블록 — 왼쪽 이름표 + 오른쪽 내용. 블록 사이는 옅은 선 하나
+function Block({ label, first, children }: { label: string; first?: boolean; children: ReactNode }) {
+  return (
+    <div
+      className="ledger-block"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '72px minmax(0, 1fr)',
+        gap: 16,
+        paddingTop: first ? 0 : 18,
+        marginTop: first ? 0 : 18,
+        borderTop: first ? 'none' : '1px solid hsl(var(--border))',
+      }}
+    >
+      <span className="text-caption text-muted-foreground" style={{ paddingTop: 2 }}>{label}</span>
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
 export default function RecipeLedger({
   rows,
   filters,
@@ -83,6 +104,8 @@ export default function RecipeLedger({
   onDeleteUnset,
   deleting,
   renderDetail,
+  renderOrders,
+  renderPricing,
   canEditPrice = false,
   onPriceSaved,
 }: {
@@ -93,6 +116,8 @@ export default function RecipeLedger({
   onDeleteUnset: (row: LedgerRow) => void; // 레시피 없는 원두의 발주 기록 삭제
   deleting: string | null;
   renderDetail: (beanKey: string) => ReactNode;
+  renderOrders?: (beanKey: string) => ReactNode; // 줄 펼침의 '발주 기록'(LedgerOrders) — 넘기면 레시피 없는 원두도 펼쳐진다
+  renderPricing?: (beanKey: string) => ReactNode; // 줄 펼침의 '판매가'(LedgerPricing) — 두 지점 가격·재료비율·책정·공유
   canEditPrice?: boolean; // saleprice 탭 권한 — 판매가 칸을 눌러 바로 수정
   onPriceSaved?: (rec: PurchaseRecord) => void;
 }) {
@@ -235,7 +260,7 @@ export default function RecipeLedger({
       </div>
 
       <div className="min-w-0" style={{ overflowX: 'auto' }}>
-        <table className="tabular w-full text-body" style={{ borderCollapse: 'collapse', minWidth: 900 }}>
+        <table className="ledger-table tabular w-full text-body" style={{ borderCollapse: 'collapse' }}>
           <thead>
             <tr className="border-b border-border">
               <th className={th} style={cell}>원두</th>
@@ -250,24 +275,26 @@ export default function RecipeLedger({
             {sorted.map((row) => {
               const isOpen = open.has(row.beanKey);
               const none = !row.ice && !row.hot;
+              // 발주 기록 슬롯이 있으면 레시피가 아직 없는 원두(새 발주)도 펼쳐서 수령·발주를 한다
+              const canOpen = row.hasRecipe || !!renderOrders;
               return (
                 <Fragment key={row.beanKey}>
                   <tr
-                    onClick={() => row.hasRecipe && toggle(row.beanKey)}
-                    className={`border-b border-border ${needs(row) ? 'bg-amber-500/[0.04]' : ''} ${row.hasRecipe ? 'cursor-pointer hover:bg-muted/40' : ''}`}
-                    title={row.hasRecipe ? (isOpen ? '접기' : '펼치기 — 원가 계산 · 타이머 · 수정 · 이력 · 보관') : undefined}
+                    onClick={() => canOpen && toggle(row.beanKey)}
+                    className={`border-b border-border ${needs(row) ? 'bg-amber-500/[0.04]' : ''} ${canOpen ? 'cursor-pointer hover:bg-muted/40' : ''}`}
+                    title={canOpen ? (isOpen ? '접기' : row.hasRecipe ? '펼치기 — 판매가 · 발주 기록 · 레시피(타이머 · 수정 · 이력 · 보관)' : '펼치기 — 판매가 · 발주 기록(수령 · 발주 · 원두카드)') : undefined}
                   >
-                    <td style={{ ...cell, whiteSpace: 'normal', minWidth: 220 }}>
+                    <td className="lc-bean" style={{ ...cell, whiteSpace: 'normal', minWidth: 220 }}>
                       <span className="text-foreground">{row.bean}</span>
-                      {row.hasRecipe && <span className="text-caption text-muted-foreground" style={{ marginLeft: 6 }}>{isOpen ? '▴' : '▾'}</span>}
+                      {canOpen && <span className="text-caption text-muted-foreground" style={{ marginLeft: 6 }}>{isOpen ? '▴' : '▾'}</span>}
                       <br />
                       <span className="text-caption text-muted-foreground">
                         {row.country}
                         {row.roastery ? ` · ${row.roastery}` : ''}
                       </span>
                     </td>
-                    <td className="text-caption text-muted-foreground" style={cell}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <td className="lc-date text-caption text-muted-foreground" style={cell}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         {row.orderDate && <span>발주 {md(row.orderDate)}</span>}
                         <span className="bg-border" style={{ width: 16, height: 1 }} />
                         {row.roast ? (
@@ -288,17 +315,21 @@ export default function RecipeLedger({
                         )}
                       </span>
                     </td>
-                    <td style={cell}>{slotCell(row, 'hot')}</td>
-                    <td style={cell}>{slotCell(row, 'ice')}</td>
-                    <td style={{ ...cell, textAlign: 'right' }}>
+                    <td data-label="HOT" style={cell}>{slotCell(row, 'hot')}</td>
+                    <td data-label="ICE" style={cell}>{slotCell(row, 'ice')}</td>
+                    <td data-label="판매가(원)" style={{ ...cell, textAlign: 'right' }}>
                       {/* 판교 판매가는 양재천 책정가에서 나오는 값 — 수정은 양재천 화면에서만 */}
                       <span title={row.priceNote ? '판매가 수정은 양재천 화면에서' : undefined}>
-                        <LedgerPriceCell
-                          purchaseId={row.purchaseId}
-                          price={row.price}
-                          canEdit={canEditPrice && !!onPriceSaved && !row.priceNote}
-                          onSaved={(rec) => onPriceSaved?.(rec)}
-                        />
+                        {row.priceNeeded ? (
+                          <NeedBadge label="판매가 책정 필요" />
+                        ) : (
+                          <LedgerPriceCell
+                            purchaseId={row.purchaseId}
+                            price={row.price}
+                            canEdit={canEditPrice && !!onPriceSaved && !row.priceNote}
+                            onSaved={(rec) => onPriceSaved?.(rec)}
+                          />
+                        )}
                       </span>
                     </td>
                     <td style={cell}>
@@ -323,22 +354,36 @@ export default function RecipeLedger({
                     </td>
                   </tr>
 
-                  {/* 펼침 — 원가 계산 + 기존 카드 그대로(타이머·수정·삭제·이력·대기·보관) */}
+                  {/* 펼침 — 판매가 · 발주 기록 · 레시피 세 블록을 같은 틀(왼쪽 이름표 + 오른쪽 내용)로 (2026-11-24) */}
                   {isOpen && (
                     <tr className="border-b border-border bg-muted/30">
-                      <td colSpan={COLS} style={{ padding: '16px 20px 22px', whiteSpace: 'normal' }}>
-                        <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                          <div style={{ width: 840, maxWidth: '100%' }}>{renderDetail(row.beanKey)}</div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 280 }}>
-                            <p className="text-body font-medium" style={{ margin: 0 }}>원가 계산</p>
-                            <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
-                              판매가 {row.price != null ? `${num(row.price)}원` : '미책정'}
-                              <span className="text-caption"> (VAT 포함 소비자가)</span>
-                            </p>
-                            {costLine(row, 'hot')}
-                            {costLine(row, 'ice')}
-                          </div>
-                        </div>
+                      <td className="lc-open" colSpan={COLS} style={{ padding: '18px 20px 24px', whiteSpace: 'normal' }}>
+                        {renderPricing && (
+                          <Block label="판매가" first>
+                            {renderPricing(row.beanKey)}
+                            {/* 원가 계산 — g당 원가 × 레시피 도징 = 잔당 재료비 (보고 있는 지점 판매가 기준) */}
+                            {(row.hot?.cost != null || row.ice?.cost != null) && (
+                              <div className="text-caption text-muted-foreground" style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
+                                {costLine(row, 'hot')}
+                                {costLine(row, 'ice')}
+                              </div>
+                            )}
+                          </Block>
+                        )}
+                        {renderOrders && (
+                          <Block label="발주 기록" first={!renderPricing}>
+                            {renderOrders(row.beanKey)}
+                          </Block>
+                        )}
+                        <Block label="레시피" first={!renderPricing && !renderOrders}>
+                          {row.hasRecipe ? (
+                            <div style={{ maxWidth: 840 }}>{renderDetail(row.beanKey)}</div>
+                          ) : (
+                            <span className="text-caption text-muted-foreground">
+                              아직 레시피가 없어요 — 위 줄의 [설정]으로 HOT → ICE 순서로 만들어요
+                            </span>
+                          )}
+                        </Block>
                       </td>
                     </tr>
                   )}

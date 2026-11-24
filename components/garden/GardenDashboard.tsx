@@ -29,6 +29,8 @@ import RecipeLedger, { type LedgerRow, type LedgerSlot } from '@/components/gard
 import { fetchMyAccess } from '@/lib/access/tab-access-client';
 import { baseDoseG } from '@/lib/garden/brew-cost';
 import { storePrice, storePriceNote } from '@/lib/garden/store-price';
+import { useLedgerOrders } from '@/components/garden/LedgerOrders';
+import { useLedgerPricing } from '@/components/garden/LedgerPricing';
 
 // 카드 헤더의 지점별 재고량 칩(판교 100% · 양재천 100%) — 2026-10-31 대표 지시로 '일단' 숨김.
 // 재고 데이터·알림 로직은 그대로라 true 로 바꾸면 바로 복구된다.
@@ -152,7 +154,18 @@ interface BeanGroup {
 
 // section: 'unset' = 가든 대시보드(미설정 원두만) / 'recipes' = 필터 레시피 탭(카드 전체, 국가별)
 // 편집기·타이머 오버레이는 두 모드 공통.
-export default function GardenDashboard({ section = 'recipes' }: { section?: 'unset' | 'recipes' }) {
+// toolbar·reloadKey·receiveId 는 원두 장부(BeanLedger)가 넘긴다 — 지점 선택 줄 오른쪽 버튼 · 발주 저장 뒤 다시 불러오기 · 수령 창 바로 열기
+export default function GardenDashboard({
+  section = 'recipes',
+  toolbar,
+  reloadKey = 0,
+  receiveId = null,
+}: {
+  section?: 'unset' | 'recipes';
+  toolbar?: React.ReactNode;
+  reloadKey?: number;
+  receiveId?: string | null;
+}) {
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   // 필터 레시피 목록 판매가 인라인 수정 — saleprice 탭 권한(mine=null 은 전체 허용). 실제 검증은 서버 PATCH
   const [canEditPrice, setCanEditPrice] = useState(false);
@@ -223,7 +236,26 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
   };
   useEffect(() => {
     refresh();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reloadKey 가 바뀔 때만(새 발주 저장) 다시 불러온다
+  }, [reloadKey]);
+
+  // 줄 펼침의 '발주 기록' — 발주 건별 수령·카톡 발주·원두카드·삭제 (components/garden/LedgerOrders)
+  const orders = useLedgerOrders({
+    enabled: section === 'recipes',
+    purchases,
+    recipes,
+    onChanged: (rec) => setPurchases((prev) => prev.map((r) => (r.id === rec.id ? rec : r))),
+    onDeleted: (id) => setPurchases((prev) => prev.filter((r) => r.id !== id)),
+    receiveId,
+  });
+
+  // 줄 펼침의 '판매가' — 두 지점 가격·재료비율·책정·공유 (components/garden/LedgerPricing)
+  const pricing = useLedgerPricing({
+    enabled: section === 'recipes',
+    purchases,
+    recipes,
+    onChanged: (rec) => setPurchases((prev) => prev.map((r) => (r.id === rec.id ? rec : r))),
+  });
 
   const requestPriceReview = async (purchaseId: string) => {
     if (priceReviewSending) return;
@@ -366,6 +398,8 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
         price: storePrice(latest?.chosenPrice, store),
         priceNote: storePriceNote(store),
         purchaseId: latest?.id ?? null,
+        // 미책정 — 예전 판매가 설정 화면에서 X로 숨겨 둔 기록은 표시하지 않는다
+        priceNeeded: !!latest && latest.chosenPrice == null && !latest.priceDismissed,
         base: latest
           ? (() => {
               const doseG = baseDoseG(g?.ice?.doseG, g?.hot?.doseG);
@@ -382,7 +416,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       ...activeGroups.map((g) => rowOf(g.beanKey, g.bean, g)),
       ...unsetBeans.map((rec) => rowOf(normalize(rec.bean), rec.bean, null)),
     ];
-    const need = (r: LedgerRow) => (!r.ice || !r.hot ? 1 : 0);
+    const need = (r: LedgerRow) => (!r.ice || !r.hot || r.priceNeeded ? 1 : 0);
     return rows.sort((a, b) => need(b) - need(a) || (b.orderDate ?? '').localeCompare(a.orderDate ?? ''));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- isFallback 는 fallbackIds 만 참조
   }, [activeGroups, unsetBeans, latestByBean, fallbackIds, store]);
@@ -391,7 +425,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     for (const r of ledgerRows) m.set(r.country, (m.get(r.country) ?? 0) + 1);
     return Array.from(m.entries()).sort(([a], [b]) => (a === ETC ? 1 : b === ETC ? -1 : a.localeCompare(b, 'ko')));
   }, [ledgerRows]);
-  const ledgerNeedCount = ledgerRows.filter((r) => !r.ice || !r.hot).length;
+  const ledgerNeedCount = ledgerRows.filter((r) => !r.ice || !r.hot || r.priceNeeded).length;
 
   // 미설정 원두 목록에서 제거 — 최신 건만 지우면 이전 발주가 다시 노출되므로 해당 원두 기록 전체 삭제
   const deleteUnsetBean = async (rec: PurchaseRecord) => {
@@ -1154,8 +1188,8 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
     </div>
   );
 
-  // 판매가 미책정 카드 — 발주는 됐는데 판매가가 아직 없는 기록. 책정은 권한이 분리된
-  // '판매가 설정' 탭(saleprice) 담당이라 여기서는 건수·원두명만 보여주고 링크로 유도한다.
+  // 판매가 미책정 카드 — 발주는 됐는데 판매가가 아직 없는 기록. 책정은 원두 장부 줄 펼침의 '판매가'에서
+  // (saleprice 권한) 하므로 여기서는 건수·원두명만 보여주고 링크로 유도한다.
   const unpriced = purchases.filter((r) => r.chosenPrice == null && !r.priceDismissed); // X로 숨긴 건 제외
   const unpricedCard = unpriced.length > 0 && (
     <div className="ta-panel min-w-0">
@@ -1170,11 +1204,11 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
         </span>
         <span style={{ flex: 1 }} />
         <Link
-          href="/garden/saleprice"
+          href="/garden/recipes"
           className="ta-btn"
           style={{ height: 30, paddingLeft: 12, paddingRight: 12, fontSize: 13, flexShrink: 0, textDecoration: 'none' }}
         >
-          판매가 설정 열기 ›
+          장부에서 책정 ›
         </Link>
       </div>
     </div>
@@ -1374,6 +1408,7 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
             <span className="text-caption text-muted-foreground">
               {store === 'pangyo' ? '판교 레시피 — 없는 원두는 양재천 레시피를 보여줘요' : '양재천 레시피'}
             </span>
+            {toolbar && <span style={{ marginLeft: 'auto' }}>{toolbar}</span>}
           </div>
 
           {/* 태블릿 레시피 보드 — 3장씩 좌우 스와이프로 넘겨 보는 매장용 화면 · 거기서 남긴 추출 평가 모아보기 */}
@@ -1389,15 +1424,14 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
           </div>
           {!loading && activeGroups.length === 0 && unsetBeans.length === 0 && (
             <p className="text-body text-muted-foreground">
-              아직 레시피가 설정된 원두가 없어요. 가격 세팅에서 원두를 발주하면 여기에서 레시피를 만들 수
-              있어요.
+              아직 원두가 없어요. [새 원두 발주]로 원두를 저장하면 여기에서 레시피를 만들 수 있어요.
             </p>
           )}
 
           {!loading && ledgerRows.length > 0 && (
             <RecipeLedger
               rows={ledgerRows.filter((r) =>
-                selectedCountry === '전체' ? true : selectedCountry === NEED_FILTER ? !r.ice || !r.hot : r.country === selectedCountry
+                selectedCountry === '전체' ? true : selectedCountry === NEED_FILTER ? !r.ice || !r.hot || r.priceNeeded : r.country === selectedCountry
               )}
               // 필터 칩 — 전체 · 설정 필요 · 국가. 국가 묶음 대신 한 목록에서 걸러 본다(2026-11-03 시안 C3)
               filters={<>
@@ -1438,6 +1472,8 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
               deleting={deletingBean}
               canEditPrice={canEditPrice}
               onPriceSaved={(rec) => setPurchases((prev) => prev.map((r) => (r.id === rec.id ? rec : r)))}
+              renderOrders={orders.history}
+              renderPricing={pricing.block}
               renderDetail={(k) => {
                 const g = activeGroups.find((x) => x.beanKey === k);
                 return g ? renderBeanCard(g, true) : null;
@@ -1469,7 +1505,16 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
                           <span className="text-caption text-muted-foreground">{groups.length}종</span>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px 12px' }}>
-                          {groups.map((g) => renderBeanCard(g))}
+                          {groups.map((g) => (
+                            <div key={g.beanKey} className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                              {renderBeanCard(g)}
+                              {/* 보관한 원두의 판매가·발주 기록 — 읽기 전용(원두카드 링크만) */}
+                              <div className="text-caption" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '0 4px' }}>
+                                {pricing.block(g.beanKey, { readOnly: true })}
+                                {orders.history(g.beanKey, { readOnly: true })}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))}
@@ -1501,6 +1546,9 @@ export default function GardenDashboard({ section = 'recipes' }: { section?: 'un
       {/* 판매가 미책정 — 책정 담당자가 대시보드만 봐도 대기 건을 알 수 있게 */}
       {section === 'unset' && unpricedCard}
       {section === 'unset' && unsetCard}
+
+      {/* 발주 기록의 수령 창 · 발주 메시지 미리보기 */}
+      {orders.overlays}
 
       {/* 추출 타이머 오버레이 — 카드의 ▶ 타이머로 열기 */}
       {timerFor && (

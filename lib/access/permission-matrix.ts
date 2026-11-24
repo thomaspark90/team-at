@@ -33,11 +33,11 @@ const tabCol = (t: GardenTab): MatrixColumn => ({ id: `tabs:${t.key}`, label: t.
 /** 가든 탭을 내비 메뉴 순서로 — 내비에 없는 탭은 상위 화면(경로 기준) 뒤에 붙이고, 나머지는 '기타'. */
 function gardenSubs(): MatrixSub[] {
   const byKey = new Map(GARDEN_TABS.map((t) => [t.key, t]));
-  const inNav = new Set(GARDEN_NAV.flatMap((e) => e.keys));
+  const inNav = new Set(GARDEN_NAV.flatMap((e) => [...e.keys, ...(e.hidden ?? [])]));
   const rest = GARDEN_TABS.filter((t) => !inNav.has(t.key));
   const placed = new Set<string>();
   const subs = GARDEN_NAV.map((e) => {
-    const main = e.keys.map((k) => byKey.get(k)).filter((t): t is GardenTab => !!t);
+    const main = [...e.keys, ...(e.hidden ?? [])].map((k) => byKey.get(k)).filter((t): t is GardenTab => !!t);
     const children = rest.filter((r) => main.some((m) => m.href !== '/garden' && r.href.startsWith(m.href + '/')));
     children.forEach((c) => placed.add(c.key));
     const label = main.length === 1 ? main[0].label : e.label;
