@@ -25,6 +25,8 @@ import { toast } from '@/components/Toast';
 // 레시피 보드 '의견 · 레시피 수정' 탭 (2026-11-13 대표 지시, 시안 C).
 // 위: 이 레시피 버전에 남긴 최근 의견 + 제안을 한 번에 반영하는 '적용' 버튼. 아래: − / + 미세 조정 → 저장.
 // 값 계산은 lib/garden/recipe-quick-edit.ts. 저장은 필터커피 탭과 같은 API(이력·알림 동일).
+// isNew — 아직 없는 레시피를 처음 만드는 '레시피 설정'(2026-11-25): recipe 는 시작값(lib/garden/starter-recipe.ts)이고,
+// 의견 목록을 숨기며 값을 안 바꿔도 저장할 수 있다.
 
 const RECENT_MAX = 5;
 const stepBtn = 'rounded-md bg-background text-title shadow-soft-sm active:shadow-inset disabled:opacity-30 disabled:shadow-none';
@@ -38,6 +40,7 @@ export default function RecipeQuickEdit({
   recipe,
   baseMesh,
   isFallback,
+  isNew = false,
   feedback,
   staffNames,
   staff,
@@ -52,6 +55,7 @@ export default function RecipeQuickEdit({
   recipe: DripRecipe;
   baseMesh: number | null; // 이 지점 현재 분쇄도 — 없으면 분쇄도 조절 숨김
   isFallback: boolean; // 판교 화면의 양재천 대체 레시피 — 저장하면 판교 레시피가 새로 생긴다
+  isNew?: boolean; // 아직 저장된 적 없는 레시피 — recipe 는 시작값
   feedback: BrewFeedback[]; // 이 원두·타입·지점 의견 전체
   staffNames: string[];
   staff: string;
@@ -66,19 +70,20 @@ export default function RecipeQuickEdit({
 
   const waterOk = canEditWater(recipe);
   const changes = quickChanges(orig, draft);
-  const dirty = changes.length > 0;
+  const changed = changes.length > 0;
+  const dirty = isNew || changed; // 새 레시피는 시작값 그대로도 저장할 수 있다
   // 판교 대체 레시피인데 판교 분쇄도가 확정되지 않았으면(재측정 필요 등) 분쇄도 없는 판교 레시피가 생기므로 막는다
   const blocked = isFallback && baseMesh == null;
 
   // 왼쪽 카드 미리보기 — 바뀐 게 있을 때만. 탭을 떠나면 원래대로
   useEffect(() => {
-    if (!dirty) {
+    if (!changed) {
       onPreview(null);
       return;
     }
     onPreview({ ...recipe, ...applyDraft(recipe, draft, orig), ...(store === 'pangyo' ? { store } : {}) });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 조절값이 바뀔 때만
-  }, [draft, orig, dirty]);
+  }, [draft, orig, changed]);
   useEffect(() => () => onPreview(null), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const current = useMemo(
@@ -112,7 +117,7 @@ export default function RecipeQuickEdit({
       return;
     }
     onSaved((await res.json()) as DripRecipe);
-    toast(`${bean} ${brewType.toUpperCase()} 레시피를 수정했어요.`);
+    toast(`${bean} ${brewType.toUpperCase()} 레시피를 ${isNew ? '만들었어요' : '수정했어요'}.`);
   };
 
   const fields = QUICK_ORDER.filter((k) => (k === 'mesh' ? draft.mesh != null : k === 'waterG' ? waterOk : true));
@@ -133,7 +138,7 @@ export default function RecipeQuickEdit({
           </button>
           <span className="tabular" style={{ minWidth: 76, textAlign: 'center' }}>
             <span className="text-title" style={{ display: 'block', lineHeight: 1.2 }}>{v != null ? f.show(v) : '—'}</span>
-            <span className="text-caption text-muted-foreground">{v === orig[k] ? '그대로' : `이전 ${orig[k] != null ? f.show(orig[k] as number) : '—'}`}</span>
+            <span className="text-caption text-muted-foreground">{v === orig[k] ? (isNew ? '기준값' : '그대로') : `${isNew ? '기준' : '이전'} ${orig[k] != null ? f.show(orig[k] as number) : '—'}`}</span>
           </span>
           <button className={stepBtn} style={stepStyle} onClick={() => setDraft((d) => bump(d, orig, k, 1))} aria-label={`${f.label} 늘리기`}>
             +
@@ -158,8 +163,14 @@ export default function RecipeQuickEdit({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      {/* 새 레시피 — 의견이 있을 수 없으니 안내 한 줄만 */}
+      {isNew && (
+        <p className="text-body text-muted-foreground" style={{ margin: 0, wordBreak: 'keep-all' }}>
+          {brewType.toUpperCase()} 레시피가 아직 없어요. 아래 기준값을 맞게 고친 뒤 저장하면 보드에 올라와요.
+        </p>
+      )}
       {/* 최근 의견 — 이 레시피 버전만. 제안은 버튼 한 번으로 아래 조절값에 반영(저장은 따로) */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: isNew ? 'none' : 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
           <span className="text-caption text-muted-foreground">최근 의견</span>
           <span className="tabular text-caption text-muted-foreground">
@@ -254,11 +265,11 @@ export default function RecipeQuickEdit({
       {/* 저장 — 바뀐 내용을 먼저 보여준다 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <span className="tabular text-caption text-muted-foreground">
-          {dirty ? changes.join(' · ') : '바꾼 값이 없어요'}
-          {dirty && isFallback && ' — 저장하면 판교 레시피가 새로 생겨요'}
+          {changed ? changes.join(' · ') : isNew ? '기준값 그대로 저장할 수 있어요' : '바꾼 값이 없어요'}
+          {changed && isFallback && ' — 저장하면 판교 레시피가 새로 생겨요'}
         </span>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="ta-btn" style={{ height: 44 }} disabled={!dirty || saving} onClick={() => setDraft(orig)}>
+          <button className="ta-btn" style={{ height: 44 }} disabled={!changed || saving} onClick={() => setDraft(orig)}>
             되돌리기
           </button>
           <button

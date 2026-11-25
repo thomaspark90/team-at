@@ -17,11 +17,12 @@ import { ETC, countryOf, isBeanArchived, resolveTasting } from '@/lib/garden/bea
 import { recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
 import { brewOnStyle } from '@/lib/garden/brew-colors';
 import { bypassOf, drinkG } from '@/lib/garden/bypass';
+import { starterRecipe } from '@/lib/garden/starter-recipe';
 
 // 태블릿 레시피 보드 — 매장 태블릿(가로)에서 레시피 카드 3장을 한 화면에, 좌우 스와이프로 3장씩 넘긴다.
 // 추출용 카드(M2, 2026-10-30): ICE/HOT 전환 · 스펙(이 지점 분쇄도) · 푸어링 · 추출비, 맨 아래 접힌 추출 평가.
 // 타이머 없음(저울 타이머 사용). 전체 편집은 필터커피 탭에서 — 보드는 보기 + 추출 평가 +
-// 크게 보기의 '의견 · 레시피 수정' 탭(− / + 바로 수정, 2026-11-13).
+// 크게 보기의 '의견 · 레시피 수정' 탭(− / + 바로 수정, 2026-11-13) + 아직 없는 레시피를 처음 만드는 '레시피 설정'(준비 중 원두, 2026-11-25).
 // 넘김은 CSS scroll-snap — 터치 스와이프는 브라우저 기본 동작, 마우스는 ‹ › 버튼.
 
 const PER_PAGE = 3; // 태블릿 가로·PC — 모바일(폭 700px 이하) 1장, 태블릿 세로(701~1023px) 2장 (2026-11-02)
@@ -284,6 +285,16 @@ export default function RecipeBoard() {
     return m;
   }, [beanMetas, purchaseTasting]);
 
+  // 크게 보기에서 아직 없는 레시피(준비 중 원두 · 한쪽 타입만 있는 원두)의 시작값 — 저장 전까지 왼쪽 카드에 비추고
+  // 오른쪽 '레시피 설정'의 기준이 된다. 매 렌더마다 새 객체면 조절값이 초기화되므로 원두 단위로 기억해 둔다
+  const focusKey = focus?.beanKey ?? null;
+  const focusStarters = useMemo(() => {
+    if (!focusKey) return null;
+    const bean = allLiveBeans.find((x) => x.beanKey === focusKey)?.bean ?? purchaseBean[focusKey] ?? '';
+    const make = (brewType: BrewType) => starterRecipe({ recipes, grinderProfiles, beanKey: focusKey, bean, brewType, store });
+    return { bean, hot: make('hot'), ice: make('ice') };
+  }, [focusKey, allLiveBeans, purchaseBean, recipes, grinderProfiles, store]);
+
   // 모바일이면 한 페이지에 카드 1장 — 3장을 좁은 폭에 넣으면 글자가 세로로 쪼개진다
   const [isMobile, setIsMobile] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false); // 아이패드 세로 등 — 3장은 너무 좁아 2장
@@ -456,24 +467,33 @@ export default function RecipeBoard() {
             {pendingOpen && (
               <div
                 className="rounded-md bg-background shadow-soft"
-                style={{ position: 'absolute', top: 'calc(100% + 10px)', ...(isMobile ? { left: 0 } : { right: 0 }), width: 'min(360px, 88vw)', padding: '16px 18px', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 12 }}
+                style={{ position: 'absolute', top: 'calc(100% + 10px)', ...(isMobile ? { left: 0 } : { right: 0 }), width: 'min(360px, 88vw)', padding: '16px 18px', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 4 }}
               >
-                <p className="text-caption text-muted-foreground" style={{ margin: 0 }}>
-                  레시피 준비 중 — 필터커피에서 설정하면 보드에 올라와요
+                <p className="text-caption text-muted-foreground" style={{ margin: '0 0 6px' }}>
+                  레시피 준비 중 — 누르면 여기서 레시피를 설정할 수 있어요
                 </p>
                 {pendingBeans.map((p) => {
                   const notes = tastingByBean.get(p.beanKey) ?? '';
                   const dot = flavorColors(notes)[0];
                   return (
-                    <div key={p.beanKey} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    // 대기 목록과 같은 줄 — 누르면 크게 보기가 '레시피 설정'으로 열린다(HOT 부터)
+                    <button
+                      key={p.beanKey}
+                      onClick={() => {
+                        setPendingOpen(false);
+                        setFocus({ beanKey: p.beanKey, bt: 'hot' });
+                      }}
+                      className="rounded-md text-left hover:bg-accent"
+                      style={{ ...plainBtn, display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 8px', margin: '0 -8px' }}
+                    >
                       <span className={dot ? '' : 'bg-muted'} style={{ width: 10, height: 10, borderRadius: 999, marginTop: 6, flexShrink: 0, background: dot }} />
-                      <div style={{ minWidth: 0 }}>
-                        <p className="text-body" style={{ margin: 0, wordBreak: 'keep-all' }}>{p.bean}</p>
-                        <p className="tabular text-caption text-muted-foreground" style={{ margin: '2px 0 0' }}>
+                      <span style={{ minWidth: 0 }}>
+                        <span className="text-body" style={{ display: 'block', wordBreak: 'keep-all' }}>{p.bean}</span>
+                        <span className="tabular text-caption text-muted-foreground" style={{ display: 'block', marginTop: 2 }}>
                           {[notes, p.orderedAt ? `${fmtDate(p.orderedAt).slice(3)} 발주` : ''].filter(Boolean).join(' · ')}
-                        </p>
-                      </div>
-                    </div>
+                        </span>
+                      </span>
+                    </button>
                   );
                 })}
               </div>
@@ -678,10 +698,17 @@ export default function RecipeBoard() {
       {view === 'board' &&
         focus &&
         (() => {
-          const g = allLiveBeans.find((x) => x.beanKey === focus.beanKey);
+          if (!focusStarters) return null;
+          // 레시피가 하나도 없는 '준비 중' 원두도 연다 — 저장된 레시피가 없는 타입은 시작값으로 채워 '레시피 설정'으로
+          const live = allLiveBeans.find((x) => x.beanKey === focus.beanKey);
+          const pending = !live && pendingBeans.some((x) => x.beanKey === focus.beanKey);
+          if (!live && !pending) return null;
+          const saved: BoardBean = live ?? { beanKey: focus.beanKey, bean: focusStarters.bean, ice: null, hot: null, fallback: {}, latestUpdate: '' };
+          const g: BoardBean = { ...saved, hot: saved.hot ?? focusStarters.hot, ice: saved.ice ?? focusStarters.ice };
+          const unsaved = { hot: !saved.hot, ice: !saved.ice };
+          const isNew = unsaved[focus.bt];
           const isWaiting = waitingSet.has(focus.beanKey);
-          const r = g?.[focus.bt];
-          if (!g || !r) return null;
+          const r = g[focus.bt] as DripRecipe;
           const shown = preview && preview.beanKey === g.beanKey && btOf(preview) === focus.bt ? { ...g, [focus.bt]: preview } : g;
           // 모바일은 두 카드를 위아래로 쌓고 화면 전체를 스크롤
           // 작은 태블릿(아이패드 미니)은 어두운 배경 없이 두 카드가 화면을 반씩 꽉 채운다 — 닫기는 위쪽 버튼으로만
@@ -738,6 +765,8 @@ export default function RecipeBoard() {
                   bt={focus.bt}
                   onBtChange={(bt) => setFocus({ beanKey: g.beanKey, bt })}
                   floating={!full}
+                  unsaved={unsaved}
+                  noActions={!live}
                   waiting={isWaiting}
                   onWaiting={(on) => {
                     if (!on) setFocus(null); // 판매 시작하면 보드 카드로 돌아간다
@@ -749,9 +778,13 @@ export default function RecipeBoard() {
                 <EvalCard
                   key={`${g.beanKey}:${store}`}
                   isFallback={!!g.fallback[focus.bt]}
+                  isNew={isNew}
                   onPreview={setPreview}
                   onRecipeSaved={(saved) => {
                     setPreview(null);
+                    // 방금 만든 레시피의 반대 타입이 아직 없으면 이어서 그 타입 설정으로(HOT → ICE)
+                    const other: BrewType = focus.bt === 'hot' ? 'ice' : 'hot';
+                    if (isNew && unsaved[other]) setFocus({ beanKey: g.beanKey, bt: other });
                     const merge = (xs: DripRecipe[]) => [...xs.filter((x) => !sameRecipeSlot(x, saved.beanKey, btOf(saved), store)), saved];
                     setRecipes(merge);
                     // 기기 캐시도 같이 고친다 — 다음에 보드를 열 때 옛 레시피가 잠깐 보이지 않게
@@ -860,6 +893,8 @@ function BoardCard({
   waiting = false,
   onWaiting,
   onDeleteRecord,
+  unsaved,
+  noActions = false,
 }: {
   g: BoardBean;
   store: StoreId;
@@ -879,6 +914,8 @@ function BoardCard({
   waiting?: boolean; // 이 지점 판매 대기 — '대기'·'소진' 대신 '판매 시작'
   onWaiting?: (on: boolean) => void;
   onDeleteRecord?: () => void; // 아카이브 크게 보기 — '기록 삭제'(확인 1회)
+  unsaved?: Partial<Record<BrewType, boolean>>; // 크게 보기 — 아직 저장 전인 타입(시작값을 비추는 중)
+  noActions?: boolean; // 저장된 레시피가 하나도 없는 원두 — '대기'·'소진'을 숨긴다
 }) {
   const types = BREW_TYPES.filter((bt) => g[bt]);
   const [ownBt, setOwnBt] = useState<BrewType>(types[0] ?? 'ice');
@@ -925,7 +962,7 @@ function BoardCard({
             {g.bean}
           </p>
           {/* 소진 — 못 팔게 되면 필터 커피 아카이브로 (레시피·이력·평가는 유지, 레시피 탭에서 되돌릴 수 있음) */}
-          {archived && confirmArchive ? (
+          {noActions ? null : archived && confirmArchive ? (
             <span className="text-caption" style={{ display: 'flex', gap: 10, flexShrink: 0, whiteSpace: 'nowrap' }}>
               <span className="text-destructive">레시피를 완전히 지울까요?</span>
               <button onClick={stop(() => onDeleteRecord?.())} className="text-destructive underline" style={plainBtn}>
@@ -1024,6 +1061,11 @@ function BoardCard({
           {isFallback && (
             <p className="text-caption text-muted-foreground" style={{ margin: '-12px 0 0' }}>
               판교 레시피 없음 · 양재천 레시피 기준(분쇄도는 판교 환산)
+            </p>
+          )}
+          {unsaved?.[bt] && (
+            <p className="text-caption text-muted-foreground" style={{ margin: '-12px 0 0' }}>
+              {bt.toUpperCase()} 레시피 없음 · 저장 전 기준값
             </p>
           )}
 
@@ -1128,10 +1170,12 @@ function EvalCard({
   onSaved,
   floating = true,
   isFallback,
+  isNew = false,
   onPreview,
   onRecipeSaved,
 }: {
   isFallback: boolean;
+  isNew?: boolean; // 이 타입 레시피가 아직 없다 — 평가 탭 없이 '레시피 설정'만
   onPreview: (r: DripRecipe | null) => void;
   onRecipeSaved: (r: DripRecipe) => void;
   store: StoreId;
@@ -1174,14 +1218,22 @@ function EvalCard({
       }}
     >
       <div role="tablist" className="border-b border-border" style={{ flexShrink: 0, margin: '24px 24px 0', display: 'flex', alignItems: 'baseline', gap: 20 }}>
-        {tabBtn('eval', '평가 남기기')}
-        {tabBtn('edit', `의견 ${currentCount} · 레시피 수정`)}
+        {isNew ? (
+          <span className="text-body font-medium text-foreground" style={{ padding: '0 0 10px', whiteSpace: 'nowrap', boxShadow: '0 2px 0 hsl(var(--foreground))' }}>
+            레시피 설정
+          </span>
+        ) : (
+          <>
+            {tabBtn('eval', '평가 남기기')}
+            {tabBtn('edit', `의견 ${currentCount} · 레시피 수정`)}
+          </>
+        )}
         <span className="text-caption text-muted-foreground" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
           {STORES.find((s) => s.id === store)?.short} · {bt.toUpperCase()}
         </span>
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px 24px' }}>
-        {tab === 'eval' ? (
+        {tab === 'eval' && !isNew ? (
           <BrewFeedbackPanel
             store={store}
             beanKey={g.beanKey}
@@ -1205,6 +1257,7 @@ function EvalCard({
             recipe={recipe}
             baseMesh={baseMesh}
             isFallback={isFallback}
+            isNew={isNew}
             feedback={feedback}
             staffNames={staffNames}
             staff={staff}
