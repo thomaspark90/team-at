@@ -19,7 +19,7 @@ import {
 import { fmtDate } from '@/lib/garden/format';
 import { toast } from '@/components/Toast';
 
-// 추출 평가 — 레시피 보드 카드 아래. 이름 토글 → 좋음/농도/개선 필요 칩 → 다음 분쇄도 슬라이더 → 남기기.
+// 추출 평가 — 레시피 보드의 평가 화면. 이름(보드에서는 들어올 때 이미 고름) → 좋음/농도/개선 필요 칩 → 다음 분쇄도 슬라이더 → 남기기.
 // 레시피는 바꾸지 않는다. 아래에 같은 지점·같은 레시피 버전의 의견 집계와 최근 의견.
 
 // 선택지는 글자 토글(M1 스타일, 2026-10-30) — 면·그림자 없이 선택만 밑줄+진한 글자
@@ -54,6 +54,7 @@ export default function BrewFeedbackPanel({
   staffNames,
   staff,
   onPickStaff,
+  lockStaff = false,
   feedback,
   onSaved,
 }: {
@@ -66,6 +67,7 @@ export default function BrewFeedbackPanel({
   staffNames: string[];
   staff: string; // 고른 이름 — 보드 전체 공유(카드마다 다시 고르지 않게)
   onPickStaff: (name: string) => void;
+  lockStaff?: boolean; // 이름을 이미 골라 들어왔다(레시피 보드) — 고르는 줄 대신 그 이름만 보여준다
   feedback: BrewFeedback[]; // 이 원두·타입·지점 의견 전체
   onSaved: (rec: BrewFeedback) => void;
 }) {
@@ -146,7 +148,9 @@ export default function BrewFeedbackPanel({
       {/* 이름 토글 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <span className="text-caption text-muted-foreground">이름</span>
-        {staffNames.length === 0 ? (
+        {lockStaff && staff ? (
+          <span className="text-body">{honorific(staff)}</span>
+        ) : staffNames.length === 0 ? (
           <span className="text-caption text-muted-foreground">커피 역할인 재직자가 없습니다. 스케줄 › 직원 명부에서 역할을 지정해 주세요.</span>
         ) : (
           <div style={toggleRow}>

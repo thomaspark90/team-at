@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { BeanMeta, BrewFeedback, BrewType, DripRecipe, StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
-import { flavorColors, flavorGradient } from '@/lib/flavor-colors';
-import { fmtDate } from '@/lib/garden/format';
+import { flavorGradient } from '@/lib/flavor-colors';
 import BrewFeedbackPanel from '@/components/garden/BrewFeedbackPanel';
+import BoardBeanList from '@/components/garden/board/BoardBeanList';
+import BrewerPicker from '@/components/garden/board/BrewerPicker';
+import BrewScreen from '@/components/garden/board/BrewScreen';
 import RecipeQuickEdit from '@/components/garden/RecipeQuickEdit';
 import SegmentControl from '@/components/nav/SegmentControl';
 import { toast } from '@/components/Toast';
@@ -18,19 +20,23 @@ import { recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
 import { brewOnStyle } from '@/lib/garden/brew-colors';
 import { bypassOf, drinkG } from '@/lib/garden/bypass';
 import { starterRecipe } from '@/lib/garden/starter-recipe';
+import { pourName } from '@/lib/garden/pour-name';
+import { roastInfo } from '@/lib/garden/roast';
 
-// 태블릿 레시피 보드 — 매장 태블릿(가로)에서 레시피 카드 3장을 한 화면에, 좌우 스와이프로 3장씩 넘긴다.
-// 추출용 카드(M2, 2026-10-30): ICE/HOT 전환 · 스펙(이 지점 분쇄도) · 푸어링 · 추출비, 맨 아래 접힌 추출 평가.
+// 태블릿 레시피 보드 — 추출 흐름(2026-11-25 대표 결정):
+//   ① 보드에는 원두 이름만(BoardBeanList — 판매 중 위, 대기 중 아래 흐리게) → ② 원두를 누르면 「누가 추출하나요?」 이름 버튼(BrewerPicker)
+//   → ③ 레시피가 화면 전체에(BrewScreen, HOT · ICE 는 여기서) → ④ 추출 평가(레시피 카드 + 평가 카드) → ⑤ 저장하면 이름을 지우고 보드로.
+// 이름은 기기에 기억하지 않는다(공용 태블릿 — 앞사람 이름으로 평가가 남지 않게). 평가 없이 닫는 버튼은 없다.
 // 타이머 없음(저울 타이머 사용). 전체 편집은 필터커피 탭에서 — 보드는 보기 + 추출 평가 +
-// 크게 보기의 '의견 · 레시피 수정' 탭(− / + 바로 수정, 2026-11-13) + 아직 없는 레시피를 처음 만드는 '레시피 설정'(준비 중 원두, 2026-11-25).
-// 넘김은 CSS scroll-snap — 터치 스와이프는 브라우저 기본 동작, 마우스는 ‹ › 버튼.
+// 추출 화면의 '의견 · 레시피 수정'(− / + 바로 수정, 2026-11-13) + 아직 없는 레시피를 처음 만드는 '레시피 설정'(준비 중 원두, 2026-11-25).
+// 레시피 카드(BoardCard, M2 2026-10-30)는 평가·수정 화면 왼쪽과 아카이브 크게 보기에서 쓴다.
 
-const PER_PAGE = 3; // 태블릿 가로·PC — 모바일(폭 700px 이하) 1장, 태블릿 세로(701~1023px) 2장 (2026-11-02)
+const PER_PAGE = 3; // 아카이브 칩 한 줄 개수: 태블릿 가로·PC — 모바일(폭 700px 이하) 1, 태블릿 세로(701~1023px) 2 (2026-11-02)
 const MOBILE_QUERY = '(max-width: 700px)';
 const NARROW_QUERY = '(max-width: 1023px)';
 const COMPACT_QUERY = '(max-width: 1140px)'; // 아이패드 미니 가로(1024·1133px) 이하 — 크게 보기를 화면 전체로 (2026-11-10)
 const STORE_KEY = 'garden-board-store'; // 기기별 지점 기억
-const STAFF_KEY = 'garden-board-staff'; // 공용 태블릿 — 마지막으로 고른 이름 기억
+const STAFF_KEY = 'garden-board-staff'; // 옛 키 — 마지막 이름을 기억하던 시절의 값. 이제 기억하지 않으므로 열 때 지운다
 const CACHE_KEY = 'garden-recipe-board-cache-v1'; // 마지막 보드 응답 — 다음 열 때 즉시 그리기용
 
 // /api/garden-recipe-board 응답
@@ -40,6 +46,7 @@ interface BoardData {
   latestPurchaseAt: Record<string, string>;
   purchaseTasting?: Record<string, string>; // 발주 때 입력한 노트(원두별 최신)
   purchaseBean?: Record<string, string>; // 원두별 최근 발주 표기명
+  purchaseRoast?: Record<string, { roastDate?: string; orderDate?: string; createdAt: string }>; // 원두별 최근 발주의 로스팅일 재료
   grinderProfiles: GrinderProfiles;
   alignments: AlignmentEvent[];
   feedback: BrewFeedback[];
@@ -53,12 +60,6 @@ const ARCHIVE_TABS = ['전체', '에티오피아', '콜롬비아', '과테말라
 type ArchiveTab = (typeof ARCHIVE_TABS)[number];
 const archiveTabOf = (country: string): ArchiveTab =>
   (ARCHIVE_TABS as readonly string[]).includes(country) && country !== '전체' ? (country as ArchiveTab) : '그 외';
-
-const BLOOM_SEC = 35; // 매장 기준 뜸 시간 — 전 레시피 공통(2026-10-30 대표 결정), 레시피별 입력은 아직 없음
-const pourName = (label: string | undefined, i: number) => {
-  const name = label ?? (i === 0 ? '뜸' : `${i}차`);
-  return name === '뜸' ? `뜸(${BLOOM_SEC}s)` : name;
-};
 
 interface BoardBean {
   beanKey: string;
@@ -75,16 +76,17 @@ export default function RecipeBoard() {
   const [latestPurchaseAt, setLatestPurchaseAt] = useState<Record<string, string>>({}); // 원두별 마지막 발주 시각
   const [purchaseTasting, setPurchaseTasting] = useState<Record<string, string>>({});
   const [purchaseBean, setPurchaseBean] = useState<Record<string, string>>({});
-  const [pendingOpen, setPendingOpen] = useState(false); // 위쪽 '준비 중' 목록 펼침
+  const [purchaseRoast, setPurchaseRoast] = useState<NonNullable<BoardData['purchaseRoast']>>({});
   const [grinderProfiles, setGrinderProfiles] = useState<GrinderProfiles>({});
   const [alignments, setAlignments] = useState<AlignmentEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [page, setPage] = useState(0);
   const [view, setView] = useState<'board' | 'archive'>('board'); // 필터 커피 아카이브 화면 전환
   const [openArchived, setOpenArchived] = useState<string | null>(null); // 아카이브에서 크게 펼쳐 본 원두 beanKey
-  // 보드 카드를 누르면 레시피 카드 + 추출 평가 카드를 나란히 띄운다(F1, 2026-11-01)
-  const [focus, setFocus] = useState<{ beanKey: string; bt: BrewType } | null>(null);
+  // 이름 고르는 창을 띄운 원두(beanKey) — 보드·대기 목록에서 원두를 누르면
+  const [picking, setPicking] = useState<string | null>(null);
+  // 들어온 원두 — brew: 추출 화면 / eval: 추출 평가 / edit: 의견 · 레시피 수정 / setup: 준비 중 원두의 레시피 설정(이름 없이 들어옴)
+  const [focus, setFocus] = useState<{ beanKey: string; bt: BrewType; stage: 'brew' | 'eval' | 'edit' | 'setup' } | null>(null);
   // 크게 보기에서 조절 중인 레시피 — 저장 전 값을 왼쪽 카드에 비춘다 (의견 · 레시피 수정 탭)
   const [preview, setPreview] = useState<DripRecipe | null>(null);
   const [archiveTab, setArchiveTab] = useState<ArchiveTab>('전체');
@@ -92,20 +94,18 @@ export default function RecipeBoard() {
   const [feedback, setFeedback] = useState<BrewFeedback[]>([]);
   const [staffNames, setStaffNames] = useState<string[]>([]);
   const [staff, setStaff] = useState('');
-  const scroller = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORE_KEY);
     if (saved === 'pangyo' || saved === 'yangjae') setStore(saved);
+    localStorage.removeItem(STAFF_KEY);
   }, []);
-  useEffect(() => {
-    const saved = localStorage.getItem(STAFF_KEY);
-    if (saved && staffNames.includes(saved)) setStaff(saved);
-  }, [staffNames]);
-  const pickStaff = (name: string) => {
-    setStaff(name);
-    if (name) localStorage.setItem(STAFF_KEY, name);
-    else localStorage.removeItem(STAFF_KEY);
+  // 이름은 들어올 때마다 새로 고른다 — 기기에 남기지 않고, 보드로 돌아가면 지운다
+  const pickStaff = (name: string) => setStaff(name);
+  const closeFocus = () => {
+    setFocus(null);
+    setPreview(null);
+    setStaff('');
   };
   const pickStore = (id: string) => {
     setStore(id as StoreId);
@@ -121,6 +121,7 @@ export default function RecipeBoard() {
       setLatestPurchaseAt(d.latestPurchaseAt ?? {});
       setPurchaseTasting(d.purchaseTasting ?? {});
       setPurchaseBean(d.purchaseBean ?? {});
+      setPurchaseRoast(d.purchaseRoast ?? {});
       setGrinderProfiles(d.grinderProfiles ?? {});
       setAlignments(d.alignments ?? []);
       setFeedback(d.feedback ?? []);
@@ -186,16 +187,15 @@ export default function RecipeBoard() {
     return [all.filter((g) => !archived(g)), all.filter(archived)];
   }, [recipes, beanMetas, latestPurchaseAt, store]);
 
-  // 판매 대기 — 이 지점에서 대기로 둔 원두는 보드 카드에서 빼고 위쪽 '대기 N' 목록으로 (지점별, 2026-11-01)
+  // 판매 대기 — 이 지점에서 대기로 둔 원두는 보드 아래 '대기 중' 묶음으로 (지점별, 2026-11-01)
   const waitingSet = useMemo(
     () => new Set(beanMetas.filter((m) => m.waitingStores?.includes(store)).map((m) => m.beanKey)),
     [beanMetas, store]
   );
   const beans = useMemo(() => allLiveBeans.filter((g) => !waitingSet.has(g.beanKey)), [allLiveBeans, waitingSet]);
   const waitingBeans = useMemo(() => allLiveBeans.filter((g) => waitingSet.has(g.beanKey)), [allLiveBeans, waitingSet]);
-  const [waitingOpen, setWaitingOpen] = useState(false);
 
-  // 레시피 준비 중 — 발주는 됐지만 레시피가 아직 하나도 없는 원두(보관한 원두 제외), 최근 발주순 (2안, 2026-11-01)
+  // 레시피 없음 — 발주는 됐지만 레시피가 아직 하나도 없는 원두(보관한 원두 제외), 최근 발주순. 보드에서는 '대기 중' 묶음의 뒤쪽
   const pendingBeans = useMemo(() => {
     const has = new Set(recipes.map((r) => r.beanKey));
     const metaByBean = new Map(beanMetas.map((b) => [b.beanKey, b]));
@@ -284,6 +284,14 @@ export default function RecipeBoard() {
     for (const b of beanMetas) m.set(b.beanKey, resolveTasting(b, m.get(b.beanKey)));
     return m;
   }, [beanMetas, purchaseTasting]);
+  // 보드 한 줄 — 오른쪽 글자는 이 지점에서 볼 수 있는 레시피 타입, 로스팅일은 최근 발주 기준(필터커피 화면의 D+ 와 같은 값)
+  const rowOf = (g: BoardBean) => ({
+    beanKey: g.beanKey,
+    bean: g.bean,
+    tasting: tastingByBean.get(g.beanKey) ?? '',
+    types: BREW_TYPES.filter((t) => g[t]),
+    roast: roastInfo(purchaseRoast[g.beanKey]),
+  });
 
   // 크게 보기에서 아직 없는 레시피(준비 중 원두 · 한쪽 타입만 있는 원두)의 시작값 — 저장 전까지 왼쪽 카드에 비추고
   // 오른쪽 '레시피 설정'의 기준이 된다. 매 렌더마다 새 객체면 조절값이 초기화되므로 원두 단위로 기억해 둔다
@@ -320,12 +328,6 @@ export default function RecipeBoard() {
   }, []);
   const perPage = isMobile ? 1 : isNarrow ? 2 : PER_PAGE;
 
-  const pages = useMemo(() => {
-    const out: BoardBean[][] = [];
-    for (let i = 0; i < beans.length; i += perPage) out.push(beans.slice(i, i + perPage));
-    return out;
-  }, [beans, perPage]);
-
   const latestAligns = useMemo(
     () => ({
       yangjae: latestAlignmentDate(alignments, 'yangjae'),
@@ -351,19 +353,6 @@ export default function RecipeBoard() {
     if (!p) return null;
     if (p.stale) return '재측정 필요';
     return `${p.text}${p.provisional ? '*' : ''}`;
-  };
-
-  // 스크롤 위치 → 현재 페이지 (스와이프·버튼 공통)
-  const onScroll = () => {
-    const el = scroller.current;
-    if (!el || el.clientWidth === 0) return;
-    setPage(Math.round(el.scrollLeft / el.clientWidth));
-  };
-  const goTo = (p: number) => {
-    const el = scroller.current;
-    if (!el) return;
-    const next = Math.max(0, Math.min(pages.length - 1, p));
-    el.scrollTo({ left: next * el.clientWidth, behavior: 'smooth' });
   };
 
   return (
@@ -397,125 +386,13 @@ export default function RecipeBoard() {
           {view === 'board' ? '레시피 보드' : '필터 커피 아카이브'}
         </h1>
         <span style={{ flex: 1 }} />
-        {/* 모바일 — 제목 줄 아래 새 줄에 대기·준비 중·아카이브·지점 */}
-        {isMobile && <span style={{ flexBasis: '100%', height: 0 }} />}
-        {/* 판매 대기 — 레시피는 있지만 아직 판매 전. 누르면 목록, 원두를 누르면 크게 보기(레시피 + 추출 평가) */}
-        {/* 대기가 0건이어도 자리는 지킨다 — 흐리게, 눌리지 않게 (2026-11-21) */}
-        {view === 'board' && (
-          <span style={{ position: 'relative' }}>
-            <button
-              onClick={() => {
-                setWaitingOpen((o) => !o);
-                setPendingOpen(false);
-              }}
-              disabled={waitingBeans.length === 0}
-              className={`tabular text-body text-muted-foreground ${waitingBeans.length === 0 ? '' : 'hover:text-foreground'}`}
-              style={waitingBeans.length === 0 ? { ...plainBtn, opacity: 0.35, cursor: 'default' } : plainBtn}
-              aria-expanded={waitingOpen}
-              title={waitingBeans.length === 0 ? '이 지점에 판매 대기 중인 원두가 없어요' : undefined}
-            >
-              대기 {waitingBeans.length} {waitingBeans.length > 0 && (waitingOpen ? '▴' : '▾')}
-            </button>
-            {waitingOpen && waitingBeans.length > 0 && (
-              <div
-                className="rounded-md bg-background shadow-soft"
-                style={{ position: 'absolute', top: 'calc(100% + 10px)', ...(isMobile ? { left: 0 } : { right: 0 }), width: 'min(360px, 88vw)', padding: '16px 18px', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 4 }}
-              >
-                <p className="text-caption text-muted-foreground" style={{ margin: '0 0 6px' }}>
-                  판매 대기 — 누르면 레시피를 크게 볼 수 있어요
-                </p>
-                {waitingBeans.map((g) => {
-                  const notes = tastingByBean.get(g.beanKey) ?? '';
-                  const dot = flavorColors(notes)[0];
-                  const bt = (BREW_TYPES.find((t) => g[t]) ?? 'ice') as BrewType;
-                  return (
-                    <button
-                      key={g.beanKey}
-                      onClick={() => {
-                        setWaitingOpen(false);
-                        setFocus({ beanKey: g.beanKey, bt });
-                      }}
-                      className="rounded-md text-left hover:bg-accent"
-                      style={{ ...plainBtn, display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 8px', margin: '0 -8px' }}
-                    >
-                      <span className={dot ? '' : 'bg-muted'} style={{ width: 10, height: 10, borderRadius: 999, marginTop: 6, flexShrink: 0, background: dot }} />
-                      <span style={{ minWidth: 0 }}>
-                        <span className="text-body" style={{ display: 'block', wordBreak: 'keep-all' }}>{g.bean}</span>
-                        {notes && <span className="text-caption text-muted-foreground" style={{ display: 'block', marginTop: 2 }}>{notes}</span>}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </span>
-        )}
-        {/* 레시피 준비 중 — 글자 하나, 누르면 원두명·노트·발주일 목록 */}
-        {view === 'board' && pendingBeans.length > 0 && (
-          <span style={{ position: 'relative' }}>
-            <button
-              onClick={() => {
-                setPendingOpen((o) => !o);
-                setWaitingOpen(false);
-              }}
-              className="tabular text-body text-muted-foreground hover:text-foreground"
-              style={plainBtn}
-              aria-expanded={pendingOpen}
-            >
-              준비 중 {pendingBeans.length} {pendingOpen ? '▴' : '▾'}
-            </button>
-            {pendingOpen && (
-              <div
-                className="rounded-md bg-background shadow-soft"
-                style={{ position: 'absolute', top: 'calc(100% + 10px)', ...(isMobile ? { left: 0 } : { right: 0 }), width: 'min(360px, 88vw)', padding: '16px 18px', zIndex: 40, display: 'flex', flexDirection: 'column', gap: 4 }}
-              >
-                <p className="text-caption text-muted-foreground" style={{ margin: '0 0 6px' }}>
-                  레시피 준비 중 — 누르면 여기서 레시피를 설정할 수 있어요
-                </p>
-                {pendingBeans.map((p) => {
-                  const notes = tastingByBean.get(p.beanKey) ?? '';
-                  const dot = flavorColors(notes)[0];
-                  return (
-                    // 대기 목록과 같은 줄 — 누르면 크게 보기가 '레시피 설정'으로 열린다(HOT 부터)
-                    <button
-                      key={p.beanKey}
-                      onClick={() => {
-                        setPendingOpen(false);
-                        setFocus({ beanKey: p.beanKey, bt: 'hot' });
-                      }}
-                      className="rounded-md text-left hover:bg-accent"
-                      style={{ ...plainBtn, display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 8px', margin: '0 -8px' }}
-                    >
-                      <span className={dot ? '' : 'bg-muted'} style={{ width: 10, height: 10, borderRadius: 999, marginTop: 6, flexShrink: 0, background: dot }} />
-                      <span style={{ minWidth: 0 }}>
-                        <span className="text-body" style={{ display: 'block', wordBreak: 'keep-all' }}>{p.bean}</span>
-                        <span className="tabular text-caption text-muted-foreground" style={{ display: 'block', marginTop: 2 }}>
-                          {[notes, p.orderedAt ? `${fmtDate(p.orderedAt).slice(3)} 발주` : ''].filter(Boolean).join(' · ')}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </span>
-        )}
-        {view === 'board' && archivedBeans.length > 0 && (
-          <button onClick={() => setView('archive')} className="tabular text-body text-muted-foreground hover:text-foreground" style={plainBtn}>
-            아카이브 {archivedBeans.length}
-          </button>
-        )}
+        {/* 대기 · 준비 중은 보드 아래 '대기 중' 묶음으로, 아카이브는 오른쪽 아래 고정 버튼으로 옮겼다(2026-11-25) — 위쪽에는 지점 전환만 */}
         <SegmentControl
           items={[...STORES].reverse().map((s) => ({ id: s.id, label: s.short }))}
           value={store}
           onSelect={pickStore}
           ariaLabel="지점"
         />
-        {view === 'board' && pages.length > 1 && (
-          <span className="tabular text-body text-muted-foreground">
-            {page + 1} / {pages.length}
-          </span>
-        )}
       </header>
 
       {loading && <p className="text-body text-muted-foreground" style={{ padding: '0 20px' }}>불러오는 중…</p>}
@@ -632,69 +509,66 @@ export default function RecipeBoard() {
           );
         })()}
 
-      {view === 'board' && !loading && !failed && beans.length === 0 && (
+      {view === 'board' && !loading && !failed && beans.length + waitingBeans.length + pendingBeans.length === 0 && (
         <p className="text-body text-muted-foreground" style={{ padding: '0 20px' }}>
           레시피가 설정된 원두가 없어요.
         </p>
       )}
 
-      {/* 페이지 가로 스크롤 — 한 페이지 = 화면 폭, 3장 그리드. scroll-snap 으로 페이지 단위 정지 */}
-      {view === 'board' && !loading && beans.length > 0 && (
-        <div
-          ref={scroller}
-          onScroll={onScroll}
-          style={{
-            flex: 1,
-            minHeight: 0,
-            display: 'flex',
-            overflowX: 'auto',
-            overflowY: 'hidden',
-            scrollSnapType: 'x mandatory',
-            scrollbarWidth: 'none',
-            overscrollBehaviorX: 'contain',
+      {/* 보드 — 원두 이름만 한 줄에 하나씩. 판매 중이 위, 대기 중(판매 대기 + 레시피 없는 원두)이 아래 흐리게 */}
+      {view === 'board' && !loading && beans.length + waitingBeans.length + pendingBeans.length > 0 && (
+        <BoardBeanList
+          selling={beans.map(rowOf)}
+          waiting={[
+            ...waitingBeans.map(rowOf),
+            ...pendingBeans.map((p) => ({ beanKey: p.beanKey, bean: p.bean, tasting: tastingByBean.get(p.beanKey) ?? '', types: [], roast: roastInfo(purchaseRoast[p.beanKey]) })),
+          ]}
+          isMobile={isMobile}
+          onPick={(beanKey) => {
+            // 레시피가 있으면 이름 고르는 창, 하나도 없으면 이름 없이 '레시피 설정'(HOT 부터 — 이름은 저장할 때 고른다)
+            if (allLiveBeans.some((x) => x.beanKey === beanKey)) setPicking(beanKey);
+            else setFocus({ beanKey, bt: 'hot', stage: 'setup' });
           }}
-        >
-          {pages.map((group, pi) => (
-            <div
-              key={pi}
-              style={{
-                flex: '0 0 100%',
-                scrollSnapAlign: 'start',
-                scrollSnapStop: 'always',
-                display: 'grid',
-                gridTemplateColumns: `repeat(${perPage}, minmax(0, 1fr))`,
-                // 카드 높이 = 내용 높이(같은 페이지에선 가장 긴 카드에 맞춤), 화면이 짧으면 화면 높이까지만 — 넘치면 카드 안 스크롤.
-                // 세로로 긴 화면(아이패드 세로)에서 카드가 끝까지 늘어나 노트 주변이 휑하던 것 해소 (2026-11-02)
-                gridTemplateRows: 'fit-content(100%)',
-                alignContent: 'start',
-                gap: 12,
-                padding: '0 20px 8px',
-                minHeight: 0,
-              }}
-            >
-              {group.map((g) => (
-                <BoardCard
-                  key={g.beanKey}
-                  g={g}
-                  store={store}
-                  tasting={tastingByBean.get(g.beanKey) ?? ''}
-                  storeMesh={storeMesh}
-                  staffNames={staffNames}
-                  staff={staff}
-                  onPickStaff={pickStaff}
-                  feedback={feedback}
-                  onFeedback={(rec) => setFeedback((xs) => [...xs, rec])}
-                  onArchive={() => setArchived(g.beanKey, g.bean, true)}
-                  onOpenEval={(bt) => setFocus({ beanKey: g.beanKey, bt })}
-                  onWaiting={(on) => setWaiting(g.beanKey, g.bean, on)}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
+        />
       )}
 
-      {/* 카드 크게 + 추출 평가 — 같은 크기 두 장을 나란히 띄운다. 바깥을 누르면 닫힘 */}
+      {/* 아카이브 — 오른쪽 아래 고정 버튼(2026-11-25 대표 결정, 위쪽 글자 버튼에서 옮김). 아카이브한 원두가 없으면 숨긴다 */}
+      {view === 'board' && archivedBeans.length > 0 && (
+        <button type="button" onClick={() => setView('archive')} className="fc-fab-sub tabular text-body">
+          아카이브 <span className="text-caption text-muted-foreground">{archivedBeans.length}</span>
+        </button>
+      )}
+
+      {/* 누가 추출하나요? — 이름을 누르면 추출 화면으로(HOT 먼저). 대기 · 소진 · 판매 시작도 여기서 */}
+      {view === 'board' &&
+        picking &&
+        (() => {
+          const g = allLiveBeans.find((x) => x.beanKey === picking);
+          if (!g) return null;
+          return (
+            <BrewerPicker
+              bean={g.bean}
+              staffNames={staffNames}
+              waiting={waitingSet.has(g.beanKey)}
+              onEnter={(name) => {
+                setStaff(name);
+                setPicking(null);
+                setFocus({ beanKey: g.beanKey, bt: BREW_TYPES.find((t) => g[t]) ?? 'hot', stage: 'brew' });
+              }}
+              onWaiting={(on) => {
+                setPicking(null);
+                setWaiting(g.beanKey, g.bean, on);
+              }}
+              onArchive={() => {
+                setPicking(null);
+                setArchived(g.beanKey, g.bean, true);
+              }}
+              onClose={() => setPicking(null)}
+            />
+          );
+        })()}
+
+      {/* 들어온 원두 — 추출 화면(brew) → 추출 평가(eval). 의견 · 레시피 수정(edit)·레시피 설정(setup)은 레시피 카드 + 오른쪽 카드 두 장 */}
       {view === 'board' &&
         focus &&
         (() => {
@@ -707,7 +581,41 @@ export default function RecipeBoard() {
           const g: BoardBean = { ...saved, hot: saved.hot ?? focusStarters.hot, ice: saved.ice ?? focusStarters.ice };
           const unsaved = { hot: !saved.hot, ice: !saved.ice };
           const isNew = unsaved[focus.bt];
-          const isWaiting = waitingSet.has(focus.beanKey);
+          const savedBt: BrewType = live?.[focus.bt] ? focus.bt : (BREW_TYPES.find((t) => live?.[t]) ?? focus.bt);
+          // 추출 화면 — 저장된 레시피만 보여준다(없는 타입은 고를 수 없음)
+          if (live && focus.stage === 'brew') {
+            const rr = live[savedBt];
+            return (
+              <BrewScreen
+                bean={live.bean}
+                tasting={tastingByBean.get(live.beanKey) ?? ''}
+                store={store}
+                staff={staff}
+                bt={savedBt}
+                onBtChange={(bt) => setFocus({ beanKey: live.beanKey, bt, stage: 'brew' })}
+                recipes={{ hot: live.hot, ice: live.ice }}
+                fallback={live.fallback}
+                storeMesh={storeMesh}
+                opinionCount={
+                  rr
+                    ? feedback.filter((f) => f.beanKey === live.beanKey && f.brewType === savedBt && f.store === store && f.recipeVersion === rr.updatedAt).length
+                    : 0
+                }
+                isMobile={isMobile}
+                onBack={closeFocus}
+                onEdit={() => setFocus({ beanKey: live.beanKey, bt: savedBt, stage: 'edit' })}
+                onFinish={() => setFocus({ beanKey: live.beanKey, bt: savedBt, stage: 'eval' })}
+              />
+            );
+          }
+          // 이름을 누르고 들어온 흐름(eval · edit)은 추출 화면으로 돌아가고, 준비 중 원두의 레시피 설정(setup)은 보드로 닫는다
+          const fromBrew = !!live && focus.stage !== 'setup';
+          const back = () => {
+            if (!fromBrew) return closeFocus();
+            setPreview(null);
+            setFocus({ beanKey: focus.beanKey, bt: savedBt, stage: 'brew' });
+          };
+          const mode: 'eval' | 'edit' = focus.stage === 'eval' && !isNew ? 'eval' : 'edit';
           const r = g[focus.bt] as DripRecipe;
           const shown = preview && preview.beanKey === g.beanKey && btOf(preview) === focus.bt ? { ...g, [focus.bt]: preview } : g;
           // 모바일은 두 카드를 위아래로 쌓고 화면 전체를 스크롤
@@ -720,7 +628,7 @@ export default function RecipeBoard() {
               : { width: 'min(404px, 44vw)', height: 'min(690px, 86dvh)', display: 'flex', minWidth: 0 };
           return (
             <div
-              onClick={full ? undefined : () => setFocus(null)}
+              onClick={full ? undefined : back}
               className={full ? 'bg-background' : undefined}
               style={{
                 position: 'fixed',
@@ -737,15 +645,21 @@ export default function RecipeBoard() {
               }}
             >
               <button
-                onClick={() => setFocus(null)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  back();
+                }}
                 className={full ? 'text-body text-foreground' : 'text-body'}
-                style={
-                  full
-                    ? { ...plainBtn, position: 'absolute', top: 12, right: 20 }
-                    : { ...plainBtn, position: 'absolute', top: 18, right: 24, color: '#fff' } // 어두운 배경 위 — 다크 모드에서도 흰 글자
-                }
+                style={{
+                  ...plainBtn,
+                  position: 'absolute',
+                  top: full ? 12 : 18,
+                  // 돌아가기는 왼쪽 위, 닫기는 오른쪽 위
+                  ...(fromBrew ? { left: full ? 20 : 24 } : { right: full ? 20 : 24 }),
+                  ...(full ? {} : { color: '#fff' }), // 어두운 배경 위 — 다크 모드에서도 흰 글자
+                }}
               >
-                닫기 ×
+                {fromBrew ? '← 레시피' : '닫기 ×'}
               </button>
               <div onClick={(e) => e.stopPropagation()} style={box}>
                 <BoardCard
@@ -758,20 +672,12 @@ export default function RecipeBoard() {
                   onPickStaff={pickStaff}
                   feedback={feedback}
                   onFeedback={(rec) => setFeedback((xs) => [...xs, rec])}
-                  onArchive={() => {
-                    setFocus(null);
-                    setArchived(g.beanKey, g.bean, true);
-                  }}
+                  onArchive={() => undefined}
                   bt={focus.bt}
-                  onBtChange={(bt) => setFocus({ beanKey: g.beanKey, bt })}
+                  onBtChange={(bt) => setFocus({ beanKey: g.beanKey, bt, stage: focus.stage })}
                   floating={!full}
                   unsaved={unsaved}
-                  noActions={!live}
-                  waiting={isWaiting}
-                  onWaiting={(on) => {
-                    if (!on) setFocus(null); // 판매 시작하면 보드 카드로 돌아간다
-                    setWaiting(g.beanKey, g.bean, on);
-                  }}
+                  noActions // 대기 · 소진 · 판매 시작은 이름 고르는 창에서
                 />
               </div>
               <div onClick={(e) => e.stopPropagation()} style={box}>
@@ -779,12 +685,13 @@ export default function RecipeBoard() {
                   key={`${g.beanKey}:${store}`}
                   isFallback={!!g.fallback[focus.bt]}
                   isNew={isNew}
+                  mode={mode}
                   onPreview={setPreview}
                   onRecipeSaved={(saved) => {
                     setPreview(null);
                     // 방금 만든 레시피의 반대 타입이 아직 없으면 이어서 그 타입 설정으로(HOT → ICE)
                     const other: BrewType = focus.bt === 'hot' ? 'ice' : 'hot';
-                    if (isNew && unsaved[other]) setFocus({ beanKey: g.beanKey, bt: other });
+                    if (isNew && unsaved[other]) setFocus({ beanKey: g.beanKey, bt: other, stage: focus.stage });
                     const merge = (xs: DripRecipe[]) => [...xs.filter((x) => !sameRecipeSlot(x, saved.beanKey, btOf(saved), store)), saved];
                     setRecipes(merge);
                     // 기기 캐시도 같이 고친다 — 다음에 보드를 열 때 옛 레시피가 잠깐 보이지 않게
@@ -807,48 +714,17 @@ export default function RecipeBoard() {
                   staff={staff}
                   onPickStaff={pickStaff}
                   feedback={feedback.filter((f) => f.beanKey === g.beanKey && f.brewType === focus.bt && f.store === store)}
-                  onSaved={(rec) => setFeedback((xs) => [...xs, rec])}
+                  onSaved={(rec) => {
+                    // 평가를 남기면 이름을 지우고 보드로 — 다음 사람은 원두와 이름을 새로 고른다
+                    setFeedback((xs) => [...xs, rec]);
+                    closeFocus();
+                  }}
                   floating={!full}
                 />
               </div>
             </div>
           );
         })()}
-
-      {/* 하단 — ‹ 페이지 점 › (마우스·트랙패드용, 터치는 스와이프) */}
-      {view === 'board' && pages.length > 1 && (
-        <footer style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '10px 0 14px', flexShrink: 0 }}>
-          <button
-            onClick={() => goTo(page - 1)}
-            disabled={page === 0}
-            className="text-title text-muted-foreground hover:text-foreground disabled:opacity-30"
-            style={navBtn}
-            aria-label="이전 페이지"
-          >
-            ‹
-          </button>
-          <span style={{ display: 'flex', gap: 8 }}>
-            {pages.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => goTo(i)}
-                aria-label={`${i + 1}페이지`}
-                className={i === page ? 'bg-foreground' : 'bg-muted-foreground/30'}
-                style={{ width: 8, height: 8, borderRadius: 999, border: 'none', padding: 0, cursor: 'pointer' }}
-              />
-            ))}
-          </span>
-          <button
-            onClick={() => goTo(page + 1)}
-            disabled={page === pages.length - 1}
-            className="text-title text-muted-foreground hover:text-foreground disabled:opacity-30"
-            style={navBtn}
-            aria-label="다음 페이지"
-          >
-            ›
-          </button>
-        </footer>
-      )}
 
     </div>
   );
@@ -864,15 +740,6 @@ const tastingLines = (t: string): string[] => {
 
 const plainBtn: React.CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' };
 
-const navBtn: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  padding: '0 8px',
-  lineHeight: 1,
-  fontFamily: 'inherit',
-};
-
 // 추출용 카드(M2, 2026-10-30) — 원두명·테이스팅 + ICE/HOT 전환 + 스펙·푸어링·추출비, 맨 아래 접힌 추출 평가. 길면 카드 안에서 세로 스크롤
 function BoardCard({
   g,
@@ -886,7 +753,6 @@ function BoardCard({
   onFeedback,
   archived = false,
   onArchive,
-  onOpenEval,
   bt: btProp,
   onBtChange,
   floating = false,
@@ -907,8 +773,7 @@ function BoardCard({
   onFeedback: (rec: BrewFeedback) => void;
   archived?: boolean; // 아카이브 화면 — '소진' 대신 '되돌리기'
   onArchive: () => void;
-  onOpenEval?: (bt: BrewType) => void; // 보드 카드 — 누르면 크게 + 추출 평가 카드
-  bt?: BrewType; // 크게 띄운 카드 — ICE/HOT 을 평가 카드와 맞추려고 바깥에서 제어
+  bt?: BrewType; // 평가·수정 화면의 카드 — ICE/HOT 을 오른쪽 카드와 맞추려고 바깥에서 제어
   onBtChange?: (bt: BrewType) => void;
   floating?: boolean; // 어두운 배경 위에 뜬 카드 — 그림자를 절반으로(빛 번짐이 세 보여서)
   waiting?: boolean; // 이 지점 판매 대기 — '대기'·'소진' 대신 '판매 시작'
@@ -927,8 +792,6 @@ function BoardCard({
   const ratio = r.doseG && r.waterG ? `1:${(r.waterG / r.doseG).toFixed(1)}` : null;
   const mesh = storeMesh(r);
   const isFallback = !!g.fallback[bt];
-  const mine = feedback.filter((f) => f.beanKey === g.beanKey && f.brewType === bt && f.store === store);
-  const mineCurrent = mine.filter((f) => f.recipeVersion === r.updatedAt).length;
   // 카드 안 버튼(ICE/HOT·소진 등)은 카드 열기와 겹치지 않게 전파를 막는다
   const stop = (fn: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -937,7 +800,6 @@ function BoardCard({
   return (
     <div
       className={`rounded-md bg-background ${floating ? '' : 'shadow-soft'}`}
-      onClick={onOpenEval ? () => onOpenEval(bt) : undefined}
       style={{
         flex: 1,
         display: 'flex',
@@ -945,7 +807,6 @@ function BoardCard({
         minWidth: 0,
         minHeight: 0,
         overflow: 'hidden',
-        cursor: onOpenEval ? 'pointer' : undefined,
         // shadow-soft 의 절반(오프셋·번짐·불투명도 ½) — 어두운 배경 위 흰 빛 번짐이 너무 세서 (2026-11-01)
         boxShadow: floating ? '3px 3px 8px hsl(45 8% 78% / 0.21), -3px -3px 8px hsl(0 0% 100% / 0.45)' : undefined,
       }}
@@ -1036,7 +897,7 @@ function BoardCard({
           )}
         </div>
       </div>
-      {/* 레시피 + 접힌 추출 평가가 한 스크롤 — 평가를 펼치면 카드 안에서 아래로 이어진다 */}
+      {/* 레시피 — 길면 카드 안에서 세로 스크롤 */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* flex: 1 — 추출비·추출 시간을 흰 영역 맨 아래에 붙이기 위해 높이를 채운다 */}
         <div style={{ flex: 1, padding: '24px 24px 28px', display: 'flex', flexDirection: 'column', gap: 28 }}>
@@ -1136,21 +997,6 @@ function BoardCard({
           )}
         </div>
 
-        {/* 추출 평가 — 누르면 카드 크게 + 평가 카드(보드). 크게 띄운 카드·아카이브에선 바를 숨긴다 */}
-        {onOpenEval && (
-          <div className="bg-accent">
-            <button
-              onClick={stop(() => onOpenEval(bt))}
-              className="text-body text-foreground"
-              style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              <span>추출 평가 남기기</span>
-              <span className="tabular text-muted-foreground">
-                {mineCurrent > 0 && `의견 ${mineCurrent} `}›
-              </span>
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -1171,10 +1017,12 @@ function EvalCard({
   floating = true,
   isFallback,
   isNew = false,
+  mode,
   onPreview,
   onRecipeSaved,
 }: {
   isFallback: boolean;
+  mode: 'eval' | 'edit'; // eval: 추출 평가(이름은 들어올 때 정해짐) / edit: 의견 · 레시피 수정
   isNew?: boolean; // 이 타입 레시피가 아직 없다 — 평가 탭 없이 '레시피 설정'만
   onPreview: (r: DripRecipe | null) => void;
   onRecipeSaved: (r: DripRecipe) => void;
@@ -1190,20 +1038,8 @@ function EvalCard({
   onSaved: (rec: BrewFeedback) => void;
   floating?: boolean; // 어두운 배경 위(기본) — 화면 전체 보기에선 보드 카드와 같은 그림자
 }) {
-  // 탭 — 평가 남기기 / 의견 · 레시피 수정 (2026-11-13 시안 C). 원두·지점이 바뀌면 key 로 다시 만들어 평가 탭부터
-  const [tab, setTab] = useState<'eval' | 'edit'>('eval');
+  // 추출 화면에서 고른 길 하나만 보여준다 — [추출 끝 · 평가 남기기] 또는 「의견 · 레시피 수정」(2026-11-25, 탭 폐지)
   const currentCount = feedback.filter((f) => f.recipeVersion === recipe.updatedAt).length;
-  const tabBtn = (id: 'eval' | 'edit', label: string) => (
-    <button
-      onClick={() => setTab(id)}
-      role="tab"
-      aria-selected={tab === id}
-      className={`text-body ${tab === id ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-      style={{ ...plainBtn, padding: '0 0 10px', whiteSpace: 'nowrap', boxShadow: tab === id ? '0 2px 0 hsl(var(--foreground))' : undefined }}
-    >
-      {label}
-    </button>
-  );
   return (
     <div
       className={`rounded-md bg-background ${floating ? '' : 'shadow-soft'}`}
@@ -1217,23 +1053,16 @@ function EvalCard({
         boxShadow: floating ? '3px 3px 8px hsl(45 8% 78% / 0.21), -3px -3px 8px hsl(0 0% 100% / 0.45)' : undefined,
       }}
     >
-      <div role="tablist" className="border-b border-border" style={{ flexShrink: 0, margin: '24px 24px 0', display: 'flex', alignItems: 'baseline', gap: 20 }}>
-        {isNew ? (
-          <span className="text-body font-medium text-foreground" style={{ padding: '0 0 10px', whiteSpace: 'nowrap', boxShadow: '0 2px 0 hsl(var(--foreground))' }}>
-            레시피 설정
-          </span>
-        ) : (
-          <>
-            {tabBtn('eval', '평가 남기기')}
-            {tabBtn('edit', `의견 ${currentCount} · 레시피 수정`)}
-          </>
-        )}
+      <div className="border-b border-border" style={{ flexShrink: 0, margin: '24px 24px 0', display: 'flex', alignItems: 'baseline', gap: 20 }}>
+        <span className="tabular text-body font-medium text-foreground" style={{ padding: '0 0 10px', whiteSpace: 'nowrap', boxShadow: '0 2px 0 hsl(var(--foreground))' }}>
+          {isNew ? '레시피 설정' : mode === 'eval' ? '추출 평가' : `의견 ${currentCount} · 레시피 수정`}
+        </span>
         <span className="text-caption text-muted-foreground" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
           {STORES.find((s) => s.id === store)?.short} · {bt.toUpperCase()}
         </span>
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px 24px' }}>
-        {tab === 'eval' && !isNew ? (
+        {mode === 'eval' && !isNew ? (
           <BrewFeedbackPanel
             store={store}
             beanKey={g.beanKey}
@@ -1244,6 +1073,7 @@ function EvalCard({
             staffNames={staffNames}
             staff={staff}
             onPickStaff={onPickStaff}
+            lockStaff
             feedback={feedback}
             onSaved={onSaved}
           />

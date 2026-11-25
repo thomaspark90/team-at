@@ -625,3 +625,80 @@ button.fc-need:hover {
     margin-left: 72px;
   }
 }
+
+/* 레시피 보드(2026-11-25 대표 결정 시안 B) — 원두 이름 한 줄(.fc-beanrow), 대기 중 줄(.fc-beanrow-wait), 아카이브 고정 버튼(.fc-fab-sub), 「누가 추출하나요?」 이름 버튼(.fc-namebtn) */
+.fc-beanrow {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  min-height: 82px;
+  padding: 14px 6px;
+  border: 0;
+  border-top: 1px solid var(--fc-line);
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.fc-beanrow:last-child {
+  border-bottom: 1px solid var(--fc-line);
+}
+.fc-beanrow:hover {
+  background-color: var(--fc-shade);
+}
+.fc-beanrow:active {
+  background-color: var(--fc-shade-strong);
+}
+/* 대기 중 원두 — 줄 안의 것(색 막대 · 이름 · 로스팅일 · 오른쪽 글자 · 화살표)을 모두 투명도 50%로. 구분선은 그대로 */
+.fc-beanrow-wait > * {
+  opacity: 0.5;
+}
+/* 레시피 보드 오른쪽 아래 고정 버튼 「아카이브 N」 — 화면의 주 버튼이 아니라 흰 알약 + 옅은 그림자, 아이콘 없음.
+   크게 보기·이름 창(z-50)보다 아래라 그 창이 뜨면 가려진다 */
+.fc-fab-sub {
+  position: fixed;
+  right: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px var(--fc-line), var(--fc-lift-strong);
+  transition: transform 0.15s;
+}
+.fc-fab-sub:hover {
+  transform: translateY(-2px);
+}
+.fc-fab-sub:active {
+  transform: scale(0.98);
+}
+.fc-namebtn {
+  height: 64px;
+  border: 0;
+  border-radius: 12px;
+  background: hsl(var(--background));
+  box-shadow: var(--fc-lift);
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  transition: box-shadow 0.15s, background-color 0.15s;
+}
+.fc-namebtn:hover {
+  box-shadow: var(--fc-lift-strong);
+}
+.fc-namebtn:active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}

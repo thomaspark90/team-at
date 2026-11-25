@@ -48,12 +48,15 @@ export async function GET() {
 
   // 발주는 '원두별 마지막 발주 시각'만 필요(보관 후 재발주 자동 해제 판정) — 전체 기록은 내리지 않는다
   const latestPurchaseAt: Record<string, string> = {};
-  const purchaseBean: Record<string, string> = {}; // 원두별 최근 발주 표기명 — 레시피 준비 중 목록용
+  const purchaseBean: Record<string, string> = {}; // 원두별 최근 발주 표기명 — 레시피 없는 원두(대기 중) 목록용
+  // 원두별 최근 발주의 로스팅일 재료 — 보드가 lib/garden/roast 의 roastInfo 로 「로스팅 MM.DD +NN」을 계산한다(날수는 볼 때마다 다시 센다)
+  const purchaseRoast: Record<string, { roastDate?: string; orderDate?: string; createdAt: string }> = {};
   for (const p of purchases) {
     const k = normalize(p.bean);
     if (!latestPurchaseAt[k] || p.createdAt.localeCompare(latestPurchaseAt[k]) > 0) {
       latestPurchaseAt[k] = p.createdAt;
       purchaseBean[k] = p.bean;
+      purchaseRoast[k] = { roastDate: p.roastDate, orderDate: p.orderDate, createdAt: p.createdAt };
     }
   }
   // 발주 때 입력한 테이스팅 노트 — 원두별 가장 최근 입력분(레시피 노트가 없을 때 화면이 대신 쓴다)
@@ -74,6 +77,7 @@ export async function GET() {
     beans: beans?.beans ?? [],
     latestPurchaseAt,
     purchaseBean,
+    purchaseRoast,
     purchaseTasting,
     grinderProfiles: dropStaleProfiles(grinders?.profiles ?? {}, alignments),
     alignments,
