@@ -2,7 +2,8 @@
 
 import type { BrewType } from '@/lib/types';
 import { flavorColors } from '@/lib/flavor-colors';
-import { restStage, restTitle, type RestStage, type RoastInfo } from '@/lib/garden/roast';
+import { restStage, restTitle, type RoastInfo } from '@/lib/garden/roast';
+import { restTextClass } from '../rest-class';
 
 // 레시피 보드 첫 화면 — 원두 이름만 한 줄에 하나씩(2026-11-25 대표 결정 시안 B → 대기 중 시안 C).
 // 판매 중이 위, 그 아래 「대기 중 N」 제목과 함께 대기 원두(판매 대기 + 레시피 없는 원두)를 투명도 50%로.
@@ -23,15 +24,6 @@ const barStyle = (tasting: string): React.CSSProperties => {
   const cs = flavorColors(tasting);
   if (cs.length === 0) return {};
   return { backgroundImage: `linear-gradient(180deg, ${cs[0]}, ${cs[cs.length - 1]})` };
-};
-
-// 「+NN」 글자색 — 필터커피 화면의 D+ 와 같은 단계 규칙(7일 미만 · 22~30일 주황, 7~21일 초록, 31일~ 빨강).
-// 클래스 이름은 이 파일에 둔다 — Tailwind 가 app · components 만 훑어서 lib 에만 적은 클래스는 만들어지지 않는다
-const restTextClass: Record<RestStage, string> = {
-  resting: 'text-amber-700 dark:text-amber-400',
-  peak: 'text-emerald-700 dark:text-emerald-400',
-  late: 'text-amber-700 dark:text-amber-400',
-  old: 'text-destructive',
 };
 
 // 'YYYY-MM-DD' → 'MM.DD'

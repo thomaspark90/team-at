@@ -38,13 +38,7 @@ export function restStage(days: number): RestStage {
   return 'old';
 }
 
-// 디자인 시스템 상태색(emerald·amber·destructive) 매핑
-export const restClass: Record<RestStage, string> = {
-  resting: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
-  peak: 'bg-emerald-600/10 text-emerald-700 dark:text-emerald-400',
-  late: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
-  old: 'bg-destructive/10 text-destructive',
-};
+// 단계별 색(클래스 이름)은 components/garden/rest-class.ts — Tailwind 가 lib 를 훑지 않아 여기 두면 색이 안 나온다
 
 export const restTitle = (r: RoastInfo) =>
   `로스팅 ${r.date}${r.estimated ? ' (추정: 발주일+1, [수령]으로 실제 날짜 입력)' : ''} · ${

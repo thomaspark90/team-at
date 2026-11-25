@@ -2,7 +2,8 @@
 
 import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import type { BrewType } from '@/lib/types';
-import { restClass, restStage, restTitle, type RoastInfo } from '@/lib/garden/roast';
+import { restStage, restTitle, type RoastInfo } from '@/lib/garden/roast';
+import { restClass } from './rest-class';
 import LedgerPriceCell from '@/components/garden/LedgerPriceCell';
 import type { PurchaseRecord } from '@/lib/types';
 
