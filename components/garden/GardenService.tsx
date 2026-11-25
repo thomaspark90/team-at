@@ -28,7 +28,7 @@ const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`;
 // 발주 전용 화면 — 판매가 책정(판매가 선택·공유)은 권한이 분리된 '판매가 설정' 탭
 // (GardenSalePrice)이 담당한다. 여기서는 발주 기록 저장과 원가 확인까지만 한다.
 // receiveId — 작업 보드의 수령 카드에서 넘어오면(?receive=<id>) 그 발주의 수령 창을 바로 연다
-// embedded — 원두 장부(BeanLedger)의 [새 원두 발주] 패널로 쓸 때(2026-11-24). 입력 폼만 보여주고 '이전 발주 리스트'는
+// embedded — 원두 장부(BeanLedger)의 [원두 발주] 패널로 쓸 때(2026-11-24). 입력 폼만 보여주고 '이전 발주 리스트'는
 //   장부 줄 펼침의 '발주 기록'(LedgerOrders)이 대신한다. 저장하면 onSaved 로 알려 장부가 다시 불러온다.
 export default function GardenService({
   receiveId = null,

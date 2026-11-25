@@ -25,6 +25,7 @@ import StepField, { Stepper, stepValue } from '@/components/garden/StepField';
 import SegmentControl from '@/components/nav/SegmentControl';
 import TastingNoteEditor from '@/components/garden/TastingNoteEditor';
 import RecipeLedger, { type LedgerRow, type LedgerSlot } from '@/components/garden/RecipeLedger';
+import RecipeBoardFab from './RecipeBoardFab';
 import { fetchMyAccess } from '@/lib/access/tab-access-client';
 import { baseDoseG } from '@/lib/garden/brew-cost';
 import { storePrice, storePriceNote } from '@/lib/garden/store-price';
@@ -154,7 +155,7 @@ interface BeanGroup {
 
 // section: 'unset' = 가든 대시보드(미설정 원두만) / 'recipes' = 필터커피 탭(카드 전체, 국가별)
 // 편집기 오버레이는 두 모드 공통.
-// toolbar·reloadKey·receiveId 는 원두 장부(BeanLedger)가 넘긴다 — 지점 선택 줄 오른쪽 버튼 · 발주 저장 뒤 다시 불러오기 · 수령 창 바로 열기
+// toolbar·reloadKey·receiveId 는 원두 장부(BeanLedger)가 넘긴다 — 하단 고정 버튼 묶음에 들어갈 버튼([원두 발주]) · 발주 저장 뒤 다시 불러오기 · 수령 창 바로 열기
 export default function GardenDashboard({
   section = 'recipes',
   toolbar,
@@ -1403,45 +1404,46 @@ export default function GardenDashboard({
 
       {/* 필터커피 — 모든 레시피 원두를 국가별 그룹으로, 카드 전체 기능(수정·이력·재고칩) */}
       {section === 'recipes' && (
-        <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
+        <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 36, paddingBottom: 72 }}>
           {loading && <p className="text-body text-muted-foreground">불러오는 중…</p>}
           {/* 지점 — 레시피는 지점별(2026-10-30). 기기에 기억돼 레시피 보드와 공유 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <div role="tablist" aria-label="레시피 지점" className="text-body" style={{ display: 'flex', gap: 16 }}>
-              {[...STORES].reverse().map((s) => (
-                <button key={s.id} type="button" role="tab" aria-selected={store === s.id} onClick={() => pickStore(s.id)} className={`fc-txt ${store === s.id ? 'on' : ''}`}>
-                  {s.label}
-                </button>
-              ))}
+          {/* 맨 윗줄(2026-11-25 시안 B) — 왼쪽 지점 탭(선택) · 오른쪽 도구 링크(이동: 추출 평가 모아보기 · 분쇄도 측정 · 원두카드) */}
+          <div className="fc-bar text-body">
+            <div className="fc-bar-main">
+              <div role="tablist" aria-label="레시피 지점" style={{ display: 'flex', gap: 26 }}>
+                {[...STORES].reverse().map((s) => (
+                  <button key={s.id} type="button" role="tab" aria-selected={store === s.id} onClick={() => pickStore(s.id)} className={`fc-tab ${store === s.id ? 'on' : ''}`}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+              {store === 'pangyo' && <span className="text-caption text-muted-foreground">없는 원두는 양재천 레시피를 보여줘요</span>}
             </div>
-            {store === 'pangyo' && <span className="text-caption text-muted-foreground">없는 원두는 양재천 레시피를 보여줘요</span>}
-            {toolbar && <span style={{ marginLeft: 'auto' }}>{toolbar}</span>}
+            <div style={{ display: 'flex', gap: '0 24px', flexWrap: 'wrap' }}>
+              <Link href="/garden/filtercoffee/feedback" className="fc-go" title="레시피 보드에서 남긴 추출 평가 모아보기">
+                추출 평가
+              </Link>
+              {toolTabs.includes('calibration') && (
+                <Link href="/garden/calibration" className="fc-go">
+                  분쇄도 측정
+                </Link>
+              )}
+              {toolTabs.includes('beancard') && (
+                <Link href="/garden/beancard" className="fc-go">
+                  원두카드 인쇄
+                </Link>
+              )}
+            </div>
           </div>
 
-          {/* 태블릿 레시피 보드 — 3장씩 좌우 스와이프로 넘겨 보는 매장용 화면 · 거기서 남긴 추출 평가 모아보기 */}
-          <div className="text-body" style={{ display: 'flex', gap: '8px 22px', flexWrap: 'wrap', marginTop: -16 }}>
-            {!loading && activeGroups.length > 0 && (
-              <Link href="/garden/filtercoffee/board" className="fc-txt" title="태블릿 레시피 보드 — 3장씩 넘겨 보는 매장용 화면">
-                레시피 보드
-              </Link>
-            )}
-            <Link href="/garden/filtercoffee/feedback" className="fc-txt" title="레시피 보드에서 남긴 추출 평가 모아보기">
-              추출 평가
-            </Link>
-            {toolTabs.includes('calibration') && (
-              <Link href="/garden/calibration" className="fc-txt">
-                분쇄도 측정
-              </Link>
-            )}
-            {toolTabs.includes('beancard') && (
-              <Link href="/garden/beancard" className="fc-txt">
-                원두카드 인쇄
-              </Link>
-            )}
+          {/* 화면 하단 가운데 고정 버튼 묶음(2026-11-25) — 레시피 보드(레시피가 있는 원두가 있을 때만) · 원두 발주(발주 권한) */}
+          <div className="fc-dock print:hidden">
+            {!loading && activeGroups.length > 0 && <RecipeBoardFab />}
+            {toolbar}
           </div>
           {!loading && activeGroups.length === 0 && unsetBeans.length === 0 && (
             <p className="text-body text-muted-foreground">
-              아직 원두가 없어요. [새 원두 발주]로 원두를 저장하면 여기에서 레시피를 만들 수 있어요.
+              아직 원두가 없어요. [원두 발주]로 원두를 저장하면 여기에서 레시피를 만들 수 있어요.
             </p>
           )}
 

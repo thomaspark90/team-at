@@ -8,7 +8,7 @@ import { toast } from '@/components/Toast';
 
 // 원두 장부 — '필터 원두 발주'·'판매가 설정'·'필터 레시피'를 한 화면으로 합친 것 (2026-11-24 대표 결정).
 // 원두 목록은 레시피 장부(GardenDashboard › RecipeLedger) 하나만 두고,
-//  · 새 발주 입력은 [새 원두 발주] 버튼으로 여는 가운데 창(발주 화면의 입력 폼 — GardenService embedded)
+//  · 새 발주 입력은 화면 하단 고정 [원두 발주] 버튼으로 여는 가운데 창(발주 화면의 입력 폼 — GardenService embedded)
 //  · 판매가 책정·변경·공유는 장부 줄 펼침의 '판매가'(LedgerPricing)
 //  · 발주 건별 작업(수령·카톡 발주·원두카드·삭제)은 장부 줄 펼침의 '발주 기록'(LedgerOrders)
 // 으로 옮겼다. 권한은 그대로 — 버튼·패널은 발주(pricing) 탭 권한이 있는 계정에만 보인다.
@@ -41,13 +41,13 @@ export default function BeanLedger({
 
   return (
     <div className="min-w-0">
-      {/* 새 원두 발주 — 수령 창·발주 미리보기 창과 같은 가운데 창. 바깥을 눌러도 닫히지 않는다(입력 내용 보호) */}
+      {/* 원두 발주 — 수령 창·발주 미리보기 창과 같은 가운데 창. 바깥을 눌러도 닫히지 않는다(입력 내용 보호) */}
       {open && canOrder && (
-        <div role="dialog" aria-modal="true" aria-label="새 원두 발주" className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4">
+        <div role="dialog" aria-modal="true" aria-label="원두 발주" className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4">
           <div className="ta-card bg-background max-h-[92vh] w-full overflow-y-auto rounded-t-2xl sm:max-w-[640px] sm:rounded-md">
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 28 }}>
               <h2 className="text-title text-foreground" style={{ margin: 0 }}>
-                새 원두 발주
+                원두 발주
               </h2>
               <button
                 onClick={() => setOpen(false)}
@@ -74,8 +74,11 @@ export default function BeanLedger({
         receiveId={receiveId}
         toolbar={
           canOrder ? (
-            <button onClick={() => setOpen(true)} className="ta-btn-primary" style={{ height: 36, paddingLeft: 16, paddingRight: 16 }}>
-              새 원두 발주
+            <button type="button" onClick={() => setOpen(true)} className="fc-fab text-body" title="원두 발주 — 원두 정보·매입가를 입력해 발주 기록을 저장">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              원두 발주
             </button>
           ) : null
         }

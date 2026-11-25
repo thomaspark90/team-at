@@ -183,7 +183,7 @@ export default function BeanCardPrint({ recordId }: { recordId: string | null })
                 ? '발주 기록 불러오는 중…'
                 : sortedRecords.length
                   ? '저장된 원두 불러오기 — 선택하면 자동 기입'
-                  : '저장된 발주 기록이 없어요 — 필터커피의 [새 원두 발주]에서 먼저 저장하세요'}
+                  : '저장된 발주 기록이 없어요 — 필터커피의 [원두 발주]에서 먼저 저장하세요'}
             </option>
             {sortedRecords.map((r) => (
               <option key={r.id} value={r.id}>

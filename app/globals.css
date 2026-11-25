@@ -303,6 +303,116 @@ select.ta-input {
   cursor: default;
   opacity: 0.6;
 }
+/* 화면 하단 가운데 고정 버튼 묶음 — 필터커피의 「레시피 보드」·「원두 발주」(2026-11-25 대표 지시).
+   스크롤해도 같은 자리. 창(z-50)보다 아래라 창이 뜨면 가려진다 */
+.fc-dock {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+}
+.fc-dock:empty {
+  display: none;
+}
+.fc-fab {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 48px;
+  padding: 0 22px 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 2px 6px hsl(0 0% 0% / 0.16), 0 10px 28px hsl(0 0% 0% / 0.2);
+  transition: transform 0.15s;
+}
+.fc-fab:hover {
+  transform: translateY(-2px);
+}
+.fc-fab:active {
+  transform: scale(0.98);
+}
+/* 고정 버튼이 있는 화면에서는 하단 알림(Toast)을 버튼 위로 올린다 */
+body:has(.fc-fab) .ta-toasts {
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+}
+/* 필터커피 맨 윗줄(2026-11-25 대표 결정 시안 B) — 선택(지점)은 굵은 밑줄 탭, 이동(도구)은 진한 글자 + 「→」.
+   둘 다 높이 46px 이라 손가락으로 누를 자리가 넉넉하다 */
+.fc-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0 26px;
+  border-bottom: 1px solid var(--fc-line);
+}
+/* 지점 탭 묶음 — 좁은 화면에서 도구 링크가 다음 줄로 내려가도 탭 밑줄이 선 위에 앉도록 제 줄을 채우고 선을 하나 더 긋는다 */
+.fc-bar-main {
+  display: flex;
+  align-items: center;
+  flex: 1 0 auto;
+  flex-wrap: wrap;
+  gap: 0 16px;
+  box-shadow: 0 1px 0 var(--fc-line);
+}
+.fc-tab {
+  position: relative;
+  height: 46px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  white-space: nowrap;
+  color: hsl(var(--muted-foreground));
+  transition: color 0.15s;
+}
+.fc-tab:hover,
+.fc-tab.on {
+  color: hsl(var(--foreground));
+}
+.fc-tab.on {
+  font-weight: 500;
+}
+.fc-tab.on::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: hsl(var(--foreground));
+}
+.fc-go {
+  display: inline-flex;
+  align-items: center;
+  height: 46px;
+  white-space: nowrap;
+  text-decoration: none;
+  color: hsl(var(--foreground));
+}
+.fc-go::after {
+  content: '→';
+  display: inline-block;
+  margin-left: 6px;
+  color: hsl(var(--muted-foreground));
+  transition: transform 0.15s;
+}
+.fc-go:hover {
+  text-decoration: underline;
+  text-underline-offset: 5px;
+}
+.fc-go:hover::after {
+  transform: translateX(3px);
+  color: hsl(var(--foreground));
+}
 /* 할 일 표시 — 「● ○○ 필요」 한 가지 */
 .fc-need {
   display: inline-flex;

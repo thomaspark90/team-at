@@ -7,9 +7,9 @@ export type GardenTab = { key: string; href: string; label: string; desc?: strin
 export const GARDEN_TAB_GROUPS: GardenTab[][] = [
   [{ key: 'dashboard', href: '/garden', label: '홈', desc: '가든 홈 — 내 차례인 일 · 재고·레시피 미설정 원두 한눈에 보기' }],
   [
-    // 2026-11-24 발주 화면을 원두 장부(recipes)로 합쳤다 — 이 키는 '[새 원두 발주] 입력·발주 기록 삭제' 권한으로 남는다.
+    // 2026-11-24 발주 화면을 원두 장부(recipes)로 합쳤다 — 이 키는 '[원두 발주] 입력·발주 기록 삭제' 권한으로 남는다.
     // /garden/pricing 은 장부로 넘긴다(장부 권한이 없는 계정에만 예전 입력 화면을 보여준다).
-    { key: 'pricing', href: '/garden/pricing', label: '필터 원두 발주', desc: '원두 장부의 [새 원두 발주] — 원두 정보·매입가 입력 · 발주 기록 삭제' },
+    { key: 'pricing', href: '/garden/pricing', label: '필터 원두 발주', desc: '원두 장부의 [원두 발주] — 원두 정보·매입가 입력 · 발주 기록 삭제' },
     // 발주(pricing)와 판매가 책정을 분리 — 책정 권한만 다른 인원에게 줄 수 있다
     // 2026-11-24 판매가 설정 화면도 장부로 합쳤다 — 이 키는 '장부 줄 펼침의 판매가 책정·변경·공유' 권한으로 남는다.
     { key: 'saleprice', href: '/garden/saleprice', label: '판매가 설정', desc: '원두 장부 줄 펼침의 [판매가] — 드립 판매가 책정 · 변경 · 공유' },
