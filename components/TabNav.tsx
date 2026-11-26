@@ -65,12 +65,15 @@ export default function TabNav() {
   return (
     // sticky + 반투명 블러(2026-09-09 소프트 UI): 전역 바 44px 한 줄, 아래 로컬 내비는 그림자로 구분. 모바일 패널(absolute)의 기준이기도 하다
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/85 backdrop-blur">
-      <div className="mx-auto flex h-11 max-w-[1400px] items-center justify-between gap-2 px-4 sm:gap-6 sm:px-6">
+      {/* 데스크톱은 3칸 격자(왼쪽 로고 · 가운데 섹션 · 오른쪽 계정) — 양옆 칸 폭을 같게 해 섹션 줄이 화면 정중앙에 오고,
+          아래 로컬 내비(가운데 정렬)와 중심이 맞는다(2026-11-26 대표 지시). 전에는 로고보다 오른쪽 계정 칸이 넓어 그 차이의 절반만큼 왼쪽으로 치우쳤다.
+          창이 좁아지면 오른쪽 칸의 계정 이메일이 먼저 말줄임으로 줄어 가운데를 지키고(약 730px 까지), 그보다 좁으면 섹션 줄이 가로 스크롤 */}
+      <div className="mx-auto flex h-11 max-w-[1400px] items-center justify-between gap-2 px-4 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:gap-6 sm:px-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-team-at.png" alt="TEAM at" className="h-6 w-auto shrink-0 dark:invert" />
+        <img src="/logo-team-at.png" alt="TEAM at" className="h-6 w-auto shrink-0 dark:invert sm:justify-self-start" />
 
         {/* 모바일에선 섹션 링크를 숨기고 햄버거 패널에 넣는다 — 가로 스크롤로 잘려 보이던 문제 해소 */}
-        <nav className="scrollbar-hide hidden flex-1 items-center justify-center gap-1 overflow-x-auto sm:flex">
+        <nav className="scrollbar-hide hidden min-w-0 items-center gap-1 overflow-x-auto sm:flex">
           {navTabs.map((tab) => {
             if (!isTabAllowed(tab.key)) {
               return (
@@ -108,18 +111,18 @@ export default function TabNav() {
         </nav>
 
         {/* 데스크톱 — 테마 드롭다운 + 로그아웃 */}
-        <div className="hidden shrink-0 items-center gap-3 sm:flex">
+        <div className="hidden min-w-[5.5rem] items-center justify-end gap-3 sm:flex">
           <ThemeToggle />
           {/* 로그아웃 + 그 아래 로그인 계정 — 44px 바 안에 두 줄로 */}
-          <div className="flex flex-col items-end" style={{ lineHeight: 1.2 }}>
+          <div className="flex min-w-0 flex-col items-end" style={{ lineHeight: 1.2 }}>
             <button
               onClick={handleLogout}
-              className="text-caption text-muted-foreground transition-colors hover:text-foreground"
+              className="whitespace-nowrap text-caption text-muted-foreground transition-colors hover:text-foreground"
             >
               로그아웃
             </button>
             {email && (
-              <span className="text-caption text-muted-foreground/70" title="로그인한 계정" style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span className="text-caption text-muted-foreground/70" title="로그인한 계정" style={{ maxWidth: 'min(220px, 100%)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {email}
               </span>
             )}
