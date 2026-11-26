@@ -1,14 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { STORES, type StoreId } from '@/lib/types';
 import type { ProfileRole } from '@/lib/account/roles';
-import { TEAM_DOMAIN } from '@/lib/finance/access';
 import AccountInfo from './AccountInfo';
 import PermissionMatrix from './PermissionMatrix';
 import RoleManager from './RoleManager';
 import EmailPreRegister from './EmailPreRegister';
-import { KIND_KEYS, allowedSet, mergeAccounts, type Account, type AccessKind, type ProfileRow, type UserRow } from './types';
+import { type Account, type ProfileRow, type UserRow } from './types';
+import { accountsApi, useAccountsAdmin, type AccountsCtl } from './useAccountsAdmin';
 
 // 설정 > 계정 — 간편 계정(이름+6자리)과 이메일 계정을 한 표에서 관리한다 (2026-11-03 통합).
 // 2026-11-20 대표 지시로 줄을 펼치는 방식 → '사람 × 권한' 표(PermissionMatrix): 첫 열 인원, 둘째 열부터 권한.
@@ -19,120 +19,28 @@ import { KIND_KEYS, allowedSet, mergeAccounts, type Account, type AccessKind, ty
 type Draft = { role: string; stores: StoreId[] };
 type Filter = 'all' | 'simple' | 'email';
 
-async function call(url: string, method: 'POST' | 'PATCH' | 'DELETE', payload: Record<string, unknown>) {
-  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body?.error || '요청에 실패했습니다.');
-  return body;
-}
-const accountsApi = (method: 'POST' | 'PATCH' | 'DELETE', payload: Record<string, unknown>) => call('/api/simple-accounts', method, payload);
-
+// 화면 본체 — 데이터와 저장 동작(ctl)은 useAccountsAdmin 이 갖고, 직원 명부도 같은 ctl 로 이 화면을 아래쪽에 붙여 쓴다.
+// hub = 직원 명부 아래에 붙을 때: 명부에 연결된 계정(excludeIds)은 위 표에 있으므로 빼고, 가입 신청은 명부 위쪽 칸에서 처리하므로 숨긴다.
 export default function Accounts() {
-  const [profiles, setProfiles] = useState<ProfileRow[] | null>(null);
-  const [roles, setRoles] = useState<ProfileRole[]>([]);
-  const [users, setUsers] = useState<UserRow[] | null>(null);
-  const [allowed, setAllowed] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState('');
+  const ctl = useAccountsAdmin();
+  return <AccountsView ctl={ctl} />;
+}
+
+export function AccountsView({ ctl, hub = false, excludeIds }: { ctl: AccountsCtl; hub?: boolean; excludeIds?: Set<string> }) {
+  const { profiles, roles, users, setUsers, allowed, setAllowed, busy, busyId, error, setError, issued, setIssued, run, accounts, toggleAccess, toggleStore, resetPin } = ctl;
+  const pending = hub ? [] : ctl.pending;
   const [openId, setOpenId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   // 발급 폼
   const [name, setName] = useState('');
   const [role, setRole] = useState('staff');
   const [stores, setStores] = useState<StoreId[]>(['pangyo']);
-  // 방금 발급·초기화된 비밀번호 — 화면을 떠나면 다시 볼 수 없다
-  const [issued, setIssued] = useState<{ name: string; pin: string } | null>(null);
   // 승인 대기 행별 역할·지점 선택(승인 전까지 화면에만 있음)
   const [pendingDraft, setPendingDraft] = useState<Record<string, Draft>>({});
 
-  const loadProfiles = useCallback(async () => {
-    const res = await fetch('/api/simple-accounts', { cache: 'no-store' });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) return setError(body?.error || '목록을 불러오지 못했습니다.');
-    setProfiles(body.profiles as ProfileRow[]);
-    setRoles((body.roles as ProfileRole[]) ?? []);
-  }, []);
-  const loadUsers = useCallback(async () => {
-    const j = await fetch('/api/garden-tab-access', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .catch(() => null);
-    setUsers(j?.isAdmin && Array.isArray(j.users) ? j.users : []);
-    if (Array.isArray(j?.allowedEmails)) setAllowed(j.allowedEmails);
-  }, []);
-  const loadAll = useCallback(() => Promise.all([loadProfiles(), loadUsers()]), [loadProfiles, loadUsers]);
-  useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
+  const shown = (accounts ?? []).filter((a) => (filter === 'all' || a.kind === filter) && !excludeIds?.has(a.id));
 
-  // 프로필·계정을 바꾸는 요청 — 끝나면 두 목록을 다시 불러 한 줄에 반영
-  const run = async (fn: () => Promise<unknown>, id?: string) => {
-    setBusy(true);
-    if (id) setBusyId(id);
-    setError('');
-    try {
-      await fn();
-      await loadAll();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '요청에 실패했습니다.');
-    } finally {
-      setBusy(false);
-      setBusyId(null);
-    }
-  };
-
-  const accounts = useMemo(() => (users && profiles ? mergeAccounts(users, profiles) : null), [users, profiles]);
-  const pending = (profiles ?? []).filter((r) => r.status === 'pending');
-  const shown = (accounts ?? []).filter((a) => filter === 'all' || a.kind === filter);
-
-  // 섹션·탭 토글 — 권한 행만 바뀌므로 목록 전체를 다시 읽지 않고 그 줄만 갱신
-  const toggleAccess = async (a: Account, kind: AccessKind, key: string) => {
-    const u = a.user;
-    if (!u) return;
-    const next = allowedSet(u, kind);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    setBusyId(a.id);
-    setError('');
-    try {
-      const json = await call('/api/garden-tab-access', 'PATCH', { userId: u.id, email: u.email, [kind]: KIND_KEYS[kind].filter((k) => next.has(k)) });
-      setUsers((prev) => (prev ?? []).map((x) => (x.id === u.id ? { ...x, tabs: json.tabs, sections: json.sections, studioTabs: json.studioTabs } : x)));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '저장에 실패했습니다.');
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const toggleStore = (a: Account, id: StoreId) => {
-    const p = a.profile!;
-    const next = p.stores.includes(id) ? p.stores.filter((s) => s !== id) : [...p.stores, id];
-    if (next.length === 0) return;
-    void run(() => accountsApi('PATCH', { userId: p.user_id, stores: next }), a.id);
-  };
-  const resetPin = (a: Account) =>
-    run(async () => {
-      const body = await accountsApi('PATCH', { userId: a.id, resetPin: true });
-      setIssued({ name: a.title, pin: body.pin });
-    }, a.id);
-
-  // 계정 삭제 — 간편 로그인 계정은 간편 계정 API(교육 기록까지 정리), 그 외(이메일·명부만 있는 계정)는
-  // 로그인 계정 자체를 지운다(프로필은 cascade). 명부 계정을 프로필만 지우면 로그인 계정이 남는다(이진희 사례, 2026-11-03).
-  const remove = (a: Account) => {
-    const external = a.kind === 'email' && !a.title.toLowerCase().endsWith('@' + TEAM_DOMAIN);
-    const note =
-      a.kind === 'simple'
-        ? '\n교육 요청·기록도 함께 지워집니다. 퇴사자라면 지우지 말고 스케줄 › 직원 명부에서 재직을 꺼 주세요.'
-        : external
-          ? '\n외부 계정이라 허용 목록에서도 빠져 로그인이 차단됩니다.'
-          : '\n팀 도메인 계정은 구글 로그인하면 다시 생성되니, 완전 차단은 워크스페이스에서 계정을 정지하세요.';
-    if (!window.confirm(`'${a.title}' 계정을 삭제할까요? 권한 설정도 함께 지워지며 되돌릴 수 없습니다.${note}`)) return;
-    void run(async () => {
-      if (a.profile?.simple_login || !a.user) await accountsApi('DELETE', { userId: a.id });
-      else await call('/api/garden-tab-access', 'DELETE', { userId: a.id, purge: true });
-      setOpenId(null);
-    }, a.id);
-  };
+  const remove = (a: Account) => ctl.removeAccount(a, () => setOpenId(null));
 
   const create = () =>
     run(async () => {
@@ -180,18 +88,18 @@ export default function Accounts() {
   );
   const flip = (list: StoreId[], id: StoreId) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
-  // 외부(비 팀 도메인) 계정 — 허용 목록에 없으면 로그인 자체가 차단된 상태
-  const externalBadge = (a: Account) => {
-    const email = a.user?.email.toLowerCase();
-    if (!email || email.endsWith('@' + TEAM_DOMAIN)) return null;
-    return allowed.includes(email) ? ' · 외부(로그인 허용)' : ' · 외부(로그인 차단)';
-  };
+  const externalBadge = ctl.externalBadge;
   const registered = new Set([...(users ?? []).map((u) => u.email.toLowerCase()), ...allowed.map((e) => e.toLowerCase())]);
 
   return (
     <section className="min-w-0 space-y-10">
       <div>
-        <h2 className="text-title font-medium" style={{ margin: '0 0 4px' }}>계정</h2>
+        <h2 className="text-title font-medium" style={{ margin: '0 0 4px' }}>{hub ? '명부에 없는 계정 · 계정 도구' : '계정'}</h2>
+        {hub && (
+          <p className="ta-prose text-body text-muted-foreground" style={{ marginBottom: 6 }}>
+            직원 명부에 연결되지 않은 로그인 계정(대표 · 외부 담당자 등)의 권한과, 계정 발급 · 사전 등록 · 역할 관리입니다. 명부에 연결된 사람의 권한은 위 표의 「업무 지정」 · 「권한」 묶음에서 봅니다.
+          </p>
+        )}
         <p className="ta-prose text-body text-muted-foreground">
           팀이 쓰는 모든 로그인 계정을 한곳에서 관리해요. <b>간편 계정</b>은 이름 + 숫자 6자리로, <b>이메일 계정</b>은 이메일로 로그인해요.
           아래 표는 한 줄이 한 사람, 한 칸이 권한 하나예요 — 칸을 누르면 바로 저장되고, 이름을 누르면 역할·지점·비밀번호를 바꿀 수 있어요.
@@ -266,7 +174,7 @@ export default function Accounts() {
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3" style={{ marginBottom: 14 }}>
           <p className="ta-label" style={{ margin: 0 }}>
-            계정 목록{accounts && <span className="tabular"> · {accounts.length}</span>}
+            계정 목록{accounts && <span className="tabular"> · {hub ? shown.length : accounts.length}</span>}
           </p>
           <div className="inline-flex gap-1 ta-seg">
             {(

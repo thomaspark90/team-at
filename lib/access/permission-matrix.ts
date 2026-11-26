@@ -7,6 +7,7 @@ import { GARDEN_NAV, GARDEN_TABS, type GardenTab } from '@/lib/garden/tabs';
 import { STUDIO_TABS } from '@/lib/studio/tabs';
 import { GARDEN_TOPICS, type GardenTopicId } from '@/lib/garden-notify-topics';
 import { groupByNav } from '@/lib/garden/notify-topic-groups';
+import { STORES } from '@/lib/types';
 
 export type MatrixSource =
   | { type: 'sections'; key: string } // 상위 섹션 출입
@@ -15,11 +16,12 @@ export type MatrixSource =
   | { type: 'editor' } // 운영진(finance.schedule_editors)
   | { type: 'comments' } // 교육 코멘트 전체 열람(profiles.can_view_comments)
   | { type: 'topic'; id: GardenTopicId } // 항목별 담당자(알림) · 원두 수령 담당(권한)
-  | { type: 'finance'; id: 'transfer' | 'stock' }; // 송금·재고 수신자
+  | { type: 'finance'; id: 'transfer' | 'stock' } // 송금·재고 수신자
+  | { type: 'brewer'; store: string }; // 필터커피 내리는 사람(지점별) — 직원 명부의 표에서만 쓴다(계정이 아니라 명부의 사람에 붙는 값)
 
 export type MatrixColumn = { id: string; label: string; desc: string; source: MatrixSource };
 export type MatrixSub = { label: string; columns: MatrixColumn[] };
-export type MatrixGroupId = 'sections' | 'garden' | 'studio' | 'feature' | 'notify';
+export type MatrixGroupId = 'sections' | 'garden' | 'studio' | 'feature' | 'notify' | 'brew';
 export type MatrixGroup = {
   id: MatrixGroupId;
   label: string;
@@ -110,6 +112,41 @@ export function buildMatrix(): MatrixGroup[] {
     },
     { id: 'notify', label: '알림 담당', subs: notifySubs() },
   ];
+}
+
+/**
+ * 직원 명부의 두 묶음(2026-11-26 직원 명부 통합) — 열 정의는 buildMatrix 것을 그대로 나눠 쓴다.
+ *   업무 지정 = 필터커피 내리는 사람(지점별) · 원두 수령 담당 · 알림 담당
+ *   권한     = 섹션 출입 · 가든 화면 출입 · 스탭밀 화면 출입 · 운영진 · 교육 코멘트 열람
+ */
+export function buildStaffMatrix(): { duty: MatrixGroup[]; perm: MatrixGroup[] } {
+  const all = buildMatrix();
+  const by = (id: MatrixGroupId) => all.find((g) => g.id === id)!;
+  const feature = by('feature').subs[0].columns;
+  const isReceive = (c: MatrixColumn) => c.source.type === 'topic' && c.source.id === 'beanReceive';
+  return {
+    duty: [
+      {
+        id: 'brew',
+        label: '필터커피 내리는 사람',
+        subs: [
+          {
+            label: '',
+            // 지점 순서는 라인업 화면과 같이 양재천 먼저
+            columns: [...STORES].reverse().map((s) => ({
+              id: `brewer:${s.id}`,
+              label: s.label,
+              desc: '필터커피 라인업의 이름 버튼 · 추출 평가의 이름에 나오는 사람',
+              source: { type: 'brewer' as const, store: s.id },
+            })),
+          },
+        ],
+      },
+      { id: 'feature', label: '기능', subs: [{ label: '', columns: feature.filter(isReceive) }] },
+      by('notify'),
+    ],
+    perm: [by('sections'), by('garden'), by('studio'), { ...by('feature'), subs: [{ label: '', columns: feature.filter((c) => !isReceive(c)) }] }],
+  };
 }
 
 export const matrixColumns = (groups: MatrixGroup[]) => groups.flatMap((g) => g.subs.flatMap((s) => s.columns));

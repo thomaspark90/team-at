@@ -9,8 +9,19 @@ import { leaveExpiry, statutoryLeave } from '@/lib/schedule/leave';
 import { STORES, type StoreId } from '@/lib/types';
 import { EMPLOYMENT_LABEL, type Employment, type Staff, type StaffRole, type TagDef } from '@/lib/schedule/types';
 import TagListEditor from './TagListEditor';
+import StaffAccessMatrix from './StaffAccessMatrix';
+import BrewerSettings from '@/components/garden/BrewerSettings';
+import { useBrewerRoster } from '@/components/garden/useBrewerRoster';
+import { AccountsView } from '@/components/settings/accounts/Accounts';
+import { useAccountsAdmin } from '@/components/settings/accounts/useAccountsAdmin';
 
 // 직원 명부 화면 — 추가·이름·기본 지점·근무 지점·입사일·재직. 삭제는 없다(지난 기록을 지키기 위해 재직만 끈다).
+// 2026-11-26 직원 명부 통합(대표 결정): 사람에 관한 설정을 이 화면의 「묶음」으로 모은다.
+//   기본 · 근로      = 예전 명부의 열을 둘로 나눈 것(운영진)
+//   업무 지정        = 필터커피 내리는 사람 · 원두 수령 담당 · 알림 담당
+//   권한(관리자만)   = 섹션 · 화면 출입 · 운영진 · 교육 코멘트 열람 — 설정 › 계정의 권한 표와 같은 칸, 같은 저장
+// 권한 · 알림은 로그인 계정에 붙는 값이라 계정이 연결된 사람만 켤 수 있다. 명부에 없는 계정(대표 · 외부 담당자)과 계정 도구는 화면 아래에 따로 둔다.
+type Group = 'basic' | 'work' | 'duty' | 'perm';
 type Row = Staff & { userId: string | null; lastWorked: string | null; account: 'login' | 'roster' | null; suggestedWeeklyHours: number | null };
 type Account = { userId: string; name: string | null; label: string; linkedStaffId: number | null };
 
@@ -34,6 +45,16 @@ export default function StaffManager() {
   const [dutyDefs, setDutyDefs] = useState<TagDef[]>([]);
   const [editingTags, setEditingTags] = useState<'role' | 'duty' | null>(null);
   const [leaveRecs, setLeaveRecs] = useState<LeaveRec[]>([]);
+  const [group, setGroup] = useState<Group>('basic');
+  const ctl = useAccountsAdmin();
+  const brew = useBrewerRoster();
+  const admin = ctl.isAdmin === true;
+
+  // 설정에서 넘어올 때 ?g=perm 처럼 묶음을 지정할 수 있다(권한이 없으면 아래에서 기본으로 되돌린다)
+  useEffect(() => {
+    const g = new URLSearchParams(window.location.search).get('g');
+    if (g === 'work' || g === 'duty' || g === 'perm') setGroup(g);
+  }, []);
 
   // 연차는 연차·휴무 패널과 같은 API — 여기서는 총개수 입력과 잔여만 보여 준다
   const loadLeave = useCallback(async () => {
@@ -82,6 +103,19 @@ export default function StaffManager() {
   const inStore = rows.filter((r) => store === 'all' || r.stores.includes(store));
   const list = inStore.filter((r) => status === 'all' || (status === 'active' ? r.active : !r.active));
   const activeCount = inStore.filter((r) => r.active).length;
+  // 묶음 — 업무 지정은 관리자이거나 내리는 사람을 고칠 수 있는 사람에게, 권한은 관리자에게만
+  const groups: { id: Group; label: string }[] = [
+    { id: 'basic', label: '기본' },
+    { id: 'work', label: '근로' },
+    ...(admin || brew.allowed ? [{ id: 'duty' as Group, label: '업무 지정' }] : []),
+    ...(admin ? [{ id: 'perm' as Group, label: '권한' }] : []),
+  ];
+  // 권한 확인이 끝나기 전에는 주소로 지정한 묶음을 그대로 두고, 끝났는데 볼 수 없는 묶음이면 기본으로
+  const settled = ctl.isAdmin !== null;
+  const g: Group = groups.some((x) => x.id === group) || !settled ? group : 'basic';
+  const hb = g === 'basic' ? '' : 'hidden';
+  const hw = g === 'work' ? '' : 'hidden';
+  const linkedIds = new Set(rows.map((r) => r.userId).filter((x): x is string => !!x));
 
   return (
     <div className="space-y-6">
@@ -105,6 +139,7 @@ export default function StaffManager() {
           value={store}
           onSelect={(id) => setStore(id as 'all' | StoreId)}
         />
+        <SegmentControl ariaLabel="묶음" items={groups} value={g} onSelect={(id) => setGroup(id as Group)} />
         <form
           className="ml-auto flex flex-wrap items-center gap-2"
           onSubmit={async (e) => {
@@ -122,26 +157,34 @@ export default function StaffManager() {
 
       {error && <p className="m-0 text-body text-destructive">{error}</p>}
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[1990px] border-collapse">
+      {(g === 'duty' || g === 'perm') &&
+        (admin ? (
+          <StaffAccessMatrix mode={g} staff={list} ctl={ctl} brew={brew} />
+        ) : g === 'duty' ? (
+          // 관리자가 아닌 운영진 — 알림 · 수령 담당은 계정 목록(관리자 전용)이 있어야 해서, 내리는 사람 표만 보인다
+          <BrewerSettings standalone />
+        ) : null)}
+
+      <div className={`overflow-x-auto ${g === 'basic' || g === 'work' ? '' : 'hidden'}`}>
+        <table className={`w-full border-collapse ${g === 'work' ? 'min-w-[1380px]' : 'min-w-[1180px]'}`}>
           <thead>
             <tr className="text-left text-caption text-muted-foreground">
               <th className="px-3 py-2 font-normal">이름</th>
-              <th className="px-3 py-2 font-normal">기본 지점</th>
-              <th className="px-3 py-2 font-normal">근무 지점</th>
-              <th className="px-3 py-2 font-normal">
+              <th className={`${hb} px-3 py-2 font-normal`}>기본 지점</th>
+              <th className={`${hb} px-3 py-2 font-normal`}>근무 지점</th>
+              <th className={`${hb} px-3 py-2 font-normal`}>
                 <span className="flex items-center gap-2">역할 <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => setEditingTags('role')}>편집</button></span>
               </th>
-              <th className="px-3 py-2 font-normal">
+              <th className={`${hb} px-3 py-2 font-normal`}>
                 <span className="flex items-center gap-2 whitespace-nowrap">책임 태그 <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => setEditingTags('duty')}>편집</button></span>
               </th>
-              <th className="whitespace-nowrap px-3 py-2 font-normal">고용 형태 · 주 시간</th>
-              <th className="whitespace-nowrap px-3 py-2 font-normal">시급(원)</th>
-              <th className="px-3 py-2 font-normal">입사일</th>
-              <th className="px-3 py-2 font-normal">연차 총/잔여(개)</th>
-              <th className="whitespace-nowrap px-3 py-2 font-normal">마지막 근무</th>
-              <th className="px-3 py-2 font-normal">계정</th>
-              <th className="px-3 py-2 font-normal">재직</th>
+              <th className={`${hw} whitespace-nowrap px-3 py-2 font-normal`}>고용 형태 · 주 시간</th>
+              <th className={`${hw} whitespace-nowrap px-3 py-2 font-normal`}>시급(원)</th>
+              <th className={`${hw} px-3 py-2 font-normal`}>입사일</th>
+              <th className={`${hw} px-3 py-2 font-normal`}>연차 총/잔여(개)</th>
+              <th className={`${hw} whitespace-nowrap px-3 py-2 font-normal`}>마지막 근무</th>
+              <th className={`${hb} px-3 py-2 font-normal`}>계정</th>
+              <th className={`${hb} px-3 py-2 font-normal`}>재직</th>
             </tr>
           </thead>
           <tbody>
@@ -161,16 +204,16 @@ export default function StaffManager() {
                     }}
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className={`${hb} px-3 py-2`}>
                   <select aria-label={`${s.name} 지점`} className="ta-input w-[90px]" value={s.homeStore} onChange={(e) => send('PATCH', { id: s.id, homeStore: e.target.value })}>
                     {STORES.map((x) => <option key={x.id} value={x.id}>{x.short}</option>)}
                   </select>
                 </td>
-                <td className="px-3 py-2">
+                <td className={`${hb} px-3 py-2`}>
                   {/* 근무 지점 — 고른 지점의 근무표에 행으로 나온다. 기본 지점은 고정 */}
                   <StoreToggles name={s.name} stores={s.stores} homeStore={s.homeStore} onChange={(stores) => send('PATCH', { id: s.id, stores })} />
                 </td>
-                <td className="px-3 py-2">
+                <td className={`${hb} px-3 py-2`}>
                   {/* 역할 토글 — 여러 개 선택. 시간대별 인원의 역할 줄이 이 값을 읽는다 */}
                   <div className="ta-seg" role="group" aria-label={`${s.name} 역할`}>
                     {roleDefs.map((r) => {
@@ -189,14 +232,14 @@ export default function StaffManager() {
                     })}
                   </div>
                 </td>
-                <td className="px-3 py-2">
+                <td className={`${hb} px-3 py-2`}>
                   {/* 체크리스트 책임자 자동 선정에 쓴다 */}
                   <select aria-label={`${s.name} 책임 태그`} className="ta-input w-[120px]" value={s.dutyTag ?? ''} onChange={(e) => send('PATCH', { id: s.id, dutyTag: e.target.value || null })}>
                     <option value="">없음</option>
                     {dutyDefs.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
                   </select>
                 </td>
-                <td className="px-3 py-2">
+                <td className={`${hw} px-3 py-2`}>
                   {/* 파트타임이면 주 소정근로시간으로 법정 연차를 비례 계산한다 */}
                   <span className="flex items-center gap-2">
                     <select aria-label={`${s.name} 고용 형태`} className="ta-input w-[104px]" value={s.employment} onChange={(e) => send('PATCH', { id: s.id, employment: e.target.value as Employment })}>
@@ -228,7 +271,7 @@ export default function StaffManager() {
                     )}
                   </span>
                 </td>
-                <td className="px-3 py-2">
+                <td className={`${hw} px-3 py-2`}>
                   {/* 월 집계 예상 인건비용 — 비우면 집계에 금액이 안 나온다 */}
                   <input
                     key={`${s.id}-wage-${s.hourlyWage ?? ''}`}
@@ -245,7 +288,7 @@ export default function StaffManager() {
                     }}
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className={`${hw} px-3 py-2`}>
                   <input
                     key={s.joinedOn ?? ''}
                     aria-label={`${s.name} 입사일`}
@@ -258,7 +301,7 @@ export default function StaffManager() {
                     }}
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className={`${hw} px-3 py-2`}>
                   {(() => {
                     const bal = balances.find((b) => b.staffId === s.id);
                     const remaining = leaveRemaining(bal?.total ?? null, bal?.asOf ?? null, leaveRecs.filter((r) => r.staffId === s.id));
@@ -298,11 +341,11 @@ export default function StaffManager() {
                     );
                   })()}
                 </td>
-                <td className="whitespace-nowrap px-3 py-2 tabular">
+                <td className={`${hw} whitespace-nowrap px-3 py-2 tabular`}>
                   <span className="text-muted-foreground">{s.lastWorked ?? '–'}</span>
                   {needsActiveCheck(s.active, s.lastWorked, today) && <span className="ml-2 text-caption text-amber-600">재직 확인</span>}
                 </td>
-                <td className="px-3 py-2">
+                <td className={`${hb} px-3 py-2`}>
                   {/* 체크리스트 담당 판정의 기준. 이름이 같은 계정을 맨 위에 제안한다 */}
                   <select
                     aria-label={`${s.name} 연결 계정`}
@@ -318,7 +361,7 @@ export default function StaffManager() {
                       .map((a) => <option key={a.userId} value={a.userId}>{a.label}{a.name === s.name && !s.userId ? ' · 이름 같음' : ''}</option>)}
                   </select>
                 </td>
-                <td className="px-3 py-2">
+                <td className={`${hb} px-3 py-2`}>
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -344,6 +387,11 @@ export default function StaffManager() {
         </table>
       </div>
     </section>
+    {admin && (
+      <section className="ta-panel">
+        <AccountsView ctl={ctl} hub excludeIds={linkedIds} />
+      </section>
+    )}
     </div>
   );
 }

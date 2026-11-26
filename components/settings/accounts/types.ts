@@ -45,6 +45,9 @@ export type Account = {
   title: string; // 간편은 이름, 이메일은 주소
   user: UserRow | null; // 로그인 계정이 없으면 null(명부만 남은 프로필)
   profile: ProfileRow | null;
+  // 직원 명부의 줄로 그릴 때만 — 명부 id 와 표에 보일 이름(명부의 이름). 계정이 없는 직원은 user · profile 이 모두 null 이다.
+  staffId?: number;
+  rowName?: string;
 };
 
 export function mergeAccounts(users: UserRow[], profiles: ProfileRow[]): Account[] {

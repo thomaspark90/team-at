@@ -15,6 +15,8 @@ import Check, { type MatrixCellState } from '@/components/MatrixCheck';
 
 type CellState = MatrixCellState;
 type View = 'all' | MatrixGroupId;
+/** 필터커피 내리는 사람 칸 — 직원 명부가 넘긴다(명부의 사람에 붙는 값이라 계정 권한과 저장 위치가 다르다) */
+export type BrewCtl = { state: (a: Account, store: string) => CellState; toggle: (a: Account, store: string) => Promise<void> };
 const VIEWS: [View, string][] = [
   ['all', '전체'],
   ['sections', '섹션'],
@@ -39,7 +41,21 @@ export default function PermissionMatrix({
   externalBadge,
   renderInfo,
   onError,
+  groups: groupsProp,
+  showOwner = true,
+  showViews = true,
+  notes = true,
+  brew,
 }: {
+  /** 열 묶음 — 넘기지 않으면 설정 › 계정의 전체 표(buildMatrix) */
+  groups?: MatrixGroup[];
+  /** 맨 윗줄에 대표 줄을 둘지 */
+  showOwner?: boolean;
+  /** 묶음 고르기(전체 · 섹션 · …) 줄을 둘지 — 직원 명부는 바깥에서 묶음을 고르므로 끈다 */
+  showViews?: boolean;
+  /** 표 아래 안내 문구 · '표에서 바꿀 수 없는 권한' */
+  notes?: boolean;
+  brew?: BrewCtl;
   accounts: Account[];
   roles: ProfileRole[];
   busyId: string | null;
@@ -54,16 +70,17 @@ export default function PermissionMatrix({
   const [view, setView] = useState<View>('all');
   const [pending, setPending] = useState<string | null>(null);
   const extras = useMatrixExtras(onError);
-  const all = useMemo(() => buildMatrix(), []);
+  const all = useMemo(() => groupsProp ?? buildMatrix(), [groupsProp]);
   const groups = view === 'all' ? all : all.filter((g) => g.id === view);
   const colCount = groups.reduce((n, g) => n + g.subs.reduce((m, s) => m + s.columns.length, 0), 0);
-  const rows = [OWNER, ...accounts];
+  const rows = showOwner ? [OWNER, ...accounts] : accounts;
 
   const emailOf = (a: Account) => (a.id === OWNER.id ? OWNER_EMAIL : a.user?.email ?? null);
 
   const stateOf = (a: Account, c: MatrixColumn): CellState => {
     const s = c.source;
     const owner = a.id === OWNER.id;
+    if (s.type === 'brewer') return brew ? brew.state(a, s.store) : 'na';
     if (s.type === 'sections' || s.type === 'tabs' || s.type === 'studioTabs') {
       if (owner) return 'locked';
       return a.user ? (allowedSet(a.user, s.type).has(s.key) ? 'on' : 'off') : 'na';
@@ -82,6 +99,13 @@ export default function PermissionMatrix({
   const click = async (a: Account, c: MatrixColumn, state: CellState) => {
     if (state === 'locked' || state === 'na') return;
     const s = c.source;
+    if (s.type === 'brewer') {
+      if (!brew) return;
+      setPending(`${a.id}|${c.id}`);
+      await brew.toggle(a, s.store);
+      setPending(null);
+      return;
+    }
     if (s.type === 'sections' || s.type === 'tabs' || s.type === 'studioTabs') return onAccess(a, s.type, s.key);
     if (s.type === 'comments') return onComments(a, state === 'off');
     const email = emailOf(a);
@@ -112,15 +136,17 @@ export default function PermissionMatrix({
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3" style={{ marginBottom: 14 }}>
-        <div className="inline-flex flex-wrap gap-1 ta-seg">
-          {VIEWS.map(([k, label]) => (
-            <button key={k} onClick={() => setView(k)} className={`ta-seg-item px-2.5 py-1 text-body transition-colors ${view === k ? 'ta-seg-on' : ''}`}>
-              {label}
-            </button>
-          ))}
-        </div>
+        {showViews && (
+          <div className="inline-flex flex-wrap gap-1 ta-seg">
+            {VIEWS.map(([k, label]) => (
+              <button key={k} onClick={() => setView(k)} className={`ta-seg-item px-2.5 py-1 text-body transition-colors ${view === k ? 'ta-seg-on' : ''}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         <span className="text-caption text-muted-foreground">
-          칸을 누르면 바로 저장돼요 · 묶음을 고르면 그 열만 보여요{!extras.loaded && ' · 기능·알림 불러오는 중…'}
+          칸을 누르면 바로 저장돼요{showViews && ' · 묶음을 고르면 그 열만 보여요'}{!extras.loaded && ' · 기능·알림 불러오는 중…'}
         </span>
       </div>
 
@@ -133,7 +159,7 @@ export default function PermissionMatrix({
                 className="text-left font-normal text-muted-foreground"
                 style={{ ...sticky(0, 4), left: 0, minWidth: FIRST_W, padding: '0 14px 10px', verticalAlign: 'bottom', borderBottom: LINE, borderRight: LINE }}
               >
-                인원 <span className="tabular">· {accounts.length + 1}</span>
+                인원 <span className="tabular">· {rows.length}</span>
               </th>
               {groups.map((g) => (
                 <th
@@ -193,8 +219,8 @@ export default function PermissionMatrix({
                         style={{ background: 'none', border: 'none', padding: 0, cursor: owner ? 'default' : 'pointer', overflowWrap: 'anywhere', maxWidth: FIRST_W + 40 }}
                         title={owner ? undefined : '눌러서 역할·지점·비밀번호·계정 삭제'}
                       >
-                        {a.kind === 'email' && !owner ? a.title.split('@')[0] : a.title}
-                        {!owner && (
+                        {a.rowName ?? (a.kind === 'email' && !owner ? a.title.split('@')[0] : a.title)}
+                        {!owner && (a.user || a.profile) && (
                           <span
                             className={`ml-2 rounded-full px-2 py-0.5 text-caption ${a.kind === 'email' ? 'bg-muted text-muted-foreground' : ''}`}
                             style={a.kind === 'simple' ? { background: 'hsl(200 75% 90%)', color: 'hsl(205 65% 30%)' } : undefined}
@@ -223,7 +249,7 @@ export default function PermissionMatrix({
                                 disabled={!clickable || busy || dim}
                                 onClick={() => void click(a, c, state)}
                                 aria-pressed={state === 'on' || state === 'locked'}
-                                aria-label={`${a.title} · ${c.label}`}
+                                aria-label={`${a.rowName ?? a.title} · ${c.label}`}
                                 title={
                                   dim
                                     ? `${c.label} — 상위 섹션이 꺼져 있어 적용되지 않아요`
@@ -259,6 +285,8 @@ export default function PermissionMatrix({
         </table>
       </div>
 
+      {notes && (
+      <>
       <div className="text-caption text-muted-foreground" style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 4 }}>
         <span>흐린 칸 = 상위 섹션이 꺼져 있어 적용되지 않음 · – = 그 계정에는 지정할 수 없음(로그인 계정 없음 등) · 열 제목에 마우스를 올리면 설명이 보여요.</span>
         <span>원두 수령 담당을 아무도 지정하지 않으면 &lsquo;필터 원두 발주&rsquo; 화면 출입이 있는 사람 누구나 수령을 기재합니다.</span>
@@ -275,6 +303,8 @@ export default function PermissionMatrix({
           ))}
         </ul>
       </details>
+      </>
+      )}
     </div>
   );
 }
