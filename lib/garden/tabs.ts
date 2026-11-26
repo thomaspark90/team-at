@@ -19,6 +19,8 @@ export const GARDEN_TAB_GROUPS: GardenTab[][] = [
     { key: 'beancard', href: '/garden/beancard', label: '원두카드', desc: '매장 비치용 원두카드 인쇄' },
     { key: 'theory', href: '/garden/theory', label: '커피 추출 이론', desc: '스탭 교육 · 현장 참고용 추출 이론' },
     { key: 'beanguide', href: '/garden/bean-guide', label: '원두에 대한 이해', desc: '원산지 떼루아 · 유명 농장 · 이름 읽는 법 · 품종 · 고도와 품질 요소' },
+    // 반복 발주 품목표(2026-11-26) — 대표·매니저 전용. 원두 발주(pricing)와 다른 화면이다.
+    { key: 'reorder', href: '/garden/reorder', label: '발주', desc: '자주 사는 재료 품목표 · 지난 구매가 · 판매처 승인 (대표·매니저, 원두 발주와 별개)' },
     { key: 'sales', href: '/garden/sales', label: '상품 추이', desc: '지점별 POS 매출 요약 (재무 멤버)' },
     { key: 'weather', href: '/garden/weather', label: '날씨 분석', desc: '기온·강수 밴드별 판매 효과 리포트' },
   ],
@@ -54,6 +56,7 @@ export const GARDEN_NAV: GardenNavEntry[] = [
   // 2026-11-24 대표 결정: 발주 + 레시피 = 원두 장부 한 화면. 매일 쓰는 화면이라 묶음 없이 바로 연다. 발주(pricing)는 장부 안 버튼이라 메뉴에서 뺐다.
   // 같은 날 '커피(필터) ▾' 묶음을 없앴다 — 작업 도구(분쇄도 측정·원두카드)는 필터커피 화면의 링크로, 읽는 자료(추출 이론·원두 이해·추천 레시피)는 교육의 탭으로.
   { label: '필터커피', keys: ['recipes'], hidden: ['pricing', 'saleprice', 'calibration', 'beancard'] },
+  { label: '발주', keys: ['reorder'] }, // 재료 반복 발주(2026-11-26). 원두 발주는 필터커피 화면 안에 있다
   { label: '분석', keys: ['sales', 'weather', 'reviews'] },
   { label: '스케줄', keys: ['schedule'] },
   { label: '체크리스트', keys: ['checklist'] }, // 항목 관리는 체크리스트 화면에서 들어간다 — 직원이 매일 쓰는 메뉴를 한 번에 열리게
