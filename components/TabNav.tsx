@@ -46,7 +46,7 @@ export default function TabNav() {
   const navTabs = [
     ...TABS,
     ...(isOwner(email) ? [{ href: '/docs', label: '문서', key: 'owner-docs', desc: '링크 공유용 내부 문서' }] : []),
-    ...(isAdmin ? [{ href: '/settings', label: '설정', key: 'admin-settings', desc: '계정별 접근 권한 관리' }] : []),
+    ...(isAdmin ? [{ href: '/settings', label: '설정', key: 'admin-settings', desc: '계정별 접근 권한 관리 — 직원 명부로 이동' }] : []),
   ];
   const isTabAllowed = (key: string) =>
     key === 'admin-settings' || key === 'owner-docs' || !Array.isArray(allowed) || allowed.includes(key);

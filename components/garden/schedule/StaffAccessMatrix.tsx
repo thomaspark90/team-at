@@ -29,11 +29,13 @@ export default function StaffAccessMatrix({
 
   const rows: Account[] = useMemo(() => {
     const byId = new Map((ctl.accounts ?? []).map((a) => [a.id, a]));
-    return staff.map((s) => {
+    const list: Account[] = staff.map((s) => {
       const acc = s.userId ? byId.get(s.userId) : undefined;
       return { id: acc?.id ?? `staff-${s.id}`, kind: acc?.kind ?? 'simple', title: acc?.title ?? s.name, user: acc?.user ?? null, profile: acc?.profile ?? null, staffId: s.id, rowName: s.name };
     });
-  }, [staff, ctl.accounts]);
+    // 권한은 계정이 있는 사람만 켤 수 있어, 그 사람들을 위로 올린다(나머지는 이름순 그대로). 업무 지정은 내리는 사람 칸이 모두에게 있어 이름순
+    return mode === 'perm' ? [...list.filter((a) => a.user), ...list.filter((a) => !a.user)] : list;
+  }, [staff, ctl.accounts, mode]);
 
   const brewCtl: BrewCtl = {
     state: (a, store) => brew.state(a.staffId, store),

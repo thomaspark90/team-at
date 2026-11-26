@@ -58,7 +58,7 @@ export default function BrewerPicker({
           {setup ? '누가 레시피를 잡나요?' : waiting ? '누가 연습하나요?' : '누가 추출하나요?'}
         </span>
         {staffNames.length === 0 ? (
-          <span className="text-caption text-muted-foreground">필터커피 내리는 사람이 지정되지 않았습니다. 가든서비스 › 설정에서 지정해 주세요.</span>
+          <span className="text-caption text-muted-foreground">필터커피 내리는 사람이 지정되지 않았습니다. 필터커피 › 내리는 사람에서 지정해 주세요.</span>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
             {staffNames.map((n) => (

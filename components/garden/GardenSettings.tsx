@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import type { StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import TodoList from '@/components/TodoList';
@@ -9,12 +10,13 @@ import { EMPTY_TOPICS, topicsOfScope } from '@/lib/garden-notify-topics';
 import { type RecipientRow } from '@/components/NotifyRecipients';
 import NotifySettings from '@/components/NotifySettings';
 import GardenOptionsManager from '@/components/garden/GardenOptionsManager';
-import BrewerSettings from '@/components/garden/BrewerSettings';
 import EmailAddPicker, { useTeamEmails } from '@/components/EmailAddPicker';
 import NametagContacts from '@/components/garden/nametags/NametagContacts';
 import { groupByNav } from '@/lib/garden/notify-topic-groups';
 
-// 가든 설정 — 알림(내 채널 + 항목별 담당자), 요청 보내기, 발주 명단, 접근 권한, 투두리스트.
+// 가든 설정 — 알림(내 채널 + 외부 이메일 담당자), 요청 보내기, 발주 명단, 투두리스트.
+// 2026-11-26 직원 명부 통합(대표 결정): 사람에게 거는 지정은 스케줄 › 직원 명부의 「업무 지정」으로 옮겼다 —
+// 로그인 계정이 있는 담당자(알림 · 원두 수령)와 필터커피 내리는 사람. 여기에는 계정이 없는 외부 이메일 담당자만 남긴다.
 // 흩어져 있던 알림 3종(항목별 담당자·수신자 관리·내 채널)과 요청 폼 2종을 각각 하나로 합쳤다.
 
 // 요청 내용 프리셋 — 캘리브레이션 운영에서 실제로 쓰는 것 + 직접 입력
@@ -62,9 +64,10 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
   // 이메일 추가 드롭다운 후보 — 팀 전체 계정(대표·사전 등록 포함) + 어느 항목이든
   // 이미 담당자로 등록된 이메일(직접 입력분도 다른 항목에서 재선택할 수 있게)
   const teamEmails = useTeamEmails();
-  const candidates = Array.from(
-    new Set([...teamEmails, ...Object.values(map).flat(), ...rows.map((r) => r.email)])
-  );
+  // 로그인 계정이 있는 이메일 — 이 사람들은 직원 명부에서 켜고 끈다. 여기서는 숨기되 저장할 때는 그대로 보존한다.
+  // 팀 계정 목록을 못 읽으면(빈 목록) 구분할 수 없으므로 전부 보여 준다 — 담당자가 화면에서 사라져 못 고치는 일이 없게.
+  const internal = new Set(teamEmails.map((e) => e.toLowerCase()));
+  const isExternal = (email: string) => !internal.has(email.toLowerCase());
 
   useEffect(() => {
     fetch('/api/garden-notify-topics', { cache: 'no-store' })
@@ -139,7 +142,12 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
         <span className="text-caption text-muted-foreground">{desc}</span>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        {emails.map((email) => (
+        {emails.some((e) => !isExternal(e)) && (
+          <span className="text-caption text-muted-foreground" title="로그인 계정이 있는 담당자 — 직원 명부의 「업무 지정」에서 켜고 끕니다">
+            계정 담당자 {emails.filter((e) => !isExternal(e)).length}명 ·
+          </span>
+        )}
+        {emails.filter(isExternal).map((email) => (
           <span key={email} className="rounded-full border border-border text-caption text-foreground" style={chip}>
             {email.split('@')[0]}
             <button
@@ -153,8 +161,8 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
             </button>
           </span>
         ))}
-        {/* 드롭다운(팀 계정 선택 즉시 추가) + '직접 입력' 수기 기입 */}
-        <EmailAddPicker candidates={candidates} exclude={emails} onAdd={onAdd} busy={busy} onError={setError} />
+        {/* 외부 이메일만 직접 입력으로 추가 — 로그인 계정은 직원 명부에서 */}
+        <EmailAddPicker candidates={[]} exclude={emails} onAdd={onAdd} busy={busy} onError={setError} />
       </div>
     </div>
   );
@@ -190,8 +198,9 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
       <div>
         <p className="text-title font-medium text-foreground" style={{ margin: 0 }}>알림</p>
         <p className="text-body text-muted-foreground" style={{ margin: '2px 0 0' }}>
-          아래 <strong>내 수신 채널</strong>에서 내가 받을 방법을 켜고,{' '}
-          <strong>항목별 담당자</strong>에서 각 알림을 누가 받을지 지정합니다. 담당자로 지정돼도 본인이
+          아래 <strong>내 수신 채널</strong>에서 내가 받을 방법을 켭니다. 각 알림을 누가 받을지는{' '}
+          <Link href="/garden/schedule/staff?g=duty" className="underline underline-offset-2">스케줄 › 직원 명부</Link>의 「업무 지정」에서 지정하고,
+          로그인 계정이 없는 외부 이메일만 아래 <strong>외부 이메일 담당자</strong>에서 넣습니다. 담당자로 지정돼도 본인이
           푸시를 켜야 기기 알림이 옵니다.
         </p>
       </div>
@@ -202,7 +211,7 @@ function NotificationCenter({ recipients }: { recipients: RecipientRow[] | null 
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
-        <p className="ta-label" style={{ margin: 0 }}>항목별 담당자</p>
+        <p className="ta-label" style={{ margin: 0 }}>외부 이메일 담당자</p>
         {/* 내비 메뉴 순서대로 묶는다 — 왼쪽에 메뉴 이름, 오른쪽에 그 메뉴의 항목(모바일은 위아래) */}
         {groups.map((g) => (
           <div key={g.key} className="grid gap-x-8 gap-y-4 md:grid-cols-[132px_minmax(0,1fr)]">
@@ -391,8 +400,6 @@ export default function GardenSettings() {
       <div className="py-[54px]">
         <RequestForms />
       </div>
-      {/* 필터커피 내리는 사람 — 레시피 보드 이름 버튼 · 추출 평가 이름. 권한이 없으면 구역째 숨는다 */}
-      <BrewerSettings />
       {/* 필터 원두 발주의 스탭이름·로스팅사 드롭다운 명단 */}
       <div className="py-[54px]">
         <GardenOptionsManager />
