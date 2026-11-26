@@ -8,7 +8,7 @@ import { honorific } from '@/lib/staff/names';
 // 공용 태블릿이라 이름은 기억하지 않는다 — 들어올 때마다 새로 고른다.
 // 추출이 아닌 일(대기 · 소진 · 판매 시작)은 아래 버튼 — 이름을 고르지 않아도 누를 수 있다.
 // 대기 중(판매 전) 원두는 레시피 세팅 · 연습으로만 내린다(2026-11-26 대표 지시) — 창 위에 「대기 중 · 연습」 표시,
-// 물음은 「누가 연습하나요?」, 「판매 시작」은 테두리 버튼으로 키운다. 이때 남긴 평가는 「연습」으로 따로 표시된다.
+// 물음은 「누가 연습하나요?」, 「판매 시작」은 창 아래 가운데 검정 알약 버튼. 이때 남긴 평가는 「연습」으로 따로 표시된다.
 
 const plainBtn: React.CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' };
 
@@ -69,7 +69,25 @@ export default function BrewerPicker({
             아직 판매 전인 원두입니다. 레시피 세팅 · 연습으로 내린 기록은 「연습」으로 따로 남습니다.
           </p>
         )}
-        <div className="text-body" style={{ display: 'flex', alignItems: waiting ? 'center' : 'baseline', gap: 18, marginTop: 24, whiteSpace: 'nowrap' }}>
+        {waiting ? (
+          // 대기 중 원두 — 「판매 시작」을 창 아래 가운데 검정 알약 버튼으로(추출 평가의 「남기기」와 같은 모양, 2026-11-26 대표 지시). 닫기는 오른쪽
+          <div className="text-body" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', alignItems: 'center', marginTop: 26, whiteSpace: 'nowrap' }}>
+            <span />
+            <button
+              type="button"
+              onClick={() => onWaiting(false)}
+              className="fc-fab text-body"
+              style={{ height: 52, padding: '0 34px' }}
+              title="이 지점 판매 시작 — 필터커피 라인업에 올라가요"
+            >
+              판매 시작
+            </button>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground" style={{ ...plainBtn, justifySelf: 'end' }}>
+              닫기
+            </button>
+          </div>
+        ) : (
+        <div className="text-body" style={{ display: 'flex', alignItems: 'baseline', gap: 18, marginTop: 24, whiteSpace: 'nowrap' }}>
           {confirmArchive ? (
             <>
               <span className="text-muted-foreground">아카이브로 보낼까요?</span>
@@ -80,15 +98,6 @@ export default function BrewerPicker({
                 취소
               </button>
             </>
-          ) : waiting ? (
-            <button
-              onClick={() => onWaiting(false)}
-              className="bg-background text-foreground hover:bg-muted"
-              style={{ height: 40, padding: '0 18px', borderRadius: 999, border: '1px solid hsl(var(--foreground))', cursor: 'pointer', fontFamily: 'inherit' }}
-              title="이 지점 판매 시작 — 필터커피 라인업에 올라가요"
-            >
-              판매 시작
-            </button>
           ) : (
             <>
               <button
@@ -114,6 +123,7 @@ export default function BrewerPicker({
             닫기
           </button>
         </div>
+        )}
       </div>
     </div>
   );

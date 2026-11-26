@@ -340,6 +340,11 @@ select.ta-input {
 .fc-fab:active {
   transform: scale(0.98);
 }
+.fc-fab:disabled {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+}
 /* 고정 버튼이 있는 화면에서는 하단 알림(Toast)을 버튼 위로 올린다 */
 body:has(.fc-fab) .ta-toasts {
   bottom: calc(84px + env(safe-area-inset-bottom, 0px));

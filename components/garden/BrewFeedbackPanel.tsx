@@ -19,7 +19,7 @@ import {
 import { fmtDate } from '@/lib/garden/format';
 import { toast } from '@/components/Toast';
 
-// 추출 평가 — 레시피 보드의 평가 화면. 이름(보드에서는 들어올 때 이미 고름) → 좋음/농도/개선 필요 칩 → 다음 분쇄도 슬라이더 → 남기기.
+// 추출 평가 — 레시피 보드의 평가 화면. 이름(보드에서는 들어올 때 이미 고름) → 좋음/농도/개선 필요 칩 → 다음 분쇄도 슬라이더 → 남기기(평가 카드 하단 가운데 고정 버튼).
 // 레시피는 바꾸지 않는다. 아래에 같은 지점·같은 레시피 버전의 의견 집계와 최근 의견.
 
 // 선택지는 글자 토글(M1 스타일, 2026-10-30) — 면·그림자 없이 선택만 밑줄+진한 글자
@@ -144,7 +144,7 @@ export default function BrewFeedbackPanel({
   const delta = meshDeltaText(baseMesh, mesh);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28, minHeight: '100%' }}>
       {/* 이름 토글 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <span className="text-caption text-muted-foreground">이름</span>
@@ -239,14 +239,6 @@ export default function BrewFeedbackPanel({
           className="w-full border-b border-border bg-transparent text-body text-foreground placeholder:text-muted-foreground focus:border-foreground"
           style={{ border: 'none', borderBottomWidth: 1, borderBottomStyle: 'solid', padding: '8px 0', resize: 'none', outline: 'none', lineHeight: 1.6, fontFamily: 'inherit' }}
         />
-        <button
-          onClick={submit}
-          disabled={!staff || saving}
-          className="text-body text-foreground disabled:text-muted-foreground"
-          style={{ alignSelf: 'flex-end', background: 'none', border: 'none', padding: 0, cursor: staff ? 'pointer' : 'default', fontFamily: 'inherit' }}
-        >
-          {saving ? '남기는 중…' : staff ? '남기기 →' : '이름을 골라 주세요'}
-        </button>
       </div>
 
       {/* 의견 집계 — 같은 지점·현재 레시피 버전 */}
@@ -298,6 +290,27 @@ export default function BrewFeedbackPanel({
           )}
         </div>
       )}
+
+      {/* 남기기 — 평가 카드 하단 가운데 고정 버튼(2026-11-26 대표 결정 B안). 카드 안에서 스크롤해도 같은 자리에 붙어 있고,
+          평가 내용은 버튼 뒤로 지나간다(버튼 주변은 바탕색으로 옅게 가림). -24px 두 개는 카드 안쪽 아래 여백(24px)만큼 내려 카드 바닥에 붙이는 값 */}
+      <div
+        style={{
+          position: 'sticky',
+          bottom: -24,
+          zIndex: 2,
+          marginTop: 'auto',
+          marginBottom: -24,
+          padding: '28px 0 20px',
+          display: 'flex',
+          justifyContent: 'center',
+          background: 'linear-gradient(180deg, hsl(var(--background) / 0), hsl(var(--background)) 58%)',
+          pointerEvents: 'none',
+        }}
+      >
+        <button type="button" onClick={submit} disabled={!staff || saving} className="fc-fab text-body" style={{ height: 52, padding: '0 34px', pointerEvents: 'auto' }}>
+          {saving ? '남기는 중…' : staff ? '남기기' : '이름을 골라 주세요'}
+        </button>
+      </div>
     </div>
   );
 }
