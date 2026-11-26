@@ -54,10 +54,10 @@ export default function HourlyStrip({
   onStaffChanged?: () => Promise<void> | void; // 있으면 운영진 — 역할 편집 버튼을 보여준다
   leadWarn?: boolean; // 책임 태그 가진 사람이 없는 시간대를 노랗게(운영진 계획 보기)
 }) {
-  const [showRoles, setShowRoles] = useState(true);
+  const [showRoles, setShowRoles] = useState(false); // 기본은 숨김 — '보이기'를 누른 기기만 기억해서 보여 준다
   const [editingRoles, setEditingRoles] = useState(false);
   useEffect(() => {
-    setShowRoles(localStorage.getItem(STORAGE_KEY) !== '0');
+    setShowRoles(localStorage.getItem(STORAGE_KEY) === '1');
   }, []);
   const toggleRoles = () => {
     setShowRoles((v) => {

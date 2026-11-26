@@ -23,6 +23,8 @@ export default function WeekGrid({
   onPasteDay,
   cellMarks,
   weekWarn,
+  onPrevWeek,
+  onNextWeek,
 }: {
   week: WeekData;
   rows: Staff[];
@@ -36,14 +38,26 @@ export default function WeekGrid({
   onPasteDay?: (date: string) => void;
   cellMarks?: Map<string, { warnings: string[]; leave?: string }>; // `${staffId}|${date}` — 충돌 경고·연차/불가 표시(운영진 계획 보기)
   weekWarn?: Map<number, string>; // 사람별 주 전체 경고(주 52시간)
+  onPrevWeek?: () => void; // 표 왼쪽 화살표 — 지난주
+  onNextWeek?: () => void; // 표 오른쪽 화살표 — 다음주
 }) {
   const at = (list: Shift[], staffId: number, date: string) =>
     list.filter((s) => s.staffId === staffId && s.date === date);
   const label = (list: Shift[]) =>
     list.filter((s) => s.start != null && s.end != null).map((s) => fmtSegment({ start: s.start!, end: s.end! })).join(', ');
 
+  // 표 양옆 화살표 — 표 높이만큼 길게 눌리고, 화살표는 스크롤해도 화면 가운데에 머문다.
+  const arrow = (label: string, glyph: string, onClick?: () => void) =>
+    onClick && (
+      <button type="button" aria-label={label} title={label} className="w-9 shrink-0 self-stretch rounded-md text-title text-muted-foreground hover:bg-accent hover:text-foreground" onClick={onClick}>
+        <span className="sticky top-1/2 block">{glyph}</span>
+      </button>
+    );
+
   return (
-    <div className="overflow-x-auto">
+    <div className="flex gap-1">
+      {arrow('지난주', '‹', onPrevWeek)}
+    <div className="min-w-0 flex-1 overflow-x-auto">
       <table className="w-full min-w-[880px] table-fixed border-collapse">
         <thead>
           <tr>
@@ -129,6 +143,8 @@ export default function WeekGrid({
           )}
         </tbody>
       </table>
+    </div>
+      {arrow('다음주', '›', onNextWeek)}
     </div>
   );
 }

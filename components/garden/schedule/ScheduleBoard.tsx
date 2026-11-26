@@ -282,6 +282,8 @@ export default function ScheduleBoard() {
             onPasteDay={editor ? (d) => pasteDay(d) : undefined}
             cellMarks={cellMarks}
             weekWarn={weekWarn}
+            onPrevWeek={() => setWeekStart(addDays(weekStart, -7))}
+            onNextWeek={() => setWeekStart(addDays(weekStart, 7))}
           />
         ) : (
           !error && <p className="m-0 text-body text-muted-foreground">불러오는 중…</p>
