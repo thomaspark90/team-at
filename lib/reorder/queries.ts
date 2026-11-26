@@ -14,6 +14,10 @@ const monthsAgo = (n: number) => {
   return d.toISOString().slice(0, 10);
 };
 
+// 2026-10 이후 네이버페이 수집분 다수가 지점(store) 없이 들어온다(수령인은 '@장나은(가든 양재점)'처럼 남아 있다).
+// 지점이 빈 건은 수령인 꼬리에 지점 이름이 있으면 그 지점 것으로 본다. 지점이 적힌 건은 그 값을 따른다.
+const STORE_WORD: Record<StoreId, string> = { yangjae: '양재', pangyo: '판교' };
+
 /** 그 지점으로 받은 네이버페이·쿠팡 결제 건(가든) — 최근 12개월. */
 export async function loadPurchases(svc: SupabaseClient, store: StoreId): Promise<PurchaseRow[]> {
   const out: PurchaseRow[] = [];
@@ -24,7 +28,7 @@ export async function loadPurchases(svc: SupabaseClient, store: StoreId): Promis
       .select('tx_at, memo, channel, amount_out')
       .in('bank', ['naverpay', 'coupang'])
       .eq('brand', 'garden')
-      .eq('store', store)
+      .or(`store.eq.${store},and(store.is.null,channel.ilike.*@*${STORE_WORD[store]}*)`)
       .gt('amount_out', 0)
       .gte('tx_at', monthsAgo(HISTORY_MONTHS))
       .order('tx_at', { ascending: true })
