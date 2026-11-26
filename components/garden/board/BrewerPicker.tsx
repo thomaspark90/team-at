@@ -8,7 +8,7 @@ import { honorific } from '@/lib/staff/names';
 // 공용 태블릿이라 이름은 기억하지 않는다 — 들어올 때마다 새로 고른다.
 // 추출이 아닌 일(대기 · 소진 · 판매 시작)은 아래 버튼 — 이름을 고르지 않아도 누를 수 있다.
 // 대기 중(판매 전) 원두는 레시피 세팅 · 연습으로만 내린다(2026-11-26 대표 지시) — 창 위에 「대기 중 · 연습」 표시,
-// 물음은 「누가 연습하나요?」, 「판매 시작」은 창 아래 가운데 검정 알약 버튼. 이때 남긴 평가는 「연습」으로 따로 표시된다.
+// 물음은 「누가 연습하나요?」, 「판매 시작」은 창 아래 가운데 검정 알약 버튼(누르면 「판매를 시작할까요?」 한 번 더 확인). 이때 남긴 평가는 「연습」으로 따로 표시된다.
 
 const plainBtn: React.CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' };
 
@@ -30,6 +30,7 @@ export default function BrewerPicker({
   onClose: () => void;
 }) {
   const [confirmArchive, setConfirmArchive] = useState(false); // 소진 — 실수 방지로 한 번 더 확인
+  const [confirmStart, setConfirmStart] = useState(false); // 판매 시작 — 가운데 큰 버튼이라 잘못 누르기 쉬워 한 번 더 확인(2026-11-26)
   return (
     <div
       onClick={onClose}
@@ -71,21 +72,46 @@ export default function BrewerPicker({
         )}
         {waiting ? (
           // 대기 중 원두 — 「판매 시작」을 창 아래 가운데 검정 알약 버튼으로(추출 평가의 「남기기」와 같은 모양, 2026-11-26 대표 지시). 닫기는 오른쪽
-          <div className="text-body" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', alignItems: 'center', marginTop: 26, whiteSpace: 'nowrap' }}>
-            <span />
-            <button
-              type="button"
-              onClick={() => onWaiting(false)}
-              className="fc-fab text-body"
-              style={{ height: 52, padding: '0 34px' }}
-              title="이 지점 판매 시작 — 필터커피 라인업에 올라가요"
+          <>
+            {confirmStart && (
+              <p className="text-body" style={{ margin: '24px 0 0', textAlign: 'center', wordBreak: 'keep-all' }}>
+                판매를 시작할까요?
+                <span className="text-caption text-muted-foreground" style={{ display: 'block', marginTop: 2 }}>
+                  필터커피 라인업의 판매 중으로 올라갑니다.
+                </span>
+              </p>
+            )}
+            <div
+              className="text-body"
+              style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', alignItems: 'center', marginTop: confirmStart ? 16 : 26, whiteSpace: 'nowrap' }}
             >
-              판매 시작
-            </button>
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground" style={{ ...plainBtn, justifySelf: 'end' }}>
-              닫기
-            </button>
-          </div>
+              <span />
+              {confirmStart ? (
+                <button type="button" onClick={() => onWaiting(false)} className="fc-fab text-body" style={{ height: 52, padding: '0 34px' }}>
+                  시작하기
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmStart(true)}
+                  className="fc-fab text-body"
+                  style={{ height: 52, padding: '0 34px' }}
+                  title="이 지점 판매 시작 — 필터커피 라인업에 올라가요"
+                >
+                  판매 시작
+                </button>
+              )}
+              {confirmStart ? (
+                <button onClick={() => setConfirmStart(false)} className="text-muted-foreground hover:text-foreground" style={{ ...plainBtn, justifySelf: 'end' }}>
+                  취소
+                </button>
+              ) : (
+                <button onClick={onClose} className="text-muted-foreground hover:text-foreground" style={{ ...plainBtn, justifySelf: 'end' }}>
+                  닫기
+                </button>
+              )}
+            </div>
+          </>
         ) : (
         <div className="text-body" style={{ display: 'flex', alignItems: 'baseline', gap: 18, marginTop: 24, whiteSpace: 'nowrap' }}>
           {confirmArchive ? (
