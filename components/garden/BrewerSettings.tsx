@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { STORES, type StoreId } from '@/lib/types';
 import { toast } from '@/components/Toast';
 import MatrixCheck, { type MatrixCellState } from '@/components/MatrixCheck';
@@ -10,6 +10,8 @@ import MatrixCheck, { type MatrixCellState } from '@/components/MatrixCheck';
 // 지점별 명단 — 후보는 그 지점에서 근무하는 재직자(직원 명부의 근무 지점)이고, 그중에서 켠 사람만 그 지점 화면에 나온다.
 // 스케줄 › 직원 명부의 역할 「커피」는 근무표를 짜는 사람이 보는 표기일 뿐이라 이 명단과 묶지 않는다.
 // 화면은 설정 › 계정의 권한 표와 같은 사람 × 칸 표(2026-11-26 대표 지시) — 첫 열 인원, 지점마다 한 열, 그 지점에서 근무하지 않는 칸은 –.
+// 대표 · 운영진에게는 앞쪽에 「근무 지점」 칸도 보인다(2026-11-26 대표 지시) — 직원 명부의 근무 지점을 여기서 바로 켜고 끈다.
+// 저장은 직원 명부 API(/api/garden-schedule/staff)로 가므로 근무표 · 계정 지점도 명부에서 고친 것과 똑같이 따라간다. 기본 지점은 잠김.
 // 칸을 누르면 바로 저장된다(실패하면 되돌리고 알림). 고칠 수 있는 사람은 대표 · 설정 권한 · 서브 매니저 이상 — 권한이 없으면(403) 구역째 숨긴다.
 // 설정 화면(구역 하나)과 필터커피 › 내리는 사람(standalone, 화면 하나)에서 같이 쓴다.
 
@@ -20,6 +22,8 @@ interface BrewerStore {
   staff: { id: number; name: string; on: boolean }[];
 }
 interface BrewerView {
+  storeEdit?: boolean; // 근무 지점 칸까지 고칠 수 있는 사람(대표 · 운영진) — 직원 명부와 같은 기준
+  people?: { id: number; name: string; homeStore: StoreId; stores: StoreId[] }[]; // 재직자 전원의 기본 지점 · 근무 지점
   stores: BrewerStore[];
 }
 
@@ -39,10 +43,11 @@ export default function BrewerSettings({ standalone = false }: { standalone?: bo
 
   // 사람 한 줄 — 지점별 칸 상태(at 에 키가 없으면 그 지점에서 근무하지 않는 사람)
   const people = useMemo(() => {
-    const m = new Map<number, { id: number; name: string; at: Partial<Record<StoreId, boolean>> }>();
+    const info = new Map((view?.people ?? []).map((p) => [p.id, p]));
+    const m = new Map<number, { id: number; name: string; home: StoreId | null; at: Partial<Record<StoreId, boolean>> }>();
     for (const s of view?.stores ?? []) {
       for (const x of s.staff) {
-        const p = m.get(x.id) ?? { id: x.id, name: x.name, at: {} };
+        const p = m.get(x.id) ?? { id: x.id, name: x.name, home: info.get(x.id)?.homeStore ?? null, at: {} };
         p.at[s.id] = x.on;
         m.set(x.id, p);
       }
@@ -50,20 +55,26 @@ export default function BrewerSettings({ standalone = false }: { standalone?: bo
     return Array.from(m.values()).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
   }, [view]);
 
+  const load = useCallback(
+    () =>
+      fetch('/api/garden-brewers', { cache: 'no-store' })
+        .then(async (r) => {
+          if (r.status === 403) return setDenied(true); // 권한 없음 — 설정 화면에서는 구역을 그리지 않는다
+          if (!r.ok) throw new Error();
+          setView(await r.json());
+        })
+        .catch(() => setFailed(true)),
+    [],
+  );
   useEffect(() => {
-    fetch('/api/garden-brewers', { cache: 'no-store' })
-      .then(async (r) => {
-        if (r.status === 403) return setDenied(true); // 권한 없음 — 설정 화면에서는 구역을 그리지 않는다
-        if (!r.ok) throw new Error();
-        setView(await r.json());
-      })
-      .catch(() => setFailed(true));
-  }, []);
+    load();
+  }, [load]);
 
   const toggle = async (store: StoreId, id: number) => {
     if (!view || busy) return;
     const prev = view;
     const next: BrewerView = {
+      ...view,
       stores: view.stores.map((s) => (s.id === store ? { ...s, custom: true, staff: s.staff.map((x) => (x.id === id ? { ...x, on: !x.on } : x)) } : s)),
     };
     setView(next);
@@ -86,6 +97,25 @@ export default function BrewerSettings({ standalone = false }: { standalone?: bo
     }
   };
 
+  // 근무 지점 켜고 끄기 — 직원 명부와 같은 API. 끝나면 명단을 다시 읽는다(내리는 사람 칸의 – ↔ 빈 칸이 따라 바뀐다)
+  const toggleStore = async (p: { id: number; name: string; home: StoreId | null; at: Partial<Record<StoreId, boolean>> }, store: StoreId) => {
+    if (!view || busy || store === p.home) return;
+    const cur = view.stores.filter((s) => p.at[s.id] !== undefined).map((s) => s.id);
+    const next = cur.includes(store) ? cur.filter((x) => x !== store) : [...cur, store];
+    setBusy(true);
+    setPending(`store:${store}|${p.id}`);
+    try {
+      const res = await fetch('/api/garden-schedule/staff', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, stores: next }) });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? '저장에 실패했습니다.');
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : '저장에 실패했습니다.', 'error');
+    } finally {
+      setBusy(false);
+      setPending(null);
+    }
+  };
+
   if (denied && standalone) {
     return (
       <p className="text-body text-muted-foreground" style={{ margin: '24px 0 0' }}>
@@ -98,6 +128,10 @@ export default function BrewerSettings({ standalone = false }: { standalone?: bo
   const cols = (view?.stores ?? []).filter((s) => show === 'all' || s.id === show);
   const rows = people.filter((p) => show === 'all' || p.at[show] !== undefined);
   const stateOf = (p: (typeof people)[number], store: StoreId): MatrixCellState => (p.at[store] === undefined ? 'na' : p.at[store] ? 'on' : 'off');
+  // 근무 지점 칸 — 전체 보기에서, 고칠 수 있는 사람에게만. 기본 지점은 잠김(직원 명부에서 바꾼다)
+  const storeCols = view?.storeEdit && show === 'all' ? view.stores : [];
+  const storeStateOf = (p: (typeof people)[number], store: StoreId): MatrixCellState => (p.home === store ? 'locked' : p.at[store] !== undefined ? 'on' : 'off');
+  const groupLine = (i: number): string | undefined => (storeCols.length && i === 0 ? LINE : undefined);
 
   return (
     <div className={standalone ? 'pt-[24px]' : 'py-[54px]'}>
@@ -138,18 +172,46 @@ export default function BrewerSettings({ standalone = false }: { standalone?: bo
                   <thead>
                     <tr>
                       <th
+                        rowSpan={storeCols.length ? 2 : 1}
                         className="text-left font-normal text-muted-foreground"
                         style={{ position: 'sticky', left: 0, zIndex: 1, background: 'hsl(var(--background))', minWidth: FIRST_W, padding: '0 14px 10px', verticalAlign: 'bottom', borderBottom: LINE, borderRight: LINE }}
                       >
                         인원 <span className="tabular">· {rows.length}</span>
                       </th>
-                      {cols.map((s) => (
-                        <th key={s.id} className="font-normal text-foreground" style={{ width: COL_W, minWidth: COL_W, height: 56, padding: '0 0 10px', verticalAlign: 'bottom', borderBottom: LINE }}>
-                          {s.label}
-                          <span className="tabular block text-muted-foreground" style={{ marginTop: 2 }}>{s.staff.filter((x) => x.on).length}명</span>
-                        </th>
-                      ))}
+                      {storeCols.length > 0 && (
+                        <>
+                          <th colSpan={storeCols.length} className="whitespace-nowrap text-left font-medium text-foreground" style={{ height: 32, padding: '0 10px' }}>
+                            근무 지점
+                          </th>
+                          <th colSpan={cols.length} className="whitespace-nowrap text-left font-medium text-foreground" style={{ height: 32, padding: '0 10px', borderLeft: LINE }}>
+                            필터커피 내리는 사람
+                          </th>
+                        </>
+                      )}
+                      {storeCols.length === 0 &&
+                        cols.map((s) => (
+                          <th key={s.id} className="font-normal text-foreground" style={{ width: COL_W, minWidth: COL_W, height: 56, padding: '0 0 10px', verticalAlign: 'bottom', borderBottom: LINE }}>
+                            {s.label}
+                            <span className="tabular block text-muted-foreground" style={{ marginTop: 2 }}>{s.staff.filter((x) => x.on).length}명</span>
+                          </th>
+                        ))}
                     </tr>
+                    {storeCols.length > 0 && (
+                      <tr>
+                        {storeCols.map((s) => (
+                          <th key={`w-${s.id}`} className="font-normal text-foreground" style={{ width: COL_W, minWidth: COL_W, height: 48, padding: '0 0 10px', verticalAlign: 'bottom', borderBottom: LINE }}>
+                            {s.label}
+                            <span className="tabular block text-muted-foreground" style={{ marginTop: 2 }}>{s.staff.length}명</span>
+                          </th>
+                        ))}
+                        {cols.map((s, i) => (
+                          <th key={s.id} className="font-normal text-foreground" style={{ width: COL_W, minWidth: COL_W, height: 48, padding: '0 0 10px', verticalAlign: 'bottom', borderBottom: LINE, borderLeft: groupLine(i) }}>
+                            {s.label}
+                            <span className="tabular block text-muted-foreground" style={{ marginTop: 2 }}>{s.staff.filter((x) => x.on).length}명</span>
+                          </th>
+                        ))}
+                      </tr>
+                    )}
                   </thead>
                   <tbody>
                     {rows.map((p, ri) => {
@@ -158,15 +220,38 @@ export default function BrewerSettings({ standalone = false }: { standalone?: bo
                         <tr key={p.id}>
                           <td style={{ position: 'sticky', left: 0, zIndex: 1, background: 'hsl(var(--background))', minWidth: FIRST_W, padding: '8px 14px', borderBottom: last ? undefined : LINE, borderRight: LINE }}>
                             <span className="block text-body text-foreground">{p.name}</span>
-                            <span className="block text-caption text-muted-foreground" style={{ marginTop: 2 }}>
-                              {view.stores.filter((s) => p.at[s.id] !== undefined).map((s) => shortOf(s.id)).join(' · ')}
-                            </span>
+                            {/* 근무 지점 칸이 같이 보일 때는 아래 줄(근무 지점 글자)을 생략 */}
+                            {storeCols.length === 0 && (
+                              <span className="block text-caption text-muted-foreground" style={{ marginTop: 2 }}>
+                                {view.stores.filter((s) => p.at[s.id] !== undefined).map((s) => shortOf(s.id)).join(' · ')}
+                              </span>
+                            )}
                           </td>
-                          {cols.map((s) => {
+                          {storeCols.map((s) => {
+                            const state = storeStateOf(p, s.id);
+                            const clickable = state !== 'locked';
+                            return (
+                              <td key={`w-${s.id}`} style={{ padding: 0, textAlign: 'center', borderBottom: last ? undefined : LINE }}>
+                                <button
+                                  type="button"
+                                  disabled={!clickable || busy}
+                                  onClick={() => toggleStore(p, s.id)}
+                                  aria-pressed={state !== 'off'}
+                                  aria-label={`${p.name} · ${s.label} 근무`}
+                                  title={clickable ? `${p.name} · ${s.label} 근무` : `${p.name} — 기본 지점(스케줄 › 직원 명부에서 바꿉니다)`}
+                                  className={clickable ? 'bg-transparent hover:bg-muted' : 'bg-transparent'}
+                                  style={{ width: COL_W, height: 52, border: 'none', cursor: clickable ? 'pointer' : 'default', opacity: pending === `store:${s.id}|${p.id}` ? 0.4 : 1 }}
+                                >
+                                  <MatrixCheck state={state} />
+                                </button>
+                              </td>
+                            );
+                          })}
+                          {cols.map((s, ci) => {
                             const state = stateOf(p, s.id);
                             const clickable = state !== 'na';
                             return (
-                              <td key={s.id} style={{ padding: 0, textAlign: 'center', borderBottom: last ? undefined : LINE }}>
+                              <td key={s.id} style={{ padding: 0, textAlign: 'center', borderBottom: last ? undefined : LINE, borderLeft: groupLine(ci) }}>
                                 <button
                                   type="button"
                                   disabled={!clickable || busy}
@@ -195,6 +280,7 @@ export default function BrewerSettings({ standalone = false }: { standalone?: bo
         {view && (
           <p className="text-body text-muted-foreground" style={{ margin: 0 }}>
             – = 그 지점에서 근무하지 않음.{' '}
+            {view.storeEdit && '근무 지점을 켜면 그 지점 근무표에도 줄이 생기고, 끄면 그 지점의 내리는 사람에서도 빠집니다. 흐린 칸은 기본 지점이라 스케줄 › 직원 명부에서 바꿉니다. '}
             {anyDefault && '아직 한 번도 바꾸지 않은 지점은 직원 명부의 역할이 「커피」인 사람이 켜져 있습니다. 한 번 바꾸면 그 뒤로는 이 명단만 씁니다. '}
             후보는 스케줄 › 직원 명부의 근무 지점을 따릅니다. 두 지점에서 근무하는 사람은 지점마다 따로 켭니다. 새로 들어온 사람은 여기서 켜야 나오고, 퇴사 처리한 사람은 자동으로 빠집니다.
           </p>
