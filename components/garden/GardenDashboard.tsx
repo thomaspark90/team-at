@@ -795,7 +795,7 @@ export default function GardenDashboard({
                     onClick={() => setWaiting(g.beanKey, g.bean, !waiting)}
                     className={`text-caption ${waiting ? 'text-foreground underline' : 'text-muted-foreground hover:text-foreground'}`}
                     style={{ ...ghostBtn, flexShrink: 0 }}
-                    title={waiting ? `${STORES.find((x) => x.id === store)?.short} 판매 시작 — 레시피 보드에 올라가요` : `${STORES.find((x) => x.id === store)?.short} 판매 대기 — 레시피 보드에서 빠지고 '대기' 목록으로`}
+                    title={waiting ? `${STORES.find((x) => x.id === store)?.short} 판매 시작 — 필터커피 라인업에 올라가요` : `${STORES.find((x) => x.id === store)?.short} 판매 대기 — 필터커피 라인업 아래 '대기 중'으로 내려가요`}
                   >
                     {waiting ? '대기 중 · 판매 시작' : '대기'}
                   </button>
@@ -1421,7 +1421,7 @@ export default function GardenDashboard({
               {store === 'pangyo' && <span className="text-caption text-muted-foreground">없는 원두는 양재천 레시피를 보여줘요</span>}
             </div>
             <div style={{ display: 'flex', gap: '0 24px', flexWrap: 'wrap' }}>
-              <Link href="/garden/filtercoffee/feedback" className="fc-go" title="레시피 보드에서 남긴 추출 평가 모아보기">
+              <Link href="/garden/filtercoffee/feedback" className="fc-go" title="필터커피 라인업에서 남긴 추출 평가 모아보기">
                 추출 평가
               </Link>
               {toolTabs.includes('calibration') && (

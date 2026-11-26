@@ -10,6 +10,7 @@ import { fmtDate } from '@/lib/garden/format';
 import SegmentControl from '@/components/nav/SegmentControl';
 
 // 추출 평가 모아보기 — 태블릿 레시피 보드에서 남긴 의견을 지점·타입·기간·원두·스탭으로 걸러 본다. 읽기 전용(레시피는 바꾸지 않는다).
+// 대기 중(판매 전) 원두로 남긴 평가는 「연습」 표시가 붙는다(2026-11-26) — 판매 중 / 연습으로 골라 볼 수 있다. 그 전 기록은 구분이 없다.
 // 묶음 = 원두·지점·ICE/HOT, 그 안을 레시피 버전별로 집계 — 버전이 다르면 기준 분쇄도가 달라 섞어 평균 내지 않는다.
 
 const PERIODS = [
@@ -37,6 +38,7 @@ export default function BrewFeedbackReview() {
   const [period, setPeriod] = useState('all');
   const [beanKey, setBeanKey] = useState('');
   const [staff, setStaff] = useState('');
+  const [kind, setKind] = useState<'' | 'sale' | 'practice'>('');
 
   useEffect(() => {
     fetch('/api/garden-brew-feedback', { cache: 'no-store' })
@@ -59,8 +61,8 @@ export default function BrewFeedbackReview() {
   const staffNames = useMemo(() => Array.from(new Set((list ?? []).map((f) => f.staffName))).sort((a, b) => a.localeCompare(b, 'ko')), [list]);
 
   const filtered = useMemo(
-    () => filterFeedback(list ?? [], { store, brewType, beanKey, staff, days: PERIODS.find((p) => p.id === period)?.days ?? null }),
-    [list, store, brewType, beanKey, staff, period]
+    () => filterFeedback(list ?? [], { store, brewType, beanKey, staff, kind, days: PERIODS.find((p) => p.id === period)?.days ?? null }),
+    [list, store, brewType, beanKey, staff, kind, period]
   );
   const groups = useMemo(() => groupFeedback(filtered), [filtered]);
 
@@ -87,6 +89,12 @@ export default function BrewFeedbackReview() {
           onSelect={(id) => setBrewType(id as BrewType | '')}
         />
         <SegmentControl ariaLabel="기간" items={PERIODS.map((p) => ({ id: p.id, label: p.label }))} value={period} onSelect={setPeriod} />
+        <SegmentControl
+          ariaLabel="판매 중/연습"
+          items={[{ id: '', label: '판매·연습' }, { id: 'sale', label: '판매 중' }, { id: 'practice', label: '연습' }]}
+          value={kind}
+          onSelect={(id) => setKind(id as '' | 'sale' | 'practice')}
+        />
         <select aria-label="원두" value={beanKey} onChange={(e) => setBeanKey(e.target.value)} className="ta-input" style={{ width: 'auto', maxWidth: 280, cursor: 'pointer' }}>
           <option value="">전체 원두</option>
           {beans.map((b) => (
@@ -142,6 +150,11 @@ export default function BrewFeedbackReview() {
                         <p className="tabular text-caption text-muted-foreground" style={{ margin: 0 }}>
                           {honorific(f.staffName)} · {fmtDate(f.createdAt)}
                           <MeshChange f={f} />
+                          {f.practice && (
+                            <span className="fc-practice" style={{ height: 20, padding: '0 8px', marginLeft: 8, verticalAlign: 'middle' }} title="대기 중(판매 전) 원두로 남긴 연습 평가">
+                              연습
+                            </span>
+                          )}
                         </p>
                         {f.issues.length > 0 && (
                           <p className="text-body" style={{ margin: '2px 0 0' }}>{f.issues.map(chipLabel).join(' · ')}</p>

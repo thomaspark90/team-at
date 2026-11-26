@@ -151,7 +151,7 @@ export default function BrewFeedbackPanel({
         {lockStaff && staff ? (
           <span className="text-body">{honorific(staff)}</span>
         ) : staffNames.length === 0 ? (
-          <span className="text-caption text-muted-foreground">커피 역할인 재직자가 없습니다. 스케줄 › 직원 명부에서 역할을 지정해 주세요.</span>
+          <span className="text-caption text-muted-foreground">필터커피 내리는 사람이 지정되지 않았습니다. 가든서비스 › 설정에서 지정해 주세요.</span>
         ) : (
           <div style={toggleRow}>
             {staffNames.map((n) => (

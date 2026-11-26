@@ -684,6 +684,17 @@ button.fc-need:hover {
 .fc-fab-sub:active {
   transform: scale(0.98);
 }
+/* 「연습」 표시 — 대기 중(판매 전) 원두의 레시피 세팅 · 연습 추출. 색 없이 테두리만 있는 알약(이름 창 · 추출 화면 · 평가 기록 공용) */
+.fc-practice {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 26px;
+  padding: 0 11px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  white-space: nowrap;
+}
 .fc-namebtn {
   height: 64px;
   border: 0;

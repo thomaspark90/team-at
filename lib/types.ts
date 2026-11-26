@@ -146,6 +146,7 @@ export interface BrewFeedback {
   baseMesh: number | null; // 평가 당시 그 지점 분쇄도
   nextMesh: number | null; // 다음 분쇄도 제안 (슬라이더) — baseMesh 없으면 null
   memo: string;
+  practice?: boolean; // 연습 — 그 지점에서 대기 중(판매 전)인 원두로 내린 레시피 세팅 · 연습 추출. 저장할 때 서버가 판정(2026-11-26). 그 전 기록에는 없다
 }
 
 export interface RecipeStore {

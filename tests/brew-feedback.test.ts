@@ -187,6 +187,12 @@ describe('추출 평가 — 모아보기', () => {
     expect(filterFeedback(list, { ...all, beanKey: 'c' }).map((x) => x.id)).toEqual(['4']);
     expect(filterFeedback(list, { ...all, staff: 'z' }).map((x) => x.id)).toEqual(['5']);
   });
+  it('필터 — 판매 중 / 연습(대기 중 원두로 남긴 평가)', () => {
+    const list = [fb({ id: '1' }), fb({ id: '2', practice: true }), fb({ id: '3', practice: false })];
+    expect(filterFeedback(list, all)).toHaveLength(3);
+    expect(filterFeedback(list, { ...all, kind: 'practice' }).map((x) => x.id)).toEqual(['2']);
+    expect(filterFeedback(list, { ...all, kind: 'sale' }).map((x) => x.id)).toEqual(['1', '3']);
+  });
   it('필터 — 최근 N일은 경계 포함', () => {
     const now = Date.parse('2026-11-08T00:00:00.000Z');
     const list = [fb({ id: 'in', createdAt: '2026-11-01T00:00:00.000Z' }), fb({ id: 'out', createdAt: '2026-10-31T23:59:59.000Z' })];

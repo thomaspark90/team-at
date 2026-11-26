@@ -9,9 +9,11 @@ import { FEEDBACK_CHIPS, GOOD_CHIP, roundMesh } from '@/lib/garden/brew-feedback
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/finance/activity';
 import { requireGardenTab } from '@/lib/access/guard';
+import { isBeanWaiting } from '@/lib/garden/bean-waiting-server';
 
 // 추출 평가 — 태블릿 레시피 보드에서 스탭이 남기는 칩 의견. 레시피는 바꾸지 않는다.
 // GET: 전체(오래된 순) / POST: 한 건 추가
+// 대기 중(판매 전) 원두로 남긴 평가는 practice(연습)로 표시한다 — 화면이 보낸 값이 아니라 저장 시점의 원두 상태로 판정.
 
 async function guard() {
   const supabase = await createClient();
@@ -75,8 +77,9 @@ export async function POST(req: Request) {
     nextMesh: meshOrNull(body.baseMesh) == null ? null : meshOrNull(body.nextMesh),
     memo: String(body.memo ?? '').trim().slice(0, 200),
   };
+  if (await isBeanWaiting(rec.beanKey, store)) rec.practice = true;
   await brewFeedbackRecords.writeOne(rec);
   const storeLabel = STORES.find((s) => s.id === store)?.short ?? store;
-  await logActivity(g.supabase, g.user, '가든서비스 추출 평가', `${rec.bean} ${brewType.toUpperCase()} · ${storeLabel} · ${staffName}`);
+  await logActivity(g.supabase, g.user, '가든서비스 추출 평가', `${rec.bean} ${brewType.toUpperCase()} · ${storeLabel} · ${staffName}${rec.practice ? ' · 연습' : ''}`);
   return NextResponse.json(rec);
 }

@@ -9,7 +9,8 @@ import { pourName } from '@/lib/garden/pour-name';
 
 // 추출 화면 — 이름을 누르고 들어오면 그 원두의 레시피가 화면 전체에 크게 뜬다(2026-11-25 대표 결정).
 // 위쪽에 누가 추출 중인지, HOT · ICE 는 여기서 고른다(기본 HOT). 타이머 없음(저울 타이머 사용).
-// 나가는 길은 [추출 끝 · 평가 남기기] — 평가 없이 닫는 버튼은 두지 않는다. 잘못 눌러 들어온 경우만 「← 보드」.
+// 대기 중(판매 전) 원두는 연습 — 이름 옆에 「연습」 표시, 버튼은 [연습 끝 · 평가 남기기](2026-11-26).
+// 나가는 길은 [추출 끝 · 평가 남기기] — 평가 없이 닫는 버튼은 두지 않는다. 잘못 눌러 들어온 경우만 「← 라인업」.
 
 const BREW_TYPES: BrewType[] = ['hot', 'ice'];
 const plainBtn: React.CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' };
@@ -20,6 +21,7 @@ export default function BrewScreen({
   tasting,
   store,
   staff,
+  practice = false,
   bt,
   onBtChange,
   recipes,
@@ -35,6 +37,7 @@ export default function BrewScreen({
   tasting: string;
   store: StoreId;
   staff: string; // 들어올 때 고른 이름
+  practice?: boolean; // 대기 중(판매 전) 원두 — 레시피 세팅 · 연습 추출
   bt: BrewType;
   onBtChange: (bt: BrewType) => void;
   recipes: Record<BrewType, DripRecipe | null>; // 저장된 레시피만 — 없는 타입은 고를 수 없다
@@ -65,7 +68,7 @@ export default function BrewScreen({
         }}
       >
         <button onClick={onBack} className="text-body text-muted-foreground hover:text-foreground" style={{ ...plainBtn, whiteSpace: 'nowrap' }}>
-          ← 보드
+          ← 라인업
         </button>
         <h1
           className="text-title font-medium"
@@ -88,6 +91,11 @@ export default function BrewScreen({
             </button>
           ))}
         </div>
+        {practice && (
+          <span className="fc-practice text-caption" title="대기 중(판매 전) 원두 — 레시피 세팅 · 연습 추출">
+            연습
+          </span>
+        )}
         <span
           className="bg-primary text-body font-medium text-primary-foreground"
           style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', height: 36, padding: '0 16px', borderRadius: 999, whiteSpace: 'nowrap' }}
@@ -184,7 +192,7 @@ export default function BrewScreen({
         </button>
         <span style={{ flex: 1 }} />
         <button onClick={onFinish} className="ta-btn-primary font-medium" style={{ height: 52, padding: '0 26px' }}>
-          추출 끝 · 평가 남기기
+          {practice ? '연습 끝 · 평가 남기기' : '추출 끝 · 평가 남기기'}
         </button>
       </footer>
     </div>

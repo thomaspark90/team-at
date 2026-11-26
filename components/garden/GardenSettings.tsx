@@ -9,6 +9,7 @@ import { EMPTY_TOPICS, topicsOfScope } from '@/lib/garden-notify-topics';
 import { type RecipientRow } from '@/components/NotifyRecipients';
 import NotifySettings from '@/components/NotifySettings';
 import GardenOptionsManager from '@/components/garden/GardenOptionsManager';
+import BrewerSettings from '@/components/garden/BrewerSettings';
 import EmailAddPicker, { useTeamEmails } from '@/components/EmailAddPicker';
 import NametagContacts from '@/components/garden/nametags/NametagContacts';
 import { groupByNav } from '@/lib/garden/notify-topic-groups';
@@ -390,6 +391,8 @@ export default function GardenSettings() {
       <div className="py-[54px]">
         <RequestForms />
       </div>
+      {/* 필터커피 내리는 사람 — 레시피 보드 이름 버튼 · 추출 평가 이름. 권한이 없으면 구역째 숨는다 */}
+      <BrewerSettings />
       {/* 필터 원두 발주의 스탭이름·로스팅사 드롭다운 명단 */}
       <div className="py-[54px]">
         <GardenOptionsManager />

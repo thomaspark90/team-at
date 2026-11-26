@@ -8,7 +8,8 @@ import { normalize } from '@/lib/pricing';
 import { createClient } from '@/lib/supabase/server';
 import { requireGardenTab } from '@/lib/access/guard';
 import { serviceClient } from '@/lib/supabase/service';
-import { baristaNames, staffNameRows } from '@/lib/staff/directory';
+import { brewerNames } from '@/lib/garden/brewers';
+import { brewerStaffRows, readBrewerIds } from '@/lib/garden/brewers-server';
 import { staffLabel } from '@/lib/staff/names';
 
 // 태블릿 레시피 보드 한 방 조회 — 화면이 쓰던 7개 API(레시피·원두·발주·그라인더·얼라인·추출 평가·스탭 명단)를
@@ -36,14 +37,15 @@ export async function GET() {
 
   const svc = serviceClient();
   if (!svc) return NextResponse.json({ error: '서버 설정 누락' }, { status: 500 });
-  const [recipes, beans, purchases, grinders, alignments, feedback, staffRows] = await Promise.all([
+  const [recipes, beans, purchases, grinders, alignments, feedback, staffRows, brewerIds] = await Promise.all([
     dripRecipeRecords.readAll(),
     readJson<BeanMetaStore>('data/garden-beans.json'),
     purchaseRecords.readAll(),
     readJson<{ profiles: GrinderProfiles }>('data/garden-grinders.json'),
     alignmentRecords.readAll(),
     brewFeedbackRecords.readAll(),
-    staffNameRows(svc),
+    brewerStaffRows(svc),
+    readBrewerIds(),
   ]);
 
   // 발주는 '원두별 마지막 발주 시각'만 필요(보관 후 재발주 자동 해제 판정) — 전체 기록은 내리지 않는다
@@ -82,6 +84,6 @@ export async function GET() {
     grinderProfiles: dropStaleProfiles(grinders?.profiles ?? {}, alignments),
     alignments,
     feedback: feedback.map((f) => ({ ...f, staffName: staffLabel(f.staffName, staffRows) })),
-    staffNames: baristaNames(staffRows), // 추출 평가는 커피 역할만
+    staffNames: brewerNames(staffRows, brewerIds), // 필터커피 내리는 사람 — 설정에서 고른 명단(lib/garden/brewers)
   });
 }

@@ -166,7 +166,7 @@ export default function RecipeQuickEdit({
       {/* 새 레시피 — 의견이 있을 수 없으니 안내 한 줄만 */}
       {isNew && (
         <p className="text-body text-muted-foreground" style={{ margin: 0, wordBreak: 'keep-all' }}>
-          {brewType.toUpperCase()} 레시피가 아직 없어요. 아래 기준값을 맞게 고친 뒤 저장하면 보드에 올라와요.
+          {brewType.toUpperCase()} 레시피가 아직 없어요. 아래 기준값을 맞게 고친 뒤 저장하면 필터커피 라인업에 올라와요.
         </p>
       )}
       {/* 최근 의견 — 이 레시피 버전만. 제안은 버튼 한 번으로 아래 조절값에 반영(저장은 따로) */}

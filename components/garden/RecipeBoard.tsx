@@ -23,7 +23,8 @@ import { starterRecipe } from '@/lib/garden/starter-recipe';
 import { pourName } from '@/lib/garden/pour-name';
 import { roastInfo } from '@/lib/garden/roast';
 
-// 태블릿 레시피 보드 — 추출 흐름(2026-11-25 대표 결정):
+// 태블릿 레시피 보드 — 화면에 보이는 이름은 「필터커피 라인업」(2026-11-26 대표 지시, 코드 · 주소의 board 는 그대로).
+// 추출 흐름(2026-11-25 대표 결정):
 //   ① 보드에는 원두 이름만(BoardBeanList — 판매 중 위, 대기 중 아래 흐리게) → ② 원두를 누르면 「누가 추출하나요?」 이름 버튼(BrewerPicker)
 //   → ③ 레시피가 화면 전체에(BrewScreen, HOT · ICE 는 여기서) → ④ 추출 평가(레시피 카드 + 평가 카드) → ⑤ 저장하면 이름을 지우고 보드로.
 // 이름은 기기에 기억하지 않는다(공용 태블릿 — 앞사람 이름으로 평가가 남지 않게). 평가 없이 닫는 버튼은 없다.
@@ -236,7 +237,7 @@ export default function RecipeBoard() {
       toast(archived ? '아카이브로 보내지 못했어요. 다시 시도해 주세요.' : '되돌리지 못했어요. 다시 시도해 주세요.', 'error');
       return;
     }
-    toast(archived ? `${bean} — 필터 커피 아카이브로 보냈어요.` : `${bean} — 레시피 보드로 되돌렸어요.`);
+    toast(archived ? `${bean} — 필터 커피 아카이브로 보냈어요.` : `${bean} — 필터커피 라인업으로 되돌렸어요.`);
   };
 
   // 아카이브 '기록 삭제' — 그 원두 레시피 전부(ICE·HOT·모든 지점)와 이력. 발주·추출 평가는 남는다. 되돌릴 수 없음
@@ -360,39 +361,43 @@ export default function RecipeBoard() {
       className="bg-background text-foreground"
       style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
     >
-      {/* 상단 바 — 돌아가기 · 제목 · 페이지 */}
+      {/* 상단 바 — 돌아가기(왼쪽) · 제목(화면 가로 가운데) · 지점(오른쪽). 2026-11-26 대표 지시.
+          양옆 칸을 같은 너비(1fr)로 잡아 제목이 화면 가운데에 온다. 휴대폰은 폭이 모자라 지점 전환을 아래 줄 가운데로 내린다 */}
       <header
         style={{
-          display: 'flex',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
           alignItems: 'center',
-          flexWrap: isMobile ? 'wrap' : 'nowrap',
-          columnGap: isMobile ? 14 : 16,
+          columnGap: isMobile ? 10 : 16,
           rowGap: 10,
           padding: isMobile ? '12px 16px' : '12px 20px',
           flexShrink: 0,
-          whiteSpace: 'nowrap', // 좁은 폭에서 글자가 한 자씩 세로로 쪼개지지 않게 — 넘치면 줄 단위로 감싼다
+          whiteSpace: 'nowrap', // 좁은 폭에서 글자가 한 자씩 세로로 쪼개지지 않게
         }}
       >
-        {view === 'board' ? (
-          <Link href="/garden/filtercoffee" className="text-body text-muted-foreground hover:text-foreground">
-            {isMobile ? '←' : '← 필터커피'}
-          </Link>
-        ) : (
-          <button onClick={() => setView('board')} className="text-body text-muted-foreground hover:text-foreground" style={plainBtn}>
-            ← 레시피 보드
-          </button>
-        )}
-        <h1 className="text-title font-medium" style={{ margin: 0 }}>
-          {view === 'board' ? '레시피 보드' : '필터 커피 아카이브'}
+        <div style={{ justifySelf: 'start', minWidth: 0 }}>
+          {view === 'board' ? (
+            <Link href="/garden/filtercoffee" className="text-body text-muted-foreground hover:text-foreground">
+              {isMobile ? '←' : '← 필터커피'}
+            </Link>
+          ) : (
+            <button onClick={() => setView('board')} className="text-body text-muted-foreground hover:text-foreground" style={plainBtn} aria-label="필터커피 라인업으로 돌아가기">
+              {isMobile ? '←' : '← 필터커피 라인업'}
+            </button>
+          )}
+        </div>
+        <h1 className="text-title font-medium" style={{ margin: 0, textAlign: 'center' }}>
+          {view === 'board' ? '필터커피 라인업' : '필터 커피 아카이브'}
         </h1>
-        <span style={{ flex: 1 }} />
-        {/* 대기 · 준비 중은 보드 아래 '대기 중' 묶음으로, 아카이브는 오른쪽 아래 고정 버튼으로 옮겼다(2026-11-25) — 위쪽에는 지점 전환만 */}
-        <SegmentControl
-          items={[...STORES].reverse().map((s) => ({ id: s.id, label: s.short }))}
-          value={store}
-          onSelect={pickStore}
-          ariaLabel="지점"
-        />
+        {/* 대기 · 준비 중은 목록 아래 '대기 중' 묶음으로, 아카이브는 오른쪽 아래 고정 버튼으로 옮겼다(2026-11-25) — 위쪽에는 지점 전환만 */}
+        <div style={isMobile ? { gridColumn: '1 / -1', justifySelf: 'center' } : { justifySelf: 'end' }}>
+          <SegmentControl
+            items={[...STORES].reverse().map((s) => ({ id: s.id, label: s.short }))}
+            value={store}
+            onSelect={pickStore}
+            ariaLabel="지점"
+          />
+        </div>
       </header>
 
       {loading && <p className="text-body text-muted-foreground" style={{ padding: '0 20px' }}>불러오는 중…</p>}
@@ -457,7 +462,7 @@ export default function RecipeBoard() {
                       }}
                       className="text-caption text-muted-foreground hover:text-foreground"
                       style={{ ...plainBtn, flexShrink: 0 }}
-                      title="레시피 보드로 되돌리기"
+                      title="필터커피 라인업으로 되돌리기"
                     >
                       되돌리기
                     </button>
@@ -591,6 +596,7 @@ export default function RecipeBoard() {
                 tasting={tastingByBean.get(live.beanKey) ?? ''}
                 store={store}
                 staff={staff}
+                practice={waitingSet.has(live.beanKey)}
                 bt={savedBt}
                 onBtChange={(bt) => setFocus({ beanKey: live.beanKey, bt, stage: 'brew' })}
                 recipes={{ hot: live.hot, ice: live.ice }}
@@ -686,6 +692,7 @@ export default function RecipeBoard() {
                   isFallback={!!g.fallback[focus.bt]}
                   isNew={isNew}
                   mode={mode}
+                  practice={waitingSet.has(g.beanKey)}
                   onPreview={setPreview}
                   onRecipeSaved={(saved) => {
                     setPreview(null);
@@ -839,7 +846,7 @@ function BoardCard({
                 onClick={stop(onArchive)}
                 className="text-caption text-muted-foreground hover:text-foreground"
                 style={plainBtn}
-                title="레시피 보드로 되돌리기"
+                title="필터커피 라인업으로 되돌리기"
               >
                 되돌리기
               </button>
@@ -869,7 +876,7 @@ function BoardCard({
               onClick={stop(() => onWaiting(false))}
               className="text-caption text-foreground underline"
               style={{ ...plainBtn, flexShrink: 0, whiteSpace: 'nowrap' }}
-              title="이 지점 판매 시작 — 레시피 보드에 올라가요"
+              title="이 지점 판매 시작 — 필터커피 라인업에 올라가요"
             >
               판매 시작
             </button>
@@ -880,7 +887,7 @@ function BoardCard({
                 onClick={stop(() => onWaiting(true))}
                 className="text-caption text-muted-foreground hover:text-foreground"
                 style={{ ...plainBtn, whiteSpace: 'nowrap' }}
-                title="이 지점 판매 대기 — 보드에서 빠지고 위쪽 '대기' 목록으로"
+                title="이 지점 판매 대기 — 라인업 아래 '대기 중'으로 내려가요"
               >
                 대기
               </button>
@@ -1018,12 +1025,14 @@ function EvalCard({
   isFallback,
   isNew = false,
   mode,
+  practice = false,
   onPreview,
   onRecipeSaved,
 }: {
   isFallback: boolean;
   mode: 'eval' | 'edit'; // eval: 추출 평가(이름은 들어올 때 정해짐) / edit: 의견 · 레시피 수정
   isNew?: boolean; // 이 타입 레시피가 아직 없다 — 평가 탭 없이 '레시피 설정'만
+  practice?: boolean; // 대기 중(판매 전) 원두 — 평가가 「연습」으로 남는다
   onPreview: (r: DripRecipe | null) => void;
   onRecipeSaved: (r: DripRecipe) => void;
   store: StoreId;
@@ -1058,6 +1067,7 @@ function EvalCard({
           {isNew ? '레시피 설정' : mode === 'eval' ? '추출 평가' : `의견 ${currentCount} · 레시피 수정`}
         </span>
         <span className="text-caption text-muted-foreground" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+          {practice && mode === 'eval' && !isNew ? '연습 · ' : ''}
           {STORES.find((s) => s.id === store)?.short} · {bt.toUpperCase()}
         </span>
       </div>

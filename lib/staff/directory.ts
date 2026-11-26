@@ -20,8 +20,7 @@ export const activeNames = (rows: StaffNameRow[]) =>
     .map((r) => r.name)
     .sort((a, b) => a.localeCompare(b, 'ko'));
 
-/** 추출 평가 선택지 — 재직자 중 스케줄 역할이 커피(barista)인 사람만(2026-11-07 대표 지시). 역할은 직원 명부·역할 편집에서. */
-export const baristaNames = (rows: StaffNameRow[]) => activeNames(rows.filter((r) => (r.roles ?? []).includes('barista')));
+// 추출 평가 · 레시피 보드의 이름 선택지는 lib/garden/brewers.ts — 설정에서 따로 고른다(스케줄 역할 '커피'와 분리, 2026-11-26)
 
 /** 계정을 명부에 연결 — 같은 이름이 있으면 연결, 없으면 create 일 때 새로 만든다. 승인·등록을 막지 않게 실패는 로그만. */
 export async function ensureStaffLink(

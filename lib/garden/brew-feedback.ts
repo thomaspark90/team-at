@@ -114,6 +114,7 @@ export type FeedbackFilter = {
   beanKey: string;
   staff: string;
   days: number | null; // 최근 N일
+  kind?: '' | 'sale' | 'practice'; // 판매 중 추출 / 연습(대기 중 원두) — 비우면 전체
 };
 
 export function filterFeedback(list: BrewFeedback[], f: FeedbackFilter, now = Date.now()): BrewFeedback[] {
@@ -124,6 +125,7 @@ export function filterFeedback(list: BrewFeedback[], f: FeedbackFilter, now = Da
       (!f.brewType || x.brewType === f.brewType) &&
       (!f.beanKey || x.beanKey === f.beanKey) &&
       (!f.staff || x.staffName === f.staff) &&
+      (!f.kind || (f.kind === 'practice') === !!x.practice) &&
       (since == null || new Date(x.createdAt).getTime() >= since)
   );
 }
