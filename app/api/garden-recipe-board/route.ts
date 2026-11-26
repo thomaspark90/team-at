@@ -1,6 +1,7 @@
 import { get } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import type { BeanMetaStore } from '@/lib/types';
+import { STORES } from '@/lib/types';
 import type { GrinderProfiles } from '@/lib/grinder-calibration';
 import { alignmentRecords, brewFeedbackRecords, dripRecipeRecords, purchaseRecords } from '@/lib/blob-records';
 import { dropStaleProfiles } from '@/lib/grinder-alignments';
@@ -9,7 +10,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireGardenTab } from '@/lib/access/guard';
 import { serviceClient } from '@/lib/supabase/service';
 import { brewerNames } from '@/lib/garden/brewers';
-import { brewerStaffRows, readBrewerIds } from '@/lib/garden/brewers-server';
+import { brewerStaffRows, readBrewerSaved } from '@/lib/garden/brewers-server';
 import { staffLabel } from '@/lib/staff/names';
 
 // 태블릿 레시피 보드 한 방 조회 — 화면이 쓰던 7개 API(레시피·원두·발주·그라인더·얼라인·추출 평가·스탭 명단)를
@@ -37,7 +38,7 @@ export async function GET() {
 
   const svc = serviceClient();
   if (!svc) return NextResponse.json({ error: '서버 설정 누락' }, { status: 500 });
-  const [recipes, beans, purchases, grinders, alignments, feedback, staffRows, brewerIds] = await Promise.all([
+  const [recipes, beans, purchases, grinders, alignments, feedback, staffRows, brewerSaved] = await Promise.all([
     dripRecipeRecords.readAll(),
     readJson<BeanMetaStore>('data/garden-beans.json'),
     purchaseRecords.readAll(),
@@ -45,7 +46,7 @@ export async function GET() {
     alignmentRecords.readAll(),
     brewFeedbackRecords.readAll(),
     brewerStaffRows(svc),
-    readBrewerIds(),
+    readBrewerSaved(),
   ]);
 
   // 발주는 '원두별 마지막 발주 시각'만 필요(보관 후 재발주 자동 해제 판정) — 전체 기록은 내리지 않는다
@@ -74,6 +75,8 @@ export async function GET() {
     }
   }
 
+  const staffNamesByStore = Object.fromEntries(STORES.map((s) => [s.id, brewerNames(staffRows, brewerSaved, s.id)]));
+
   return NextResponse.json({
     recipes,
     beans: beans?.beans ?? [],
@@ -84,6 +87,9 @@ export async function GET() {
     grinderProfiles: dropStaleProfiles(grinders?.profiles ?? {}, alignments),
     alignments,
     feedback: feedback.map((f) => ({ ...f, staffName: staffLabel(f.staffName, staffRows) })),
-    staffNames: brewerNames(staffRows, brewerIds), // 필터커피 내리는 사람 — 설정에서 고른 명단(lib/garden/brewers)
+    // 필터커피 내리는 사람 — 지점별로, 그 지점에서 근무하는 사람 중 설정에서 켠 사람(lib/garden/brewers)
+    staffNamesByStore,
+    // 지점 구분이 없던 옛 화면(새로 고침 전에 열려 있던 태블릿)용 — 두 지점 합친 명단. 새 화면은 쓰지 않는다
+    staffNames: Array.from(new Set(Object.values(staffNamesByStore).flat())).sort((a, b) => a.localeCompare(b, 'ko')),
   });
 }

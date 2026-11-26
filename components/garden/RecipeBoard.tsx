@@ -51,7 +51,8 @@ interface BoardData {
   grinderProfiles: GrinderProfiles;
   alignments: AlignmentEvent[];
   feedback: BrewFeedback[];
-  staffNames: string[];
+  staffNames?: string[]; // 옛 응답(지점 구분 없음) — 기기 캐시에 남아 있을 수 있어 읽기만 한다
+  staffNamesByStore?: Partial<Record<StoreId, string[]>>; // 필터커피 내리는 사람 — 지점별
 }
 const BREW_TYPES: BrewType[] = ['hot', 'ice']; // 표시 순서·기본 선택 — HOT 먼저(2026-11-04)
 const btOf = (r: DripRecipe): BrewType => r.brewType ?? 'ice';
@@ -93,7 +94,10 @@ export default function RecipeBoard() {
   const [archiveTab, setArchiveTab] = useState<ArchiveTab>('전체');
   const [store, setStore] = useState<StoreId>('yangjae');
   const [feedback, setFeedback] = useState<BrewFeedback[]>([]);
-  const [staffNames, setStaffNames] = useState<string[]>([]);
+  // 필터커피 내리는 사람 — 지점별 명단(설정에서 관리). 지점을 바꾸면 그 지점 사람만 나온다
+  const [staffByStore, setStaffByStore] = useState<Partial<Record<StoreId, string[]>>>({});
+  const [staffFallback, setStaffFallback] = useState<string[]>([]);
+  const staffNames = staffByStore[store] ?? staffFallback;
   const [staff, setStaff] = useState('');
 
   useEffect(() => {
@@ -126,7 +130,8 @@ export default function RecipeBoard() {
       setGrinderProfiles(d.grinderProfiles ?? {});
       setAlignments(d.alignments ?? []);
       setFeedback(d.feedback ?? []);
-      setStaffNames(d.staffNames ?? []);
+      setStaffByStore(d.staffNamesByStore ?? {});
+      setStaffFallback(d.staffNames ?? []);
     };
     let cached = false;
     try {
