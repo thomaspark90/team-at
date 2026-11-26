@@ -8,7 +8,8 @@ import { honorific } from '@/lib/staff/names';
 // 공용 태블릿이라 이름은 기억하지 않는다 — 들어올 때마다 새로 고른다.
 // 추출이 아닌 일(대기 · 소진 · 판매 시작)은 아래 버튼 — 이름을 고르지 않아도 누를 수 있다.
 // 대기 중(판매 전) 원두는 레시피 세팅 · 연습으로만 내린다(2026-11-26 대표 지시) — 창 위에 「대기 중 · 연습」 표시,
-// 물음은 「누가 연습하나요?」, 「판매 시작」은 창 아래 가운데 검정 알약 버튼(누르면 「판매를 시작할까요?」 한 번 더 확인). 이때 남긴 평가는 「연습」으로 따로 표시된다.
+// 레시피가 아직 없는 원두는 「누가 레시피를 잡나요?」 — 이름을 누르면 레시피 설정으로 들어간다(2026-11-26 대표 지시).
+// 대기 중 원두의 물음은 「누가 연습하나요?」, 「판매 시작」은 창 아래 가운데 검정 알약 버튼(누르면 「판매를 시작할까요?」 한 번 더 확인). 이때 남긴 평가는 「연습」으로 따로 표시된다.
 
 const plainBtn: React.CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' };
 
@@ -16,6 +17,7 @@ export default function BrewerPicker({
   bean,
   staffNames,
   waiting,
+  setup = false,
   onEnter,
   onWaiting,
   onArchive,
@@ -24,6 +26,7 @@ export default function BrewerPicker({
   bean: string;
   staffNames: string[];
   waiting: boolean; // 이 지점 판매 대기 중 — 연습 창(위 표시 · 물음 · 안내) + '대기'·'소진' 대신 '판매 시작'
+  setup?: boolean; // 레시피가 아직 없는 원두 — 「누가 레시피를 잡나요?」. 이름을 누르면 레시피 설정으로 들어가고, 아래에는 닫기만
   onEnter: (name: string) => void;
   onWaiting: (on: boolean) => void;
   onArchive: () => void;
@@ -38,21 +41,21 @@ export default function BrewerPicker({
     >
       <div
         role="dialog"
-        aria-label={waiting ? '누가 연습하나요?' : '누가 추출하나요?'}
+        aria-label={setup ? '누가 레시피를 잡나요?' : waiting ? '누가 연습하나요?' : '누가 추출하나요?'}
         onClick={(e) => e.stopPropagation()}
         className="bg-background"
         style={{ width: 'min(460px, 100%)', borderRadius: 16, padding: '28px 28px 22px', display: 'flex', flexDirection: 'column' }}
       >
         {waiting && (
           <span className="fc-practice text-caption" style={{ alignSelf: 'flex-start', marginBottom: 12 }}>
-            대기 중 · 연습
+            {setup ? '대기 중 · 레시피 없음' : '대기 중 · 연습'}
           </span>
         )}
         <h2 className="text-title font-medium" style={{ margin: '0 0 22px', lineHeight: 1.35, wordBreak: 'keep-all' }}>
           {bean}
         </h2>
         <span className="text-caption text-muted-foreground" style={{ marginBottom: 10 }}>
-          {waiting ? '누가 연습하나요?' : '누가 추출하나요?'}
+          {setup ? '누가 레시피를 잡나요?' : waiting ? '누가 연습하나요?' : '누가 추출하나요?'}
         </span>
         {staffNames.length === 0 ? (
           <span className="text-caption text-muted-foreground">필터커피 내리는 사람이 지정되지 않았습니다. 가든서비스 › 설정에서 지정해 주세요.</span>
@@ -67,10 +70,19 @@ export default function BrewerPicker({
         )}
         {waiting && (
           <p className="text-caption text-muted-foreground" style={{ margin: '14px 0 0', wordBreak: 'keep-all' }}>
-            아직 판매 전인 원두입니다. 레시피 세팅 · 연습으로 내린 기록은 「연습」으로 따로 남습니다.
+            {setup
+              ? '아직 레시피가 없는 원두입니다. 이름을 누르면 레시피 설정으로 들어가고, 저장하면 그 이름이 레시피에 남습니다.'
+              : '아직 판매 전인 원두입니다. 레시피 세팅 · 연습으로 내린 기록은 「연습」으로 따로 남습니다.'}
           </p>
         )}
-        {waiting ? (
+        {setup ? (
+          // 레시피 없는 원두 — 판매 시작 · 대기 · 소진은 레시피를 만든 뒤의 일이라 닫기만 둔다
+          <div className="text-body" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground" style={plainBtn}>
+              닫기
+            </button>
+          </div>
+        ) : waiting ? (
           // 대기 중 원두 — 「판매 시작」을 창 아래 가운데 검정 알약 버튼으로(추출 평가의 「남기기」와 같은 모양, 2026-11-26 대표 지시). 닫기는 오른쪽
           <>
             {confirmStart && (

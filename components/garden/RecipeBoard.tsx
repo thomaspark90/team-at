@@ -18,6 +18,7 @@ import { latestAlignmentDate, type AlignmentEvent } from '@/lib/grinder-alignmen
 import { ETC, countryOf, isBeanArchived, resolveTasting } from '@/lib/garden/bean-groups';
 import { recipesForStore, sameRecipeSlot } from '@/lib/garden/recipe-store';
 import { brewOnStyle } from '@/lib/garden/brew-colors';
+import { changeSuggestionCount } from '@/lib/garden/brew-feedback';
 import { bypassOf, drinkG } from '@/lib/garden/bypass';
 import { starterRecipe } from '@/lib/garden/starter-recipe';
 import { pourName } from '@/lib/garden/pour-name';
@@ -87,7 +88,7 @@ export default function RecipeBoard() {
   const [openArchived, setOpenArchived] = useState<string | null>(null); // 아카이브에서 크게 펼쳐 본 원두 beanKey
   // 이름 고르는 창을 띄운 원두(beanKey) — 보드·대기 목록에서 원두를 누르면
   const [picking, setPicking] = useState<string | null>(null);
-  // 들어온 원두 — brew: 추출 화면 / eval: 추출 평가 / edit: 의견 · 레시피 수정 / setup: 준비 중 원두의 레시피 설정(이름 없이 들어옴)
+  // 들어온 원두 — brew: 추출 화면 / eval: 추출 평가 / edit: 의견 · 레시피 수정 / setup: 레시피 없는 원두의 레시피 설정(이름을 먼저 고르고 들어온다)
   const [focus, setFocus] = useState<{ beanKey: string; bt: BrewType; stage: 'brew' | 'eval' | 'edit' | 'setup' } | null>(null);
   // 크게 보기에서 조절 중인 레시피 — 저장 전 값을 왼쪽 카드에 비춘다 (의견 · 레시피 수정 탭)
   const [preview, setPreview] = useState<DripRecipe | null>(null);
@@ -535,8 +536,9 @@ export default function RecipeBoard() {
           ]}
           isMobile={isMobile}
           onPick={(beanKey) => {
-            // 레시피가 있으면 이름 고르는 창, 하나도 없으면 이름 없이 '레시피 설정'(HOT 부터 — 이름은 저장할 때 고른다)
-            if (allLiveBeans.some((x) => x.beanKey === beanKey)) setPicking(beanKey);
+            // 어떤 원두든 이름 고르는 창부터 — 레시피가 없는 원두는 이름을 누르면 '레시피 설정'(HOT 부터)으로 들어간다(2026-11-26 대표 지시).
+            // 내리는 사람 명단이 비어 있으면 고를 이름이 없으니, 레시피 없는 원두는 예전처럼 바로 레시피 설정으로
+            if (allLiveBeans.some((x) => x.beanKey === beanKey) || staffNames.length > 0) setPicking(beanKey);
             else setFocus({ beanKey, bt: 'hot', stage: 'setup' });
           }}
         />
@@ -554,6 +556,26 @@ export default function RecipeBoard() {
         picking &&
         (() => {
           const g = allLiveBeans.find((x) => x.beanKey === picking);
+          // 레시피가 하나도 없는 원두 — 「누가 레시피를 잡나요?」. 이름을 누르면 레시피 설정으로, 그 이름이 레시피에 남는다
+          const p = g ? null : pendingBeans.find((x) => x.beanKey === picking);
+          if (p) {
+            return (
+              <BrewerPicker
+                bean={p.bean}
+                staffNames={staffNames}
+                waiting
+                setup
+                onEnter={(name) => {
+                  setStaff(name);
+                  setPicking(null);
+                  setFocus({ beanKey: p.beanKey, bt: 'hot', stage: 'setup' });
+                }}
+                onWaiting={() => undefined}
+                onArchive={() => undefined}
+                onClose={() => setPicking(null)}
+              />
+            );
+          }
           if (!g) return null;
           return (
             <BrewerPicker
@@ -612,6 +634,14 @@ export default function RecipeBoard() {
                     ? feedback.filter((f) => f.beanKey === live.beanKey && f.brewType === savedBt && f.store === store && f.recipeVersion === rr.updatedAt).length
                     : 0
                 }
+                suggest={Object.fromEntries(
+                  BREW_TYPES.map((t) => {
+                    const x = live[t];
+                    const cur = x ? feedback.filter((f) => f.beanKey === live.beanKey && f.brewType === t && f.store === store && f.recipeVersion === x.updatedAt) : [];
+                    return [t, changeSuggestionCount(cur)];
+                  })
+                )}
+                onSuggest={(t) => setFocus({ beanKey: live.beanKey, bt: t, stage: 'edit' })}
                 isMobile={isMobile}
                 onBack={closeFocus}
                 onEdit={() => setFocus({ beanKey: live.beanKey, bt: savedBt, stage: 'edit' })}
@@ -1107,6 +1137,7 @@ function EvalCard({
             staffNames={staffNames}
             staff={staff}
             onPickStaff={onPickStaff}
+            lockStaff
             onPreview={onPreview}
             onSaved={onRecipeSaved}
           />

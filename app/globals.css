@@ -689,6 +689,32 @@ button.fc-need:hover {
 .fc-fab-sub:active {
   transform: scale(0.98);
 }
+/* 「수정 제안」 말풍선 — 추출 화면의 HOT · ICE 버튼 위에 작게. 꼬리는 아래로. 버튼(position: relative) 안에 넣어 쓴다 */
+.fc-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%);
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  font-weight: 500;
+  line-height: 22px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.fc-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-left: -4px;
+  border: 4px solid transparent;
+  border-top-color: hsl(var(--foreground));
+  border-bottom: 0;
+}
 /* 「연습」 표시 — 대기 중(판매 전) 원두의 레시피 세팅 · 연습 추출. 색 없이 테두리만 있는 알약(이름 창 · 추출 화면 · 평가 기록 공용) */
 .fc-practice {
   display: inline-flex;

@@ -4,12 +4,14 @@ import type { BrewType, DripRecipe, StoreId } from '@/lib/types';
 import { flavorGradient } from '@/lib/flavor-colors';
 import { honorific } from '@/lib/staff/names';
 import { brewOnStyle } from '@/lib/garden/brew-colors';
+import { EDIT_SUGGEST_MIN } from '@/lib/garden/brew-feedback';
 import { bypassOf, drinkG } from '@/lib/garden/bypass';
 import { pourName } from '@/lib/garden/pour-name';
 
 // 추출 화면 — 이름을 누르고 들어오면 그 원두의 레시피가 화면 전체에 크게 뜬다(2026-11-25 대표 결정).
 // 위쪽에 누가 추출 중인지, HOT · ICE 는 여기서 고른다(기본 HOT). 타이머 없음(저울 타이머 사용).
 // 대기 중(판매 전) 원두는 연습 — 이름 옆에 「연습」 표시, 버튼은 [연습 끝 · 평가 남기기](2026-11-26).
+// 지금 레시피에 수정 의견이 2건 이상 쌓인 타입은 HOT · ICE 위에 작은 말풍선 「수정 제안」(2026-11-26) — 누르면 의견 · 레시피 수정.
 // 나가는 길은 [추출 끝 · 평가 남기기] — 평가 없이 닫는 버튼은 두지 않는다. 잘못 눌러 들어온 경우만 「← 라인업」.
 
 const BREW_TYPES: BrewType[] = ['hot', 'ice'];
@@ -28,6 +30,8 @@ export default function BrewScreen({
   fallback,
   storeMesh,
   opinionCount,
+  suggest = {},
+  onSuggest,
   isMobile,
   onBack,
   onEdit,
@@ -44,6 +48,8 @@ export default function BrewScreen({
   fallback: Partial<Record<BrewType, boolean>>; // 판교 화면에서 양재천 레시피를 대신 보여주는 타입
   storeMesh: (r: DripRecipe) => { text: string | null; value: number | null };
   opinionCount: number; // 이 레시피 버전에 쌓인 의견 수
+  suggest?: Partial<Record<BrewType, number>>; // 타입별 수정 의견 수(지금 레시피 버전) — 기준(2건) 이상이면 그 타입 위에 「수정 제안」 말풍선
+  onSuggest?: (bt: BrewType) => void; // 말풍선을 누르면 그 타입의 의견 · 레시피 수정으로
   isMobile: boolean;
   onBack: () => void;
   onEdit: () => void; // 의견 · 레시피 수정
@@ -54,6 +60,8 @@ export default function BrewScreen({
   const mesh = storeMesh(r);
   const ratio = r.doseG && r.waterG ? `1:${(r.waterG / r.doseG).toFixed(1)}` : null;
   const pad = isMobile ? 16 : 28;
+  const bubbleOn = (t: BrewType) => !!recipes[t] && (suggest[t] ?? 0) >= EDIT_SUGGEST_MIN;
+  const anyBubble = BREW_TYPES.some(bubbleOn); // 말풍선이 뜰 때만 윗줄을 그만큼 높인다
   return (
     <div className="bg-background text-foreground" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column' }}>
       <header
@@ -64,7 +72,7 @@ export default function BrewScreen({
           flexWrap: isMobile ? 'wrap' : 'nowrap',
           columnGap: 16,
           rowGap: 10,
-          padding: `14px ${pad}px 14px`,
+          padding: `${anyBubble ? 38 : 14}px ${pad}px 14px`,
         }}
       >
         <button onClick={onBack} className="text-body text-muted-foreground hover:text-foreground" style={{ ...plainBtn, whiteSpace: 'nowrap' }}>
@@ -84,10 +92,23 @@ export default function BrewScreen({
               onClick={() => onBtChange(t)}
               disabled={!recipes[t]}
               className={`ta-seg-item ${t === bt ? 'ta-seg-on' : ''} disabled:cursor-default disabled:opacity-30`}
-              style={{ minWidth: 64, ...(t === bt ? brewOnStyle(t) : {}) }}
+              style={{ position: 'relative', minWidth: 64, ...(t === bt ? brewOnStyle(t) : {}) }}
               title={recipes[t] ? undefined : `${t.toUpperCase()} 레시피 없음`}
             >
               {t.toUpperCase()}
+              {/* 수정 제안 — 이 레시피 버전에 수정 의견이 2건 이상 쌓였다(2026-11-26 대표 지시). 누르면 그 타입의 의견 · 레시피 수정으로 */}
+              {bubbleOn(t) && (
+                <span
+                  className="fc-bubble text-caption"
+                  title={`수정 의견 ${suggest[t]}건 — 눌러서 의견 · 레시피 수정으로`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSuggest?.(t);
+                  }}
+                >
+                  수정 제안
+                </span>
+              )}
             </button>
           ))}
         </div>

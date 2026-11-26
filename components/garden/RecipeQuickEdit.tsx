@@ -45,6 +45,7 @@ export default function RecipeQuickEdit({
   staffNames,
   staff,
   onPickStaff,
+  lockStaff = false,
   onPreview,
   onSaved,
 }: {
@@ -60,6 +61,7 @@ export default function RecipeQuickEdit({
   staffNames: string[];
   staff: string;
   onPickStaff: (name: string) => void;
+  lockStaff?: boolean; // 이름을 이미 골라 들어왔다(라인업의 이름 창) — 고르는 줄 대신 그 이름만 보여준다
   onPreview: (r: DripRecipe | null) => void; // 조절 중인 값을 왼쪽 레시피 카드에 비춘다(null = 원래대로)
   onSaved: (r: DripRecipe) => void;
 }) {
@@ -163,6 +165,24 @@ export default function RecipeQuickEdit({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      {/* 수정하는 사람 — 맨 위(2026-11-26 대표 지시: 이름 먼저). 공용 태블릿이라 이름을 레시피 이력에 남긴다.
+          라인업에서는 이름 창에서 이미 골라 들어오므로 그 이름만 보여주고, 이름 없이 들어온 경우에만 여기서 고른다 */}
+      {staffNames.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span className="text-caption text-muted-foreground">{isNew ? '레시피 잡는 사람' : '수정하는 사람'}</span>
+          {lockStaff && staff ? (
+            <span className="text-body">{honorific(staff)}</span>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: 16, rowGap: 6 }}>
+              {staffNames.map((n) => (
+                <TextToggle key={n} on={staff === n} onClick={() => onPickStaff(staff === n ? '' : n)}>
+                  {honorific(n)}
+                </TextToggle>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {/* 새 레시피 — 의견이 있을 수 없으니 안내 한 줄만 */}
       {isNew && (
         <p className="text-body text-muted-foreground" style={{ margin: 0, wordBreak: 'keep-all' }}>
@@ -247,20 +267,6 @@ export default function RecipeQuickEdit({
         )}
         {!waterOk && <span className="text-caption text-muted-foreground">이 레시피는 푸어링 구성이 달라 추출량은 필터커피 탭에서 바꿔 주세요.</span>}
       </div>
-
-      {/* 수정하는 사람 — 공용 태블릿이라 이름을 골라 이력에 남긴다(추출 평가와 같은 이름 선택) */}
-      {staffNames.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span className="text-caption text-muted-foreground">수정하는 사람</span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: 16, rowGap: 6 }}>
-            {staffNames.map((n) => (
-              <TextToggle key={n} on={staff === n} onClick={() => onPickStaff(staff === n ? '' : n)}>
-                {honorific(n)}
-              </TextToggle>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* 저장 — 바뀐 내용을 먼저 보여준다 */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

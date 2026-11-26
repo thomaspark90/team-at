@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterFeedback, groupFeedback, meshDeltaText, suggestMesh, summarize } from '@/lib/garden/brew-feedback';
+import { EDIT_SUGGEST_MIN, changeSuggestionCount, filterFeedback, groupFeedback, isChangeSuggestion, meshDeltaText, suggestMesh, summarize } from '@/lib/garden/brew-feedback';
 import type { BrewFeedback } from '@/lib/types';
 
 describe('추출 평가 — 분쇄도 제안', () => {
@@ -158,6 +158,31 @@ describe('좋음·농도 칩', () => {
     expect(suggestWater(['strong'])).toContain('+10g');
     expect(suggestWater(['weak'])).toContain('−10g');
     expect(suggestWater(['good'])).toBeNull();
+  });
+});
+
+describe('추출 평가 — 수정 의견(「수정 제안」 말풍선)', () => {
+  it('「좋음」만 고르고 분쇄도 그대로면 수정 의견이 아니다', () => {
+    expect(isChangeSuggestion({ issues: ['good'], baseMesh: 7.5, nextMesh: 7.5 })).toBe(false);
+    expect(isChangeSuggestion({ issues: [], baseMesh: 7.5, nextMesh: 7.5 })).toBe(false);
+    expect(isChangeSuggestion({ issues: [], baseMesh: null, nextMesh: null })).toBe(false);
+  });
+  it('「좋음」이 아닌 칩이 있으면 수정 의견', () => {
+    expect(isChangeSuggestion({ issues: ['astringent'], baseMesh: 7.5, nextMesh: 7.5 })).toBe(true);
+    expect(isChangeSuggestion({ issues: ['strong'], baseMesh: null, nextMesh: null })).toBe(true);
+  });
+  it('칩이 없어도 다음 분쇄도를 다르게 제안하면 수정 의견(소수 오차는 무시)', () => {
+    expect(isChangeSuggestion({ issues: [], baseMesh: 7.5, nextMesh: 7.4 })).toBe(true);
+    expect(isChangeSuggestion({ issues: ['good'], baseMesh: 7.5, nextMesh: 7.6 })).toBe(true);
+    expect(isChangeSuggestion({ issues: [], baseMesh: 7.3, nextMesh: 7.300000000000001 })).toBe(false);
+  });
+  it('2건 쌓이면 말풍선 기준에 닿는다', () => {
+    const list = [
+      { issues: ['good'], baseMesh: 7.5, nextMesh: 7.5 },
+      { issues: ['sour'], baseMesh: 7.5, nextMesh: 7.4 },
+    ];
+    expect(changeSuggestionCount(list)).toBe(1);
+    expect(changeSuggestionCount([...list, { issues: ['bitter'], baseMesh: 7.5, nextMesh: 7.5 }]) >= EDIT_SUGGEST_MIN).toBe(true);
   });
 });
 

@@ -87,6 +87,14 @@ export function meshDeltaText(base: number | null, next: number | null): string 
   return d < 0 ? `−${Math.abs(d).toFixed(1)} · 더 곱게` : `+${d.toFixed(1)} · 더 굵게`;
 }
 
+// 수정 의견 — 「좋음」이 아닌 칩을 골랐거나 다음 분쇄도를 지금과 다르게 제안한 평가(메모만 남긴 평가는 세지 않는다).
+// 같은 레시피 버전에 이만큼 쌓이면 추출 화면의 HOT · ICE 위에 「수정 제안」 말풍선을 띄운다(2026-11-26 대표 결정: 2건).
+// 레시피를 고쳐 저장하면 새 버전이 되어 다시 0부터 센다.
+export const EDIT_SUGGEST_MIN = 2;
+export const isChangeSuggestion = (f: Pick<BrewFeedback, 'issues' | 'baseMesh' | 'nextMesh'>): boolean =>
+  f.issues.some((id) => id !== GOOD_CHIP) || (f.baseMesh != null && f.nextMesh != null && roundMesh(f.nextMesh - f.baseMesh) !== 0);
+export const changeSuggestionCount = (list: Pick<BrewFeedback, 'issues' | 'baseMesh' | 'nextMesh'>[]): number => list.filter(isChangeSuggestion).length;
+
 // 같은 레시피 버전·지점 의견 집계 — 분쇄도 제안 분포 + 칩 빈도
 export function summarize(list: BrewFeedback[]) {
   const deltas = new Map<string, number>();
