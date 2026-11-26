@@ -6,6 +6,7 @@ import type { BeanMeta, BrewType, DripRecipe, DripRecipeSnapshot, PourStep, Purc
 import { STORES, STOCK_LEVELS, stockOf } from '@/lib/types';
 import { roastInfo, restStage, restTitle } from '@/lib/garden/roast';
 import { restClass } from './rest-class';
+import BrewerEditLink from './BrewerEditLink';
 import { costPerCup, normalize } from '@/lib/pricing';
 import { currentCost } from '@/lib/garden/brew-cost';
 import { applyPreset, presetById } from '@/lib/drip-presets';
@@ -1424,6 +1425,7 @@ export default function GardenDashboard({
               <Link href="/garden/filtercoffee/feedback" className="fc-go" title="필터커피 라인업에서 남긴 추출 평가 모아보기">
                 추출 평가
               </Link>
+              <BrewerEditLink />
               {toolTabs.includes('calibration') && (
                 <Link href="/garden/calibration" className="fc-go">
                   분쇄도 측정

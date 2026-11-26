@@ -8,7 +8,8 @@ import { toast } from '@/components/Toast';
 // 필터커피 라인업 화면에서 원두를 누르면 뜨는 이름 버튼과 추출 평가 · 레시피 수정의 이름 선택지를 여기서 고른다.
 // 지점별 명단 — 후보는 그 지점에서 근무하는 재직자(직원 명부의 근무 지점)이고, 그중에서 켠 사람만 그 지점 화면에 나온다.
 // 스케줄 › 직원 명부의 역할 「커피」는 근무표를 짜는 사람이 보는 표기일 뿐이라 이 명단과 묶지 않는다.
-// 이름을 누르면 바로 저장된다(실패하면 되돌리고 알림). 권한이 없으면(403) 구역째 숨긴다.
+// 이름을 누르면 바로 저장된다(실패하면 되돌리고 알림). 고칠 수 있는 사람은 대표 · 설정 권한 · 서브 매니저 이상 — 권한이 없으면(403) 구역째 숨긴다.
+// 설정 화면(구역 하나)과 필터커피 › 내리는 사람(standalone, 화면 하나)에서 같이 쓴다.
 
 interface BrewerStore {
   id: StoreId;
@@ -32,15 +33,16 @@ const chip = (on: boolean): React.CSSProperties => ({
   whiteSpace: 'nowrap',
 });
 
-export default function BrewerSettings() {
+export default function BrewerSettings({ standalone = false }: { standalone?: boolean }) {
   const [view, setView] = useState<BrewerView | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [denied, setDenied] = useState(false);
 
   useEffect(() => {
     fetch('/api/garden-brewers', { cache: 'no-store' })
       .then(async (r) => {
-        if (r.status === 403) return; // 설정 권한 없음 — 구역을 그리지 않는다
+        if (r.status === 403) return setDenied(true); // 권한 없음 — 설정 화면에서는 구역을 그리지 않는다
         if (!r.ok) throw new Error();
         setView(await r.json());
       })
@@ -71,11 +73,18 @@ export default function BrewerSettings() {
     }
   };
 
+  if (denied && standalone) {
+    return (
+      <p className="text-body text-muted-foreground" style={{ margin: '24px 0 0' }}>
+        필터커피 내리는 사람은 서브 매니저 이상만 고칠 수 있어요.
+      </p>
+    );
+  }
   if (!view && !failed) return null;
   const anyDefault = !!view?.stores.some((s) => !s.custom);
 
   return (
-    <div className="py-[54px]">
+    <div className={standalone ? 'pt-[24px]' : 'py-[54px]'}>
       <div className="min-w-0" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <div>
           <p className="text-title font-medium text-foreground" style={{ margin: 0 }}>필터커피 내리는 사람</p>
