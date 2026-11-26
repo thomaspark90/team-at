@@ -332,3 +332,17 @@ describe('출퇴근 → 실제 근무', () => {
     expect(Array.from(on.keys())).toEqual([2]);
   });
 });
+
+describe('직원 링크 열람 요약', () => {
+  it('지점별 열람 수·기기 수·마지막 시각', async () => {
+    const { summarizeViews } = await import('@/lib/schedule/link-views');
+    const out = summarizeViews([
+      { store: 'yangjae', visitor: 'a', viewed_at: '2026-11-26T01:00:00Z' },
+      { store: 'yangjae', visitor: 'a', viewed_at: '2026-11-26T03:00:00Z' },
+      { store: 'yangjae', visitor: 'b', viewed_at: '2026-11-25T03:00:00Z' },
+      { store: 'pangyo', visitor: '', viewed_at: '2026-11-24T03:00:00Z' },
+    ]);
+    expect(out.yangjae).toEqual({ views: 3, visitors: 2, lastAt: '2026-11-26T03:00:00Z' });
+    expect(out.pangyo).toEqual({ views: 1, visitors: 1, lastAt: '2026-11-24T03:00:00Z' });
+  });
+});

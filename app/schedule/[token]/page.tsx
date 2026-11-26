@@ -10,6 +10,7 @@ import ScheduleDayList from '@/components/garden/schedule/ScheduleDayList';
 import PublishAck from '@/components/garden/schedule/PublishAck';
 import MyLeave from '@/components/garden/schedule/MyLeave';
 import SwapRequest from '@/components/garden/schedule/SwapRequest';
+import LinkViewBeacon from '@/components/garden/schedule/LinkViewBeacon';
 
 const fmtAt = (iso: string) => new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
@@ -44,6 +45,7 @@ export default async function SharedSchedulePage({ params, searchParams }: { par
 
   return (
     <main className="min-h-screen bg-background text-foreground">
+      <LinkViewBeacon token={params.token} weekStart={weekStart} />
       <div className="mx-auto max-w-[640px] px-6 py-10">
         <header className="mb-8">
           <p className="ta-label">가든서비스 {label}</p>

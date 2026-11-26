@@ -1,16 +1,20 @@
 import { randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { badRequest, dbError, isStore, requireScheduleEditor } from '@/lib/schedule/access';
+import { summarizeViews } from '@/lib/schedule/link-views';
 
 export const runtime = 'nodejs';
 
-// 직원용 읽기 전용 링크 — GET 지점별 토큰 / POST { store } 새 링크 발급(이전 링크는 즉시 무효).
+// 직원용 읽기 전용 링크 — GET 지점별 토큰 + 최근 7일 열람 요약 / POST { store } 새 링크 발급(이전 링크는 즉시 무효).
 export async function GET() {
   const a = await requireScheduleEditor();
   if (a instanceof NextResponse) return a;
   const { data, error } = await a.svc.from('schedule_share_links').select('store, token');
   if (error) return dbError(error);
-  return NextResponse.json({ links: Object.fromEntries((data ?? []).map((l) => [l.store, l.token])) });
+  const since = new Date(Date.now() - 7 * 86400_000).toISOString();
+  const { data: rows, error: vErr } = await a.svc.from('schedule_link_views').select('store, visitor, viewed_at').gte('viewed_at', since).order('viewed_at', { ascending: false }).limit(5000);
+  if (vErr) return dbError(vErr);
+  return NextResponse.json({ links: Object.fromEntries((data ?? []).map((l) => [l.store, l.token])), views: summarizeViews(rows ?? []) });
 }
 
 export async function POST(req: Request) {

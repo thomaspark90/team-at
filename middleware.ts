@@ -39,6 +39,7 @@ const PUBLIC_API = [
   '/api/schedule-link/leave', // 직원 스케줄 링크의 '내 연차' — 공유 토큰으로 지점 확인, 잔여·신청 상태만
   '/api/schedule-link/swap', // 직원 스케줄 링크의 교대 요청 — 공유 토큰, 배포된 근무만, 승인은 운영진
   '/api/schedule-link/clock', // 매장 태블릿 출퇴근 — 공유 토큰, 오늘 기록만
+  '/api/schedule-link/view', // 직원 스케줄 링크 열람 기록 — 공유 토큰으로 지점 확인, 쓰기만(읽기 없음)
 ];
 
 const isPublicApi = (p: string) => PUBLIC_API.some((a) => p === a || p.startsWith(a + '/'));
