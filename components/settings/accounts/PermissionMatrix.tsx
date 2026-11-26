@@ -7,12 +7,13 @@ import type { ProfileRole } from '@/lib/account/roles';
 import { buildMatrix, OFF_MATRIX_PERMISSIONS, type MatrixColumn, type MatrixGroup, type MatrixGroupId } from '@/lib/access/permission-matrix';
 import { allowedSet, type Account, type AccessKind } from './types';
 import { useMatrixExtras } from './useMatrixExtras';
+import Check, { type MatrixCellState } from '@/components/MatrixCheck';
 
 // 사람 × 권한 표(2026-11-20 대표 지시) — 첫 행 기능, 첫 열 인원, 둘째 열부터 권한.
 // 칸을 누르면 바로 저장된다. 화면 출입은 garden_tab_access(onAccess), 그 외는 useMatrixExtras 가 각 저장소에 쓴다.
 // 대표 줄은 출입·기능이 항상 켜짐(잠김)이고 알림 담당만 바꿀 수 있다.
 
-type CellState = 'on' | 'off' | 'locked' | 'na';
+type CellState = MatrixCellState;
 type View = 'all' | MatrixGroupId;
 const VIEWS: [View, string][] = [
   ['all', '전체'],
@@ -26,32 +27,6 @@ const VIEWS: [View, string][] = [
 const OWNER: Account = { id: 'owner', kind: 'email', title: '대표', user: null, profile: null };
 const FIRST_W = 220;
 const LINE = '1px solid hsl(var(--border))';
-
-function Check({ state, dim }: { state: CellState; dim: boolean }) {
-  if (state === 'na') return <span className="text-muted-foreground" style={{ opacity: 0.4 }}>–</span>;
-  const on = state !== 'off';
-  return (
-    <span
-      aria-hidden
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 18,
-        height: 18,
-        borderRadius: 5,
-        fontSize: 12,
-        lineHeight: 1,
-        border: on ? 'none' : '1.5px solid hsl(var(--muted-foreground) / 0.45)',
-        background: on ? 'hsl(var(--foreground))' : 'transparent',
-        color: 'hsl(var(--background))',
-        opacity: state === 'locked' ? 0.35 : dim ? 0.3 : 1,
-      }}
-    >
-      {on ? '✓' : ''}
-    </span>
-  );
-}
 
 export default function PermissionMatrix({
   accounts,

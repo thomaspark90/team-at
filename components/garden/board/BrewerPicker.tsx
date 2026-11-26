@@ -6,7 +6,7 @@ import { honorific } from '@/lib/staff/names';
 // 「누가 추출하나요?」 창 — 보드에서 원두를 누르면 뜬다(2026-11-25 대표 결정).
 // 이름 버튼을 누르는 것이 곧 들어가기(확인 버튼 없음). HOT · ICE 는 여기서 고르지 않고 추출 화면에서.
 // 공용 태블릿이라 이름은 기억하지 않는다 — 들어올 때마다 새로 고른다.
-// 추출이 아닌 일(대기 · 소진 · 판매 시작)은 아래 버튼 — 이름을 고르지 않아도 누를 수 있다.
+// 추출이 아닌 일(대기 · 소진 · 판매 시작)은 창 아래 가운데 검정 알약 버튼 — 이름을 고르지 않아도 누를 수 있다.
 // 대기 중(판매 전) 원두는 레시피 세팅 · 연습으로만 내린다(2026-11-26 대표 지시) — 창 위에 「대기 중 · 연습」 표시,
 // 레시피가 아직 없는 원두는 「누가 레시피를 잡나요?」 — 이름을 누르면 레시피 설정으로 들어간다(2026-11-26 대표 지시).
 // 대기 중 원두의 물음은 「누가 연습하나요?」, 「판매 시작」은 창 아래 가운데 검정 알약 버튼(누르면 「판매를 시작할까요?」 한 번 더 확인). 이때 남긴 평가는 「연습」으로 따로 표시된다.
@@ -125,42 +125,59 @@ export default function BrewerPicker({
             </div>
           </>
         ) : (
-        <div className="text-body" style={{ display: 'flex', alignItems: 'baseline', gap: 18, marginTop: 24, whiteSpace: 'nowrap' }}>
-          {confirmArchive ? (
-            <>
-              <span className="text-muted-foreground">아카이브로 보낼까요?</span>
-              <button onClick={onArchive} className="text-foreground underline" style={plainBtn}>
-                확인
-              </button>
-              <button onClick={() => setConfirmArchive(false)} className="text-muted-foreground hover:text-foreground" style={plainBtn}>
-                취소
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => onWaiting(true)}
-                className="text-muted-foreground hover:text-foreground"
-                style={plainBtn}
-                title="이 지점 판매 대기 — 라인업 아래 '대기 중'으로 내려가요"
-              >
-                대기
-              </button>
-              <button
-                onClick={() => setConfirmArchive(true)}
-                className="text-muted-foreground hover:text-foreground"
-                style={plainBtn}
-                title="원두 소진 — 필터 커피 아카이브로 보내기"
-              >
-                소진
-              </button>
-            </>
-          )}
-          <span style={{ flex: 1 }} />
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground" style={plainBtn}>
-            닫기
-          </button>
-        </div>
+          // 판매 중 원두 — 「대기」·「소진」도 창 아래 가운데 검정 알약 버튼으로(2026-11-26 대표 지시: 빠르게 누를 수 있게). 닫기는 오른쪽.
+          // 대기는 바로 적용(되돌리기 쉬움), 소진은 아카이브로 가므로 한 번 더 확인
+          <>
+            {confirmArchive && (
+              <p className="text-body" style={{ margin: '24px 0 0', textAlign: 'center', wordBreak: 'keep-all' }}>
+                소진 처리할까요?
+                <span className="text-caption text-muted-foreground" style={{ display: 'block', marginTop: 2 }}>
+                  필터 커피 아카이브로 보냅니다.
+                </span>
+              </p>
+            )}
+            <div
+              className="text-body"
+              style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', alignItems: 'center', marginTop: confirmArchive ? 16 : 26, whiteSpace: 'nowrap' }}
+            >
+              <span />
+              {confirmArchive ? (
+                <button type="button" onClick={onArchive} className="fc-fab text-body" style={{ height: 52, padding: '0 34px' }}>
+                  소진하기
+                </button>
+              ) : (
+                <span style={{ display: 'inline-flex', gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => onWaiting(true)}
+                    className="fc-fab text-body"
+                    style={{ height: 52, padding: '0 30px' }}
+                    title="이 지점 판매 대기 — 라인업 아래 '대기 중'으로 내려가요"
+                  >
+                    대기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmArchive(true)}
+                    className="fc-fab text-body"
+                    style={{ height: 52, padding: '0 30px' }}
+                    title="원두 소진 — 필터 커피 아카이브로 보내기"
+                  >
+                    소진
+                  </button>
+                </span>
+              )}
+              {confirmArchive ? (
+                <button onClick={() => setConfirmArchive(false)} className="text-muted-foreground hover:text-foreground" style={{ ...plainBtn, justifySelf: 'end' }}>
+                  취소
+                </button>
+              ) : (
+                <button onClick={onClose} className="text-muted-foreground hover:text-foreground" style={{ ...plainBtn, justifySelf: 'end' }}>
+                  닫기
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

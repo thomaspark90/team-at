@@ -52,12 +52,12 @@ function Row({ r, waiting, isMobile, onPick }: { r: BoardBeanRow; waiting: boole
           <span className="tabular text-caption text-muted-foreground" style={{ whiteSpace: 'nowrap' }} title={restTitle(r.roast)}>
             로스팅 {md(r.roast.date)}
             {r.roast.estimated && ' 추정'}
-            {/* 로스팅 후 지난 날수 — 색은 필터커피 화면의 D+ 와 같은 단계 규칙 */}
+            {/* 로스팅 후 지난 날수 — 표기(D+N)와 색 모두 필터커피 화면의 D+ 와 같다(2026-11-26 대표 지시: +N → D+N) */}
             <span
               className={`${isMobile ? 'text-caption' : 'text-body'} font-medium ${restTextClass[restStage(r.roast.days)]}`}
-              style={{ display: 'inline-block', minWidth: isMobile ? 0 : 34, marginLeft: isMobile ? 6 : 8, textAlign: 'right' }}
+              style={{ display: 'inline-block', minWidth: isMobile ? 0 : 50, marginLeft: isMobile ? 6 : 8, textAlign: 'right' }}
             >
-              +{r.roast.days}
+              D+{r.roast.days}
             </span>
           </span>
         )}
