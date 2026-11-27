@@ -253,7 +253,7 @@ export default function RecipeLedger({
                 <Fragment key={row.beanKey}>
                   <tr
                     onClick={() => canOpen && toggle(row.beanKey)}
-                    className={`lr ${canOpen ? 'cursor-pointer' : ''}`}
+                    className={`lr ${canOpen ? 'cursor-pointer' : ''} ${isOpen ? 'lr-open' : ''}`}
                     title={canOpen ? (isOpen ? '접기' : row.hasRecipe ? '펼치기 — 판매가 · 발주 기록 · 레시피(수정 · 이력 · 보관)' : '펼치기 — 판매가 · 발주 기록(수령 · 발주 · 원두카드)') : undefined}
                   >
                     <td className="lc-bean" style={{ ...cell, whiteSpace: 'normal', minWidth: 240 }}>
@@ -333,7 +333,7 @@ export default function RecipeLedger({
                   {isOpen && (
                     <tr className="lo">
                       <td className="lc-open" colSpan={COLS} style={{ padding: 0, whiteSpace: 'normal' }}>
-                        <div className="fc-open fc-lift text-body">
+                        <div className="fc-open text-body">
                         {renderPricing && (
                           <Block label="판매가" first>
                             {renderPricing(row.beanKey)}

@@ -263,8 +263,13 @@ select.ta-input {
   --fc-shade-strong: hsl(0 0% 0% / 0.1);
   --fc-lift: 0 0 0 1px var(--fc-line), 0 1px 2px hsl(0 0% 0% / 0.03), 0 4px 14px hsl(0 0% 0% / 0.04);
   --fc-lift-strong: 0 1px 2px hsl(0 0% 0% / 0.08), 0 4px 16px hsl(0 0% 0% / 0.13);
+  /* 펼친 원두의 상세 칸(음영 서랍) 바탕 — 흰 원두 칸과 색으로 갈린다 (2026-11-27 대표 결정 2안 #fafaf9) */
+  --fc-drawer: #fafaf9;
+  --fc-drawer-inset: hsl(0 0% 0% / 0.11);
 }
 .dark {
+  --fc-drawer: hsl(0 0% 100% / 0.035);
+  --fc-drawer-inset: hsl(0 0% 0% / 0.55);
   --fc-line: hsl(0 0% 100% / 0.1);
   --fc-shade: hsl(0 0% 100% / 0.06);
   --fc-shade-strong: hsl(0 0% 100% / 0.14);
@@ -545,9 +550,14 @@ button.fc-need:hover {
   background-image: linear-gradient(to bottom, var(--fc-line) 1px, transparent 1px);
   background-repeat: no-repeat;
 }
+/* 펼침 칸 = 음영 서랍 — 원두 줄(카드) 바로 아래에 붙어 나온다. 흰 카드가 아니라 옅은 음영 바탕 + 위쪽 안쪽 그림자라
+   다음 원두 칸과 헷갈리지 않는다 (2026-11-27, 예전엔 원두 칸과 같은 흰 카드였다) */
 .fc-open {
-  margin: 2px 0 16px;
+  margin: 0 0 16px;
   padding: 22px 24px 26px;
+  border-radius: 0 0 14px 14px;
+  background-color: var(--fc-drawer);
+  box-shadow: inset 0 7px 9px -7px var(--fc-drawer-inset), 0 0 0 1px var(--fc-line);
 }
 @media (max-width: 1179px) {
   .ledger-table {
@@ -570,6 +580,13 @@ button.fc-need:hover {
     border-radius: 14px;
     background-color: hsl(var(--background));
     box-shadow: var(--fc-lift);
+  }
+  /* 펼친 원두 카드 — 아래 서랍과 한 덩어리로 붙인다(아래 모서리 직각 · 간격 없음 · 그림자가 서랍 위로) */
+  .ledger-table tr.lr.lr-open {
+    position: relative;
+    z-index: 1;
+    margin-bottom: 0;
+    border-radius: 14px 14px 0 0;
   }
   .ledger-table tr.lo {
     display: block;
@@ -600,7 +617,7 @@ button.fc-need:hover {
     color: hsl(var(--muted-foreground));
   }
   .fc-open {
-    margin: -4px 0 14px;
+    margin: 0 0 14px;
     padding: 18px;
   }
 }
