@@ -657,6 +657,23 @@ button.fc-need:hover {
 .fc-beanrow:active {
   background-color: var(--fc-shade-strong);
 }
+/* 펼친 줄(이름 고르는 중, 2026-11-26) — 줄은 옅은 음영, 화살표는 아래로. 그 아래 .fc-beanpanel 에 이름 버튼이 들어간다 */
+.fc-beanrow-open {
+  background-color: var(--fc-shade);
+}
+.fc-beanrow-chev {
+  display: inline-block;
+  transition: transform 0.15s;
+}
+.fc-beanrow-open .fc-beanrow-chev {
+  transform: rotate(90deg);
+}
+.fc-beanpanel {
+  background-image: linear-gradient(var(--fc-shade), transparent);
+}
+.fc-beanpanel:last-child {
+  border-bottom: 1px solid var(--fc-line);
+}
 /* 대기 중 원두 — 줄 안의 것(색 막대 · 이름 · 로스팅일 · 오른쪽 글자 · 화살표)을 모두 투명도 50%로. 구분선은 그대로 */
 .fc-beanrow-wait > * {
   opacity: 0.5;

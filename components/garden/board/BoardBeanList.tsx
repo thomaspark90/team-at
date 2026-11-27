@@ -1,5 +1,6 @@
 'use client';
 
+import { Fragment, type ReactNode } from 'react';
 import type { BrewType } from '@/lib/types';
 import { flavorColors } from '@/lib/flavor-colors';
 import { restStage, restTitle, type RoastInfo } from '@/lib/garden/roast';
@@ -8,8 +9,9 @@ import { restTextClass } from '../rest-class';
 // 레시피 보드 첫 화면 — 원두 이름만 한 줄에 하나씩(2026-11-25 대표 결정 시안 B → 대기 중 시안 C).
 // 판매 중이 위, 그 아래 「대기 중 N」 제목과 함께 대기 원두(판매 대기 + 레시피 없는 원두)를 투명도 50%로.
 // 한 줄 = 노트 색 막대 · 원두명 · 로스팅일 +NN · 레시피가 있는 타입(없으면 '레시피 없음') · ›
-// 레시피 숫자는 여기서 보이지 않는다. 줄을 누르면 이름 고르는 창(BrewerPicker) → 추출 화면(BrewScreen).
-// 줄 모양은 globals.css 의 .fc-beanrow / .fc-beanrow-wait.
+// 레시피 숫자는 여기서 보이지 않는다. 줄을 누르면 그 줄 아래로 이름이 펼쳐지고(BrewerPicker — 2026-11-26 대표 결정, 창 대신 줄에서 펼치기),
+// 이름을 누르면 추출 화면(BrewScreen). 한 번에 한 줄만 펼쳐진다 — 같은 줄을 다시 누르면 접힌다.
+// 줄 모양은 globals.css 의 .fc-beanrow / .fc-beanrow-wait / .fc-beanrow-open / .fc-beanpanel.
 
 export interface BoardBeanRow {
   beanKey: string;
@@ -29,9 +31,14 @@ const barStyle = (tasting: string): React.CSSProperties => {
 // 'YYYY-MM-DD' → 'MM.DD'
 const md = (ymd: string) => `${ymd.slice(5, 7)}.${ymd.slice(8, 10)}`;
 
-function Row({ r, waiting, isMobile, onPick }: { r: BoardBeanRow; waiting: boolean; isMobile: boolean; onPick: (beanKey: string) => void }) {
+function Row({ r, waiting, open, isMobile, onPick }: { r: BoardBeanRow; waiting: boolean; open: boolean; isMobile: boolean; onPick: (beanKey: string) => void }) {
   return (
-    <button type="button" className={`fc-beanrow${waiting ? ' fc-beanrow-wait' : ''}`} onClick={() => onPick(r.beanKey)}>
+    <button
+      type="button"
+      className={`fc-beanrow${waiting ? ' fc-beanrow-wait' : ''}${open ? ' fc-beanrow-open' : ''}`}
+      aria-expanded={open}
+      onClick={() => onPick(r.beanKey)}
+    >
       <span className="bg-muted" style={{ width: 8, height: 44, borderRadius: 999, flexShrink: 0, ...barStyle(r.tasting) }} />
       {/* 원두명 + 로스팅일 — 넓은 화면은 한 줄, 휴대폰은 로스팅일을 이름 아래 줄로 */}
       <span
@@ -65,7 +72,8 @@ function Row({ r, waiting, isMobile, onPick }: { r: BoardBeanRow; waiting: boole
       <span className="text-caption text-muted-foreground" style={{ whiteSpace: 'nowrap', minWidth: isMobile ? 0 : 62, textAlign: 'right' }}>
         {r.types.length > 0 ? r.types.map((t) => t.toUpperCase()).join(' · ') : '레시피 없음'}
       </span>
-      <span className="text-title text-muted-foreground" aria-hidden="true" style={{ lineHeight: 1 }}>
+      {/* 펼치면 아래를 향한다 */}
+      <span className="fc-beanrow-chev text-title text-muted-foreground" aria-hidden="true" style={{ lineHeight: 1 }}>
         ›
       </span>
     </button>
@@ -76,8 +84,12 @@ export default function BoardBeanList({
   selling,
   waiting,
   isMobile,
+  openKey,
+  renderPanel,
   onPick,
 }: {
+  openKey: string | null; // 펼쳐진 원두(이름 고르는 중)
+  renderPanel: (beanKey: string) => ReactNode; // 펼친 줄 아래에 들어갈 것 — 이름 버튼 · 대기 · 품절 · 판매 시작
   selling: BoardBeanRow[]; // 판매 중
   waiting: BoardBeanRow[]; // 대기 중 — 판매 대기(레시피 있음) 먼저, 레시피 없는 원두가 뒤
   isMobile: boolean;
@@ -89,7 +101,10 @@ export default function BoardBeanList({
       {selling.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {selling.map((r) => (
-            <Row key={r.beanKey} r={r} waiting={false} isMobile={isMobile} onPick={onPick} />
+            <Fragment key={r.beanKey}>
+              <Row r={r} waiting={false} open={openKey === r.beanKey} isMobile={isMobile} onPick={onPick} />
+              {openKey === r.beanKey && renderPanel(r.beanKey)}
+            </Fragment>
           ))}
         </div>
       )}
@@ -101,7 +116,10 @@ export default function BoardBeanList({
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {waiting.map((r) => (
-              <Row key={r.beanKey} r={r} waiting isMobile={isMobile} onPick={onPick} />
+              <Fragment key={r.beanKey}>
+                <Row r={r} waiting open={openKey === r.beanKey} isMobile={isMobile} onPick={onPick} />
+                {openKey === r.beanKey && renderPanel(r.beanKey)}
+              </Fragment>
             ))}
           </div>
         </>
