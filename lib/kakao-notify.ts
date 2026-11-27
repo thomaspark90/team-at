@@ -1,6 +1,5 @@
 import { get, put } from '@vercel/blob';
 import { blobCollection } from '@/lib/blob-records';
-import type { PurchaseRecord } from '@/lib/types';
 import { isOwner } from '@/lib/finance/access';
 
 // 원두 발주 → 카카오톡 단톡방 알림 큐.
@@ -62,12 +61,5 @@ export const canSendKakaoOrder = (email?: string | null): boolean => {
   return allowed.includes(email.toLowerCase());
 };
 
-// 단톡방에 올라갈 발주 메시지 — 매입가·재료비 등 내부 원가 정보는 넣지 않는다.
-// 매장에서 직접 보내던 대화체 그대로(2026-11-03): 받을 지점을 넣어 로스터리가 배송지를 되묻지 않게 한다.
-const STORE_NAME = { pangyo: '판교점', yangjae: '양재천점' } as const;
-const amountOf = (g?: number) => (!g ? '' : g % 1000 === 0 ? `${g / 1000}kg` : `${g}g`);
-export function buildOrderMessage(r: PurchaseRecord): string {
-  const to = r.store ? `${STORE_NAME[r.store]}으로 ` : '';
-  const amount = amountOf(r.settings?.capacityG);
-  return `대표님 안녕하세요.\n${to}${r.bean}${amount ? ` ${amount}` : ''} 발주 부탁드립니다.`;
-}
+// 발주 문구와 '오늘 이미 인사했는지' 판정은 순수 함수로 따로 둔다(테스트 대상).
+export { buildOrderMessage, greetedToday } from '@/lib/kakao-order-message';

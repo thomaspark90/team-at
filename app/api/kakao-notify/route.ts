@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireGardenTab } from '@/lib/access/guard';
 import { logActivity } from '@/lib/finance/activity';
 import { purchaseRecords } from '@/lib/blob-records';
-import { buildOrderMessage, canSendKakaoOrder, kakaoNotifyJobs, readKakaoRooms, type KakaoNotifyJob } from '@/lib/kakao-notify';
+import { buildOrderMessage, canSendKakaoOrder, greetedToday, kakaoNotifyJobs, readKakaoRooms, type KakaoNotifyJob } from '@/lib/kakao-notify';
 
 // 기록의 로스터리로 대상 카톡방을 확정한다 — 매핑이 없으면 전송 자체를 막는다.
 async function resolveRoom(record: { roastery?: string }): Promise<{ room: string } | { error: string }> {
@@ -17,6 +17,7 @@ async function resolveRoom(record: { roastery?: string }): Promise<{ room: strin
 // GET: 내 버튼 노출 여부 + 발주기록별 전송 상태 (UI 표시용)
 // GET ?purchaseId=...: 전송될 메시지 미리보기 — 버튼 클릭 시 담당자가 확인하는 원문.
 //   실제 전송분과 어긋나지 않도록 서버의 buildOrderMessage 를 그대로 쓴다.
+//   같은 날(KST) 같은 방에 이미 발주가 나갔거나 대기 중이면 인사말 없이 발주 내용만(2026-11-27 대표 지시).
 // POST { purchaseId }: 전송 잡 등록 — 실제 전송은 맥 로컬 전송기가 큐를 폴링해 수행
 // POST { purchaseId, manual: true }: 직접 발주 완료 — 카톡을 보내지 않고 완료(sent)로만 기록한다.
 //   전송기는 pending 만 집어가므로 건드리지 않고, 미전송 리마인드 메일도 sent 를 보고 멈춘다 (2026-11-24)
@@ -40,7 +41,8 @@ export async function GET(req: Request) {
     if (!record) return NextResponse.json({ error: '발주 기록을 찾을 수 없습니다.' }, { status: 404 });
     const target = await resolveRoom(record);
     if ('error' in target) return NextResponse.json({ error: target.error }, { status: 400 });
-    return NextResponse.json({ message: buildOrderMessage(record), room: target.room });
+    const greet = !greetedToday(await kakaoNotifyJobs.readAll(), target.room, new Date().toISOString());
+    return NextResponse.json({ message: buildOrderMessage(record, { greet }), room: target.room });
   }
 
   // readAll 은 오래된순 — 같은 발주의 잡이 여러 개면(실패 후 재시도) 최신 상태가 남는다
@@ -80,7 +82,8 @@ export async function POST(req: Request) {
 
   // 같은 발주 기록에 대기·전송 완료 잡이 있으면 새로 만들지 않는다(더블클릭·중복 전송 방지).
   // 실패(failed)만 재시도로 새 잡을 등록한다.
-  const existing = (await kakaoNotifyJobs.readAll()).filter((j) => j.purchaseId === record.id);
+  const allJobs = await kakaoNotifyJobs.readAll();
+  const existing = allJobs.filter((j) => j.purchaseId === record.id);
   const active = existing.find((j) => j.status === 'pending' || j.status === 'sent');
   if (active) return NextResponse.json({ job: active, duplicated: true });
 
@@ -116,7 +119,8 @@ export async function POST(req: Request) {
     createdAt: new Date().toISOString(),
     purchaseId: record.id,
     room: target.room,
-    message: custom || buildOrderMessage(record),
+    // 오늘 이 방에 이미 발주가 나갔으면(또는 대기 중이면) 인사말을 뺀다 — 미리보기와 같은 판정
+    message: custom || buildOrderMessage(record, { greet: !greetedToday(allJobs, target.room, new Date().toISOString()) }),
     status: 'pending',
     requestedBy: user.email ?? '',
   };
