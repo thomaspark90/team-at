@@ -452,6 +452,26 @@ button.fc-need:hover {
 .fc-kakao:empty {
   display: none;
 }
+/* 가격 후보 줄(2026-11-27) — 좌우로 미는 한 줄. 왼쪽 18px · 오른쪽 44px 가 옅어져 더 있다는 것을 알린다(PricePicks 의 EDGE · PEEK 와 같은 값).
+   위아래 여백은 버튼 그림자가 잘리지 않게 넣고 같은 만큼 바깥에서 뺀다. 폭은 PricePicks 가 '처음 보이는 구간'에 맞춰 넣는다 */
+.fc-pickstrip {
+  position: relative;
+  display: flex;
+  flex: 0 1 auto;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  margin: -12px 0 -12px -18px;
+  padding: 12px 44px 12px 18px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 18px, #000 calc(100% - 44px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 18px, #000 calc(100% - 44px), transparent);
+}
+.fc-pickstrip > .fc-pick {
+  flex-shrink: 0;
+}
 /* 가격 후보 버튼 */
 .fc-pick {
   display: inline-flex;
